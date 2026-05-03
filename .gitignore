@@ -1,0 +1,16 @@
+# 클라우드 인증 정보 및 보안 키 (절대 업로드 방지)
+.env
+*.pem
+*.json
+credentials/
+
+# 파이썬 및 가상환경 설정
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# OS 및 에디터 생성 파일
+.DS_Store
+Thumbs.db
+.vscode/

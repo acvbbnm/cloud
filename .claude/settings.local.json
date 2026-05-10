@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/sasum/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/0d7c145a-c590-4eed-bcfe-bb116bc95b1a/fa2656a2-1db5-472b-83f9-b0a4d1f8f311/skills/docx/**)",
+      "Bash(pandoc --track-changes=all \"C:\\\\Users\\\\sasum\\\\Downloads\\\\찐찐요구사항.docx\" -o output.md)",
+      "Bash(python scripts/office/unpack.py \"C:\\\\Users\\\\sasum\\\\Downloads\\\\찐찐요구사항.docx\" unpacked_main/)",
+      "Read(//usr/**)",
+      "Read(//usr/local/**)",
+      "Bash(SKILL_DIR=\"C:\\\\Users\\\\sasum\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\0d7c145a-c590-4eed-bcfe-bb116bc95b1a\\\\fa2656a2-1db5-472b-83f9-b0a4d1f8f311\\\\skills\\\\docx\")",
+      "Read(//c/Users/sasum/OneDrive/문서/Claude/Projects/캡스톤/**)",
+      "Bash(/c/Users/sasum/AppData/Local/Microsoft/WindowsApps/python3 scripts/office/unpack.py \"C:/Users/sasum/Downloads/찐찐요구사항.docx\" unpacked_main/)",
+      "Bash(SKILL_DIR=\"/c/Users/sasum/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/0d7c145a-c590-4eed-bcfe-bb116bc95b1a/fa2656a2-1db5-472b-83f9-b0a4d1f8f311/skills/docx\")",
+      "Bash(/c/Users/sasum/AppData/Local/Microsoft/WindowsApps/python3.exe scripts/office/unpack.py \"/c/Users/sasum/Downloads/찐찐요구사항.docx\" unpacked_main/)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\sasum\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\0d7c145a-c590-4eed-bcfe-bb116bc95b1a\\\\fa2656a2-1db5-472b-83f9-b0a4d1f8f311\\\\skills\\\\docx && py -3 scripts/office/unpack.py \"\"C:\\\\Users\\\\sasum\\\\Downloads\\\\찐찐요구사항.docx\"\" unpacked_main 2>&1\")",
+      "Bash(unzip -l \"설계서_예시들.zip\")",
+      "Bash(python3 -c \"import zipfile; z=zipfile.ZipFile\\('설계서_예시들.zip'\\); [print\\(i.filename\\) for i in z.infolist\\(\\)]\")",
+      "Bash(python -c \"import matplotlib; print\\(matplotlib.__version__\\)\")"
+    ]
+  }
+}

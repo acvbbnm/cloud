@@ -1,16 +1,72 @@
-# 클라우드 인증 정보 및 보안 키 (절대 업로드 방지)
-.env
-*.pem
-*.json
-credentials/
-
-# 파이썬 및 가상환경 설정
+# ── Python ──
 __pycache__/
 *.py[cod]
-venv/
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
 .venv/
+venv/
+env/
 
-# OS 및 에디터 생성 파일
+# ── Node.js ──
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── 빌드 산출물 ──
+frontend/dist/
+frontend/build/
+*.js.map
+
+# ── 환경 설정 (비밀 정보) ──
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
-.vscode/
+
+# ── DB ──
+*.db
+*.sqlite
+*.sqlite3
+
+# ── 로그 ──
+*.log
+logs/
+
+# ── 업로드 임시 파일 ──
+backend/uploads/
+backend/temp/
+
+# ── ChromaDB 벡터 저장소 ──
+chroma_data/
+chromadb/
+
+# ── Ollama 모델 (용량 큼) ──
+models/
+
+# ── 보고서 출력 ──
+output/
+exports/
+
+# ── 테스트 커버리지 ──
+htmlcov/
+.coverage
+.pytest_cache/
+
+# ── 설계 문서 (Git 관리 대상 아님) ──
+# .docx, .pdf, .hwp 등 설계 산출물은 Google Drive로 관리
+# *.docx
+# *.pdf
+# *.hwp

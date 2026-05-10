@@ -1,0 +1,41 @@
+import client from './client';
+
+import type { CreateCaseReq, CaseResponse, GuideResponse } from '@/types';
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+// ── Mock 데이터 (API_계약서.md 참조) ──
+const MOCK_CASE: CaseResponse = {
+  caseId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  incident_type: 'iam-takeover',
+  csp: 'naver',
+  severity: 'high',
+  occurred_at: '2025-03-15T09:30:00Z',
+  system_config: null,
+  created_at: '2025-03-15T10:00:00Z',
+  closed_at: null,
+};
+
+export const createCase = async (data: CreateCaseReq): Promise<CaseResponse> => {
+  if (USE_MOCK) return MOCK_CASE;
+  const res = await client.post('/api/cases', data);
+  return res.data.data;
+};
+
+export const getCase = async (caseId: string): Promise<CaseResponse> => {
+  if (USE_MOCK) return MOCK_CASE;
+  const res = await client.get(`/api/cases/${caseId}`);
+  return res.data.data;
+};
+
+export const getGuide = async (caseId: string): Promise<GuideResponse> => {
+  if (USE_MOCK) {
+    return {
+      caseId,
+      completionRate: 0,
+      targets: [],
+    };
+  }
+  const res = await client.get('/api/guide', { params: { caseId } });
+  return res.data.data;
+};

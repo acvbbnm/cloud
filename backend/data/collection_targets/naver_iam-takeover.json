@@ -1,0 +1,47 @@
+[
+  {
+    "target_id": "CT-NCP-IAM-001",
+    "incident_type": "iam-takeover",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - API 호출 로그",
+    "description": "IAM 관련 API 호출 기록 (CreateSubAccount, ChangePassword 등)",
+    "evidence_role": "REQUIRED",
+    "priority": 10
+  },
+  {
+    "target_id": "CT-NCP-IAM-002",
+    "incident_type": "iam-takeover",
+    "csp": "naver",
+    "log_type": "Sub Account 접근 기록",
+    "description": "서브 계정 로그인 이력 및 권한 변경",
+    "evidence_role": "REQUIRED",
+    "priority": 9
+  },
+  {
+    "target_id": "CT-NCP-IAM-003",
+    "incident_type": "iam-takeover",
+    "csp": "naver",
+    "log_type": "Console Login 로그",
+    "description": "콘솔 로그인 성공/실패 기록",
+    "evidence_role": "REQUIRED",
+    "priority": 8
+  },
+  {
+    "target_id": "CT-NCP-IAM-004",
+    "incident_type": "iam-takeover",
+    "csp": "naver",
+    "log_type": "Resource Manager 변경 로그",
+    "description": "리소스 그룹 및 정책 변경 이력",
+    "evidence_role": "CORROBORATING",
+    "priority": 5
+  },
+  {
+    "target_id": "CT-NCP-IAM-005",
+    "incident_type": "iam-takeover",
+    "csp": "naver",
+    "log_type": "Object Storage 접근 로그",
+    "description": "오브젝트 스토리지 읽기/쓰기 로그",
+    "evidence_role": "CORROBORATING",
+    "priority": 4
+  }
+]

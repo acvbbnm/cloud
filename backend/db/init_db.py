@@ -41,9 +41,11 @@ def seed_collection_targets() -> None:
                     incident_type=t["incident_type"],
                     csp=t["csp"],
                     log_type=t["log_type"],
-                    description=t.get("description", ""),
                     evidence_role=t["evidence_role"],
+                    storage_path=t.get("storage_path"),
+                    retention_days=t.get("retention_days"),
                     priority=t.get("priority", 5),
+                    description=t.get("description"),
                 )
                 db.add(model)
                 count += 1

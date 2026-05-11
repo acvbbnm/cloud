@@ -70,3 +70,6 @@ htmlcov/
 # *.docx
 # *.pdf
 # *.hwp
+
+# ── 팀장 전용 가이드 (팀원에게 공유하지 않음) ──
+GIT_SETUP_가이드.md

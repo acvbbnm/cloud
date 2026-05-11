@@ -5,6 +5,30 @@
 
 ---
 
+## 🤖 AI에게 — 이 폴더에서 작업을 시작하기 전 부팅 시퀀스
+
+> 사용자(개발자)가 새 기능 구현을 요청하면, AI는 다음 순서로 컨텍스트를 잡은 뒤에 첫 코드를 작성한다.
+
+1. **설계서 구조 파악** — [`docs/설계서_읽는법.md`](docs/설계서_읽는법.md) 의 2·3·5절 훑기 (시스템이 무엇이고 어디에 무엇이 적혀 있는지)
+2. **다음 할 일 식별** — [`.claude/구현/구현_체크리스트.md`](.claude/구현/구현_체크리스트.md) 에서 비어 있는 `[ ]` 항목 중 사용자의 요청에 맞는 항목 선택
+3. **모듈 명세 확인** — [`.claude/구현/모듈별_구현_명세.md`](.claude/구현/모듈별_구현_명세.md) 에서 해당 모듈의 입출력·핵심 로직·의존 관계 확인
+4. **API 계약 확인** — 백엔드 API라면 [`.claude/구현/API_계약서.md`](.claude/구현/API_계약서.md) 에서 요청/응답 스키마 고정값 확인
+5. **본 CLAUDE.md 규칙 준수** — 디렉토리 구조·네이밍·금지 사항(아래) 그대로 따른다
+6. **작업 후 체크리스트 갱신** — 구현이 끝나면 같은 커밋에 체크리스트의 해당 항목을 `[ ] → [x]` 로 갱신한다
+
+### 동시 작업 시 충돌 회피 (담당자 사전 고정 없음 — 선착순 모델)
+
+- 작업 시작 전 `git fetch` 후 다른 사람의 feature 브랜치 목록을 확인해 **같은 체크리스트 항목**을 동시에 잡지 않는다
+- 공유 진입 파일은 **추가만 한다 (수정·삭제 금지, 부득이할 때 PR 리뷰 1명 이상 필수)**:
+  - `backend/main.py` — 라우터 등록만, 비즈니스 로직 금지
+  - `backend/db/models.py` — DB 담당자만 수정 (스키마 변경은 별도 합의)
+  - `frontend/src/App.tsx`, `frontend/src/main.tsx` — 라우팅 진입점
+  - `frontend/src/types/index.ts` — 가능하면 도메인별 파일에서 re-export 형태로만 추가
+- 라우터·뷰·타입은 **계층/도메인별로 별도 파일에 분리**되어 있으므로(아래 디렉토리 구조 참조), 본인 담당 파일만 편집하면 충돌이 거의 없다
+- 의존성(`package.json`, `requirements.txt`) 변경은 PR 본문에 변경 사유 명기 + 팀장 확인 후 머지
+
+---
+
 ## 프로젝트 개요
 
 - **프로젝트명**: AI Sherpa — 국내 멀티 클라우드 침해사고 분석 시스템
@@ -112,8 +136,10 @@ Layer 1: LogIngestor, RawEvent, IngestionStats
 Layer 2: OCSFNormalizer, AttackMapper, MappingRule, GapDetector, OCSFEvent, AttackEvent, GapResult
 Layer 3: AISherpa, RAGRetriever, LLMEngine, KnowledgeBase, ChatSession
 Layer 4: InvestigationBoard, ChainNode, ChainEdge, ReportGenerator
-Common: ActionLog, User
+Common: ActionLog
 ```
+
+> **User 클래스 없음**: 설계서 5.1절 영속화 정책에 따라 MVP는 단일 수사관 로컬 데스크톱 배포를 가정하므로 인증·권한 미사용. `action_logs.actor` 컬럼에 고정 라벨(`"investigator"`)을 기록한다. 다중 사용자·역할 분리는 Phase 2 확장 범위.
 
 ### API 라우터 규칙
 - 라우터 파일 1개 = 1개 계층 (intake.py, ingestion.py, analysis.py, sherpa.py, board.py, report.py)
@@ -326,8 +352,8 @@ export const getGuide = async (caseId: string) => {
 ## 타입 정의 (types/index.ts — 프론트엔드·백엔드 공유 기준)
 
 ```typescript
-// ── 사고 유형 (5종) ──
-type IncidentType = 'iam-takeover' | 'insider' | 'credential' | 'webapp' | 'ransomware';
+// ── 사고 유형 (5종, 설계서 5.2절 incident_cases 테이블 기준) ──
+type IncidentType = 'CREDENTIAL_THEFT' | 'PRIVILEGE_ESCALATION' | 'DATA_EXFILTRATION' | 'AUDIT_LOG_TAMPERING' | 'MULTI_CSP_LATERAL';
 
 // ── CSP ──
 type CSP = 'naver' | 'nhn' | 'all';
@@ -341,8 +367,8 @@ type EvidenceRole = 'REQUIRED' | 'CORROBORATING';
 // ── 갭 유형 ──
 type GapType = 'NONE' | 'COLLECTION' | 'EVIDENCE' | 'INTERPRETATION';
 
-// ── 체인 노드 상태 ──
-type NodeStatus = 'CONFIRMED' | 'REJECTED';
+// ── 체인 노드 상태 (설계서 5.2절 chain_nodes 테이블 기준) ──
+type NodeStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 // ── 액션 로그 동작 ──
 type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXPORT_REPORT';
@@ -362,7 +388,7 @@ type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXP
 | 4 | ocsf_events | OCSF 정규화 이벤트 |
 | 5 | attack_events | ATT&CK 매핑 결과 |
 | 6 | gap_results | 갭 판정 결과 |
-| 7 | chain_nodes | 공격 체인 노드 |
+| 7 | chain_nodes | 공격 체인 노드 (※ 설계서 8컬럼 + `label` 1컬럼 추가 — 보드 UI 노드 표시용, 팀 합의 사항) |
 | 8 | chain_edges | 체인 엣지 (방향성) |
 | 9 | action_logs | 수사관 조작 이력 |
 

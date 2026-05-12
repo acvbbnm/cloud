@@ -1,141 +1,171 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-11 · 브랜치: `dev`
+> 마지막 업데이트: 2026-05-12 · 브랜치: `dev`
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
 
 ## 한눈에 보기
 
-| 계층 | 화면/모듈 | 프론트엔드 | 백엔드 | 데이터 |
+| Phase / Layer | 화면·모듈 | 프론트엔드 | 백엔드 | 데이터 |
 |---|---|---|---|---|
-| Layer 0 | V1 사고 접수 (4-스텝 위저드) | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 1 | V2 로그 수집 (드롭존 + 미리보기) | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 2 | V3 OCSF 정규화 | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 2 | V4 갭 감지 | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 3 | V5 수사 보드 (드래그앤드롭) | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 3 | V6 ATT&CK 매핑 | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| Layer 4 | V7 보고서 편집기 | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| 보조 | V8 AI 셰르파 RAG 챗 | ✅ UI 완료 | ⏳ scaffolding | 🎭 mock |
-| 공통 | 디자인 시스템 + 라우팅 + 스토어 | ✅ 완료 | — | — |
-| DB | `db/models.py` 9개 테이블 | — | ⚠️ 설계서와 불일치 다수 | — |
+| **Phase 1 — 기반 구축** | | | | |
+| 1-1 DB 스키마 | `db/models.py` 9개 테이블 | — | ✅ 설계서 5.2절 정렬 | ✅ |
+| 1-2 Layer 0 API | `/api/cases`, `/api/guide` | ✅ V1 실 API 연결 완료 | ✅ 4개 엔드포인트 동작 | ✅ |
+| 1-3 프론트엔드 셸 | Sidebar, Header, V1 위저드 | ✅ 디자인 시스템 + V1 실 연동 | — | — |
+| 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ⏳ ChromaDB 임베딩 미구현 | 🟢 시드 작성 완료 |
+| **Phase 2 — 핵심 파이프라인** | | | | |
+| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| **Phase 3 — 보드·셰르파** | | | | |
+| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| **Phase 4 — 보고서** | | | | |
+| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 
-범례: ✅ 완료 · 🚧 진행 중 · ⏳ 대기 · 🎭 mock 데이터 사용 · ⚠️ 합의 필요
+범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
+
+**현재 상태**: Phase 1이 사실상 100% 완료. V1 → 백엔드 → DB 흐름이 실제로 동작.
 
 ---
 
 ## 작업 내역
 
-### 2026-05-11 — 프론트엔드 V1~V8 + 디자인 시스템 (`a6e76b7`)
-- **디자인 토큰화**: ink 9단계 + brand 6컬러(blue/violet/teal/amber/red/purple) + display/h1/h2/h3 타이포 + cta-gradient/hero-gradient
-- **셸 컴포넌트 신규**: Header, Sidebar, PageHeader, PageBody, Card, KpiCard, Badge, Toast, SherpaFab
-- **Zustand 스토어 3종**: `useToastStore`, `useSherpaStore`, `useBoardStore`
-- **V1~V8 모든 화면 구현**:
-  - V1: CSP 선택 → 사고 유형(컨텍스트 패널) → 시스템 구성(4탭) → 수집 가이드(P1~P4 우선순위)
-  - V2: 멀티 파일 드롭존 + 수집 현황 + 체크 가능 미리보기 + "수사 보드에 추가"
-  - V3: 샘플 셀렉터 + RAW vs OCSF 양면 비교 + 필드 매핑 표
-  - V4: 도넛 KPI + 3종 갭 카드(수집/증거/해석) + 증거 항목 테이블
-  - V5: dot-grid 캔버스 + 로그 드래그앤드롭 + 추천 노드 + AI 브리핑 + 메모
-  - V6: ATT&CK Cloud Matrix 히트맵 + 탐지 기법 상세 테이블
-  - V7: 6 섹션 textarea 편집기 + AI 초안 / DOCX / PDF 내보내기 버튼
-  - V8: RAG 풀-페이지 챗 + 추천 플레이북 + KB 인덱스
-- **모든 페이지에 PageHeader 패턴 적용** (eyebrow + 큰 타이틀 + 설명 + 액션)
+### 2026-05-12 — Phase 1 완성: 시드 + Layer 0 백엔드 + V1 실 연동
 
-### 2026-05-10 — 프로젝트 초기 구조 + 협업 가이드 (`5c7b8e3`)
-- `CLAUDE.md` 규칙 정의 (디렉토리 구조 / 네이밍 / API 응답 형식 / DB 모델 규칙)
-- `backend/`, `frontend/` scaffolding
-- `.gitignore`, `.gitattributes`
+오늘의 변경은 walking-skeleton의 첫 번째 고리(사고 접수 → 수집 가이드)를 **mock이 아닌 진짜로** 동작하게 만든 작업입니다. 진행 순서대로:
+
+1. **DB 스키마 정렬** ([`95df4b9`](https://github.com/sasumm25-lab/cloud/commit/95df4b9)) — `db/models.py` 9개 테이블을 설계서 5.2절 컬럼 명세에 100% 정렬. 평탄화 OCSF, `attack_events.ocsf_id` UQ, `action_logs.actor` 추가 등. `chain_nodes.label`만 팀 합의로 1컬럼 유지.
+2. **체크리스트 동기화** ([`596ef30`](https://github.com/sasumm25-lab/cloud/commit/596ef30)) — 실제 코드 상태와 `.claude/구현/구현_체크리스트.md` 맞춤. 프론트 V1-V8 = `[x]`, 백엔드 API = `[ ]`.
+3. **시드 데이터 v1** — NCP/NHN × CREDENTIAL_THEFT MVP 분량 JSON 7개 작성, 임시 `MVP_minimal` 메타 박음.
+4. **공식 가이드 기반 정정** — `WebSearch` + `WebFetch`로 NCP Cloud Activity Tracer 가이드 + NHN Cloud Trail 가이드 정본 확보. 시드의 추정치를 모두 공식 필드명·서비스명·운영 정보(보존 90일 / 변조 감지 / 2.5시간 업로드 지연 등)로 교체.
+5. **실제 raw log 발견** — `C:/Users/sasum/activity_logs_full.json` (NCP 81건) + `nhn_activity_logs.json` (NHN 147건). HTML 분석본의 분석 대상 원본이었음. NCP attack-sim 11건 + NHN attack 36건 Kill Chain 시뮬레이션 확인. 두 계정이 **동일 외부 IP 115.91.214.5 공유** → 멀티 CSP 연계 시나리오 검증.
+6. **시드 v2 — 실제 raw 기반 재작성** ([`1c2d59d`](https://github.com/sasumm25-lab/cloud/commit/1c2d59d))
+   - `mapping_rules/ncp_cloudtrail.json` — `action`/`actionResultType`/`content.actionUserName`/`content.sourceIp`로 정정. `eventTime`은 Unix ms(Export) + UTC 문자열(콘솔) 이중 형식.
+   - `mapping_rules/nhn_cloud_trail.json` — 구 `nhn_cloud_audit.json` 폐기. `eventId`/`userName`/`userIp`/`result` 매핑.
+   - `attack_rules/rules.json` — NCP 11룰 + NHN 11룰 = **22개**. 모든 룰의 `activity_name_pattern`이 raw log에 실제 등장하는 값에 매칭됨. 각 룰에 `real_log_count` + 출처 명시.
+   - `collection_targets/` — `retention_days=90`, `storage_path` 채움. NHN은 "Cloud Trail"로 서비스명 통일. 구 `naver_iam-takeover.json` 삭제.
+   - `kb/case_db.json` — 실제 시뮬 타임라인 3개 사례: NCP attack-sim 11건 (2시간 Kill Chain), NHN attack 36건 (20시간 Kill Chain), 멀티 CSP 연계 의심.
+7. **모듈별 명세 정정** ([`cbd83e1`](https://github.com/sasumm25-lab/cloud/commit/cbd83e1)) — `모듈별_구현_명세.md` 80~87줄의 NCP 매핑 예시가 AWS CloudTrail 스키마였음. 실제 NCP/NHN 두 예시로 교체.
+8. **Layer 0 API 구현** ([`4bc5582`](https://github.com/sasumm25-lab/cloud/commit/4bc5582))
+   - `core/intake/incident_case.py` — `IncidentCase` (CRUD)
+   - `core/intake/collection_guide.py` — `CollectionGuide.generate()` (priority 내림차순 + completionRate 계산)
+   - `core/intake/knowledge.py` — `IncidentTypeKnowledge.lookup()` (5종 사고유형별 ATT&CK·서비스 매핑, 하드코딩)
+   - `api/intake.py` — FastAPI 라우터 4개 (POST/GET/PATCH `/api/cases` + GET `/api/guide`). Pydantic `Literal`로 enum 검증, 응답은 `{"status":"ok","data":...}` envelope.
+   - `main.py` — `intake_router` 등록.
+   - `requirements.txt` — Python 3.14 호환을 위해 `pydantic>=2.10` 상향, 핀 형식 `>=`로 완화.
+   - **E2E 검증**: POST → GET → PATCH → GET `/api/guide` + 404 케이스 동작 확인. SQLite `ai_sherpa.db` 생성 + 시드 10건 적재 확인.
+9. **incidentType enum 5종 통일 + V1 실 연동** ([`04638b4`](https://github.com/sasumm25-lab/cloud/commit/04638b4))
+   - 프론트가 옛 명칭(`iam-takeover/credential/webapp/insider/ransomware`)을 쓰고 있어 백엔드 검증 실패. 모든 프론트 코드를 백엔드 5종(`CREDENTIAL_THEFT/PRIVILEGE_ESCALATION/DATA_EXFILTRATION/AUDIT_LOG_TAMPERING/MULTI_CSP_LATERAL`)으로 통일.
+   - `types/index.ts`, `meta.ts`(TYPE_META 재작성), `Step1_TypeCards`(orderedTypes), `Step3_GuideChecklist`(fallback) 일괄.
+   - `main.tsx`에 `QueryClientProvider` 추가 (React Query v5).
+   - `V1_Setup/index.tsx` Step2 onSubmit에서 `useMutation` → `createCase`. 성공 시 진짜 UUID를 `useCaseStore.setCaseId`에 저장 + 자동 Step3 진입.
+   - `Step3_GuideChecklist`에 `useQuery` → `getGuide(caseId)`. 화면 상단에 "백엔드 응답 ✓ / caseId / 수집 대상 N건 / 칩 5개" 패널 추가.
+   - 브라우저 E2E 검증 완료: V1 → POST `/api/cases` → 진짜 UUID 반환 → Step3에서 `GET /api/guide` 호출 → CT-NCP-IAM-001~005 칩 5개 표시.
+
+### 2026-05-11 — DB 스키마 정렬 + 체크리스트 동기화 (요약)
+
+위 1번·2번의 시작점. 작업 직전 메모리에 적힌 "설계서·models.py 스키마 불일치 다수, 작업 시작 전 합의 필요"를 해소한 단계.
+
+### 2026-05-11 이전 — 프론트엔드 V1-V8 UI + 디자인 시스템 ([`a6e76b7`](https://github.com/sasumm25-lab/cloud/commit/a6e76b7))
+
+이전 세션에서 완료. 디자인 토큰(ink/brand 컬러 + 타이포), 셸 컴포넌트(Header/Sidebar/PageHeader/PageBody/Card/KpiCard/Badge/Toast/SherpaFab), Zustand 스토어 4종, V1-V8 모든 화면. 백엔드 미존재로 전부 mock 데이터.
 
 ---
 
 ## 다음 할 일
 
-### 백엔드 (이근형 · 최진규 · 백엔드 담당자)
-- [ ] **DB 스키마 합의**: 설계서 5.2절 vs 현재 `db/models.py` 불일치 → 팀 합의 후 마이그레이션
-- [ ] **Layer 0 API**:
-  - `POST /api/cases` — 케이스 생성
-  - `GET /api/cases/{caseId}` — 케이스 상세
-  - `GET /api/guide?caseId=` — 수집 가이드 자동 생성
-- [ ] **Layer 1 API**:
-  - `POST /api/logs/upload` (multipart) — 파일 업로드 + SHA-256 검증
-  - `GET /api/logs?caseId=&page=` — 이벤트 페이지네이션
-- [ ] **Layer 2~4 API**: 설계서 5.6절 22개 엔드포인트 순차 구현
-- [ ] `data/mapping_rules/`, `data/attack_rules/`, `data/kb/` JSON 파일 채우기
+### 백엔드 (이근형 · 최진규)
 
-### 프론트엔드 (담당자: ?)
-- [ ] **Mock → 실 API 연결**: `api/intake.ts` 패턴을 V2~V8 전부에 적용
-  - `api/logs.ts`, `api/analysis.ts`, `api/board.ts`, `api/report.ts`, `api/sherpa.ts` 신규 파일 생성
-  - 각 뷰의 mock 상수를 React Query 훅으로 교체
-- [ ] **에러 / 로딩 상태 처리**: 현재 모든 데이터가 즉시 표시됨 → Skeleton, Error Boundary 추가 필요
-- [ ] **react-router 경로 가드**: caseId 없이 V2~V7 진입 시 V1로 리다이렉트
-- [ ] **반응형 점검**: 1024px 이하 사이드바 토글 미구현
-- [ ] **접근성**: 키보드 네비게이션, aria-label, 다이얼로그 focus trap
+**우선순위 1 — Layer 1 (로그 수집 API)**:
+- [ ] `api/ingestion.py` 라우터 3개 (POST upload / GET 목록 / GET 단건)
+- [ ] `core/ingestion/log_ingestor.py` — multipart 수신, SHA-256 해시, parseAndStore, matchTargets
+- [ ] `core/ingestion/parsers/ncp.py` — historyId/nrn/action/content/actionResultType 파싱
+- [ ] `core/ingestion/parsers/nhn.py` — eventLogUuid/eventTime/eventId/userName/userIp 파싱
+- 검증 데이터: `C:/Users/sasum/activity_logs_full.json` (81건) + `nhn_activity_logs.json` (147건)
+- 체크포인트: 파일 업로드 → raw_events 적재 + matched_target_id 채워짐 + 무결성 해시 일치
 
-### 데이터 / 지식베이스
-- [ ] OCSF 1.3 매핑 규칙 JSON 작성 (NCP·NHN 각각)
-- [ ] ATT&CK Cloud v14 매핑 룰 JSON 작성
-- [ ] KB-1~KB-4 (사고 유형 / 수집 카탈로그 / 플레이북 / 보고서 양식) 작성
+**우선순위 2 — Layer 2 (OCSF·ATT&CK·갭 감지)**:
+- [ ] `core/analysis/ocsf_normalizer.py` — `mapping_rules/*.json` 로딩, NCP/NHN raw → 평탄화 OCSF 컬럼 변환
+- [ ] `core/analysis/attack_mapper.py` — `attack_rules/rules.json` (22룰) 로딩, `activity_name_pattern` Regex 매칭
+- [ ] `core/analysis/gap_detector.py` — required/collected/mapped 집합 비교 → NONE/COLLECTION/EVIDENCE/INTERPRETATION 분류
+- [ ] `api/analysis.py` 5개 엔드포인트
+
+### 프론트엔드
+
+- [ ] V2~V4 mock → 실 API 전환 (Layer 1·2 백엔드 완성 후)
+- [ ] `api/logs.ts`, `api/analysis.ts` 신규 작성
+- [ ] React Query 패턴은 V1과 동일 (`useMutation`, `useQuery` + `useCaseStore.caseId` 의존)
+
+### AI / RAG (이지호)
+
+- [ ] `core/sherpa/embed_kb.py` — `data/kb/*.json` 4종을 ChromaDB로 임베딩
+- [ ] `core/sherpa/rag_retriever.py` — `retrieve(query, k)` 유사도 검색
+- [ ] `core/sherpa/llm_engine.py` — Ollama Llama 3.1 8B 호출 (오프라인)
+- [ ] `api/sherpa.py` brief/chat 우선 구현
+
+### 통합 테스트 / 데모
+
+- [ ] Phase 2 완료 시점에 V1→V2→V3→V4 end-to-end 리허설
+- [ ] 갭 감지 → Layer 0 복귀 흐름
 
 ---
 
 ## 알려진 제약 / 이슈
 
-- **`models.py` ↔ 설계서 5.2절 불일치**: DB 담당자(이근형·최진규)가 정리 중. 변경 시 팀 합의 필수.
-- **`types/index.ts`는 백엔드 enum과 정확히 일치해야 함**: `IncidentType`(5종) / `CSP`(naver/nhn/all) / `Severity` / `EvidenceRole` / `GapType` / `NodeStatus` / `ActionType`. 임의 변경 금지.
-- **외부 CDN 사용 금지** (오프라인 SNF-01): 폰트·아이콘·라이브러리 모두 로컬 번들.
+- **실제 raw 로그는 NCP 81건 + NHN 147건 — 양이 적음**. 매핑 룰 일반화 시 false positive/negative 가능. 시연용으로는 충분, 학술적 평가 시에는 "공식 문서 + N건 실증" 한정 명시.
+- **민감 정보 포함된 raw 로그가 사용자 홈 디렉토리**에 있음 (이메일·UUID·세션쿠키). git에는 절대 커밋하지 않음. 다른 팀원에게 공유 시 마스킹 필요.
+- **AI 셰르파(Layer 3)는 mock 응답으로 시작 권장** — Ollama Llama 3.1 8B + ChromaDB 셋업 시간이 길어서, 우선 mock으로 V8 흐름 검증 후 실 모델로 교체.
+- **외부 CDN 사용 금지** (SNF-01, 오프라인 동작 필수): 폰트·아이콘·라이브러리 모두 로컬 번들.
 - **AI는 판단/결정 코드 작성 금지**: 검색·요약·제안만. 수락/거부는 항상 수사관 권한.
-- **현재 frontend 데이터는 모두 mock**: 시연용 더미 데이터로 가짜 흐름이 동작합니다. 실 사고 분석에는 백엔드 연결 필수.
 
 ---
 
-## 디자인 시스템 메모 (frontend)
+## 작업 환경
 
-### 컬러 토큰 (`tailwind.config.js`)
-- 배경: `bg-ink-950` (페이지) / `bg-ink-900` (헤더·사이드바) / `bg-ink-850`·`panel-gradient` (카드)
-- 텍스트: `text-ink-100` (주) / `text-ink-300` (보조) / `text-ink-400` (캡션)
-- 액센트: `brand-blue`(주 CTA) / `brand-teal`(성공·완료) / `brand-amber`(경고) / `brand-red`(위험) / `brand-purple`(MITRE·AI)
-
-### 컴포넌트 클래스 (`index.css`)
-- `panel`, `panel-pad`, `card-hover`
-- `btn-primary`(그라디언트), `btn-ghost`, `btn-success`, `btn-danger`, `btn-sm`
-- `input`, `chip`, `tag-{red,amber,teal,blue,purple,gray}`, `eyebrow`, `grad-text`
-- `animate-fade-up` (페이지 전환 시)
-
-### 모든 화면 공통 패턴
-1. `<PageHeader eyebrow="Layer X · MX-Y" title="..." description="..." actions={...} />`
-2. `<PageBody>` (max-w 1280px, px-12 py-8)
-3. KPI 4개 → 메인 콘텐츠 → 보조 카드 순
-
-### 주요 파일 위치
-| 역할 | 경로 |
-|---|---|
-| 디자인 토큰 | `frontend/tailwind.config.js`, `frontend/src/index.css` |
-| 라우팅 | `frontend/src/App.tsx` |
-| 케이스 상태 | `frontend/src/stores/useCaseStore.ts` |
-| 보드 상태 | `frontend/src/stores/useBoardStore.ts` |
-| 셰르파 챗 | `frontend/src/stores/useSherpaStore.ts` |
-| 토스트 | `frontend/src/stores/useToastStore.ts` |
-| 공유 타입 | `frontend/src/types/index.ts` |
-| API 래퍼 | `frontend/src/api/client.ts`, `intake.ts` |
-| 사고 유형 카탈로그 | `frontend/src/views/V1_Setup/meta.ts` |
-
----
-
-## 작업 흐름 (재확인용)
-
+### 백엔드 실행
 ```bash
-# 시작 전
+cd cloud/backend
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m db.init_db          # DB 생성 + 시드 적재
+.venv/Scripts/python.exe -m uvicorn main:app --reload
+# Swagger UI: http://localhost:8000/docs
+```
+
+### 프론트엔드 실행
+```bash
+cd cloud/frontend
+npm install
+npm run dev
+# http://localhost:5173
+```
+
+### 권장 워크플로우
+```bash
 git switch dev
 git pull --rebase origin dev
-
-# 작업
-
-# 마무리
+# (작업)
 git status
-git add <특정 파일들>          # git add . 지양
+git add <특정 파일들>     # git add . 지양
 git commit -m "feat: ..."
-git pull --rebase origin dev   # push 직전에 한 번 더
+git pull --rebase origin dev
 git push
 ```
 
-큰 작업은 `feature/<이름>` 브랜치 → PR `dev` 흐름을 권장합니다.
+---
+
+## 커밋 히스토리 (2026-05-12 기준)
+
+```
+04638b4 feat(v1): incidentType 5종 통일 + V1 위저드 실 API 연결
+4bc5582 feat(layer0): 사고 접수 API 4개 구현
+cbd83e1 docs: 모듈별_구현_명세 NCP/NHN 매핑 예시 정정
+1c2d59d feat(data): 시드 데이터 공식 가이드 + 실제 raw log 기반 재작성
+596ef30 docs: 구현 체크리스트 실제 코드 상태와 동기화
+95df4b9 refactor: db/models.py 설계서 5.2절 9개 테이블 명세에 정렬
+1cb94e4 docs: AI 부팅 시퀀스·팀 README·설계서 읽는법 추가
+636f896 docs: PROGRESS.md — 진행 현황 정리
+a6e76b7 feat: 프론트엔드 V1-V8 뷰 구현 및 디자인 시스템 정립
+5c7b8e3 chore: 프로젝트 초기 구조 + AI 코딩 지침 + 구현 가이드
+```

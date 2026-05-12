@@ -19,6 +19,7 @@ interface Step2Props {
   incidentType: string | null;
   onPrev: () => void;
   onSubmit: (config: SystemConfig) => void;
+  isSubmitting?: boolean;
 }
 
 type TabKey = 'basic' | 'system' | 'csp' | 'scope';
@@ -37,7 +38,7 @@ const sevOptions = [
   { id: 'low', label: '🟢 Low' },
 ];
 
-const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit }: Step2Props) => {
+const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting }: Step2Props) => {
   const cspKey = (csp ?? 'naver') as 'naver' | 'nhn' | 'all';
   const cspMeta = CSP_META[cspKey] ?? CSP_META.naver;
   const typeMeta = incidentType ? TYPE_META[incidentType] : null;
@@ -331,8 +332,8 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit }: Step2Props)
         <button onClick={onPrev} className="btn-ghost">
           ← 이전
         </button>
-        <button onClick={handleSubmit} className="btn-primary">
-          다음: 수집 가이드 →
+        <button onClick={handleSubmit} className="btn-primary disabled:opacity-50" disabled={isSubmitting}>
+          {isSubmitting ? '생성 중…' : '다음: 수집 가이드 →'}
         </button>
       </div>
     </div>

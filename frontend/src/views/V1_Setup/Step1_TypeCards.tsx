@@ -8,7 +8,13 @@ interface Step1Props {
   onNext: () => void;
 }
 
-const orderedTypes = ['iam-takeover', 'credential', 'webapp', 'insider', 'ransomware'];
+const orderedTypes = [
+  'CREDENTIAL_THEFT',
+  'PRIVILEGE_ESCALATION',
+  'DATA_EXFILTRATION',
+  'AUDIT_LOG_TAMPERING',
+  'MULTI_CSP_LATERAL',
+];
 
 const sevTone = (sev: string) =>
   sev === 'CRITICAL'

@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useMutation } from '@tanstack/react-query';
+
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
+import { createCase } from '@/api/intake';
+import type { IncidentType, CSP, Severity } from '@/types';
 
 import Step0_CSPCards from './Step0_CSPCards';
 import Step1_TypeCards from './Step1_TypeCards';
@@ -25,6 +29,19 @@ const V1Setup = () => {
   const [step, setStep] = useState(0);
 
   const current = stepLabels[step];
+
+  const createCaseMutation = useMutation({
+    mutationFn: createCase,
+    onSuccess: (data) => {
+      setCaseId(data.caseId);
+      setStep(3);
+      showToast(`사고 케이스 생성: ${data.caseId.slice(0, 8)}…`);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`케이스 생성 실패: ${msg}`);
+    },
+  });
 
   return (
     <div>
@@ -110,16 +127,32 @@ const V1Setup = () => {
             incidentType={incidentType}
             onPrev={() => setStep(1)}
             onSubmit={(config) => {
+              if (!csp || !incidentType) {
+                showToast('CSP·사고유형 누락. 이전 단계로 돌아가세요.');
+                return;
+              }
               setSeverity(config.severity);
-              setCaseId(
-                'CASE-' +
-                  new Date().getFullYear() +
-                  '-' +
-                  String(Math.floor(Math.random() * 9000) + 1000),
-              );
-              setStep(3);
-              showToast('시스템 구성 저장 완료');
+              const occurredIso = (() => {
+                const d = new Date(config.occurred_at);
+                return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+              })();
+              createCaseMutation.mutate({
+                incident_type: incidentType as IncidentType,
+                csp: csp as CSP,
+                severity: config.severity as Severity,
+                occurred_at: occurredIso,
+                system_config: {
+                  vpc_id: config.vpc_id,
+                  region: config.region,
+                  services: config.services,
+                  network: config.network,
+                  publicIp: config.publicIp,
+                  auditEnabled: config.auditEnabled,
+                  scope: config.scope,
+                },
+              });
             }}
+            isSubmitting={createCaseMutation.isPending}
           />
         )}
         {step === 3 && (

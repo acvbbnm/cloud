@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
+
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import { useToastStore } from '@/stores/useToastStore';
+import { useCaseStore } from '@/stores/useCaseStore';
+import { getGuide } from '@/api/intake';
 
 import { CSP_META, TYPE_META, buildGuide } from './meta';
 import type { CollectionItem } from './meta';
@@ -99,8 +103,15 @@ const Step3_GuideChecklist = ({ csp, incidentType, onPrev, onComplete }: Step3Pr
   const cspKey = (csp ?? 'naver') as 'naver' | 'nhn' | 'all';
   const cspMeta = CSP_META[cspKey] ?? CSP_META.naver;
   const typeMeta = incidentType ? TYPE_META[incidentType] : null;
-  const guide = useMemo(() => buildGuide(incidentType ?? 'iam-takeover', cspKey), [incidentType, cspKey]);
+  const guide = useMemo(() => buildGuide(incidentType ?? 'CREDENTIAL_THEFT', cspKey), [incidentType, cspKey]);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  const caseId = useCaseStore((s) => s.caseId);
+  const guideQuery = useQuery({
+    queryKey: ['guide', caseId],
+    queryFn: () => getGuide(caseId!),
+    enabled: !!caseId,
+  });
 
   const toggle = (id: string) => setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -161,6 +172,49 @@ const Step3_GuideChecklist = ({ csp, incidentType, onPrev, onComplete }: Step3Pr
           선택된 사고 유형 · CSP · 시스템 구성에 따라 자동 생성된{' '}
           <b className="text-brand-red">우선순위 기반</b> 수집 체크리스트입니다.
         </p>
+      </div>
+
+      {/* 백엔드 통신 상태 패널 — 실제 API 연결 검증용 */}
+      <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="eyebrow">백엔드 응답</span>
+            {guideQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
+            {guideQuery.isError && <span className="tag-red">에러</span>}
+            {guideQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+            {!caseId && <span className="tag-gray">caseId 없음 (mock 화면)</span>}
+          </div>
+          {caseId && <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>}
+        </div>
+        {guideQuery.isError && (
+          <div className="text-brand-red text-[11.5px]">
+            {(guideQuery.error as Error)?.message ?? '백엔드 호출 실패'}
+          </div>
+        )}
+        {guideQuery.isSuccess && guideQuery.data && (
+          <div className="text-ink-300 leading-7">
+            서버가 반환한 수집 대상{' '}
+            <b className="text-ink-100">{guideQuery.data.targets.length}건</b> · 완료율{' '}
+            <b className="text-ink-100">
+              {(guideQuery.data.completionRate * 100).toFixed(0)}%
+            </b>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {guideQuery.data.targets.slice(0, 8).map((t) => (
+                <span
+                  key={t.target_id}
+                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold ring-1 ${
+                    t.evidence_role === 'REQUIRED'
+                      ? 'bg-brand-red/15 text-brand-red ring-brand-red/25'
+                      : 'bg-brand-amber/15 text-brand-amber ring-brand-amber/25'
+                  }`}
+                  title={t.description}
+                >
+                  {t.target_id} · p{t.priority}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel p-5 border-l-[3px] border-l-brand-blue">

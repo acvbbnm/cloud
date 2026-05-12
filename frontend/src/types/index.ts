@@ -1,6 +1,12 @@
 // ── 공통 Enum 타입 (백엔드 DB enum과 정확히 일치) ──
 
-export type IncidentType = 'iam-takeover' | 'insider' | 'credential' | 'webapp' | 'ransomware';
+// 백엔드 Pydantic Literal + types/index.ts 정책과 일치 (5종, 2026-05-12 확정)
+export type IncidentType =
+  | 'CREDENTIAL_THEFT'
+  | 'PRIVILEGE_ESCALATION'
+  | 'DATA_EXFILTRATION'
+  | 'AUDIT_LOG_TAMPERING'
+  | 'MULTI_CSP_LATERAL';
 export type CSP = 'naver' | 'nhn' | 'all';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type EvidenceRole = 'REQUIRED' | 'CORROBORATING';

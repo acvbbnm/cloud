@@ -1,0 +1,53 @@
+{
+  "_status": "official_doc_v1",
+  "_note": "NCP/NHN 공식 사용자 가이드 발췌 (2026-05-12 fetch). 인용한 문장은 가이드 원문이며 url 필드에 출처 박힘. 추가 청크는 동일한 패턴으로 확장 가능.",
+  "kb_id": "KB-3",
+  "kb_name": "CSP_DOC",
+  "chunks": [
+    {
+      "chunk_id": "CSPDOC-NCP-CAT-001",
+      "csp": "naver",
+      "service": "Cloud Activity Tracer",
+      "title": "Cloud Activity Tracer 개요",
+      "text": "Cloud Activity Tracer는 네이버 클라우드 플랫폼에서 콘솔 및 API 등을 통해 수행되는 사용자의 계정 활동 기록(접근 기록) 정보를 제공하는 서비스이다. 저장된 활동 기록으로 계정 내 활동에 대한 효율적인 관리 및 감시가 가능하며, 수집된 정보는 90일간 보관되어 감사 로그로 활용 가능하다. 별도 연동 작업 없이 자동으로 활동 기록 정보가 수집되며, 장기 보관을 위해 Object Storage로 내보내기 기능을 제공한다.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/cat-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-CAT-002",
+      "csp": "naver",
+      "service": "Cloud Activity Tracer",
+      "title": "Tracer 및 Object Storage 내보내기",
+      "text": "Tracer는 설정한 조건에 맞는 리소스 작업 내역을 Object Storage에 내보내는 도구이다. 타입은 DEFAULT(계정당 1개, 조건 임의 설정 불가)와 CUSTOM(이름·조건 임의 설정 가능)으로 나뉜다. 내보내기 형식은 JSON 또는 CSV이며(CSV는 셀 범위 32,767 초과 시 데이터 미포함), 1일 전 이력이 하루 단위로 버킷에 전송되고 신규 생성 시 90일 전부터 1일 전까지 일괄 내보낸다. Tracer가 삭제되어도 Object Storage로 내보낸 데이터 파일은 보존된다.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/cat-tracers"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-CAT-003",
+      "csp": "naver",
+      "service": "Cloud Activity Tracer",
+      "title": "Tracer 다운로드 파일의 로그 필드",
+      "text": "Cloud Activity Tracer가 Object Storage로 내보내는 로그의 공식 필드는 다음과 같다. action(리소스 변경 작업 이름, 예: createServerInstance), actionResultType(SUCCESS/FAIL), actionSubAccountNo(서브 계정 번호), actionUserType(Customer/Sub), eventTime(Unix time ms, 예: 1621584442893), historyId(작업 유일 ID), nrn(리소스 고유 키), productName(서비스 코드, 예: Server), sourceType(CONSOLE/API/SYSTEM/ADMIN). 콘솔/API 응답에는 content 객체 안에 actionUserName, sourceIp 등 추가 메타데이터가 nested 형태로 포함된다.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/cat-tracers"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-CT-001",
+      "csp": "nhn",
+      "service": "Cloud Trail",
+      "title": "NHN Cloud Trail 개요",
+      "text": "CloudTrail은 조직을 활성화하면 기본으로 제공되는 서비스로, 관리자 콘솔(ADMIN_CONSOLE)·API 계층의 배치·예약·알람 이벤트·사용자 콘솔(USER_CONSOLE) 활동을 추적한다. 이벤트는 최대 3개월간 저장되며, NHN Cloud Object Storage 외부 내보내기 시 외부 로그 변조 알림 기능이 제공된다. 저장된 로그는 약 2시간~2시간 반 후 Object Storage에 업로드되며, 3회 이상 업로드 실패 시 저장된 인증 정보가 비활성화된다.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Governance%20%26%20Audit/CloudTrail/ko/console-guide/"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-CT-002",
+      "csp": "nhn",
+      "service": "Cloud Trail",
+      "title": "NHN Cloud Trail 이벤트 코드 형식",
+      "text": "Cloud Trail 이벤트 코드는 event_id.[카테고리].[작업] 형식을 따른다. 카테고리는 콘솔 관련(iam, org, project, role_group, budget, governance, alarm_group 등), 기본 인프라(iaas.instance, iaas.volume, iaas.vpc, iaas.security_group 등), 자격증명(iaas.identity, iaas.s3credential)으로 분류된다. 자격증명 탈취 관련 핵심 이벤트는 event_id.iam.login(IAM 로그인), event_id.iam.member.role.update(IAM 멤버 권한 변경), event_id.iaas.identity.password_change(API 비밀번호 변경), event_id.iaas.s3credential.create/delete(S3 API 자격증명 생성·삭제)이다.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Governance%20%26%20Audit/CloudTrail/ko/event-list/"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "_status": "MVP_minimal",
+  "_note": "자격증명 탈취 대응 플레이북 2종. 시연용 — 추후 KISA·NIST 표준 기반 확장.",
+  "kb_id": "KB-2",
+  "kb_name": "PLAYBOOK",
+  "chunks": [
+    {
+      "chunk_id": "PLAYBOOK-CREDTHEFT-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "title": "클라우드 계정 탈취 — 즉시 대응 절차",
+      "text": "1) 의심 계정 비활성화(Disable) — 영속화 차단. 2) 활성 세션 토큰 강제 만료(Revoke). 3) AccessKey 회전 및 미사용 키 폐기. 4) 최근 30일 IAM 변경 이력 감사. 5) 비정상 권한 부여·역할 변경 롤백. 6) 영향 자원 격리(보안그룹 분리). 7) MFA 미적용 계정 식별·강제 적용.",
+      "source": "내부 운영 가이드 v0.1",
+      "tactics_addressed": ["Initial Access", "Persistence", "Privilege Escalation"]
+    },
+    {
+      "chunk_id": "PLAYBOOK-CREDTHEFT-002",
+      "incident_type": "CREDENTIAL_THEFT",
+      "title": "포렌식 증거 보존 절차",
+      "text": "1) 사고 발생 시점 ±24h 모든 audit log SHA-256 해시로 봉인. 2) 원본 로그 별도 저장소 복제(WORM 권장). 3) 의심 IP의 모든 API 호출 timeline 추출. 4) 메모리·스냅샷 확보 가능 시 우선. 5) 분석 대상 데이터의 chain of custody 문서화.",
+      "source": "내부 운영 가이드 v0.1",
+      "tactics_addressed": ["Collection", "Defense Evasion"]
+    }
+  ]
+}

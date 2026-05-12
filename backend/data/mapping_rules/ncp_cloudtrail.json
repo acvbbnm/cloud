@@ -1,0 +1,42 @@
+{
+  "_status": "official_doc_v1",
+  "_note": "NCP Cloud Activity Tracer 공식 필드(Tracers 문서) + 실제 raw 로그 구조 기반. eventTime은 Tracer Export 시 Unix ms 정수, 콘솔/API 응답 시 'YYYY-MM-DD HH:MM:SS UTC' 문자열 두 형식 모두 처리 필요.",
+  "csp": "ncp",
+  "log_source": "cloud_activity_tracer",
+  "source_docs": [
+    "https://guide.ncloud-docs.com/docs/cat-overview",
+    "https://guide.ncloud-docs.com/docs/cat-tracers"
+  ],
+  "field_mappings": {
+    "eventTime": "time",
+    "action": "activity_name",
+    "actionResultType": "status_code",
+    "content.actionUserName": "actor_user_name",
+    "content.sourceIp": "src_endpoint_ip"
+  },
+  "value_transforms": {
+    "eventTime": {
+      "type": "datetime",
+      "accept": ["unix_ms_int", "string_utc_suffix"],
+      "string_format": "%Y-%m-%d %H:%M:%S UTC"
+    },
+    "actionResultType": {
+      "type": "enum_to_int",
+      "map": {"SUCCESS": 200, "FAIL": 500}
+    }
+  },
+  "preserve_unmapped": true,
+  "unmapped_examples": [
+    "historyId",
+    "nrn",
+    "productName",
+    "regionCode",
+    "regionName",
+    "resourceType",
+    "actionUserType",
+    "actionSubAccountNo",
+    "sourceType",
+    "domainCode",
+    "content.productData (서비스별 상세 메타)"
+  ]
+}

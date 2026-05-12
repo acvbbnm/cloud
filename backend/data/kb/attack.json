@@ -1,0 +1,35 @@
+{
+  "_status": "MVP_minimal",
+  "_note": "MITRE ATT&CK for Cloud 핵심 기법 청크. 시연 시나리오 CREDENTIAL_THEFT 관련 3개. 추후 9전술 전체로 확장.",
+  "kb_id": "KB-1",
+  "kb_name": "ATTACK",
+  "chunks": [
+    {
+      "chunk_id": "ATTACK-T1078.004-001",
+      "technique_id": "T1078.004",
+      "tactic": "Initial Access",
+      "title": "Valid Accounts: Cloud Accounts",
+      "text": "공격자는 합법적인 클라우드 계정을 탈취하여 초기 접근을 시도한다. 피싱·자격증명 누출·Brute force 등을 통해 획득된 자격증명으로 콘솔/API 로그인한다. 탐지 단서: 비업무시간 접근, 비국내 IP, 동일 계정의 동시 다중 위치 접근.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1078/004"
+    },
+    {
+      "chunk_id": "ATTACK-T1136.003-001",
+      "technique_id": "T1136.003",
+      "tactic": "Persistence",
+      "title": "Create Account: Cloud Account",
+      "text": "공격자는 탈취한 자격증명으로 신규 클라우드 계정(SubAccount/IAM User)을 생성해 권한을 영속화한다. 정상 관리자 활동과 구분이 어려우므로 단기간 다수 생성 + 비표준 명명 패턴 + 권한 부여 동작 연쇄가 핵심 단서다.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1136/003"
+    },
+    {
+      "chunk_id": "ATTACK-T1098.001-001",
+      "technique_id": "T1098.001",
+      "tactic": "Persistence",
+      "title": "Account Manipulation: Additional Cloud Credentials",
+      "text": "공격자는 기존 계정에 새 AccessKey/Password를 추가하여 영속 자격증명을 확보한다. CreateAccessKey, ChangePassword, UpdateLoginProfile API 호출 + 정책 변경이 함께 나타나면 강한 신호다.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1098/001"
+    }
+  ]
+}

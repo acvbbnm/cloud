@@ -1,21 +1,23 @@
 # ── AI Sherpa 백엔드 의존성 ──
+# Python 3.10+ 권장 (Python 3.14에서 동작 검증됨, 2026-05-12).
+# pydantic 2.9.0은 Python 3.14에서 wheel 빌드 실패 → 2.10+로 상향.
 
 # 웹 프레임워크
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-python-multipart==0.0.9
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.6
+python-multipart>=0.0.9
 
 # DB
-sqlalchemy==2.0.35
+sqlalchemy>=2.0.35
 
-# AI / RAG
-chromadb==0.5.5
-llama-index==0.11.0
+# AI / RAG (Layer 3에서 설치 검증 예정)
+chromadb>=0.5.5
+llama-index>=0.11.0
 
 # 보고서
-jinja2==3.1.4
-python-docx==1.1.2
+jinja2>=3.1.4
+python-docx>=1.1.2
 
 # 유틸
-pydantic==2.9.0
-requests==2.32.3
+pydantic>=2.10
+requests>=2.32.3

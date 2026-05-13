@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-12 · 브랜치: `dev`
+> 마지막 업데이트: 2026-05-13 · 브랜치: `2gu`
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -15,7 +15,7 @@
 | 1-3 프론트엔드 셸 | Sidebar, Header, V1 위저드 | ✅ 디자인 시스템 + V1 실 연동 | — | — |
 | 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ⏳ ChromaDB 임베딩 미구현 | 🟢 시드 작성 완료 |
 | **Phase 2 — 핵심 파이프라인** | | | | |
-| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ UI 완료 | 🟡 백엔드 1차 (DB E2E 미검증) | 🎭 mock |
 | 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 | **Phase 3 — 보드·셰르파** | | | | |
 | 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
@@ -30,6 +30,39 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-13 — Layer 1 로그 수집 백엔드 1차 구현 (브랜치: `2gu`)
+
+Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작업에서 수행 예정.
+
+1. **`core/ingestion/parsers/ncp.py`** — NCP Cloud Activity Tracer 파서
+   - `eventTime` 양식 두 가지(Tracer Export Unix ms / 콘솔 "YYYY-MM-DD HH:MM:SS UTC") 모두 처리
+   - BOM 강건성 (`utf-8-sig` 디코딩) — Tracer Export 파일 BOM 케이스 대비
+   - 매칭에 필요한 필드만 평탄화(`action`, `product_name`, `actor_user_name`, `source_ip`, `event_time`, `result`), 원본은 `raw` 키로 보존
+2. **`core/ingestion/parsers/nhn.py`** — NHN Cloud Trail 파서
+   - ISO8601 `+0900` 포맷 처리, tz-aware → naive UTC 통일 (DB 컬럼이 naive 라 시스템 timezone 의존 제거)
+3. **`core/ingestion/matchers.py`** — collection_targets 매칭 룰 (DB 의존성 없는 순수 함수)
+   - NCP CREDENTIAL_THEFT: action/product 키워드로 IAM-001~005 분류
+   - NHN CREDENTIAL_THEFT: `event_id.` prefix Regex 로 IAM-001~005 분류
+   - `(csp, incident_type) → matcher fn` 레지스트리 패턴 → 향후 5종×2CSP 확장 시 함수만 추가
+4. **`core/ingestion/log_ingestor.py`** — 통합 파이프라인
+   - `verify_hash(content)` SHA-256
+   - `parse(csp, content)` — case.csp 별 파서 디스패치 (`all` 일 때 NCP→NHN 순차 시도)
+   - `ingest(db, case, filename, content)` — 파싱·매칭·`raw_events` bulk insert, `IngestionStats` 반환 (`totalEvents/matched/unmatched/byTarget/sha256/sourceFile`)
+   - `list_events(...)`, `get_event(...)` 조회 헬퍼
+   - 시드에 없는 target_id 매칭 시 unmatched 로 강등 (DB 정합성 보호)
+5. **`api/ingestion.py`** — 3개 엔드포인트
+   - `POST /api/logs/upload` — multipart (caseId + file)
+   - `GET  /api/logs?caseId=&page=&pageSize=`
+   - `GET  /api/logs/{eventId}` — 원본 raw JSON 포함
+6. **`main.py`** — `ingestion_router` 등록
+7. **단위 smoke test 통과** — 동적 합성 raw 6건 × 2 CSP 로 파서 변환 + 매처 분류 검증. 각 CSP 5/5 target 정확 분류, 미지원 케이스 None 반환.
+8. **문서 동기화** — 체크리스트 1-2 (Layer 0, stale 이었음) + 2-1 (Layer 1 신규) 업데이트.
+
+**남은 검증** (다음 작업):
+- backend `.venv` 만들고 `python -m db.init_db` → uvicorn 띄워서 Swagger UI 에서 실제 NCP/NHN raw 파일 업로드 → `raw_events` 적재 + 매칭 결과 확인
+- 빈 파일·잘못된 형식·존재하지 않는 caseId 등 에러 케이스 동작 확인
+- V2 프론트엔드 mock → 실 API 전환 (`api/logs.ts` 신규 작성)
 
 ### 2026-05-12 — Phase 1 완성: 시드 + Layer 0 백엔드 + V1 실 연동
 

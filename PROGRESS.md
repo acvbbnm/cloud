@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (Layer 4 보고서 백엔드 1차)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `byungwoo` (Layer 3 1차 + V-5 brief + V-7·V-8 실 API)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -13,23 +13,105 @@
 | 1-1 DB 스키마 | `db/models.py` 9개 테이블 | — | ✅ 설계서 5.2절 정렬 | ✅ |
 | 1-2 Layer 0 API | `/api/cases`, `/api/guide` | ✅ V1 실 API 연결 완료 | ✅ 4개 엔드포인트 동작 | ✅ |
 | 1-3 프론트엔드 셸 | Sidebar, Header, V1 위저드 | ✅ 디자인 시스템 + V1 실 연동 | — | — |
-| 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ⏳ ChromaDB 임베딩 미구현 | 🟢 시드 작성 완료 |
+| 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ✅ **깡통 RAG 동작** (키워드+점수화) · ChromaDB 미구현 | 🟢 시드 작성 완료 |
 | **Phase 2 — 핵심 파이프라인** | | | | |
-| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ **V2 실 API 연결 완료** | ✅ **3개 엔드포인트 + 파서 + 매처 동작** | ✅ raw 228건 E2E 검증 |
-| 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ **V3·V4 실 API 연결 완료** | ✅ 5개 엔드포인트 동작 | ✅ 정규화 100%, 매핑 76건 |
+| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ V2 실 API 연결 완료 | ✅ 3개 엔드포인트 + 파서 + 매처 동작 | ✅ raw 228건 E2E 검증 |
+| 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ V3·V4 실 API 연결 완료 | ✅ 5개 엔드포인트 동작 | ✅ 정규화 100%, 매핑 76건 |
 | **Phase 3 — 보드·셰르파** | | | | |
-| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **노드 패널 실 API 연결** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
-| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6 실 API 연결** · V8 mock | ❌ Layer 3 미구현 | 🎭 V8 mock / V6 실 |
+| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **V5 노드 + AI 브리핑 모두 실 API** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
+| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6·V8 모두 실 API** (V8 출처 칩 표시) | ✅ **1차 깡통 동작** (5 엔드포인트, LLM/RAG 추상화) | ✅ KB 4종 청크화 |
 | **Phase 4 — 보고서** | | | | |
-| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 (mock) | 🟡 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 미구현) | — |
+| 4-1 보고서 | V7 보고서 편집기 | ✅ **V7 실 API 연결 완료** (편집·저장·최종화·DOCX) | ✅ 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 501) | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: **Phase 1 + Phase 2 모두 완료**. V1 → V2 → V3 → V4 풀 흐름이 mock 없이 실제 DB·분석 파이프라인과 통신하며 동작.
+**현재 상태**: **walking-skeleton 100% 종결**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
 
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (심야) — V-7 보고서 프론트 실 API 전환 (브랜치: `byungwoo`)
+
+walking-skeleton의 마지막 mock 화면 제거. V-7 첫 진입 시 자동 초안 생성 → 8섹션 편집 → 저장/최종화/DOCX 다운로드까지 풀 흐름이 백엔드 4 엔드포인트와 통신. ([`2e79193`](https://github.com/sasumm25-lab/cloud/commit/2e79193))
+
+1. **`api/report.ts` 신규** — `createReport / getReport / patchReport / downloadReportDocx` 4개. `downloadReportDocx` 는 `responseType: 'blob'` + `a[download]` 트리거로 파일 저장.
+2. **`V7_Report/index.tsx` 전면 재작성**
+   - caseId 가드 (V-2~V-5 패턴)
+   - 첫 진입 시 `createReport(regenerate=false)` 자동 호출 → 8섹션 자동 초안 (`useQuery` 로 멱등 활용)
+   - 섹션 6→8 확장: `evidence` + `comments` 추가 (백엔드 `ReportSections` 와 1:1)
+   - **dirty 추적**: `Set<keyof ReportSections>` 로 편집된 섹션만 PATCH → 다른 섹션 덮어쓰기 방지
+   - 서버 응답 갱신 시 dirty 한 필드는 보존, 나머지만 동기화
+   - 버튼 4종: **AI 초안 재생성** / **저장(N)** / **DOCX** / **최종화**
+     · 최종화 후 textarea readonly + 모든 편집 버튼 비활성
+     · 미저장 변경 있으면 최종화 비활성 (안전 가드)
+   - 상태 배지(draft 파랑 · edited 호박 · finalized 청록) + 백엔드 응답 패널 (V-2~6 동일 스타일)
+3. **검증**: `tsc -b && vite build` 통과 (185 modules — `api/report.ts` 1 모듈 증가).
+
+이로써 **walking-skeleton 8/8 화면이 모두 실 API 통신** 상태. 남은 mock 없음.
+
+### 2026-05-14 (밤) — V-5 AI 브리핑 카드 실 API 연결 (브랜치: `byungwoo`)
+
+V-5 우측 패널에 "[Layer 3 미구현 — mock 표시 중]" 라벨로 남아 있던 마지막 mock 영역 제거. ([`68751a4`](https://github.com/sasumm25-lab/cloud/commit/68751a4))
+
+1. **`useQuery(postBrief)`** — 선택된 `boardNode.attack_id` 또는 `activeAttack.attack_id` 기준. 둘 다 없으면 eventId 미지정 → 백엔드가 케이스 최상위 위험도 attack 자동 선택. `queryKey` 에 attack_id 포함 → 선택 바뀔 때마다 자동 재호출. `staleTime` 5분.
+2. **`BriefingPanel` 컴포넌트** (파일 하단) — 로딩/에러/빈 케이스/정상 4가지 상태. `technique_id` + `tactic` 배지, 신뢰도(low/medium/high) 색상 분기, `sources` 칩(ATTACK 보라 · PLAYBOOK 청록 · CSP_DOC 파랑 · CASE_DB 황색), `relatedTechniques` 표시.
+3. 백엔드 응답 패널에 `sherpa 로딩/에러/✓` 상태 칩 추가.
+
+### 2026-05-14 (밤) — Layer 3 미세 이슈 정정 (브랜치: `byungwoo`)
+
+1차 코드의 일관성·정합성 문제 2건 수정. ([`8e60c66`](https://github.com/sasumm25-lab/cloud/commit/8e60c66))
+
+1. **HTTP 404 일관성** — `intake/board/report.py` 의 `_case_not_found()` 헬퍼 패턴을 `sherpa.py` 에도 도입. brief/suggest/playbook 에서 caseId 존재 검증 후 없으면 `HTTPException(404, code=CASE_NOT_FOUND)`. 기존엔 HTTP 200 + `{status:error}` 를 반환해 다른 라우터와 응답 형식이 달랐음.
+2. **`ChatRequest.history` 활용** — `AISherpa.chat` 이 history 파라미터를 받기만 하고 사용하지 않던 문제 해결. `session_id` 가 신규(빈 세션)일 때 history 를 `ChatSession` 에 미리 채워넣음 → 설계서 5.1절 "클라이언트가 history 배열을 매번 전달하여 컨텍스트를 유지한다(stateless 설계)" 정합. 기존 세션이면 무시(멱등성).
+
+### 2026-05-14 (밤) — V-8 셰르파 채팅 실 API + 출처 칩 (브랜치: `byungwoo`)
+
+walking-skeleton 중요한 한 조각. 채팅 입력 → `POST /api/sherpa/chat` 호출 → 출처 청크를 색상 칩으로 시각화. ([`7210699`](https://github.com/sasumm25-lab/cloud/commit/7210699))
+
+1. **`types/index.ts`** — `SherpaSource / ChatRequest / SuggestRequest·Response / PlaybookRequest·Response / KbStatsResponse / KbEngineHealth` 타입군 추가.
+2. **`api/sherpa.ts` 신규** — `postBrief / postChat / postSuggest / postPlaybook / getKbStats` 5개 래퍼.
+3. **`stores/useSherpaStore.ts`** — `sessionId` 상태 + `sources` 필드 추가, `reset` 액션.
+4. **`V8_Sherpa/index.tsx` 전면 재작성**
+   - 정적 KB 카운트(`623·412…`) 제거 → `useQuery(getKbStats)` 실 통계
+   - 채팅 입력 → `useMutation(postChat)` → 응답 `sources` 를 KB_TONE 색상 칩으로 렌더
+   - 첫 응답의 `sessionId` 를 zustand에 저장해 후속 질의 재사용 (stateful)
+   - 빠른 질의 3종: `T1078.004` · `NCP Tracer 보존` · `데이터 유출 플레이북`
+   - `engine.engine === 'stub'` 일 때 "stub" 배지 + 안내 문구
+   - 백엔드 응답 패널 (V-2~6 동일 스타일)
+   - "AI는 판단하지 않습니다" 활용 안내 카드
+
+### 2026-05-14 (밤) — Layer 3 AI 셰르파 백엔드 1차 (브랜치: `byungwoo`)
+
+PROGRESS.md 권장(Ollama/ChromaDB 없이 mock 깡통으로 흐름 검증)에 따라, ChromaDB·Ollama 의존성 없이 동작하는 1차 스캐폴딩 구현. 인터페이스(`generate` / `retrieve`)는 실 모델 교체 시 그대로 사용 가능하도록 추상화. ([`6ce6e6f`](https://github.com/sasumm25-lab/cloud/commit/6ce6e6f), 643줄)
+
+1. **`core/sherpa/knowledge_base.py`** — KB 4종(`attack/playbook/csp_doc/case_db.json`) 로더. 통일 형식 `KBChunk(chunk_id, kb_name, title, text, source, url, meta)` 로 변환·캐시. `case_db` 는 timeline / lessons_learned / evidence 를 텍스트로 풀어서 청크화.
+2. **`core/sherpa/rag_retriever.py`** — 키워드 매칭 + 점수화 기반 `retrieve(query, k, kb_filter?)`. 토큰화는 영문/숫자/한글/.·_ 기준 ≥2자, 점수는 출현 횟수 × 길이 가중치. `retrieve_by_technique(technique_id)` 는 메타 직매칭 우선 + 키워드 fallback.
+3. **`core/sherpa/llm_engine.py`** — 템플릿 기반 `generate(prompt, context)`. context 청크를 인용한 응답 + "수사관께서 직접 판단" 문구. `health()` 가 `engine: stub` 을 반환해 프론트에서 깡통 모드 표시.
+4. **`core/sherpa/chat_session.py`** — 인메모리 세션 저장소. `get_or_create / append / history`.
+5. **`core/sherpa/ai_sherpa.py`** — `AISherpa` 4가지 역할
+   - `brief(case_id, event_id?)` — `attack_events ⋈ ocsf_events ⋈ raw_events` 조인으로 case 최상위 위험도 attack 자동 선택, technique_id 기반 KB 검색, 출처 첨부
+   - `chat(case_id, session_id, query, history?)` — RAG retrieve(k=3) + LLM generate + 세션 누적
+   - `suggest_missing_link(case_id, node_a, node_b)` — case 내 다른 기법을 위험도순으로 추천 (깡통)
+   - `recommend_playbook(chain)` — PLAYBOOK 카테고리 KB 검색 (깡통)
+6. **`api/sherpa.py`** — 5개 엔드포인트
+   - `POST /api/sherpa/brief|chat|suggest|playbook`
+   - `GET /api/sherpa/kb` (V-8 우측 패널용 KB 인덱스 통계 + engine.health)
+7. **`main.py`** — `sherpa_router` 등록 (이근형의 `board_router/report_router` 와 함께).
+
+설계 원칙 준수: 모든 응답에 `sources` 첨부, brief 에 `confidence` 필드, AI 가 결정·판단하지 않음. AST 문법 검증 6/6 통과.
+
+### 2026-05-14 (오전) — 협업 인프라 정비 (브랜치: 직접 dev 커밋)
+
+팀원 4명이 각자 다른 AI 도구로 작업해도 머지 충돌이 안 나도록 협업 운영 레이어 보강. ([`1cb94e4`](https://github.com/sasumm25-lab/cloud/commit/1cb94e4))
+
+- `CLAUDE.md` 최상단에 **"🤖 AI 부팅 시퀀스"** 6단계 + **"동시 작업 충돌 회피"** 룰 추가 (선착순 모델, 공유 진입 파일은 추가만)
+- `CLAUDE.md` — `Common.User` 제거(설계서 5.1절 MVP 인증 미사용 정합), `chain_nodes.label` 팀 합의 메모
+- `README.md` 팀원용 30분 가이드 신설 (clone → AI 도구 연결 → 작업 흐름)
+- `docs/설계서_읽는법.md` — 설계서 구조·다이어그램·약어표 가이드 (캡스톤 루트의 원본을 git 안으로 이관)
+- `.claude/구현/*.md` 3종 — IncidentType 5종을 설계서 5.2절 기준으로 정정 (`iam-takeover → CREDENTIAL_THEFT` 외)
+- `.gitignore` — 팀장 전용 `GIT_SETUP_가이드.md` 차단
+- `backend/data/collection_targets/naver_CREDENTIAL_THEFT.json` — 새 enum 시드 추가 (옛 `naver_iam-takeover.json` 은 프론트엔드 enum 마이그레이션 시까지 유지)
 
 ### 2026-05-14 (자정 이후) — Layer 4 보고서 백엔드 1차 (브랜치: `geunhyung`)
 
@@ -264,38 +346,37 @@ Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작
 
 ## 다음 할 일
 
-### 백엔드 (이근형 · 최진규)
+walking-skeleton 8/8 화면이 mock 없이 실 API와 통신하는 상태. 남은 작업은 (a) Layer 3 깡통을 실 sLLM·벡터검색으로 교체, (b) 사고유형 확장, (c) 시연 리허설 세 갈래.
 
-**우선순위 1 — Phase 3 (수사 보드 + AI 셰르파)**:
-- [ ] `api/board.py` 라우터 4개 + `core/board/investigation_board.py` + `core/board/chain.py`
-- [ ] V5 보드 실 API 연결 (`api/board.ts` 신규, 노드 드래그앤드롭 + 엣지 연결)
-- [ ] Layer 3 AI 셰르파 ChromaDB 임베딩 + Ollama Llama 연결
-- [ ] V8 채팅 실 API 연결 (단, mock 응답으로 먼저 흐름 검증 → 실 모델로 교체)
+### AI / RAG — Layer 3 실 모델 통합 (우선)
 
-**우선순위 2 — Layer 1 매처 외부화·확장**:
+깡통(키워드+점수화+템플릿)을 인터페이스 보존하며 교체:
+
+- [ ] `core/sherpa/embed_kb.py` 신설 — `KBChunk` 를 sentence-transformer 로 임베딩하여 ChromaDB 컬렉션 적재 (startup 1회 또는 CLI 스크립트)
+- [ ] `core/sherpa/rag_retriever.py` 교체 — 키워드 매칭 → ChromaDB cosine similarity. `retrieve(query, k)` 시그니처 유지
+- [ ] `core/sherpa/llm_engine.py` 교체 — 템플릿 → Ollama `POST /api/generate` 호출. `OLLAMA_BASE_URL` 환경변수, 30초 timeout fallback (SNF-02)
+- [ ] `LLMEngine.health()` 가 실 모델 응답 여부를 반환하도록 갱신 → V-8 "stub → connected" 배지 자동 전환
+- [ ] `requirements.txt` — `chromadb`, `sentence-transformers`, (필요 시) `httpx` 추가
+
+### 백엔드 — Layer 1 매처 외부화 + 사고유형 확장
+
 - [ ] `core/ingestion/matchers.py` → JSON 룰 외부화 (`data/collection_targets/target_match_rules.json`)
 - [ ] 4종 사고유형 매처 추가 (PRIVILEGE_ESCALATION / DATA_EXFILTRATION / AUDIT_LOG_TAMPERING / MULTI_CSP_LATERAL)
 - [ ] 사고유형별 시드(`collection_targets/{csp}_{type}.json` 8개 신규)
 
-### 프론트엔드
+### 프론트엔드 — 보조 작업
 
-- [ ] V3 OCSF mock → 실 API 전환 (Layer 2 백엔드 완성 후, `api/analysis.ts` 신규)
-- [ ] V4 갭 감지 mock → 실 API 전환
-- [ ] V5 보드 mock → 실 API 전환 (Layer 4 백엔드 완성 후)
-- [ ] V7 보고서 mock → 실 API 전환
-- React Query 패턴은 V1/V2와 동일 (`useMutation`, `useQuery` + `useCaseStore.caseId` 의존)
-
-### AI / RAG (이지호)
-
-- [ ] `core/sherpa/embed_kb.py` — `data/kb/*.json` 4종을 ChromaDB로 임베딩
-- [ ] `core/sherpa/rag_retriever.py` — `retrieve(query, k)` 유사도 검색
-- [ ] `core/sherpa/llm_engine.py` — Ollama Llama 3.1 8B 호출 (오프라인)
-- [ ] `api/sherpa.py` brief/chat 우선 구현
+- [ ] V-5 보드 엣지 생성/삭제 UI (현재 `api/board/edges` 백엔드만 존재, 프론트 미연결)
+- [ ] V-5 BoardCanvas 드래그앤드롭 → 백엔드 노드 좌표(`pos_x/pos_y`) 영속화
+- [ ] V-7 PDF 내보내기 (현재 백엔드 501) — LibreOffice 또는 wkhtmltopdf 의존성 결정 후 구현
+- [ ] 4종 추가 사고유형 시드 들어오면 V-1 Step1 카드 UI 갱신
 
 ### 통합 테스트 / 데모
 
-- [ ] Phase 2 완료 시점에 V1→V2→V3→V4 end-to-end 리허설
-- [ ] 갭 감지 → Layer 0 복귀 흐름
+- [ ] Phase 2/3 종결 시점 V-1 → V-2 → V-3 → V-4 → V-5 → V-6 → V-7 → V-8 end-to-end 리허설 (NCP + NHN 시나리오 각각)
+- [ ] 갭 감지 → Layer 0 복귀 흐름 (V-4 → V-1 라우팅) 동작 확인
+- [ ] AI 셰르파 깡통 vs 실 모델 응답 품질 비교 (시연 자료)
+- [ ] 오프라인(인터넷 차단) 환경에서 전체 시나리오 동작 확인 (SNF-01)
 
 ---
 
@@ -346,6 +427,19 @@ git push
 ## 커밋 히스토리 (2026-05-14 기준)
 
 ```
+2e79193 feat(v7): 보고서 편집기 mock → 실 API 전환 — walking-skeleton 100%
+(머지) Merge byungwoo into dev — Layer 3 1차 + V-5 brief + V-7·V-8 실 API
+68751a4 feat(v5): AI 셰르파 브리핑 카드 실 API 연결 — walking-skeleton 완전 종결
+8e60c66 fix(layer3): case 404 일관성 + chat history stateless 지원
+7210699 feat(v8): AI 셰르파 채팅 mock → 실 API 전환 + 출처 칩
+ec84268 Merge dev into byungwoo (Layer 4 보드/보고서 백엔드 흡수)
+6ce6e6f wip(layer3): AI 셰르파 1차 스캐폴딩 — 깡통 LLM/RAG + 4 엔드포인트
+7e16782 docs: VERIFICATION.md — Phase 2 종결 시점 시스템 검증 보고서
+(머지) Merge #3 from geunhyung — Layer 4 보고서 백엔드
+0b3b926 feat(layer4): 보고서 백엔드 1차 — 8섹션 자동 초안 + JSON 영속화 + DOCX export
+9fabfd4 feat(v6): ATT&CK 히트맵 실 API 전환 — attack_events 동적 집계
+e48826b feat(v5): 수사 보드 프론트 실 API 전환 — ATT&CK 후보 → 노드 추가/수락/거부
+8f78a10 feat(layer4): 수사 보드 백엔드 1차 — 노드/엣지 CRUD 4개 엔드포인트
 (머지) Merge feat(v3-v4) V3 OCSF + V4 Gap 실 API 전환 from byungwoo
 e7da3ab feat(v3-v4): V3 OCSF + V4 Gap mock → 실 API 전환
 (머지) Merge feat(layer2) OCSF 정규화 + ATT&CK 매핑 + 갭 감지 from byungwoo

@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-13 · 브랜치: `2gu`
+> 마지막 업데이트: 2026-05-14 · 브랜치: `dev`
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -15,7 +15,7 @@
 | 1-3 프론트엔드 셸 | Sidebar, Header, V1 위저드 | ✅ 디자인 시스템 + V1 실 연동 | — | — |
 | 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ⏳ ChromaDB 임베딩 미구현 | 🟢 시드 작성 완료 |
 | **Phase 2 — 핵심 파이프라인** | | | | |
-| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ UI 완료 | 🟡 백엔드 1차 (DB E2E 미검증) | 🎭 mock |
+| 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ **V2 실 API 연결 완료** | ✅ **3개 엔드포인트 + 파서 + 매처 동작** | ✅ raw 228건 E2E 검증 |
 | 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 | **Phase 3 — 보드·셰르파** | | | | |
 | 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
@@ -25,11 +25,43 @@
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: Phase 1이 사실상 100% 완료. V1 → 백엔드 → DB 흐름이 실제로 동작.
+**현재 상태**: Phase 1 + Phase 2-1 완료. **V1 → V2 풀 흐름이 진짜 DB와 통신**하며 동작.
 
 ---
 
 ## 작업 내역
+
+### 2026-05-14 — Layer 1 DB E2E 검증 + V2 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
+
+walking-skeleton의 두 번째 고리(V1 → V2)가 mock 없이 실제 DB와 통신하는 형태로 완성. 진행 순서:
+
+1. **Layer 1 백엔드 DB 적재 E2E 검증** (이근형의 [`35eba2b`](https://github.com/sasumm25-lab/cloud/commit/35eba2b) 코드 사용)
+   - NCP `activity_logs_full.json` 81건 + NHN `nhn_activity_logs.json` 147건 = **총 228건 raw_events 적재**
+   - SHA-256 해시 무결성 일치 (파일 실제 해시 = API 응답)
+   - `matched_target_id` 시드 카탈로그와 정확 매칭
+     · NCP: CT-NCP-IAM-001~005 모두 매칭 (12/3/2/13/37건)
+     · NHN: CT-NHN-IAM-001/003/004/005 매칭 (25/6/15/8건)
+   - 페이지네이션 + 단건 조회(raw 포함) + 404 케이스 정상
+   - 이근형 브랜치 `origin/2gu` → `dev` 머지 ([`375265c`](https://github.com/sasumm25-lab/cloud/commit/375265c))
+
+2. **V2 프론트엔드 mock → 실 API 전환** ([`8034de1`](https://github.com/sasumm25-lab/cloud/commit/8034de1))
+   - `types/index.ts`: `RawEventItem` 백엔드 응답 형식(camelCase)과 일치. `IngestionStats` / `LogsListData` 타입 추가
+   - `api/logs.ts` 신규: `uploadLogs(multipart)` / `getLogs(페이지네이션)` / `getEvent` 3개 함수
+   - `views/V2_Logs/index.tsx` 대대적 재작성
+     · mock 초기 데이터 제거
+     · `useCaseStore.caseId` 미존재 시 V-1 안내 패널 (라우트 가드)
+     · `useMutation` → `uploadLogs` (성공 시 `invalidate('logs')` → 자동 리프레시)
+     · `useQuery` → `getLogs(page, pageSize=20)` + 페이지 이동 버튼
+     · "백엔드 응답 ✓" 패널 (caseId / total / 마지막 업로드 stats / sha256)
+     · "매칭 분포" 패널 (`byTarget` 동적 표시)
+     · KPI 4개 실 데이터화 (총 raw_events / matched / unmatched / 파일)
+   - `EventPreviewTable.tsx`: `id` 타입 `number → string` (UUID 대응)
+   - 브라우저 E2E 검증 완료
+
+3. **협업 워크플로 정착**
+   - feature 브랜치 기반 협업 도입. 각자 사람 이름 브랜치 사용:
+     · 김병우 → `byungwoo`, 이근형 → `2gu`, 최진규 → `jingyu`, 이지호 → `easy` (추정)
+   - `feat/<기능>` 패턴은 일회성 작업용. 장기 작업은 personal branch + 작업 단위 PR → dev 머지
 
 ### 2026-05-13 — Layer 1 로그 수집 백엔드 1차 구현 (브랜치: `2gu`)
 
@@ -110,25 +142,26 @@ Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작
 
 ### 백엔드 (이근형 · 최진규)
 
-**우선순위 1 — Layer 1 (로그 수집 API)**:
-- [ ] `api/ingestion.py` 라우터 3개 (POST upload / GET 목록 / GET 단건)
-- [ ] `core/ingestion/log_ingestor.py` — multipart 수신, SHA-256 해시, parseAndStore, matchTargets
-- [ ] `core/ingestion/parsers/ncp.py` — historyId/nrn/action/content/actionResultType 파싱
-- [ ] `core/ingestion/parsers/nhn.py` — eventLogUuid/eventTime/eventId/userName/userIp 파싱
-- 검증 데이터: `C:/Users/sasum/activity_logs_full.json` (81건) + `nhn_activity_logs.json` (147건)
-- 체크포인트: 파일 업로드 → raw_events 적재 + matched_target_id 채워짐 + 무결성 해시 일치
-
-**우선순위 2 — Layer 2 (OCSF·ATT&CK·갭 감지)**:
-- [ ] `core/analysis/ocsf_normalizer.py` — `mapping_rules/*.json` 로딩, NCP/NHN raw → 평탄화 OCSF 컬럼 변환
-- [ ] `core/analysis/attack_mapper.py` — `attack_rules/rules.json` (22룰) 로딩, `activity_name_pattern` Regex 매칭
+**우선순위 1 — Layer 2 (OCSF·ATT&CK·갭 감지)**:
+- [ ] `core/analysis/ocsf_normalizer.py` — `mapping_rules/*.json` 로딩, NCP/NHN raw → 평탄화 OCSF 컬럼 변환 (이미 시드 정확히 작성됨)
+- [ ] `core/analysis/attack_mapper.py` — `attack_rules/rules.json` (22룰) 로딩, `activity_name_pattern` Regex 매칭 + `condition` 평가
 - [ ] `core/analysis/gap_detector.py` — required/collected/mapped 집합 비교 → NONE/COLLECTION/EVIDENCE/INTERPRETATION 분류
-- [ ] `api/analysis.py` 5개 엔드포인트
+- [ ] `api/analysis.py` 5개 엔드포인트 (normalize/map/ocsf/attack/gap)
+- 검증 데이터: 이미 DB에 raw_events 228건 적재됨. case 단위로 normalize → map → gap 흐름 검증
+- 체크포인트: 정규화율 100% (시드 룰 기반), ATT&CK 매핑 최소 4건 이상, 갭 타입 정상 판정
+
+**우선순위 2 — Layer 1 매처 외부화·확장**:
+- [ ] `core/ingestion/matchers.py` → JSON 룰 외부화 (`data/collection_targets/target_match_rules.json`)
+- [ ] 4종 사고유형 매처 추가 (PRIVILEGE_ESCALATION / DATA_EXFILTRATION / AUDIT_LOG_TAMPERING / MULTI_CSP_LATERAL)
+- [ ] 사고유형별 시드(`collection_targets/{csp}_{type}.json` 8개 신규)
 
 ### 프론트엔드
 
-- [ ] V2~V4 mock → 실 API 전환 (Layer 1·2 백엔드 완성 후)
-- [ ] `api/logs.ts`, `api/analysis.ts` 신규 작성
-- [ ] React Query 패턴은 V1과 동일 (`useMutation`, `useQuery` + `useCaseStore.caseId` 의존)
+- [ ] V3 OCSF mock → 실 API 전환 (Layer 2 백엔드 완성 후, `api/analysis.ts` 신규)
+- [ ] V4 갭 감지 mock → 실 API 전환
+- [ ] V5 보드 mock → 실 API 전환 (Layer 4 백엔드 완성 후)
+- [ ] V7 보고서 mock → 실 API 전환
+- React Query 패턴은 V1/V2와 동일 (`useMutation`, `useQuery` + `useCaseStore.caseId` 의존)
 
 ### AI / RAG (이지호)
 
@@ -188,9 +221,13 @@ git push
 
 ---
 
-## 커밋 히스토리 (2026-05-12 기준)
+## 커밋 히스토리 (2026-05-14 기준)
 
 ```
+(머지) Merge feat(v2) V2 로그 수집 mock → 실 API 전환 from byungwoo
+8034de1 feat(v2): V2 로그 수집 mock → 실 API 전환
+(머지) Merge feat(layer1) 로그 수집 API 1차 from 2gu (이근형)
+35eba2b feat(layer1): 로그 수집 API 1차 — NCP/NHN 파서 + LogIngestor + 라우터 3개  (이근형)
 04638b4 feat(v1): incidentType 5종 통일 + V1 위저드 실 API 연결
 4bc5582 feat(layer0): 사고 접수 API 4개 구현
 cbd83e1 docs: 모듈별_구현_명세 NCP/NHN 매핑 예시 정정

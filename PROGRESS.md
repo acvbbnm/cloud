@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (V-6 ATT&CK 히트맵 실 API 전환)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (Layer 4 보고서 백엔드 1차)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -21,7 +21,7 @@
 | 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **노드 패널 실 API 연결** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
 | 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6 실 API 연결** · V8 mock | ❌ Layer 3 미구현 | 🎭 V8 mock / V6 실 |
 | **Phase 4 — 보고서** | | | | |
-| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 (mock) | 🟡 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 미구현) | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
@@ -30,6 +30,32 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (자정 이후) — Layer 4 보고서 백엔드 1차 (브랜치: `geunhyung`)
+
+V-7 프론트는 mock UI 만 있었고 백엔드는 미구현 상태였음. 보고서 초안 자동 생성 + JSON 영속화 + DOCX 내보내기까지 한 번에 구현.
+
+1. **`config.py`** — `REPORTS_DIR` (data/reports), `EXPORTS_DIR` (exports) 추가, 자동 mkdir
+2. **`.gitignore`** — `backend/data/reports/*.json`, `backend/exports/` 추가
+3. **`core/board/report_generator.py`** — ReportGenerator
+   - `generate_draft(db, case_id)`: case/raw/ocsf/attack/gap/chain 데이터를 종합해 **8 섹션 자동 초안** (overview/timeline/impact/attack_analysis/response/recommendation/evidence/comments)
+     · 타임라인: OCSF 시간순 상위 20건
+     · attack 집계: technique별 count + max_risk_score
+     · 증거: collection_targets 카탈로그 vs 실제 matched_target_id 비교 (✓/✗ 마킹)
+     · 권고: gap_type 별 분기 (COLLECTION → Layer 0 복귀 등)
+   - JSON 영속화: `data/reports/{caseId}.json` (load/save/get_or_create/update_sections)
+   - DOCX 내보내기: `python-docx`로 `exports/{caseId}.docx` 생성 (8 섹션 헤딩 + 본문)
+4. **`api/report.py`** — 4개 엔드포인트
+   - `POST /api/report` (regenerate 옵션) — 초안 생성, 응답에 8섹션 dict
+   - `GET /api/report/{case_id}` — 저장된 보고서 조회
+   - `PATCH /api/report/{case_id}` — sections 부분 갱신 + status 변경. `EDIT_REPORT` / `FINALIZE_REPORT` action_logs 자동 적재
+   - `GET /api/report/{case_id}/export?format=docx` — `FileResponse` 다운로드. `EXPORT_REPORT` action_logs 적재. PDF 는 501 NotImplemented
+5. **`main.py`** — `report_router` 등록
+6. **검증** — AST syntax check 4/4 통과
+
+응답 형식은 **frontend types/index.ts `ReportResponse / ReportSections` 와 8 섹션 키 1:1 일치**. V-7 프론트는 mock → 실 API 전환 시 타입 그대로 사용 가능.
+
+PDF 내보내기는 LibreOffice 또는 wkhtmltopdf 의존성이 커서 후속 작업으로 미룸 (501 응답).
 
 ### 2026-05-14 (자정 무렵) — V-6 ATT&CK 히트맵 실 API 전환 (브랜치: `geunhyung`)
 

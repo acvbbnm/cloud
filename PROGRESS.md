@@ -16,7 +16,7 @@
 | 1-4 RAG 지식베이스 | KB-1~4 JSON | — | ⏳ ChromaDB 임베딩 미구현 | 🟢 시드 작성 완료 |
 | **Phase 2 — 핵심 파이프라인** | | | | |
 | 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ **V2 실 API 연결 완료** | ✅ **3개 엔드포인트 + 파서 + 매처 동작** | ✅ raw 228건 E2E 검증 |
-| 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ UI 완료 (mock) | ✅ **5개 엔드포인트 동작** | ✅ 정규화 100%, 매핑 76건 |
 | **Phase 3 — 보드·셰르파** | | | | |
 | 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 | 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
@@ -25,13 +25,31 @@
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: Phase 1 + Phase 2-1 완료. **V1 → V2 풀 흐름이 진짜 DB와 통신**하며 동작.
+**현재 상태**: Phase 1 + Phase 2-1 + Phase 2-2 백엔드 완료. **V1 → V2까지 풀 연동, Layer 2 분석 파이프라인(OCSF·ATT&CK·갭) 백엔드 완비**.
 
 ---
 
 ## 작업 내역
 
-### 2026-05-14 — Layer 1 DB E2E 검증 + V2 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
+### 2026-05-14 — Layer 2 백엔드 1차 완성 (브랜치: `byungwoo` → `dev` 머지)
+
+Layer 2 분석 파이프라인 3종 + API 5개를 구현. **시드 mapping_rules와 attack_rules 22룰이 드디어 코드에 연결**되어 실제 raw 로그가 OCSF → ATT&CK → 갭으로 흐름.
+
+1. **`core/analysis/ocsf_normalizer.py`** ([`f7a0123`](https://github.com/sasumm25-lab/cloud/commit/f7a0123))
+   - CSP별 mapping rule JSON 로딩·캐시 (`naver` → ncp_cloudtrail, `nhn` → nhn_cloud_trail)
+   - field_mappings dot 표기 nested 접근 (`content.actionUserName` 등)
+   - value_transforms: datetime 이중 형식(unix_ms / iso8601 / UTC 문자열), SUCCESS/FAIL → 200/500
+   - 중복 정규화 skip (`event_id` UNIQUE 제약 활용)
+   - 원본 JSON 전체를 `unmapped_raw` 에 보존
+2. **`core/analysis/attack_mapper.py`** — attack_rules 22룰 로딩(정규식 사전 컴파일), csp 필터 + activity_name_pattern 매칭, 다중 매칭 시 base_risk_score 최댓값 룰 선택
+3. **`core/analysis/gap_detector.py`** — required/collected/mapped 비교 → COLLECTION/EVIDENCE/INTERPRETATION/NONE 분류, completionRate 계산
+4. **`api/analysis.py`** 5개 엔드포인트 (POST normalize · GET ocsf · POST map · GET attack · POST gap), `main.py` 등록
+5. **E2E 검증 결과**:
+   - NCP 81건 + NHN 147건 정규화율 100% (failed 0)
+   - ATT&CK 매핑 76건 (NCP 45 / NHN 31) — R-NCP-007 Exfiltration 9건, R-NHN-002 Privilege Escalation 10건 등
+   - 갭 판정: **NCP 'NONE'** (수사 보드 진행), **NHN 'COLLECTION'** (CT-NHN-IAM-002 미수집 — 권한 변경 이벤트가 raw에 없음을 정확히 짚어냄)
+
+### 2026-05-14 (오전) — Layer 1 DB E2E 검증 + V2 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
 
 walking-skeleton의 두 번째 고리(V1 → V2)가 mock 없이 실제 DB와 통신하는 형태로 완성. 진행 순서:
 
@@ -142,13 +160,11 @@ Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작
 
 ### 백엔드 (이근형 · 최진규)
 
-**우선순위 1 — Layer 2 (OCSF·ATT&CK·갭 감지)**:
-- [ ] `core/analysis/ocsf_normalizer.py` — `mapping_rules/*.json` 로딩, NCP/NHN raw → 평탄화 OCSF 컬럼 변환 (이미 시드 정확히 작성됨)
-- [ ] `core/analysis/attack_mapper.py` — `attack_rules/rules.json` (22룰) 로딩, `activity_name_pattern` Regex 매칭 + `condition` 평가
-- [ ] `core/analysis/gap_detector.py` — required/collected/mapped 집합 비교 → NONE/COLLECTION/EVIDENCE/INTERPRETATION 분류
-- [ ] `api/analysis.py` 5개 엔드포인트 (normalize/map/ocsf/attack/gap)
-- 검증 데이터: 이미 DB에 raw_events 228건 적재됨. case 단위로 normalize → map → gap 흐름 검증
-- 체크포인트: 정규화율 100% (시드 룰 기반), ATT&CK 매핑 최소 4건 이상, 갭 타입 정상 판정
+**우선순위 1 — V3 OCSF / V4 갭 프론트엔드 실 API 연결**:
+- [ ] `api/analysis.ts` 신규 (`runNormalize` / `getOcsf` / `runMap` / `getAttack` / `runGap`)
+- [ ] V3 OCSF: 좌측 raw vs 우측 OCSF 양면 비교, `unmapped_raw` 펼침. 정규화 실행 버튼
+- [ ] V4 Gap: gap_type · missing 칩 · completionRate 도넛 · recommendation 영역 + `COLLECTION` 시 Layer 0 복귀 버튼 (이미 UI 있음)
+- 시연용: NCP 케이스 = 'NONE'(완전), NHN 케이스 = 'COLLECTION'(미수집) 두 패턴 모두 보임
 
 **우선순위 2 — Layer 1 매처 외부화·확장**:
 - [ ] `core/ingestion/matchers.py` → JSON 룰 외부화 (`data/collection_targets/target_match_rules.json`)
@@ -224,6 +240,8 @@ git push
 ## 커밋 히스토리 (2026-05-14 기준)
 
 ```
+(머지) Merge feat(layer2) OCSF 정규화 + ATT&CK 매핑 + 갭 감지 from byungwoo
+f7a0123 feat(layer2): OCSF 정규화 + ATT&CK 매핑 + 갭 감지 — Layer 2 백엔드 1차
 (머지) Merge feat(v2) V2 로그 수집 mock → 실 API 전환 from byungwoo
 8034de1 feat(v2): V2 로그 수집 mock → 실 API 전환
 (머지) Merge feat(layer1) 로그 수집 API 1차 from 2gu (이근형)

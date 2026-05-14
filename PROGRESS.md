@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `byungwoo` (Layer 3 1차 + V-5 brief + V-7·V-8 실 API)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (시연 체크리스트 § 5 흔한 버그 후보 3건 대응 — 상태 영속화 + dirty beforeunload)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -30,6 +30,16 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (시연 리허설 대응) — UX 안정화 3건 (브랜치: `geunhyung`)
+
+`docs/시연_체크리스트.md` § 5 "흔한 버그 후보" 중 코드 수정으로 명확히 개선 가능한 3건을 한 PR 로 묶어 처리. 시연 직전 발견 확률 높은 영역.
+
+1. **`useCaseStore` localStorage 영속화** — caseId / csp / incidentType / severity / currentStep 가 새로고침 / 탭 이동 / 브라우저 재시작 후에도 유지. `zustand/middleware` 의 `persist` 사용 (store name: `ai-sherpa-case`, version 1, `partialize` 로 액션 함수 제외). 체크리스트 § 5 "V-1→V-2 caseId 전달" 이슈 대응.
+2. **`useSherpaStore` 영속화** — sessionId + messages 영속화 (open 토글은 휘발 — 새로고침 시 닫혀 있는 게 자연). `onRehydrateStorage` 로 message id seq 충돌 방지. 체크리스트 § 5 "V-8 sessionId 새로고침 시 사라짐" 대응. 백엔드 서버 재시작 시 sessionId 유효하지 않으면 백엔드가 새 세션을 응답하므로 자동 복구됨.
+3. **V-7 `beforeunload` 경고** — dirty Set 이 비어있지 않을 때만 페이지 떠나기 confirm 다이얼로그. `useEffect` cleanup 으로 누수 방지. 체크리스트 § 5 "V-7 dirty 추적 — 페이지 떠나기 전 미저장 변경 경고 없음" 대응.
+
+검증: `tsc -b && vite build` 통과 (186 modules — persist 미들웨어 +1).
 
 ### 2026-05-14 (심야) — V-7 보고서 프론트 실 API 전환 (브랜치: `byungwoo`)
 

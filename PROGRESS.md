@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `2gu` (Layer 4 수사 보드 백엔드 추가)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `2gu` (Layer 4 백엔드 + V-5 프론트 실 API 전환)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -30,6 +30,26 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (밤) — V-5 수사 보드 프론트 실 API 전환 (브랜치: `geunhyung`)
+
+직전 Layer 4 백엔드를 V-5 프론트와 연결. ATT&CK 매핑 결과 → 보드 노드 추가 → 수락/거부 흐름이 백엔드와 통신.
+
+1. **`api/board.ts` 신규** — `getBoard / createNode / updateNode / createEdge` 4개 함수
+2. **`views/V5_Board/index.tsx` 재작성**
+   - caseId 가드 (V-2~4 패턴)
+   - 백엔드 응답 패널 (chain_nodes / edges / ATT&CK 후보 카운트)
+   - 메인 영역: `BoardCanvas` (드래그-드롭 캔버스 — 클라이언트 시각화 보조, 백엔드 미연동 유지)
+     · "공격 체인 노드 (chain_nodes)" 카드 — `useQuery(getBoard).nodes` 표시. CONFIRMED/REJECTED 상태별 색상, REJECTED 는 strike-through
+     · "ATT&CK 매핑 후보 (top 10)" 카드 — `useQuery(getAttack)` risk_score 내림차순 grid 2열
+   - 우측 상세 카드:
+     · 보드 노드 선택 시: 라벨/상태/유형/attack_id + ✓ 수락/✗ 거부 버튼 → `useMutation(updateNode)` PATCH (백엔드가 action_logs 자동 적재)
+     · ATT&CK 후보 선택 시: 기법/전술/risk/시각 + "+ 보드에 추가" 버튼 → `useMutation(createNode)` POST (label 자동 생성)
+   - 중복 추가 방지: `addedAttackIds` 집합으로 이미 보드에 있는 attack 카드는 opacity-60 + 버튼 비활성화
+   - AI 셰르파 브리핑 카드는 "[Layer 3 미구현 — mock 표시 중]" 라벨로 명시
+3. **검증** — `tsc -b && vite build` 통과 (184 modules)
+
+walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 노드 패널까지 풀 연동. 남은 mock: V-6 ATT&CK 히트맵 / V-7 보고서 / V-8 셰르파 채팅.
 
 ### 2026-05-14 (밤) — Layer 4 수사 보드 백엔드 1차 (브랜치: `geunhyung`)
 

@@ -82,42 +82,68 @@ export interface LogsListData {
   pageSize: number;
 }
 
+// Layer 2 — 백엔드 응답 형식과 일치 (평탄화 OCSF + Attack join 결과)
 export interface OCSFEventItem {
   ocsf_id: string;
   event_id: string;
-  class_uid: number;
-  category_uid: number;
-  activity_id: number;
+  time: string; // ISO datetime
+  actor_user_name: string | null;
+  src_endpoint_ip: string | null;
   activity_name: string;
-  time: number;
-  actor: { user: { name: string; type: string; account_uid: string } };
-  src_endpoint: { ip: string };
-  status_code: string;
-  severity_id: number;
-  unmapped: Record<string, unknown>;
+  status_code: number | null;
+  unmapped_raw: Record<string, unknown> | null;
 }
 
 export interface AttackEventItem {
   attack_id: string;
   ocsf_id: string;
   technique_id: string;
-  technique_name: string;
+  technique_name: string | null;
   tactic: string;
   rule_id: string;
-  risk_score: number;
-  event_time: string;
-  activity_name: string;
+  risk_score: number | null;
+  mapped_at: string;
+  event_time: string | null;
+  activity_name: string | null;
+}
+
+export interface NormalizeStats {
+  total: number;
+  normalized: number;
+  failed: number;
+  normalizationRate: number;
+  failedEvents: { event_id: string; reason: string }[];
+}
+
+export interface MapStats {
+  total_ocsf: number;
+  mapped: number;
+  unmapped: number;
+  mappingRate: number;
+  events: AttackEventItem[];
 }
 
 export interface GapResultResponse {
   gap_id: string;
   case_id: string;
   gap_type: GapType;
-  missing: { target_id: string; log_type: string; evidence_role: EvidenceRole; priority: number }[];
+  missing: {
+    target_id: string;
+    log_type: string;
+    evidence_role: EvidenceRole;
+    priority: number;
+  }[];
   summary: string;
   recommendation: string;
   completionRate: number;
   created_at: string;
+}
+
+export interface PaginatedData<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface BoardNode {

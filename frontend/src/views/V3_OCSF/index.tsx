@@ -1,109 +1,97 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
+import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
 import { useToastStore } from '@/stores/useToastStore';
+import { useCaseStore } from '@/stores/useCaseStore';
+import { getOcsf, runNormalize } from '@/api/analysis';
 
 import RawJsonPanel from './RawJsonPanel';
 import FieldMappingTable from './FieldMappingTable';
 import type { MappingRow } from './FieldMappingTable';
 
-interface SampleEvent {
-  id: string;
-  label: string;
-  raw: Record<string, unknown>;
-  ocsf: Record<string, unknown>;
-}
+const PAGE_SIZE = 30;
 
-const samples: SampleEvent[] = [
-  {
-    id: 'NCL-8821',
-    label: 'changeSubAccountLoginId — 14:32:07',
-    raw: {
-      eventId: 'NCL-8821',
-      eventName: 'changeSubAccountLoginId',
-      eventTime: '2026-03-25T14:32:07+09:00',
-      userIp: '203.0.113.45',
-      userName: 'admin-user',
-      subAccountId: 'svc-backup',
-      actionResult: 'success',
-      regionCode: 'KR',
-    },
-    ocsf: {
-      class_uid: 3001,
-      class_name: 'Account Change',
-      activity_id: 3,
-      time: 1711342327000,
-      severity_id: 4,
-      status: 'Success',
-      actor: { user: { name: 'admin-user' }, session: { ip: '203.0.113.45' } },
-      cloud: { provider: 'Naver Cloud', region: 'KR' },
-    },
-  },
-  {
-    id: 'NCL-8830',
-    label: 'addSubAccountRole — 14:33:15',
-    raw: {
-      eventId: 'NCL-8830',
-      eventName: 'addSubAccountRole',
-      eventTime: '2026-03-25T14:33:15+09:00',
-      userIp: '203.0.113.45',
-      userName: 'admin-user',
-      role: 'NCP_ADMIN',
-      actionResult: 'success',
-    },
-    ocsf: {
-      class_uid: 3001,
-      class_name: 'Account Change',
-      activity_id: 5,
-      time: 1711342395000,
-      severity_id: 5,
-      status: 'Success',
-      actor: { user: { name: 'admin-user' }, session: { ip: '203.0.113.45' } },
-      assigned_role: 'NCP_ADMIN',
-    },
-  },
-  {
-    id: 'NCL-9020',
-    label: 'consoleSignIn — 02:34:18',
-    raw: {
-      eventId: 'NCL-9020',
-      eventName: 'consoleSignIn',
-      eventTime: '2026-03-25T02:34:18+09:00',
-      userIp: '203.0.113.45',
-      userName: 'admin-user',
-      mfa: false,
-      actionResult: 'success',
-    },
-    ocsf: {
-      class_uid: 3002,
-      class_name: 'Authentication',
-      activity_id: 1,
-      time: 1711301658000,
-      severity_id: 3,
-      status: 'Success',
-      actor: { user: { name: 'admin-user' }, session: { ip: '203.0.113.45' } },
-      mfa: false,
-    },
-  },
-];
-
+// 시드 mapping_rules/{ncp_cloudtrail,nhn_cloud_trail}.json 의 핵심 매핑을 정리한 정적 참조
 const mappings: MappingRow[] = [
-  { source: 'eventName', target: 'activity_name', rule: '매핑 테이블' },
-  { source: 'eventTime', target: 'time', rule: 'ISO → epoch ms' },
-  { source: 'userIp', target: 'actor.session.ip', rule: '직접 매핑' },
-  { source: 'userName', target: 'actor.user.name', rule: '직접 매핑' },
-  { source: 'actionResult', target: 'status', rule: '값 변환' },
-  { source: 'regionCode', target: 'cloud.region', rule: '직접 매핑' },
+  { source: 'eventTime / timestamp', target: 'time', rule: 'unix ms / ISO8601 / UTC 문자열 자동 감지' },
+  { source: 'action (NCP) / eventId (NHN)', target: 'activity_name', rule: '직접 매핑' },
+  { source: 'actionResultType / result', target: 'status_code', rule: 'SUCCESS=200, FAIL=500' },
+  { source: 'content.actionUserName (NCP) / userName (NHN)', target: 'actor_user_name', rule: 'nested 또는 평탄' },
+  { source: 'content.sourceIp (NCP) / userIp (NHN)', target: 'src_endpoint_ip', rule: 'IPv4/IPv6' },
+  { source: '그 외 모든 원본 필드', target: 'unmapped_raw', rule: '원본 JSON 통째로 보존' },
 ];
 
 const V3OCSF = () => {
   const navigate = useNavigate();
   const showToast = useToastStore((s) => s.show);
-  const [selected, setSelected] = useState(0);
-  const sample = samples[selected];
+  const caseId = useCaseStore((s) => s.caseId);
+  const queryClient = useQueryClient();
+
+  const [page, setPage] = useState(1);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+
+  const ocsfQuery = useQuery({
+    queryKey: ['ocsf', caseId, page],
+    queryFn: () => getOcsf(caseId!, page, PAGE_SIZE),
+    enabled: !!caseId,
+  });
+
+  const normalizeMutation = useMutation({
+    mutationFn: () => runNormalize(caseId!),
+    onSuccess: (stats) => {
+      showToast(
+        `정규화 완료: ${stats.normalized}/${stats.total} (실패 ${stats.failed}, ${stats.normalizationRate}%)`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['ocsf', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`정규화 실패: ${msg}`);
+    },
+  });
+
+  if (!caseId) {
+    return (
+      <div>
+        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF 정규화" description="진행 중인 사고 케이스가 없습니다." />
+        <PageBody>
+          <Card title={<>⚠️ 케이스 없음</>}>
+            <p className="text-[13px] text-ink-300 mb-3">
+              V-1 사고 접수 위저드를 먼저 완료하고 V-2 에서 로그를 업로드하세요.
+            </p>
+            <button onClick={() => navigate('/setup')} className="btn-primary">
+              ← V-1 사고 접수로 돌아가기
+            </button>
+          </Card>
+        </PageBody>
+      </div>
+    );
+  }
+
+  const total = ocsfQuery.data?.total ?? 0;
+  const items = ocsfQuery.data?.items ?? [];
+  const selected = items[selectedIdx];
+  const stats = normalizeMutation.data;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const rawDisplay: Record<string, unknown> = selected?.unmapped_raw ?? {};
+  const ocsfDisplay: Record<string, unknown> = selected
+    ? {
+        ocsf_id: selected.ocsf_id,
+        event_id: selected.event_id,
+        time: selected.time,
+        activity_name: selected.activity_name,
+        actor_user_name: selected.actor_user_name,
+        src_endpoint_ip: selected.src_endpoint_ip,
+        status_code: selected.status_code,
+      }
+    : {};
 
   return (
     <div>
@@ -114,48 +102,138 @@ const V3OCSF = () => {
             OCSF <span className="grad-text">정규화</span>
           </>
         }
-        description="원본 CSP 로그를 OCSF 1.3 표준 스키마로 변환합니다. 좌·우 패널에서 변환 전후를 비교하고 매핑 규칙을 점검하세요."
+        description="원본 CSP 로그를 OCSF 1.3 평탄화 컬럼으로 변환합니다. 좌·우 패널에서 변환 전후를 비교하세요."
         actions={
-          <button
-            onClick={() => {
-              showToast('→ 갭 감지 진행');
-              navigate('/gap');
-            }}
-            className="btn-primary"
-          >
-            갭 감지 →
-          </button>
+          <>
+            <button
+              onClick={() => normalizeMutation.mutate()}
+              disabled={normalizeMutation.isPending}
+              className="btn-ghost disabled:opacity-50"
+            >
+              {normalizeMutation.isPending ? '정규화 중…' : '🔁 정규화 실행'}
+            </button>
+            <button onClick={() => navigate('/gap')} className="btn-primary">
+              갭 감지 →
+            </button>
+          </>
         }
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
+        {/* 백엔드 통신 상태 패널 */}
+        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="eyebrow">백엔드 응답</span>
+              {ocsfQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
+              {ocsfQuery.isError && <span className="tag-red">에러</span>}
+              {ocsfQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {normalizeMutation.isPending && <span className="tag-amber">정규화 중…</span>}
+            </div>
+            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
+          </div>
+          {ocsfQuery.isError && (
+            <div className="text-brand-red text-[11.5px]">
+              {(ocsfQuery.error as Error)?.message ?? '백엔드 호출 실패'}
+            </div>
+          )}
+          {ocsfQuery.isSuccess && (
+            <div className="text-ink-300 leading-6">
+              ocsf_events 총 <b className="text-ink-100">{total}건</b>
+              {stats && (
+                <>
+                  <span className="mx-2 text-ink-500">·</span>
+                  마지막 정규화 — total <b className="text-ink-100">{stats.total}</b> / normalized{' '}
+                  <b className="text-brand-teal">{stats.normalized}</b> / failed{' '}
+                  <b className="text-brand-red">{stats.failed}</b> (
+                  <b>{stats.normalizationRate}%</b>)
+                </>
+              )}
+              {total === 0 && (
+                <span className="ml-2 text-brand-amber">
+                  · 우상단 「정규화 실행」 버튼을 눌러 raw_events 를 정규화하세요.
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
-          <KpiCard label="정규화율" value="100%" color="teal" hint="전체 이벤트 매핑 성공" />
-          <KpiCard label="정규화 완료" value="14,832" color="blue" hint="OCSF 1.3 변환" />
-          <KpiCard label="스키마 버전" value="OCSF 1.3" color="purple" hint="2024-04 릴리스" />
+          <KpiCard
+            label="정규화된 이벤트"
+            value={total.toLocaleString()}
+            color="teal"
+            hint="ocsf_events 테이블"
+          />
+          <KpiCard
+            label="실패 (마지막 실행)"
+            value={stats?.failed ?? '—'}
+            color="red"
+            hint="failedEvents 확인"
+          />
+          <KpiCard label="스키마 버전" value="OCSF 1.3 (평탄화)" color="purple" hint="설계서 5.2절" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="eyebrow">샘플 이벤트</span>
-          {samples.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => setSelected(i)}
-              className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
-                selected === i
-                  ? 'bg-brand-blue/15 border-brand-blue/50 text-brand-blue'
-                  : 'bg-ink-900 border-ink-700 text-ink-300 hover:text-ink-100'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        {/* 샘플 selector */}
+        {items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="eyebrow">샘플 이벤트 (page {page})</span>
+            {items.slice(0, 10).map((it, i) => (
+              <button
+                key={it.ocsf_id}
+                onClick={() => setSelectedIdx(i)}
+                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all max-w-[300px] truncate ${
+                  selectedIdx === i
+                    ? 'bg-brand-blue/15 border-brand-blue/50 text-brand-blue'
+                    : 'bg-ink-900 border-ink-700 text-ink-300 hover:text-ink-100'
+                }`}
+                title={`${it.time} · ${it.activity_name}`}
+              >
+                {it.activity_name?.slice(0, 28) ?? '(no name)'}
+              </button>
+            ))}
+            {totalPages > 1 && (
+              <div className="flex gap-1 ml-auto">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="btn-ghost btn-sm disabled:opacity-40"
+                >
+                  ←
+                </button>
+                <span className="self-center text-[11px] text-ink-400">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                  className="btn-ghost btn-sm disabled:opacity-40"
+                >
+                  →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <RawJsonPanel title="원본 CSP 로그" titleColor="#FF4D6D" badge="RAW" data={sample.raw} />
-          <RawJsonPanel title="OCSF 정규화 결과" titleColor="#14D9B0" badge="OCSF 1.3" data={sample.ocsf} />
-        </div>
+        {/* 양면 비교 */}
+        {selected ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <RawJsonPanel title="원본 CSP 로그 (unmapped_raw)" titleColor="#FF4D6D" badge="RAW" data={rawDisplay} />
+            <RawJsonPanel
+              title="OCSF 정규화 평탄화 컬럼"
+              titleColor="#14D9B0"
+              badge="OCSF 1.3"
+              data={ocsfDisplay}
+            />
+          </div>
+        ) : (
+          <Card title={<>샘플 이벤트 없음</>}>
+            <p className="text-[13px] text-ink-400">
+              아직 정규화된 OCSF 이벤트가 없습니다. 「정규화 실행」 버튼을 눌러주세요.
+            </p>
+          </Card>
+        )}
 
         <FieldMappingTable mappings={mappings} />
       </PageBody>

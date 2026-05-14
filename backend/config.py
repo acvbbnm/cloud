@@ -22,6 +22,8 @@ class Settings:
     COLLECTION_TARGETS_DIR: Path = DATA_DIR / "collection_targets"
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
     TEMPLATE_DIR: Path = BASE_DIR / "templates"
+    REPORTS_DIR: Path = DATA_DIR / "reports"  # JSON 영속화
+    EXPORTS_DIR: Path = BASE_DIR / "exports"  # DOCX/PDF 산출물
 
     # ── DB ──
     DB_URL: str = os.getenv("DB_URL", f"sqlite:///{BASE_DIR / 'ai_sherpa.db'}")
@@ -50,5 +52,7 @@ class Settings:
 
 settings = Settings()
 
-# 업로드 폴더 자동 생성
+# 업로드·보고서·산출물 폴더 자동 생성
 settings.UPLOAD_DIR.mkdir(exist_ok=True)
+settings.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+settings.EXPORTS_DIR.mkdir(exist_ok=True)

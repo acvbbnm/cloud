@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `dev`
+> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (Layer 4 보고서 백엔드 1차)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -18,10 +18,10 @@
 | 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ **V2 실 API 연결 완료** | ✅ **3개 엔드포인트 + 파서 + 매처 동작** | ✅ raw 228건 E2E 검증 |
 | 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ **V3·V4 실 API 연결 완료** | ✅ 5개 엔드포인트 동작 | ✅ 정규화 100%, 매핑 76건 |
 | **Phase 3 — 보드·셰르파** | | | | |
-| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
-| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **노드 패널 실 API 연결** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
+| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6 실 API 연결** · V8 mock | ❌ Layer 3 미구현 | 🎭 V8 mock / V6 실 |
 | **Phase 4 — 보고서** | | | | |
-| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 (mock) | 🟡 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 미구현) | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
@@ -30,6 +30,92 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (자정 이후) — Layer 4 보고서 백엔드 1차 (브랜치: `geunhyung`)
+
+V-7 프론트는 mock UI 만 있었고 백엔드는 미구현 상태였음. 보고서 초안 자동 생성 + JSON 영속화 + DOCX 내보내기까지 한 번에 구현.
+
+1. **`config.py`** — `REPORTS_DIR` (data/reports), `EXPORTS_DIR` (exports) 추가, 자동 mkdir
+2. **`.gitignore`** — `backend/data/reports/*.json`, `backend/exports/` 추가
+3. **`core/board/report_generator.py`** — ReportGenerator
+   - `generate_draft(db, case_id)`: case/raw/ocsf/attack/gap/chain 데이터를 종합해 **8 섹션 자동 초안** (overview/timeline/impact/attack_analysis/response/recommendation/evidence/comments)
+     · 타임라인: OCSF 시간순 상위 20건
+     · attack 집계: technique별 count + max_risk_score
+     · 증거: collection_targets 카탈로그 vs 실제 matched_target_id 비교 (✓/✗ 마킹)
+     · 권고: gap_type 별 분기 (COLLECTION → Layer 0 복귀 등)
+   - JSON 영속화: `data/reports/{caseId}.json` (load/save/get_or_create/update_sections)
+   - DOCX 내보내기: `python-docx`로 `exports/{caseId}.docx` 생성 (8 섹션 헤딩 + 본문)
+4. **`api/report.py`** — 4개 엔드포인트
+   - `POST /api/report` (regenerate 옵션) — 초안 생성, 응답에 8섹션 dict
+   - `GET /api/report/{case_id}` — 저장된 보고서 조회
+   - `PATCH /api/report/{case_id}` — sections 부분 갱신 + status 변경. `EDIT_REPORT` / `FINALIZE_REPORT` action_logs 자동 적재
+   - `GET /api/report/{case_id}/export?format=docx` — `FileResponse` 다운로드. `EXPORT_REPORT` action_logs 적재. PDF 는 501 NotImplemented
+5. **`main.py`** — `report_router` 등록
+6. **검증** — AST syntax check 4/4 통과
+
+응답 형식은 **frontend types/index.ts `ReportResponse / ReportSections` 와 8 섹션 키 1:1 일치**. V-7 프론트는 mock → 실 API 전환 시 타입 그대로 사용 가능.
+
+PDF 내보내기는 LibreOffice 또는 wkhtmltopdf 의존성이 커서 후속 작업으로 미룸 (501 응답).
+
+### 2026-05-14 (자정 무렵) — V-6 ATT&CK 히트맵 실 API 전환 (브랜치: `geunhyung`)
+
+attack_events 데이터를 동적 집계해서 ATT&CK Cloud Matrix 형태로 시각화. 기존 mock(7기법 6전술 하드코딩) 폐기.
+
+1. **`views/V6_Attack/index.tsx` 전면 재작성**
+   - `useQuery(getAttack, page, 100)` — 한 페이지 100건 페이지네이션
+   - `useMutation(runMap)` — 상단 "↻ ATT&CK 매핑 실행" 버튼으로 POST `/api/analysis/map` 트리거
+   - `aggregate(items)` 함수: `(tactic, technique_id)` 그룹별 `count` + `max_risk_score` 집계
+   - 히트맵: 전술 위험도 내림차순 정렬, max_risk 기반 색상 분기 (≥70 red / ≥40 amber / 그 외 blue)
+   - 기법 상세 표: count 내림차순, 심각도 자동 분류 (Critical/High/Medium)
+   - 백엔드 응답 패널 (V-2~5 동일 스타일): caseId / 페이지 / 기법 종수 / 전술 커버리지
+2. **검증**: `tsc -b && vite build` 통과 (183 modules)
+
+walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 → V-6 까지 풀 연동. 남은 mock: V-7 보고서 / V-8 셰르파 채팅 (둘 다 Layer 3/4 백엔드 미구현 종속).
+
+### 2026-05-14 (밤) — V-5 수사 보드 프론트 실 API 전환 (브랜치: `geunhyung`)
+
+직전 Layer 4 백엔드를 V-5 프론트와 연결. ATT&CK 매핑 결과 → 보드 노드 추가 → 수락/거부 흐름이 백엔드와 통신.
+
+1. **`api/board.ts` 신규** — `getBoard / createNode / updateNode / createEdge` 4개 함수
+2. **`views/V5_Board/index.tsx` 재작성**
+   - caseId 가드 (V-2~4 패턴)
+   - 백엔드 응답 패널 (chain_nodes / edges / ATT&CK 후보 카운트)
+   - 메인 영역: `BoardCanvas` (드래그-드롭 캔버스 — 클라이언트 시각화 보조, 백엔드 미연동 유지)
+     · "공격 체인 노드 (chain_nodes)" 카드 — `useQuery(getBoard).nodes` 표시. CONFIRMED/REJECTED 상태별 색상, REJECTED 는 strike-through
+     · "ATT&CK 매핑 후보 (top 10)" 카드 — `useQuery(getAttack)` risk_score 내림차순 grid 2열
+   - 우측 상세 카드:
+     · 보드 노드 선택 시: 라벨/상태/유형/attack_id + ✓ 수락/✗ 거부 버튼 → `useMutation(updateNode)` PATCH (백엔드가 action_logs 자동 적재)
+     · ATT&CK 후보 선택 시: 기법/전술/risk/시각 + "+ 보드에 추가" 버튼 → `useMutation(createNode)` POST (label 자동 생성)
+   - 중복 추가 방지: `addedAttackIds` 집합으로 이미 보드에 있는 attack 카드는 opacity-60 + 버튼 비활성화
+   - AI 셰르파 브리핑 카드는 "[Layer 3 미구현 — mock 표시 중]" 라벨로 명시
+3. **검증** — `tsc -b && vite build` 통과 (184 modules)
+
+walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 노드 패널까지 풀 연동. 남은 mock: V-6 ATT&CK 히트맵 / V-7 보고서 / V-8 셰르파 채팅.
+
+### 2026-05-14 (밤) — Layer 4 수사 보드 백엔드 1차 (브랜치: `geunhyung`)
+
+V-5 프론트는 mock 으로 작성되어 있었으나 백엔드가 미구현이어서 실 데이터 흐름이 막혀 있었음. Layer 4 의 노드/엣지 CRUD 4개 엔드포인트를 추가해 흐름을 뚫음.
+
+> 참고: V-3/V-4 mock → 실 API 전환을 김병우(byungwoo)와 이근형이 동시 진행했고, 김병우 거(`e7da3ab`)가 dev 에 먼저 머지되어 그 거를 정답으로 채택. 이근형의 V-3/V-4 작업분(`87478ad`)은 폐기, Layer 4 백엔드 + V-5 프론트만 dev 위에 cherry-pick. `backup/2gu-before-dev-rebase` 태그에 폐기 전 상태 보존. 그리고 협업 공지에 맞춰 브랜치 이름 `2gu` → `geunhyung` 으로 변경.
+
+1. **`core/board/chain.py`** — ChainNode / ChainEdge 도메인 객체
+   - `ChainNode.create` — attack_id 옵셔널(AI 후보 노드는 NULL), 기본 status=CONFIRMED
+   - `ChainNode.update` — status·pos·label 부분 갱신
+   - `ChainNode.serialize` — frontend `BoardNode` 와 동일 형식 (snake_case, pos 기본 0)
+   - `ChainNode.derive_label_from_attack` — attack_id 주어지면 `"T1078.004 · Initial Access"` 형태 라벨 자동 생성
+   - `ChainEdge.create / serialize` — `BoardEdge` 형식
+2. **`core/board/investigation_board.py`** — case 단위 집계
+   - `get_state(case_id)` — nodes + edges 직렬화, case 미존재 시 None
+   - `validate_edge` — self-loop 금지 + 노드 존재성 + 같은 case 소속 검증
+3. **`api/board.py`** — 4개 엔드포인트
+   - `POST /api/board/nodes` — attack_id 유효성 검증, label 미지정 시 자동 생성
+   - `PATCH /api/board/nodes/{node_id}` — status 변경 시 `action_logs` 에 ACCEPT/REJECT 자동 적재 (CLAUDE.md actor='investigator')
+   - `POST /api/board/edges` — `validate_edge` 통과해야 생성
+   - `GET /api/board?caseId=` — `BoardResponse` 반환
+4. **`main.py`** — `board_router` 등록
+5. **검증** — AST syntax check 4/4 통과. DB E2E 는 다음 작업.
+
+응답 형식은 **frontend `types/index.ts` 의 `BoardNode/BoardEdge/BoardResponse` 와 정확히 일치**하도록 작성. V-5 프론트는 mock → 실 API 전환 시 타입만 가져다 쓰면 됨.
 
 ### 2026-05-14 (저녁) — V3 OCSF + V4 Gap 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
 

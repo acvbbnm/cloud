@@ -112,8 +112,24 @@ class AISherpa:
         query: str,
         history: Optional[list[dict]] = None,
     ) -> dict:
-        """자연어 질의 — RAG 검색 + LLM 응답 + 세션 누적."""
+        """자연어 질의 — RAG 검색 + LLM 응답 + 세션 누적.
+
+        세션 정책 (설계서 5.1절 정합):
+          - session_id 가 있고 서버 메모리에 존재하면: 그 세션을 이어 사용 (stateful)
+          - 그 외에는 신규 세션을 만들고, history 가 주어졌으면 미리 채워넣는다
+            (클라이언트 stateless 흐름 지원 — 클라이언트가 매 요청 history 배열을
+            전달하면 서버는 그 위에 추가만 한다)
+        """
         sess = ChatSession.get_or_create(session_id, case_id)
+
+        # 신규 세션이고 history 가 들어왔으면 미리 채움 (멱등 보장 위해 빈 세션에만)
+        if history and not sess.messages:
+            for h in history:
+                role = h.get("role")
+                content = h.get("content")
+                if role in ("user", "assistant") and isinstance(content, str):
+                    ChatSession.append(sess.session_id, role, content)
+
         ChatSession.append(sess.session_id, "user", query)
 
         scored = RAGRetriever.retrieve(query, k=3)

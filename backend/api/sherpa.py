@@ -8,7 +8,7 @@
 """
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,20 @@ from db.session import get_db
 router = APIRouter(prefix="/api/sherpa", tags=["sherpa"])
 
 
+# ── 공통 에러 헬퍼 (intake/board/report.py 와 동일 패턴) ──
+
+
+def _case_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail={
+            "status": "error",
+            "message": "케이스를 찾을 수 없습니다",
+            "code": "CASE_NOT_FOUND",
+        },
+    )
+
+
 # ── 요청 스키마 ────────────────────────────────────────────
 
 
@@ -30,7 +44,7 @@ class BriefRequest(BaseModel):
 
 
 class ChatHistoryItem(BaseModel):
-    role: str
+    role: str  # 'user' / 'assistant'
     content: str
 
 
@@ -57,32 +71,60 @@ class PlaybookRequest(BaseModel):
 
 @router.post("/brief")
 async def post_brief(req: BriefRequest, db: Session = Depends(get_db)) -> dict:
-    """ATT&CK 컨텍스트 브리핑."""
+    """ATT&CK 컨텍스트 브리핑.
+
+    eventId(attack_id) 미지정 시 case 내 최상위 위험도 attack 자동 선택.
+    case 미존재 시 HTTP 404.
+    """
     case = IncidentCase.get_by_id(db, req.caseId)
     if case is None:
-        return {"status": "error", "message": "케이스를 찾을 수 없습니다", "code": "CASE_NOT_FOUND"}
+        raise _case_not_found()
     data = AISherpa.brief(db, req.caseId, req.eventId)
     return {"status": "ok", "data": data}
 
 
 @router.post("/chat")
-async def post_chat(req: ChatRequest) -> dict:
-    """자연어 질의 — RAG 검색 + 응답."""
+async def post_chat(req: ChatRequest, db: Session = Depends(get_db)) -> dict:
+    """자연어 질의 — RAG 검색 + 응답.
+
+    sessionId 가 주어지면 서버 인메모리 세션을 이어 사용 (stateful).
+    sessionId 가 없고 history 가 주어지면 stateless 클라이언트로 간주하여
+    history 를 신규 세션에 미리 채우고 그 위에 query 를 더한다 (설계서 5.1절 정합).
+
+    caseId 가 주어지면 존재 여부를 검증하고, 없으면 HTTP 404.
+    """
+    if req.caseId:
+        case = IncidentCase.get_by_id(db, req.caseId)
+        if case is None:
+            raise _case_not_found()
+
     history = [h.model_dump() for h in (req.history or [])]
-    data = AISherpa.chat(req.caseId, req.sessionId, req.query, history)
+    data = AISherpa.chat(
+        case_id=req.caseId,
+        session_id=req.sessionId,
+        query=req.query,
+        history=history,
+    )
     return {"status": "ok", "data": data}
 
 
 @router.post("/suggest")
 async def post_suggest(req: SuggestRequest, db: Session = Depends(get_db)) -> dict:
     """빠진 고리 후보 (후순위 깡통)."""
+    case = IncidentCase.get_by_id(db, req.caseId)
+    if case is None:
+        raise _case_not_found()
     data = AISherpa.suggest_missing_link(db, req.caseId, req.nodeA, req.nodeB)
     return {"status": "ok", "data": data}
 
 
 @router.post("/playbook")
-async def post_playbook(req: PlaybookRequest) -> dict:
+async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> dict:
     """공격 체인에 대한 플레이북 추천 (후순위 깡통)."""
+    if req.caseId:
+        case = IncidentCase.get_by_id(db, req.caseId)
+        if case is None:
+            raise _case_not_found()
     data = AISherpa.recommend_playbook(req.chain)
     return {"status": "ok", "data": data}
 

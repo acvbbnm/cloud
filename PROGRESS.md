@@ -31,6 +31,26 @@
 
 ## 작업 내역
 
+### 2026-05-14 (저녁) — 합성 raw 로그 생성기 + 시연 노트북 대응 (브랜치: `easy`)
+
+실 raw 로그(NCP 81 + NHN 147)는 김병우 PC에만 있고 민감 정보(이메일·UUID·세션쿠키)라 git 공유 불가. 시연 노트북·다른 팀원 환경·CI 에서도 V-2 업로드 → 풀 파이프라인이 동작하도록 합성 raw 로그 생성기를 추가.
+
+1. **`scripts/synthesize_logs.py`** — CLI 합성기
+   - 4종 시나리오: `ncp_none` · `ncp_collection` · `nhn_none` · `nhn_collection`
+   - `data/mapping_rules` · `data/attack_rules` · `core/ingestion/matchers.py` 와 100% 호환되는 raw 스키마 생성
+   - Kill Chain 시뮬레이션: Initial Access(brute-force) → Persistence(자격증명) → Lateral Movement → Exfiltration → Impact → 흔적 제거
+   - 공격자 IP `115.91.214.5` 공유 — 실 raw에서 관찰된 멀티 CSP 연계 패턴 유지
+   - NCP eventTime 두 형식(Unix ms + 'YYYY-MM-DD HH:MM:SS UTC') 의도적으로 혼합 → 파서 강건성 검증
+   - `--seed` 옵션으로 재현성 보장
+2. **`data/synthetic/*.json` 4개 커밋** — 시연자가 즉시 사용 가능
+3. **`scripts/verify_synthetic.py`** — 4개 시나리오를 dev 풀 파이프라인(case→upload→normalize→map→gap)에 통과시켜 기대값(NONE/COLLECTION) 자동 단언
+4. **검증 결과** (2026-05-14):
+   - `ncp_none`: 16건 적재 → IAM-001~005 5/5 매칭 → 정규화 100% → ATT&CK 16/16 → **NONE, 100%** ✅
+   - `ncp_collection`: 14건 → IAM-001/002/004/005 → 정규화 100% → ATT&CK 14/14 → **COLLECTION, CT-NCP-IAM-003 missing** ✅
+   - `nhn_none`: 16건 → IAM-001~005 5/5 → 정규화 100% → ATT&CK 13/16 (org/project.selected 등은 attack_rules에 없음 — 정상) → **NONE, 100%** ✅
+   - `nhn_collection`: 15건 → IAM-001/003/004/005 → 정규화 100% → ATT&CK 13/15 → **COLLECTION, CT-NHN-IAM-002 missing** ✅
+5. **`docs/시연_체크리스트.md`** — "테스트 데이터" 섹션을 A(합성, 저장소 포함) / B(실 raw, 별도 전달) 2단계로 재편
+
 ### 2026-05-14 (시연 리허설 대응) — UX 안정화 3건 (브랜치: `geunhyung`)
 
 `docs/시연_체크리스트.md` § 5 "흔한 버그 후보" 중 코드 수정으로 명확히 개선 가능한 3건을 한 PR 로 묶어 처리. 시연 직전 발견 확률 높은 영역.

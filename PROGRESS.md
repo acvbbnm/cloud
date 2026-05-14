@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `2gu` (Layer 4 백엔드 + V-5 프론트 실 API 전환)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (V-6 ATT&CK 히트맵 실 API 전환)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -19,7 +19,7 @@
 | 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ **V3·V4 실 API 연결 완료** | ✅ 5개 엔드포인트 동작 | ✅ 정규화 100%, 매핑 76건 |
 | **Phase 3 — 보드·셰르파** | | | | |
 | 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **노드 패널 실 API 연결** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
-| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6 실 API 연결** · V8 mock | ❌ Layer 3 미구현 | 🎭 V8 mock / V6 실 |
 | **Phase 4 — 보고서** | | | | |
 | 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 
@@ -30,6 +30,21 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (자정 무렵) — V-6 ATT&CK 히트맵 실 API 전환 (브랜치: `geunhyung`)
+
+attack_events 데이터를 동적 집계해서 ATT&CK Cloud Matrix 형태로 시각화. 기존 mock(7기법 6전술 하드코딩) 폐기.
+
+1. **`views/V6_Attack/index.tsx` 전면 재작성**
+   - `useQuery(getAttack, page, 100)` — 한 페이지 100건 페이지네이션
+   - `useMutation(runMap)` — 상단 "↻ ATT&CK 매핑 실행" 버튼으로 POST `/api/analysis/map` 트리거
+   - `aggregate(items)` 함수: `(tactic, technique_id)` 그룹별 `count` + `max_risk_score` 집계
+   - 히트맵: 전술 위험도 내림차순 정렬, max_risk 기반 색상 분기 (≥70 red / ≥40 amber / 그 외 blue)
+   - 기법 상세 표: count 내림차순, 심각도 자동 분류 (Critical/High/Medium)
+   - 백엔드 응답 패널 (V-2~5 동일 스타일): caseId / 페이지 / 기법 종수 / 전술 커버리지
+2. **검증**: `tsc -b && vite build` 통과 (183 modules)
+
+walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 → V-6 까지 풀 연동. 남은 mock: V-7 보고서 / V-8 셰르파 채팅 (둘 다 Layer 3/4 백엔드 미구현 종속).
 
 ### 2026-05-14 (밤) — V-5 수사 보드 프론트 실 API 전환 (브랜치: `geunhyung`)
 

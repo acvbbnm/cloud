@@ -1,4 +1,7 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
@@ -6,69 +9,146 @@ import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
 import Badge from '@/components/Badge';
 import { useToastStore } from '@/stores/useToastStore';
+import { useCaseStore } from '@/stores/useCaseStore';
+import { getAttack, runMap } from '@/api/analysis';
+import type { AttackEventItem } from '@/types';
 
-interface MatrixCell {
-  id: string;
-  label: string;
-  intensity: 'high' | 'med' | 'low';
-}
+const FETCH_PAGE_SIZE = 100; // 한 페이지로 모두 받아 집계 (228건이면 두 페이지로 충분)
 
-interface MatrixCol {
+interface TechniqueAgg {
+  technique_id: string;
+  technique_name: string | null;
   tactic: string;
-  cells: MatrixCell[];
+  count: number;
+  max_risk: number;
 }
 
-const matrix: MatrixCol[] = [
-  {
-    tactic: 'Initial Access',
-    cells: [{ id: 'T1078', label: 'T1078 Valid Accounts', intensity: 'high' }],
-  },
-  {
-    tactic: 'Persistence',
-    cells: [
-      { id: 'T1098', label: 'T1098 Account Manip', intensity: 'high' },
-      { id: 'T1136', label: 'T1136 Create Account', intensity: 'med' },
-    ],
-  },
-  {
-    tactic: 'Priv Escalation',
-    cells: [{ id: 'T1078.004', label: 'T1078.004 Cloud', intensity: 'high' }],
-  },
-  {
-    tactic: 'Defense Evasion',
-    cells: [{ id: 'T1562', label: 'T1562 Impair Def', intensity: 'med' }],
-  },
-  {
-    tactic: 'Collection',
-    cells: [{ id: 'T1530', label: 'T1530 Cloud Storage', intensity: 'high' }],
-  },
-  {
-    tactic: 'Exfiltration',
-    cells: [{ id: 'T1537', label: 'T1537 Transfer', intensity: 'high' }],
-  },
-];
+type Intensity = 'high' | 'med' | 'low';
 
-const techniques = [
-  { id: 'T1078', name: 'Valid Accounts', tactic: 'Initial Access', count: 23, severity: 'Critical' as const },
-  { id: 'T1098', name: 'Account Manipulation', tactic: 'Persistence', count: 18, severity: 'Critical' as const },
-  { id: 'T1078.004', name: 'Cloud Accounts', tactic: 'Priv Escalation', count: 45, severity: 'Critical' as const },
-  { id: 'T1530', name: 'Data from Cloud Storage', tactic: 'Collection', count: 142, severity: 'Critical' as const },
-  { id: 'T1537', name: 'Transfer to Cloud Acct', tactic: 'Exfiltration', count: 87, severity: 'Critical' as const },
-  { id: 'T1136', name: 'Create Account', tactic: 'Persistence', count: 12, severity: 'High' as const },
-  { id: 'T1562', name: 'Impair Defenses', tactic: 'Defense Evasion', count: 15, severity: 'High' as const },
-];
+const intensityFor = (maxRisk: number): Intensity => {
+  if (maxRisk >= 70) return 'high';
+  if (maxRisk >= 40) return 'med';
+  return 'low';
+};
 
-const intensityClass: Record<MatrixCell['intensity'], string> = {
+const intensityClass: Record<Intensity, string> = {
   high: 'bg-brand-red/22 text-brand-red ring-brand-red/30',
   med: 'bg-brand-amber/18 text-brand-amber ring-brand-amber/25',
   low: 'bg-brand-blue/15 text-brand-blue ring-brand-blue/20',
 };
 
-const sevTone = (s: 'Critical' | 'High') => (s === 'Critical' ? 'red' : 'amber');
+const sevTone = (maxRisk: number): 'red' | 'amber' | 'blue' =>
+  maxRisk >= 70 ? 'red' : maxRisk >= 40 ? 'amber' : 'blue';
+
+const severityLabel = (maxRisk: number): string =>
+  maxRisk >= 70 ? 'Critical' : maxRisk >= 40 ? 'High' : 'Medium';
+
+/**
+ * AttackEventItem[] → tactic 별 컬럼 + technique 집계.
+ * (tactic, technique_id) 그룹별 count + maxRiskScore.
+ */
+const aggregate = (items: AttackEventItem[]): TechniqueAgg[] => {
+  const map = new Map<string, TechniqueAgg>();
+  for (const ev of items) {
+    const key = `${ev.tactic}::${ev.technique_id}`;
+    const prev = map.get(key);
+    const risk = ev.risk_score ?? 0;
+    if (prev) {
+      prev.count += 1;
+      if (risk > prev.max_risk) prev.max_risk = risk;
+    } else {
+      map.set(key, {
+        technique_id: ev.technique_id,
+        technique_name: ev.technique_name,
+        tactic: ev.tactic,
+        count: 1,
+        max_risk: risk,
+      });
+    }
+  }
+  return Array.from(map.values());
+};
 
 const V6Attack = () => {
   const navigate = useNavigate();
   const showToast = useToastStore((s) => s.show);
+  const caseId = useCaseStore((s) => s.caseId);
+  const queryClient = useQueryClient();
+
+  const [page, setPage] = useState(1);
+
+  const attackQuery = useQuery({
+    queryKey: ['attack', caseId, page, FETCH_PAGE_SIZE],
+    queryFn: () => getAttack(caseId!, page, FETCH_PAGE_SIZE),
+    enabled: !!caseId,
+  });
+
+  const mapMutation = useMutation({
+    mutationFn: () => runMap(caseId!),
+    onSuccess: (stats) => {
+      showToast(
+        `매핑 완료: OCSF ${stats.total_ocsf}건 중 mapped ${stats.mapped} / unmapped ${stats.unmapped} (rate ${stats.mappingRate}%)`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['attack', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`매핑 실패: ${msg}`);
+    },
+  });
+
+  if (!caseId) {
+    return (
+      <div>
+        <PageHeader
+          eyebrow="Layer 3 · M3-2"
+          title="ATT&CK 매핑"
+          description="진행 중인 사고 케이스가 없습니다."
+        />
+        <PageBody>
+          <Card title={<>⚠️ 케이스 없음</>}>
+            <p className="text-[13px] text-ink-300 mb-3">
+              V-1 사고 접수 위저드를 먼저 완료해야 매핑 결과를 볼 수 있습니다.
+            </p>
+            <button onClick={() => navigate('/setup')} className="btn-primary">
+              ← V-1 사고 접수로 돌아가기
+            </button>
+          </Card>
+        </PageBody>
+      </div>
+    );
+  }
+
+  const items = attackQuery.data?.items ?? [];
+  const total = attackQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / FETCH_PAGE_SIZE));
+
+  // 집계 (현재 페이지의 items 기준 — 페이지당 100건이면 일반적으로 한 페이지로 충분)
+  const aggregations = useMemo(() => aggregate(items), [items]);
+
+  // tactic 별로 그룹핑 (히트맵 컬럼)
+  const matrixByTactic = useMemo(() => {
+    const groups = new Map<string, TechniqueAgg[]>();
+    for (const agg of aggregations) {
+      const arr = groups.get(agg.tactic) ?? [];
+      arr.push(agg);
+      groups.set(agg.tactic, arr);
+    }
+    // 전술 정렬: max_risk 내림차순 (가장 위험한 전술 왼쪽)
+    return Array.from(groups.entries())
+      .map(([tactic, techs]) => ({
+        tactic,
+        techniques: techs.sort((a, b) => b.max_risk - a.max_risk),
+        max_risk: Math.max(...techs.map((t) => t.max_risk)),
+      }))
+      .sort((a, b) => b.max_risk - a.max_risk);
+  }, [aggregations]);
+
+  // 기법 상세 표: count 내림차순
+  const techTable = useMemo(
+    () => [...aggregations].sort((a, b) => b.count - a.count),
+    [aggregations],
+  );
 
   return (
     <div>
@@ -79,83 +159,181 @@ const V6Attack = () => {
             MITRE ATT&CK <span className="grad-text">매핑</span>
           </>
         }
-        description="Cloud Matrix 6 전술 × 7 기법으로 사고 흐름을 가시화합니다. 모든 매핑은 규칙 기반 JSON으로 환각이 없습니다."
+        description="attack_events 집계를 ATT&CK Cloud Matrix 전술×기법 히트맵으로 시각화합니다. 규칙 기반 JSON 매핑 결과라 환각이 없습니다."
         actions={
-          <button
-            onClick={() => {
-              showToast('→ 보고서 생성');
-              navigate('/report');
-            }}
-            className="btn-primary"
-          >
-            보고서 →
-          </button>
+          <>
+            <button
+              onClick={() => mapMutation.mutate()}
+              disabled={mapMutation.isPending}
+              className="btn-ghost"
+            >
+              {mapMutation.isPending ? '매핑 중…' : '↻ ATT&CK 매핑 실행'}
+            </button>
+            <button
+              onClick={() => {
+                showToast('→ 보고서 생성');
+                navigate('/report');
+              }}
+              className="btn-primary"
+            >
+              보고서 →
+            </button>
+          </>
         }
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        <div className="grid grid-cols-3 gap-3">
-          <KpiCard label="탐지된 기법" value={techniques.length} color="purple" hint="Sub-technique 포함" />
-          <KpiCard label="전술 커버리지" value={matrix.length} color="red" hint="6 / 14 전술" />
-          <KpiCard label="매핑 이벤트" value={342} color="blue" hint="OCSF → ATT&CK" />
+        {/* 백엔드 통신 상태 패널 */}
+        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="eyebrow">백엔드 응답</span>
+              {attackQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
+              {attackQuery.isError && <span className="tag-red">에러</span>}
+              {attackQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {mapMutation.isPending && <span className="tag-amber">매핑 중…</span>}
+            </div>
+            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
+          </div>
+          {attackQuery.isError && (
+            <div className="text-brand-red text-[11.5px]">
+              {(attackQuery.error as Error)?.message ?? '백엔드 호출 실패'}
+            </div>
+          )}
+          {attackQuery.isSuccess && (
+            <div className="text-ink-300 leading-6">
+              attack_events 총 <b className="text-ink-100">{total}건</b> · 페이지 <b>{page}</b>/{totalPages} ·
+              현재 페이지 기준 기법 <b className="text-ink-100">{aggregations.length}종</b> ·
+              전술 커버리지 <b className="text-ink-100">{matrixByTactic.length}전술</b>
+            </div>
+          )}
         </div>
 
-        <Card title={<>ATT&CK Cloud Matrix 히트맵</>} subtitle="● = 탐지됨 · 매핑 강도에 따라 색상이 진해집니다">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {matrix.map((col) => (
-              <div key={col.tactic}>
-                <div className="text-center pb-2 border-b-2 border-ink-700/70 text-ink-300 text-[10.5px] font-bold uppercase tracking-[0.08em] mb-2">
-                  {col.tactic}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {col.cells.map((cell) => (
-                    <a
-                      key={cell.id}
-                      href={`https://attack.mitre.org/techniques/${cell.id.replace(/\./g, '/')}/`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`block px-2 py-2 rounded-lg text-[10.5px] font-medium ring-1 ring-inset ${intensityClass[cell.intensity]} hover:brightness-125 transition-all`}
-                    >
-                      {cell.label}
-                      {cell.intensity === 'high' && <span className="ml-1">●</span>}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <div className="grid grid-cols-3 gap-3">
+          <KpiCard
+            label="탐지된 기법"
+            value={aggregations.length}
+            color="purple"
+            hint={total > 0 ? `${total}건의 ATT&CK 매핑 결과` : '매핑 대기'}
+          />
+          <KpiCard
+            label="전술 커버리지"
+            value={`${matrixByTactic.length}`}
+            color="red"
+            hint="MITRE ATT&CK Cloud Matrix"
+          />
+          <KpiCard
+            label="매핑 이벤트"
+            value={total.toLocaleString()}
+            color="blue"
+            hint="attack_events 총 건수"
+          />
+        </div>
 
-        <Card title={<>탐지 기법 상세</>}>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[12.5px]">
-              <thead>
-                <tr className="bg-ink-950/70 text-ink-400 text-[10.5px] uppercase tracking-[0.1em]">
-                  <th className="text-left px-3 py-3 border-b border-ink-700/60">기법 ID</th>
-                  <th className="text-left px-3 py-3 border-b border-ink-700/60">기법명</th>
-                  <th className="text-left px-3 py-3 border-b border-ink-700/60">전술</th>
-                  <th className="text-left px-3 py-3 border-b border-ink-700/60">이벤트 수</th>
-                  <th className="text-left px-3 py-3 border-b border-ink-700/60">심각도</th>
-                </tr>
-              </thead>
-              <tbody>
-                {techniques.map((t) => (
-                  <tr key={t.id} className="border-b border-ink-700/30 hover:bg-brand-blue/[0.04]">
-                    <td className="px-3 py-2.5">
-                      <Badge tone="purple">{t.id}</Badge>
-                    </td>
-                    <td className="px-3 py-2.5 font-medium">{t.name}</td>
-                    <td className="px-3 py-2.5 text-ink-200">{t.tactic}</td>
-                    <td className="px-3 py-2.5 font-mono text-ink-100">{t.count}</td>
-                    <td className="px-3 py-2.5">
-                      <Badge tone={sevTone(t.severity)}>{t.severity}</Badge>
-                    </td>
+        {items.length === 0 && !attackQuery.isLoading && (
+          <Card title={<>📭 ATT&CK 매핑 결과 없음</>}>
+            <p className="text-[12.5px] text-ink-300 leading-6">
+              아직 ATT&CK 매핑 결과가 없습니다. 상단의 <code className="text-brand-teal">↻ ATT&CK 매핑 실행</code> 버튼으로
+              <code className="text-brand-teal mx-1">POST /api/analysis/map</code> 을 호출하세요.
+              V-3 정규화 + V-2 raw 적재가 선행되어 있어야 합니다.
+            </p>
+          </Card>
+        )}
+
+        {matrixByTactic.length > 0 && (
+          <Card
+            title={<>ATT&CK Cloud Matrix 히트맵</>}
+            subtitle="● = 탐지 · 색상 = max risk_score (≥70 red / ≥40 amber / 그 외 blue) · 정렬 = 전술 위험도 내림차순"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+              {matrixByTactic.map((col) => (
+                <div key={col.tactic}>
+                  <div className="text-center pb-2 border-b-2 border-ink-700/70 text-ink-300 text-[10.5px] font-bold uppercase tracking-[0.08em] mb-2">
+                    {col.tactic}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {col.techniques.map((t) => {
+                      const intensity = intensityFor(t.max_risk);
+                      return (
+                        <a
+                          key={t.technique_id}
+                          href={`https://attack.mitre.org/techniques/${t.technique_id.replace(/\./g, '/')}/`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`block px-2 py-2 rounded-lg text-[10.5px] font-medium ring-1 ring-inset ${intensityClass[intensity]} hover:brightness-125 transition-all`}
+                          title={`${t.technique_name ?? ''} (${t.count}건, max risk ${t.max_risk})`}
+                        >
+                          <div className="font-bold">{t.technique_id}</div>
+                          <div className="truncate">{t.technique_name ?? '—'}</div>
+                          <div className="text-[9.5px] opacity-75 mt-0.5">
+                            {t.count}건 · risk {t.max_risk}
+                            {intensity === 'high' && <span className="ml-1">●</span>}
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {techTable.length > 0 && (
+          <Card title={<>탐지 기법 상세 (count 내림차순)</>}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12.5px]">
+                <thead>
+                  <tr className="bg-ink-950/70 text-ink-400 text-[10.5px] uppercase tracking-[0.1em]">
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">기법 ID</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">기법명</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">전술</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">이벤트 수</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">max risk</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">심각도</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                </thead>
+                <tbody>
+                  {techTable.map((t) => (
+                    <tr key={`${t.tactic}-${t.technique_id}`} className="border-b border-ink-700/30 hover:bg-brand-blue/[0.04]">
+                      <td className="px-3 py-2.5">
+                        <Badge tone="purple">{t.technique_id}</Badge>
+                      </td>
+                      <td className="px-3 py-2.5 font-medium">{t.technique_name ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-ink-200">{t.tactic}</td>
+                      <td className="px-3 py-2.5 font-mono text-ink-100">{t.count}</td>
+                      <td className="px-3 py-2.5 font-mono text-ink-200">{t.max_risk}</td>
+                      <td className="px-3 py-2.5">
+                        <Badge tone={sevTone(t.max_risk)}>{severityLabel(t.max_risk)}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {total > FETCH_PAGE_SIZE && (
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="btn-ghost btn-sm disabled:opacity-40"
+                >
+                  ← 이전
+                </button>
+                <span className="self-center text-[11.5px] text-ink-400">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                  className="btn-ghost btn-sm disabled:opacity-40"
+                >
+                  다음 →
+                </button>
+              </div>
+            )}
+          </Card>
+        )}
       </PageBody>
     </div>
   );

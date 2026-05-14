@@ -29,6 +29,7 @@ class Settings:
     # ── CORS ──
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite 기본 포트
+        "http://localhost:5174",  # Vite 충돌 시 자동 fallback
         "http://localhost:3000",
     ]
 

@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `dev`
+> 마지막 업데이트: 2026-05-14 · 브랜치: `2gu` (Layer 4 수사 보드 백엔드 추가)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -18,7 +18,7 @@
 | 2-1 Layer 1 로그 수집 | V2 드롭존·미리보기 | ✅ **V2 실 API 연결 완료** | ✅ **3개 엔드포인트 + 파서 + 매처 동작** | ✅ raw 228건 E2E 검증 |
 | 2-2 Layer 2 분석 | V3 OCSF · V4 갭 | ✅ **V3·V4 실 API 연결 완료** | ✅ 5개 엔드포인트 동작 | ✅ 정규화 100%, 매핑 76건 |
 | **Phase 3 — 보드·셰르파** | | | | |
-| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
+| 3-1 Layer 4 수사 보드 | V5 보드 | ✅ **노드 패널 실 API 연결** | 🟡 백엔드 1차 (4개 엔드포인트, DB E2E 미검증) | — |
 | 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
 | **Phase 4 — 보고서** | | | | |
 | 4-1 보고서 | V7 보고서 편집기 | ✅ UI 완료 | ❌ 미구현 | 🎭 mock |
@@ -30,6 +30,31 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-14 (밤) — Layer 4 수사 보드 백엔드 1차 (브랜치: `geunhyung`)
+
+V-5 프론트는 mock 으로 작성되어 있었으나 백엔드가 미구현이어서 실 데이터 흐름이 막혀 있었음. Layer 4 의 노드/엣지 CRUD 4개 엔드포인트를 추가해 흐름을 뚫음.
+
+> 참고: V-3/V-4 mock → 실 API 전환을 김병우(byungwoo)와 이근형이 동시 진행했고, 김병우 거(`e7da3ab`)가 dev 에 먼저 머지되어 그 거를 정답으로 채택. 이근형의 V-3/V-4 작업분(`87478ad`)은 폐기, Layer 4 백엔드 + V-5 프론트만 dev 위에 cherry-pick. `backup/2gu-before-dev-rebase` 태그에 폐기 전 상태 보존. 그리고 협업 공지에 맞춰 브랜치 이름 `2gu` → `geunhyung` 으로 변경.
+
+1. **`core/board/chain.py`** — ChainNode / ChainEdge 도메인 객체
+   - `ChainNode.create` — attack_id 옵셔널(AI 후보 노드는 NULL), 기본 status=CONFIRMED
+   - `ChainNode.update` — status·pos·label 부분 갱신
+   - `ChainNode.serialize` — frontend `BoardNode` 와 동일 형식 (snake_case, pos 기본 0)
+   - `ChainNode.derive_label_from_attack` — attack_id 주어지면 `"T1078.004 · Initial Access"` 형태 라벨 자동 생성
+   - `ChainEdge.create / serialize` — `BoardEdge` 형식
+2. **`core/board/investigation_board.py`** — case 단위 집계
+   - `get_state(case_id)` — nodes + edges 직렬화, case 미존재 시 None
+   - `validate_edge` — self-loop 금지 + 노드 존재성 + 같은 case 소속 검증
+3. **`api/board.py`** — 4개 엔드포인트
+   - `POST /api/board/nodes` — attack_id 유효성 검증, label 미지정 시 자동 생성
+   - `PATCH /api/board/nodes/{node_id}` — status 변경 시 `action_logs` 에 ACCEPT/REJECT 자동 적재 (CLAUDE.md actor='investigator')
+   - `POST /api/board/edges` — `validate_edge` 통과해야 생성
+   - `GET /api/board?caseId=` — `BoardResponse` 반환
+4. **`main.py`** — `board_router` 등록
+5. **검증** — AST syntax check 4/4 통과. DB E2E 는 다음 작업.
+
+응답 형식은 **frontend `types/index.ts` 의 `BoardNode/BoardEdge/BoardResponse` 와 정확히 일치**하도록 작성. V-5 프론트는 mock → 실 API 전환 시 타입만 가져다 쓰면 됨.
 
 ### 2026-05-14 (저녁) — V3 OCSF + V4 Gap 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
 

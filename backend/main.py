@@ -14,7 +14,7 @@ from api.intake import router as intake_router
 from api.ingestion import router as ingestion_router
 from api.analysis import router as analysis_router
 # from api.sherpa import router as sherpa_router
-# from api.board import router as board_router
+from api.board import router as board_router
 # from api.report import router as report_router
 
 app = FastAPI(
@@ -37,7 +37,7 @@ app.include_router(intake_router)
 app.include_router(ingestion_router)
 app.include_router(analysis_router)
 # app.include_router(sherpa_router)
-# app.include_router(board_router)
+app.include_router(board_router)
 # app.include_router(report_router)
 
 

@@ -197,8 +197,76 @@ export interface BriefingResponse {
   confidence: string;
 }
 
+export interface SherpaSource {
+  source_id: string;
+  type: string; // ATTACK / PLAYBOOK / CSP_DOC / CASE_DB
+  title: string;
+  url?: string | null;
+}
+
+export interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatRequest {
+  caseId?: string | null;
+  sessionId?: string | null;
+  query: string;
+  history?: ChatHistoryItem[];
+}
+
 export interface ChatResponse {
   sessionId: string;
   response: string;
-  sources: { source_id: string; type: string; title: string }[];
+  sources: SherpaSource[];
+}
+
+export interface SuggestRequest {
+  caseId: string;
+  nodeA: string;
+  nodeB: string;
+}
+
+export interface SuggestionItem {
+  technique_id: string;
+  technique_name: string;
+  tactic: string;
+  reason: string;
+  candidateEvents: string[];
+  confidence: string;
+  sources: SherpaSource[];
+}
+
+export interface SuggestResponse {
+  suggestions: SuggestionItem[];
+}
+
+export interface PlaybookRequest {
+  caseId?: string | null;
+  chain: string[];
+}
+
+export interface PlaybookItem {
+  playbook_id: string;
+  title: string;
+  steps: string[];
+  tactics_addressed: string[];
+  sources: SherpaSource[];
+}
+
+export interface PlaybookResponse {
+  playbooks: PlaybookItem[];
+}
+
+export interface KbEngineHealth {
+  engine: string; // 'stub' | 'ollama' 등
+  model: string;
+  note: string;
+}
+
+export interface KbStatsResponse {
+  total: number;
+  byKb: Record<string, number>;
+  engine: KbEngineHealth;
 }

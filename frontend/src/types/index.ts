@@ -1,6 +1,12 @@
 // ── 공통 Enum 타입 (백엔드 DB enum과 정확히 일치) ──
 
-export type IncidentType = 'iam-takeover' | 'insider' | 'credential' | 'webapp' | 'ransomware';
+// 백엔드 Pydantic Literal + types/index.ts 정책과 일치 (5종, 2026-05-12 확정)
+export type IncidentType =
+  | 'CREDENTIAL_THEFT'
+  | 'PRIVILEGE_ESCALATION'
+  | 'DATA_EXFILTRATION'
+  | 'AUDIT_LOG_TAMPERING'
+  | 'MULTI_CSP_LATERAL';
 export type CSP = 'naver' | 'nhn' | 'all';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type EvidenceRole = 'REQUIRED' | 'CORROBORATING';
@@ -46,54 +52,98 @@ export interface GuideResponse {
   targets: CollectionTargetItem[];
 }
 
+// Layer 1 — 백엔드 응답 형식과 일치 (camelCase, 2026-05-14 이근형 작업 기준)
 export interface RawEventItem {
-  event_id: string;
-  case_id: string;
+  eventId: string;
+  caseId: string;
   csp: CSP;
-  event_time: string;
-  event_name: string;
-  source_file: string;
-  matched_target_id: string | null;
-  sha256_hash: string;
-  created_at: string;
+  sha256: string;
+  matchedTargetId: string | null;
+  ingestedAt: string;
+  sourceFile: string;
+  raw?: Record<string, unknown>; // 단건 조회 시만 포함
 }
 
+// POST /api/logs/upload 응답 data
+export interface IngestionStats {
+  totalEvents: number;
+  matched: number;
+  unmatched: number;
+  byTarget: Record<string, number>;
+  sha256: string;
+  sourceFile: string;
+}
+
+// GET /api/logs 응답 data (envelope 안의 페이지네이션)
+export interface LogsListData {
+  items: RawEventItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// Layer 2 — 백엔드 응답 형식과 일치 (평탄화 OCSF + Attack join 결과)
 export interface OCSFEventItem {
   ocsf_id: string;
   event_id: string;
-  class_uid: number;
-  category_uid: number;
-  activity_id: number;
+  time: string; // ISO datetime
+  actor_user_name: string | null;
+  src_endpoint_ip: string | null;
   activity_name: string;
-  time: number;
-  actor: { user: { name: string; type: string; account_uid: string } };
-  src_endpoint: { ip: string };
-  status_code: string;
-  severity_id: number;
-  unmapped: Record<string, unknown>;
+  status_code: number | null;
+  unmapped_raw: Record<string, unknown> | null;
 }
 
 export interface AttackEventItem {
   attack_id: string;
   ocsf_id: string;
   technique_id: string;
-  technique_name: string;
+  technique_name: string | null;
   tactic: string;
   rule_id: string;
-  risk_score: number;
-  event_time: string;
-  activity_name: string;
+  risk_score: number | null;
+  mapped_at: string;
+  event_time: string | null;
+  activity_name: string | null;
+}
+
+export interface NormalizeStats {
+  total: number;
+  normalized: number;
+  failed: number;
+  normalizationRate: number;
+  failedEvents: { event_id: string; reason: string }[];
+}
+
+export interface MapStats {
+  total_ocsf: number;
+  mapped: number;
+  unmapped: number;
+  mappingRate: number;
+  events: AttackEventItem[];
 }
 
 export interface GapResultResponse {
   gap_id: string;
   case_id: string;
   gap_type: GapType;
-  missing: { target_id: string; log_type: string; evidence_role: EvidenceRole; priority: number }[];
+  missing: {
+    target_id: string;
+    log_type: string;
+    evidence_role: EvidenceRole;
+    priority: number;
+  }[];
   summary: string;
   recommendation: string;
   completionRate: number;
   created_at: string;
+}
+
+export interface PaginatedData<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface BoardNode {

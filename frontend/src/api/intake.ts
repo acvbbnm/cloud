@@ -7,12 +7,12 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 // ── Mock 데이터 (API_계약서.md 참조) ──
 const MOCK_CASE: CaseResponse = {
   caseId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-  incident_type: 'iam-takeover',
+  incident_type: 'CREDENTIAL_THEFT',
   csp: 'naver',
   severity: 'high',
-  occurred_at: '2025-03-15T09:30:00Z',
+  occurred_at: '2026-04-05T06:12:00Z',
   system_config: null,
-  created_at: '2025-03-15T10:00:00Z',
+  created_at: '2026-04-05T06:12:01Z',
   closed_at: null,
 };
 

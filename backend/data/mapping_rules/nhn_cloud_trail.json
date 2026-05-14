@@ -1,0 +1,43 @@
+{
+  "_status": "official_doc_v1",
+  "_note": "NHN Cloud Trail 공식 이벤트 코드 형식(event_id.[카테고리].[작업]) + 실제 raw 로그(nhn_activity_logs.json 147건) 기반. eventTime은 ISO8601 +0000.",
+  "csp": "nhn",
+  "log_source": "cloud_trail",
+  "source_docs": [
+    "https://docs.nhncloud.com/ko/Governance%20%26%20Audit/CloudTrail/ko/console-guide/",
+    "https://docs.nhncloud.com/ko/Governance%20%26%20Audit/CloudTrail/ko/event-list/"
+  ],
+  "field_mappings": {
+    "eventTime": "time",
+    "eventId": "activity_name",
+    "result": "status_code",
+    "userName": "actor_user_name",
+    "userIp": "src_endpoint_ip"
+  },
+  "value_transforms": {
+    "eventTime": {
+      "type": "datetime",
+      "accept": ["iso8601"],
+      "string_format": "%Y-%m-%dT%H:%M:%S.%f%z"
+    },
+    "result": {
+      "type": "enum_to_int",
+      "map": {"SUCCESS": 200, "FAIL": 500}
+    }
+  },
+  "preserve_unmapped": true,
+  "unmapped_examples": [
+    "userId (이메일)",
+    "userIdNo (UUID)",
+    "userAgent",
+    "eventSourceType (ADMIN_CONSOLE/USER_CONSOLE/SYSTEM)",
+    "orgId",
+    "projectId",
+    "projectName",
+    "appKey",
+    "tenantId",
+    "request (JSON 문자열)",
+    "response (JSON 문자열)",
+    "eventLogUuid"
+  ]
+}

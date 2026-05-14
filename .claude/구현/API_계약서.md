@@ -41,7 +41,7 @@ http://localhost:8000
 **Request Body:**
 ```json
 {
-  "incident_type": "iam-takeover",
+  "incident_type": "CREDENTIAL_THEFT",
   "csp": "naver",
   "severity": "high",
   "occurred_at": "2025-03-15T09:30:00Z",
@@ -59,7 +59,7 @@ http://localhost:8000
   "status": "ok",
   "data": {
     "caseId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "incident_type": "iam-takeover",
+    "incident_type": "CREDENTIAL_THEFT",
     "csp": "naver",
     "severity": "high",
     "occurred_at": "2025-03-15T09:30:00Z",
@@ -71,7 +71,7 @@ http://localhost:8000
 ```
 
 **Validation:**
-- `incident_type`: `iam-takeover | insider | credential | webapp | ransomware` (필수)
+- `incident_type`: `CREDENTIAL_THEFT | PRIVILEGE_ESCALATION | DATA_EXFILTRATION | AUDIT_LOG_TAMPERING | MULTI_CSP_LATERAL` (필수)
 - `csp`: `naver | nhn | all` (필수)
 - `severity`: `critical | high | medium | low` (필수)
 - `occurred_at`: ISO 8601 (필수)
@@ -87,7 +87,7 @@ http://localhost:8000
   "status": "ok",
   "data": {
     "caseId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "incident_type": "iam-takeover",
+    "incident_type": "CREDENTIAL_THEFT",
     "csp": "naver",
     "severity": "high",
     "occurred_at": "2025-03-15T09:30:00Z",
@@ -876,7 +876,7 @@ export const handlers = [
 
 ```typescript
 // 주요 타입 (CLAUDE.md의 공유 타입과 일치)
-type IncidentType = 'iam-takeover' | 'insider' | 'credential' | 'webapp' | 'ransomware';
+type IncidentType = 'CREDENTIAL_THEFT' | 'PRIVILEGE_ESCALATION' | 'DATA_EXFILTRATION' | 'AUDIT_LOG_TAMPERING' | 'MULTI_CSP_LATERAL';
 type CSP = 'naver' | 'nhn' | 'all';
 type Severity = 'critical' | 'high' | 'medium' | 'low';
 type EvidenceRole = 'REQUIRED' | 'CORROBORATING';

@@ -2,12 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
   margin: 0;
+  background-color: #0B0D14;
+  color: #E6EAF2;
   font-family:
     'Pretendard',
     -apple-system,
     BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
     system-ui,
     sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss03', 'cv11';
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A3045;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4A5168;
+}
+
+@layer components {
+  .panel {
+    @apply bg-panel-gradient border border-ink-700/80 rounded-xl2 shadow-soft;
+  }
+  .panel-flat {
+    @apply bg-ink-850 border border-ink-700/70 rounded-xl;
+  }
+  .panel-pad {
+    @apply panel p-5;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-300;
+  }
+  .h-display {
+    @apply text-display text-ink-100;
+  }
+  .h-page {
+    @apply text-h1 text-ink-100;
+  }
+  .h-section {
+    @apply text-h2 text-ink-100;
+  }
+  .panel-title {
+    @apply text-h3 flex items-center gap-2 text-ink-100;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold border border-transparent transition-all whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-cta-gradient text-white hover:bg-cta-gradient-hover hover:shadow-glow active:translate-y-px;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent border-ink-600 text-ink-200 hover:border-brand-blue/60 hover:text-brand-blue hover:bg-brand-blue/[0.06];
+  }
+  .btn-success {
+    @apply btn bg-brand-teal text-ink-950 hover:bg-brand-tealDark;
+  }
+  .btn-danger {
+    @apply btn bg-brand-red/10 border-brand-red/40 text-brand-red hover:bg-brand-red/20;
+  }
+  .btn-sm {
+    @apply px-3 py-1 text-[12px];
+  }
+  .input {
+    @apply w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-[13px] text-ink-100 placeholder-ink-400 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/25 transition-colors;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-ink-700/80 bg-ink-850 text-ink-200;
+  }
+  .tag {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold;
+  }
+  .tag-red    { @apply tag bg-brand-red/15 text-brand-red ring-1 ring-inset ring-brand-red/20; }
+  .tag-amber  { @apply tag bg-brand-amber/15 text-brand-amber ring-1 ring-inset ring-brand-amber/20; }
+  .tag-teal   { @apply tag bg-brand-teal/15 text-brand-teal ring-1 ring-inset ring-brand-teal/20; }
+  .tag-blue   { @apply tag bg-brand-blue/15 text-brand-blue ring-1 ring-inset ring-brand-blue/20; }
+  .tag-purple { @apply tag bg-brand-purple/15 text-brand-purple ring-1 ring-inset ring-brand-purple/20; }
+  .tag-gray   { @apply tag bg-ink-700/60 text-ink-200; }
+
+  .card-hover {
+    @apply transition-all hover:border-brand-blue/50 hover:shadow-glow hover:-translate-y-0.5;
+  }
+
+  .divider {
+    @apply h-px w-full bg-ink-700/70;
+  }
+}
+
+@layer utilities {
+  .grad-text {
+    background: linear-gradient(135deg, #3D7BFF 0%, #8B5CF6 70%, #D946EF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }

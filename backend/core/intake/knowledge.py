@@ -1,0 +1,60 @@
+"""Layer 0 — IncidentTypeKnowledge.
+
+설계서 5.4.2절 + 모듈별_구현_명세.md `IncidentTypeKnowledge` 항목.
+사고유형별 관련 ATT&CK 기법 + 핵심 서비스를 제공한다.
+MVP는 하드코딩 dict, 추후 data/kb/incident_types.json 등으로 외부화 가능.
+"""
+from typing import Optional
+
+
+_KNOWLEDGE: dict[str, dict] = {
+    "CREDENTIAL_THEFT": {
+        "related_techniques": ["T1078.004", "T1098.001", "T1136.003", "T1552", "T1531"],
+        "tactics": ["Initial Access", "Persistence", "Credential Access", "Impact"],
+        "key_services": {
+            "naver": ["Sub Account", "Cloud Activity Tracer", "Server"],
+            "nhn": ["IAM", "Cloud Trail", "S3 Credential", "Keypair"],
+        },
+    },
+    "PRIVILEGE_ESCALATION": {
+        "related_techniques": ["T1098", "T1078.004"],
+        "tactics": ["Privilege Escalation"],
+        "key_services": {
+            "naver": ["Sub Account", "Resource Manager"],
+            "nhn": ["IAM", "Project", "Role Group"],
+        },
+    },
+    "DATA_EXFILTRATION": {
+        "related_techniques": ["T1537", "T1567"],
+        "tactics": ["Exfiltration"],
+        "key_services": {
+            "naver": ["Object Storage", "Cloud Activity Tracer"],
+            "nhn": ["Object Storage", "Cloud Trail"],
+        },
+    },
+    "AUDIT_LOG_TAMPERING": {
+        "related_techniques": ["T1562.008", "T1070"],
+        "tactics": ["Defense Evasion"],
+        "key_services": {
+            "naver": ["Cloud Activity Tracer"],
+            "nhn": ["Cloud Trail"],
+        },
+    },
+    "MULTI_CSP_LATERAL": {
+        "related_techniques": ["T1021", "T1078.004"],
+        "tactics": ["Lateral Movement"],
+        "key_services": {
+            "naver": ["Sub Account", "Server"],
+            "nhn": ["IAM", "Instance"],
+        },
+    },
+}
+
+
+class IncidentTypeKnowledge:
+    """사고유형별 도메인 지식 — ATT&CK 기법·핵심 서비스 매핑."""
+
+    @classmethod
+    def lookup(cls, incident_type: str) -> Optional[dict]:
+        """incident_type에 해당하는 지식 객체를 반환한다. 없으면 None."""
+        return _KNOWLEDGE.get(incident_type)

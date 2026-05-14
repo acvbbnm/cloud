@@ -13,7 +13,15 @@ import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
 import { getBoard, createNode, updateNode } from '@/api/board';
 import { getAttack } from '@/api/analysis';
-import type { AttackEventItem, BoardNode } from '@/types';
+import { postBrief } from '@/api/sherpa';
+import type { AttackEventItem, BoardNode, BriefingResponse, SherpaSource } from '@/types';
+
+const SOURCE_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
+  ATTACK: 'purple',
+  PLAYBOOK: 'teal',
+  CSP_DOC: 'blue',
+  CASE_DB: 'amber',
+};
 
 import LogPanel from './LogPanel';
 import BoardCanvas from './BoardCanvas';
@@ -42,6 +50,22 @@ const V5Board = () => {
     queryKey: ['attack', caseId, 1],
     queryFn: () => getAttack(caseId!, 1, ATTACK_PAGE_SIZE),
     enabled: !!caseId,
+  });
+
+  // AI 셰르파 brief — 선택된 board 노드(attack_id 가 있는 경우) 또는
+  // 선택된 ATT&CK 후보 기준. 둘 다 없으면 케이스의 최상위 위험도 attack 자동 선택
+  // (백엔드가 처리). KB 검색 결과는 5분 캐싱.
+  const briefAttackId =
+    activeBoardNode?.attack_id ?? activeAttack?.attack_id ?? null;
+  const briefQuery = useQuery({
+    queryKey: ['sherpa', 'brief', caseId, briefAttackId],
+    queryFn: () =>
+      postBrief({
+        caseId: caseId!,
+        eventId: briefAttackId,
+      }),
+    enabled: !!caseId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const addNodeMutation = useMutation({
@@ -143,6 +167,9 @@ const V5Board = () => {
               {updateStatusMutation.isPending && (
                 <span className="tag-amber">상태 변경 중…</span>
               )}
+              {briefQuery.isLoading && <span className="tag-blue">sherpa 로딩…</span>}
+              {briefQuery.isError && <span className="tag-red">sherpa 에러</span>}
+              {briefQuery.isSuccess && <span className="tag-teal">sherpa ✓</span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
           </div>
@@ -343,16 +370,13 @@ const V5Board = () => {
             </Card>
 
             <Card title={<span className="text-brand-purple">🧠 AI 셰르파 브리핑</span>}>
-              <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] leading-7 text-ink-200">
-                <b className="text-ink-400">[Layer 3 미구현 — mock 표시 중]</b>
-                <p className="mt-1">
-                  AI 셰르파 백엔드(Ollama + RAG) 통합 시 attack_events 컨텍스트 기반 브리핑이
-                  여기 표시됩니다.
-                </p>
-                <p className="mt-2 text-[10.5px] text-ink-500">
-                  POST /api/sherpa/brief (예정)
-                </p>
-              </div>
+              <BriefingPanel
+                isLoading={briefQuery.isLoading}
+                isError={briefQuery.isError}
+                error={briefQuery.error}
+                data={briefQuery.data}
+                briefAttackId={briefAttackId}
+              />
             </Card>
 
             <Card title={<>📝 수사관 메모</>}>
@@ -379,5 +403,102 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
     <span>{children}</span>
   </div>
 );
+
+interface BriefingPanelProps {
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  data: BriefingResponse | undefined;
+  briefAttackId: string | null;
+}
+
+const BriefingPanel = ({
+  isLoading,
+  isError,
+  error,
+  data,
+  briefAttackId,
+}: BriefingPanelProps) => {
+  if (isLoading) {
+    return (
+      <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] text-ink-400 animate-pulse">
+        KB 검색 중… (POST /api/sherpa/brief)
+      </div>
+    );
+  }
+  if (isError) {
+    return (
+      <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] text-brand-red">
+        <b>브리핑 호출 실패.</b>
+        <div className="mt-1 text-[10.5px] text-ink-400">
+          {(error as Error)?.message ?? '백엔드 /api/sherpa/brief 확인 필요'}
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  // 케이스에 ATT&CK 매핑이 없는 경우 (백엔드가 technique_id: null 로 응답)
+  if (!data.technique_id) {
+    return (
+      <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] leading-6 text-ink-300">
+        {data.briefing}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] leading-6 text-ink-200">
+      <div className="flex items-center gap-1.5 flex-wrap mb-2">
+        <Badge tone="purple">{data.technique_id}</Badge>
+        {data.tactic && <span className="text-[10.5px] text-ink-400">{data.tactic}</span>}
+        <span
+          className={`text-[10px] ml-auto ${
+            data.confidence === 'high'
+              ? 'text-brand-teal'
+              : data.confidence === 'medium'
+              ? 'text-brand-amber'
+              : 'text-ink-400'
+          }`}
+        >
+          신뢰도 {data.confidence}
+        </span>
+      </div>
+      <div className="whitespace-pre-wrap text-ink-100 mb-2">{data.briefing}</div>
+
+      {data.sources && data.sources.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-ink-700/50">
+          <div className="text-[10px] text-ink-400 mb-1">출처 {data.sources.length}건</div>
+          <div className="flex flex-wrap gap-1">
+            {data.sources.map((s: SherpaSource) => (
+              <span
+                key={s.source_id}
+                title={s.source_id}
+                className="inline-flex items-center gap-1 text-[10px] bg-ink-900 border border-ink-700/70 rounded-full px-1.5 py-0.5"
+              >
+                <Badge tone={SOURCE_TONE[s.type] ?? 'gray'} size="sm">
+                  {s.type}
+                </Badge>
+                <span className="text-ink-300 max-w-[120px] truncate">
+                  {s.title || s.source_id}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.relatedTechniques && data.relatedTechniques.length > 0 && (
+        <div className="mt-2 text-[10.5px] text-ink-400">
+          관련 기법: {data.relatedTechniques.join(', ')}
+        </div>
+      )}
+
+      <div className="mt-2 text-[10px] text-ink-500">
+        {briefAttackId ? `attack_id: ${briefAttackId.slice(0, 8)}…` : '케이스 최상위 위험도 자동 선택'}
+      </div>
+    </div>
+  );
+};
 
 export default V5Board;

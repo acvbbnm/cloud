@@ -1,7 +1,7 @@
 import Badge from '@/components/Badge';
 
 export interface PreviewEvent {
-  id: number;
+  id: string;
   ts: string;
   ev: string;
   ip: string;
@@ -13,8 +13,8 @@ export interface PreviewEvent {
 
 interface EventPreviewTableProps {
   events: PreviewEvent[];
-  selected: Set<number>;
-  onToggle: (id: number) => void;
+  selected: Set<string>;
+  onToggle: (id: string) => void;
   onToggleAll: (checked: boolean) => void;
 }
 

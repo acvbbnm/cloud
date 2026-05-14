@@ -52,16 +52,34 @@ export interface GuideResponse {
   targets: CollectionTargetItem[];
 }
 
+// Layer 1 — 백엔드 응답 형식과 일치 (camelCase, 2026-05-14 이근형 작업 기준)
 export interface RawEventItem {
-  event_id: string;
-  case_id: string;
+  eventId: string;
+  caseId: string;
   csp: CSP;
-  event_time: string;
-  event_name: string;
-  source_file: string;
-  matched_target_id: string | null;
-  sha256_hash: string;
-  created_at: string;
+  sha256: string;
+  matchedTargetId: string | null;
+  ingestedAt: string;
+  sourceFile: string;
+  raw?: Record<string, unknown>; // 단건 조회 시만 포함
+}
+
+// POST /api/logs/upload 응답 data
+export interface IngestionStats {
+  totalEvents: number;
+  matched: number;
+  unmatched: number;
+  byTarget: Record<string, number>;
+  sha256: string;
+  sourceFile: string;
+}
+
+// GET /api/logs 응답 data (envelope 안의 페이지네이션)
+export interface LogsListData {
+  items: RawEventItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface OCSFEventItem {

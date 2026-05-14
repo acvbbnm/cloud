@@ -20,6 +20,7 @@ yarn-error.log*
 frontend/dist/
 frontend/build/
 *.js.map
+*.tsbuildinfo
 
 # ── 환경 설정 (비밀 정보) ──
 .env

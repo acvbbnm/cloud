@@ -16,6 +16,7 @@ from core.intake.incident_case import IncidentCase
 from core.sherpa.ai_sherpa import AISherpa
 from core.sherpa.knowledge_base import stats as kb_stats
 from core.sherpa.llm_engine import LLMEngine
+from core.sherpa.rag_retriever import RAGRetriever
 from db.session import get_db
 
 router = APIRouter(prefix="/api/sherpa", tags=["sherpa"])
@@ -131,5 +132,12 @@ async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> 
 
 @router.get("/kb")
 async def get_kb_stats() -> dict:
-    """KB 인덱스 통계 (V8 화면 우측 패널)."""
-    return {"status": "ok", "data": {**kb_stats(), "engine": LLMEngine.health()}}
+    """KB 인덱스 통계 + LLM/RAG 엔진 상태 (V8 우측 패널)."""
+    return {
+        "status": "ok",
+        "data": {
+            **kb_stats(),
+            "engine": LLMEngine.health(),
+            "rag": RAGRetriever.backend_info(),
+        },
+    }

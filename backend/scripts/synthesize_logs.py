@@ -156,7 +156,8 @@ def scenario_ncp_kill_chain(
         include_iam_003: False면 IAM-003(Server Console + Decrypt) 빠짐 → COLLECTION 갭.
     """
     events: list[dict] = []
-    attacker = "attacker_sub"
+    # 실 raw(activity_logs_full.json) 의 시뮬레이션 계정명과 통일 — kb/case_db.json 사례와 정합
+    attacker = "attack-sim"
     t = start
 
     # 베이스라인 — 정상 사용자 Login 2건

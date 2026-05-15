@@ -20,6 +20,7 @@ GPT-OSS 호환:
     섞일 수 있어 `_strip_reasoning()` 으로 후처리하여 최종 답변만 V-8 에 노출.
 """
 import logging
+import os
 import re
 from typing import Optional
 
@@ -160,8 +161,9 @@ class LLMEngine:
                     "options": {
                         # 시연 안정성 — 응답이 매번 흔들리지 않도록 결정성 ↑
                         "temperature": 0.3,
-                        # 노트북 환경 기준 800 tokens ≈ 16~27초 (30s timeout 안 걸림)
-                        "num_predict": 800,
+                        # GPU 노트북 기준 800 tokens 약 20초, CPU 전용은 그 5~10배.
+                        # 환경변수 LLM_NUM_PREDICT 로 오버라이드 가능 (CPU 머신은 300 권장).
+                        "num_predict": int(os.getenv("LLM_NUM_PREDICT", "400")),
                         # system + 3청크(@500자) + 질의 ≈ 2k tokens → 4k 윈도우면 여유
                         "num_ctx": 4096,
                     },
@@ -204,7 +206,9 @@ class LLMEngine:
             }
         """
         try:
-            r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=2.0)
+            # 10초로 완화 — Ollama 가 추론 중일 때 /api/tags 응답이 큐잉되어 지연되는 케이스 대응.
+            # 너무 짧으면 모델이 RAM 에 로드된 상태에서도 health 가 'stub' 으로 표시되는 문제.
+            r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=10.0)
             if r.ok:
                 models = [m.get("name") for m in r.json().get("models", [])]
                 connected = settings.LLM_MODEL in models

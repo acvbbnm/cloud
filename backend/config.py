@@ -1,9 +1,23 @@
 """환경 설정 — 모든 설정값은 여기서 관리한다.
 
 하드코딩된 절대 경로 사용 금지. 필요한 경로는 이 파일에서 정의한다.
+
+.env 파일을 자동 로드 (python-dotenv). backend/.env 가 있으면 os.getenv 가 그 값을
+우선 반영하므로 OLLAMA_BASE_URL / LLM_MODEL 등을 환경별로 오버라이드할 수 있다.
 """
 import os
 from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+
+    # backend/.env 명시적으로 로드 (실행 디렉토리와 무관하게)
+    _env_path = Path(__file__).resolve().parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
+except ImportError:  # pragma: no cover
+    # python-dotenv 미설치 시 시스템 환경변수만 사용 (graceful fallback)
+    pass
 
 
 class Settings:
@@ -40,7 +54,8 @@ class Settings:
     # 시스템 RAM 16GB 미만이면 환경변수로 더 작은 모델 지정 권장 (예: llama3.1:8b).
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-oss:20b")
-    LLM_TIMEOUT: int = 30  # 초 (SNF-02 — 초과 시 템플릿 fallback)
+    # SNF-02 기본 30초. CPU 전용 / 8B+ 모델 환경에서는 .env 에서 늘려 사용 (예: 120).
+    LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "30"))
 
     # ── ChromaDB (Layer 3 RAG) ──
     CHROMA_PERSIST_DIR: str = os.getenv(

@@ -75,7 +75,7 @@ const BoardCanvas = ({ pendingLog, clearPendingLog }: BoardCanvasProps) => {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 relative bg-ink-950 border-2 border-dashed rounded-2xl overflow-hidden transition-all min-h-[300px] bg-dot-grid bg-dot-22 ${
+      className={`relative bg-ink-950 border-2 border-dashed rounded-2xl overflow-hidden transition-all min-h-[420px] bg-dot-grid bg-dot-22 ${
         hover ? 'border-brand-blue shadow-glow' : 'border-ink-700'
       }`}
     >

@@ -1,22 +1,29 @@
-"""Layer 3 — LLMEngine.
+"""Layer 3 — LLMEngine (Ollama 통합 버전).
 
-설계서 5.4.5절 LLMEngine 구현.
+설계서 5.4.5절 + 모듈별_구현_명세.md `LLMEngine` 항목.
 
-동작 우선순위:
-1. Ollama HTTP 호출 (`OLLAMA_BASE_URL/api/generate`) — 환경변수 + 30초 timeout
-2. 템플릿 응답 (1차 깡통) — Ollama 미연결·타임아웃·에러 시 자동 fallback (SNF-02)
+흐름:
+  AISherpa.chat() → LLMEngine.generate(query, context) → Ollama /api/chat → 응답 텍스트
 
-기본 모델 = `gpt-oss:20b` (LLM_MODEL 환경변수로 변경 가능).
-GPT-OSS 는 응답에 `<thinking>...</thinking>` 또는 `analysis...assistantfinal` 같은
-reasoning 토큰이 섞일 수 있어 본 모듈에서 후처리해 최종 답변만 추출한다.
+핵심 원칙 (CLAUDE.md / 설계서 5.1절 정합):
+  - AI 는 판단·결정하지 않는다. 검색·요약·제안만 수행.
+  - 모든 응답은 한국어 + 출처 [N] 인용 + "최종 판단은 수사관" 문구 포함.
+  - 30초 timeout (SNF-02) 시 정해진 fallback 메시지 반환.
+
+설정 (config.py + .env):
+  - OLLAMA_BASE_URL : 기본 http://localhost:11434
+  - LLM_MODEL       : 기본 gpt-oss:20b (필요 시 llama3.1:8b 등 교체)
+  - LLM_TIMEOUT     : 초 (SNF-02 = 30)
+
+GPT-OSS 호환:
+  - 응답에 `<thinking>`, `<think>`, `analysis...assistantfinal` 같은 reasoning 토큰이
+    섞일 수 있어 `_strip_reasoning()` 으로 후처리하여 최종 답변만 V-8 에 노출.
 """
-from __future__ import annotations
-
 import logging
 import re
 from typing import Optional
 
-import requests
+import httpx
 
 from config import settings
 from core.sherpa.knowledge_base import KBChunk
@@ -24,8 +31,10 @@ from core.sherpa.knowledge_base import KBChunk
 logger = logging.getLogger(__name__)
 
 
-# ── reasoning 토큰 후처리 ──
-# GPT-OSS / DeepSeek 등은 응답에 사고 과정을 그대로 노출하는 경우가 있음.
+# ─────────────────────────────────────────────────────────────
+# Reasoning 토큰 후처리 (GPT-OSS / DeepSeek 등 호환)
+# ─────────────────────────────────────────────────────────────
+# 일부 추론 모델은 응답에 사고 과정을 그대로 노출함 (XML 태그 또는 마커).
 # 평가용 화면(V-8)에서는 최종 답변만 보여야 하므로 제거한다.
 _THINKING_TAG = re.compile(r"<thinking>.*?</thinking>", re.DOTALL | re.IGNORECASE)
 _THINK_TAG = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
@@ -36,153 +45,86 @@ _ANALYSIS_BLOCK = re.compile(
 
 
 def _strip_reasoning(text: str) -> str:
-    """모델 응답에서 reasoning 토큰을 제거하고 최종 답변만 남긴다."""
+    """모델 응답에서 reasoning 토큰을 제거하고 최종 답변만 남긴다.
+
+    빈 문자열이면 그대로 반환 (호출자가 fallback 처리).
+    """
     if not text:
         return text
     text = _THINKING_TAG.sub("", text)
     text = _THINK_TAG.sub("", text)
-    # GPT-OSS "analysis ... assistantfinal" 패턴 (있을 때만)
+    # GPT-OSS "analysis ... assistantfinal" 패턴 (있을 때만 한 번)
     text = _ANALYSIS_BLOCK.sub("", text, count=1)
     return text.strip()
 
 
-# ── Ollama 클라이언트 ──
+# ─────────────────────────────────────────────────────────────
+# System prompt — AI 셰르파 역할·규칙·출력형식
+# ─────────────────────────────────────────────────────────────
+SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 분석을 보조하는 AI 셰르파입니다.
+
+[역할]
+- 침해사고 대응 수사관에게 컨텍스트 정보를 제공
+- ATT&CK 기법·CSP 로그·플레이북·과거 사례를 기반으로 검색·요약·제안 수행
+- 최종 판단은 항상 수사관이 한다. AI는 결정하지 않는다.
+
+[응답 규칙]
+1. 한국어로 답변한다.
+2. 아래 [지식베이스] 섹션에 제공된 청크만 근거로 사용한다. 청크에 없는 사실은 추측하지 않고 "추가 확인 필요"로 표시한다.
+3. 본문에서 출처를 [1], [2] 형식으로 인용한다 (예: "T1078.004는 자격증명 남용입니다 [1].").
+4. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
+5. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
+6. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
+"""
 
 
-_ollama_last_error: Optional[str] = None
-_ollama_ok_cache: Optional[bool] = None  # 첫 헬스 체크 결과 캐싱
+# ─────────────────────────────────────────────────────────────
+# Fallback 응답 (LLM 미연결 / timeout / 컨텍스트 없음)
+# ─────────────────────────────────────────────────────────────
+_FALLBACK_NO_CONTEXT = (
+    "- 제공된 정보로는 답변할 수 없습니다.\n"
+    "- V-3 정규화·V-4 ATT&CK 매핑을 먼저 수행하면 더 구체적인 답변이 가능합니다.\n"
+    "\n※ 최종 판단은 수사관께서 직접 수행해 주세요."
+)
+
+_FALLBACK_TIMEOUT = (
+    "- AI 응답이 지연되어 시간 내에 완료되지 못했습니다.\n"
+    "- 잠시 후 다시 시도하거나 V-6 ATT&CK 히트맵에서 직접 분석을 시작해 주세요.\n"
+    "\n※ 최종 판단은 수사관께서 직접 수행해 주세요."
+)
 
 
-def _ollama_health() -> bool:
-    """Ollama 서버 연결 여부 + 모델 보유 여부 빠른 점검 (5초 timeout)."""
-    global _ollama_last_error, _ollama_ok_cache
-    try:
-        res = requests.get(
-            f"{settings.OLLAMA_BASE_URL}/api/tags",
-            timeout=5,
-        )
-        res.raise_for_status()
-        data = res.json()
-        models = [m.get("name", "") for m in data.get("models", [])]
-        has_model = any(settings.LLM_MODEL in m for m in models)
-        if not has_model:
-            _ollama_last_error = (
-                f"Ollama up but model '{settings.LLM_MODEL}' missing. "
-                f"Run: ollama pull {settings.LLM_MODEL}"
-            )
-            _ollama_ok_cache = False
-            return False
-        _ollama_ok_cache = True
-        _ollama_last_error = None
-        return True
-    except Exception as exc:
-        _ollama_last_error = f"Ollama unreachable at {settings.OLLAMA_BASE_URL}: {exc}"
-        _ollama_ok_cache = False
-        return False
+# ─────────────────────────────────────────────────────────────
+# Prompt builder
+# ─────────────────────────────────────────────────────────────
+def _build_user_prompt(query: str, context: list[KBChunk]) -> str:
+    """RAG 청크를 user prompt 에 주입한다.
 
-
-def _build_prompt(prompt: str, context: Optional[list[KBChunk]]) -> str:
-    """수사관 지원 시스템 컨텍스트 + RAG 청크 + 사용자 질의 결합.
-
-    원칙: AI는 판단하지 않는다. 검색·요약·제안만. 모든 응답에 출처 명시 권장.
+    각 청크 텍스트는 500자로 컷 — 토큰 절약 + 응답 시간 단축.
+    출처 인용용으로 [N] 번호를 부여하여 모델이 본문에서 [1], [2] 형태로 인용하도록 유도.
     """
-    sys_prompt = (
-        "당신은 침해사고 분석을 보조하는 검색·요약 도구입니다. "
-        "수집된 지식베이스에 기반하여 한국어로 간결히 답하세요. "
-        "다음 규칙을 반드시 지키세요:\n"
-        "1. 지식베이스에 없는 내용을 추측하거나 새로 만들어내지 마세요.\n"
-        "2. 인용 가능한 KB 청크가 있으면 본문에 [1], [2] 같은 번호로 표시하세요.\n"
-        "3. 최종 결정·판단은 수사관(human investigator)이 합니다. "
-        "당신은 후보·맥락·요약만 제공하세요.\n"
-        "4. 응답은 300자 내외로 짧게 정리하세요."
-    )
-
-    parts = [sys_prompt, ""]
-    if context:
-        parts.append("[참고 KB 청크]")
+    parts = ["[지식베이스]"]
+    if not context:
+        parts.append("(관련 청크 없음)")
+    else:
         for i, c in enumerate(context, 1):
-            text = (c.text or "").strip().replace("\n\n", "\n")
+            text = c.text.strip().replace("\n", " ")
             if len(text) > 500:
                 text = text[:497] + "…"
-            parts.append(f"[{i}] {c.title} ({c.kb_name})\n{text}")
-        parts.append("")
-    parts.append(f"[수사관 질의]\n{prompt}")
-    parts.append("\n[답변]")
+            parts.append(f"[{i}] {c.title} ({c.kb_name})")
+            parts.append(f"출처: {c.source}")
+            parts.append(text)
+            parts.append("")
+    parts.append("[질의]")
+    parts.append(query.strip())
     return "\n".join(parts)
 
 
-def _ollama_generate(prompt: str, context: Optional[list[KBChunk]]) -> Optional[str]:
-    """Ollama 호출. 성공 시 응답 텍스트, 실패·timeout 시 None.
-
-    timeout 은 SNF-02 (30초) 명세 준수. 초과 시 fallback.
-    """
-    global _ollama_last_error
-    full_prompt = _build_prompt(prompt, context)
-
-    payload = {
-        "model": settings.LLM_MODEL,
-        "prompt": full_prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.3,  # 결정론적 응답 (환각 억제)
-            "num_predict": 512,
-            "top_p": 0.9,
-        },
-    }
-    try:
-        res = requests.post(
-            f"{settings.OLLAMA_BASE_URL}/api/generate",
-            json=payload,
-            timeout=settings.LLM_TIMEOUT,
-        )
-        res.raise_for_status()
-        data = res.json()
-        text = data.get("response", "").strip()
-        text = _strip_reasoning(text)
-        return text or None
-    except requests.exceptions.Timeout:
-        _ollama_last_error = (
-            f"Ollama timeout after {settings.LLM_TIMEOUT}s — SNF-02 fallback to template"
-        )
-        logger.warning(_ollama_last_error)
-        return None
-    except Exception as exc:
-        _ollama_last_error = f"Ollama generate failed: {exc}"
-        logger.exception("Ollama generate failed")
-        return None
-
-
-# ── 템플릿 fallback (1차 깡통 로직 유지) ──
-
-
-def _template_generate(prompt: str, context: Optional[list[KBChunk]]) -> str:
-    """Ollama 없이 동작하는 결정론적 응답. context 청크를 그대로 인용."""
-    if not context:
-        return (
-            "관련 지식베이스 검색 결과가 없습니다. 질의를 더 구체적으로 입력해 "
-            "보시거나 수집된 ATT&CK 매핑 결과(V-6)를 확인해 주세요."
-        )
-
-    lines = ["지식베이스에서 관련 정보를 찾았습니다:", ""]
-    for i, c in enumerate(context, 1):
-        preview = c.text.strip().replace("\n", " ")
-        if len(preview) > 300:
-            preview = preview[:297] + "…"
-        lines.append(f"[{i}] **{c.title}** ({c.kb_name})")
-        lines.append(f"    {preview}")
-        lines.append("")
-    lines.append(
-        "⚠ 본 응답은 결정론적 키워드 매칭 기반입니다. 최종 판단은 수사관께서 "
-        "직접 수행해 주세요."
-    )
-    return "\n".join(lines)
-
-
-# ── 공개 API ──
-
-
+# ─────────────────────────────────────────────────────────────
+# LLMEngine
+# ─────────────────────────────────────────────────────────────
 class LLMEngine:
-    """sLLM 추상화 — Ollama 우선 + 템플릿 fallback."""
+    """sLLM 추상화 — Ollama Chat API 호출. 인터페이스는 깡통 시절과 동일."""
 
     @classmethod
     def generate(
@@ -190,39 +132,95 @@ class LLMEngine:
         prompt: str,
         context: Optional[list[KBChunk]] = None,
     ) -> str:
-        """주어진 프롬프트 + 컨텍스트로 응답 생성.
+        """주어진 질의 + RAG 청크로 응답을 생성한다.
 
-        Ollama 미연결·타임아웃·에러 시 자동 템플릿 응답 (SNF-02 명세).
+        Args:
+            prompt:  사용자 자연어 질의.
+            context: RAGRetriever 가 반환한 KB 청크 리스트 (k=3 권장).
+
+        Returns:
+            한국어 응답 텍스트. timeout 또는 컨텍스트 부재 시 fallback.
+            추론 모델(gpt-oss 등)의 reasoning 토큰은 자동 제거.
         """
-        # 첫 호출 시 1회 health check (성공이면 후속 호출은 바로 generate)
-        if _ollama_ok_cache is None:
-            _ollama_health()
+        if not context:
+            return _FALLBACK_NO_CONTEXT
 
-        if _ollama_ok_cache:
-            response = _ollama_generate(prompt, context)
-            if response:
-                return response
-            # Ollama 호출 실패 시 fallback
-        return _template_generate(prompt, context)
+        user_prompt = _build_user_prompt(prompt, context)
+
+        try:
+            r = httpx.post(
+                f"{settings.OLLAMA_BASE_URL}/api/chat",
+                json={
+                    "model": settings.LLM_MODEL,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "stream": False,
+                    "options": {
+                        # 시연 안정성 — 응답이 매번 흔들리지 않도록 결정성 ↑
+                        "temperature": 0.3,
+                        # 노트북 환경 기준 800 tokens ≈ 16~27초 (30s timeout 안 걸림)
+                        "num_predict": 800,
+                        # system + 3청크(@500자) + 질의 ≈ 2k tokens → 4k 윈도우면 여유
+                        "num_ctx": 4096,
+                    },
+                },
+                timeout=settings.LLM_TIMEOUT,
+            )
+            r.raise_for_status()
+            data = r.json()
+            content = (data.get("message") or {}).get("content", "").strip()
+            # gpt-oss 등의 reasoning 토큰 제거 후 반환
+            content = _strip_reasoning(content)
+            return content or _FALLBACK_NO_CONTEXT
+
+        except httpx.TimeoutException:
+            logger.warning(
+                "[LLMEngine] Ollama timeout (>%ds, model=%s)",
+                settings.LLM_TIMEOUT,
+                settings.LLM_MODEL,
+            )
+            return _FALLBACK_TIMEOUT
+
+        except httpx.HTTPError as e:
+            logger.warning("[LLMEngine] Ollama HTTP error: %s", e)
+            return _FALLBACK_TIMEOUT
+
+        except Exception:
+            logger.exception("[LLMEngine] unexpected error")
+            return _FALLBACK_TIMEOUT
 
     @classmethod
     def health(cls) -> dict:
-        """LLM 엔진 상태 (V-8 우측 패널·sherpa.health 응답).
+        """Ollama 서버 상태 + 설정 모델 존재 여부 확인.
 
-        매 호출마다 갱신 — Ollama 가 도중에 켜지면 즉시 반영 (캐시는 generate 의
-        시작 부담을 줄이기 위함).
-        """
-        ok = _ollama_health()
-        if ok:
-            return {
-                "engine": "ollama",
-                "model": settings.LLM_MODEL,
-                "base_url": settings.OLLAMA_BASE_URL,
-                "note": f"Ollama 연결 정상 (timeout {settings.LLM_TIMEOUT}s)",
+        Returns:
+            {
+              "engine":           "ollama" | "ollama-no-model" | "stub",
+              "model":            LLM_MODEL,
+              "available_models": [...],
+              "connected":        bool,
             }
+        """
+        try:
+            r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=2.0)
+            if r.ok:
+                models = [m.get("name") for m in r.json().get("models", [])]
+                connected = settings.LLM_MODEL in models
+                return {
+                    "engine": "ollama" if connected else "ollama-no-model",
+                    "model": settings.LLM_MODEL,
+                    "available_models": models,
+                    "connected": connected,
+                }
+        except Exception:
+            pass
+
         return {
             "engine": "stub",
-            "model": "template-based",
-            "note": _ollama_last_error
-            or "Ollama 미연결 — 템플릿 응답으로 자동 fallback",
+            "model": settings.LLM_MODEL,
+            "available_models": [],
+            "connected": False,
+            "note": "Ollama 서버 미연결 — 설치 후 'ollama serve' 실행 + 모델 pull 필요",
         }

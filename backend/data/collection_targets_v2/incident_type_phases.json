@@ -1,0 +1,175 @@
+{
+  "_meta": {
+    "title": "사고유형 5종 → MITRE Kill Chain 단계 매핑",
+    "purpose": "V1 Step3 가이드 화면에서 선택된 사고유형으로부터 의심 침해 단계를 도출하고, 각 단계에 매칭되는 collection_targets_v2 카테고리를 자동 선별",
+    "primary_standard": "MITRE ATT&CK Cloud Matrix v14",
+    "primary_url": "https://attack.mitre.org/matrices/enterprise/cloud/",
+    "secondary_standards": [
+      "Google Cloud Threat Intel — Cloud Log Configurations (9 침해 단계)",
+      "KISA 침해사고 분석절차 안내서 (제2010-8호) - 표 2-1 사고 유형에 따른 대응 전략",
+      "CSA Top Threats to Cloud Computing 2024 - 11 위협 카테고리"
+    ],
+    "version": "v1",
+    "last_updated": "2026-05-15"
+  },
+  "incident_types": {
+    "CREDENTIAL_THEFT": {
+      "ko_label": "자격증명 탈취",
+      "description": "콘솔 비밀번호·AccessKey·API 토큰 탈취 → 비인가 접근",
+      "primary_phases": [
+        "Initial Access",
+        "Credential Access"
+      ],
+      "secondary_phases": [
+        "Persistence"
+      ],
+      "applicable_categories": [
+        {"category_id": "1.5.1", "role": "REQUIRED", "phase": "Initial Access"},
+        {"category_id": "1.5.4", "role": "REQUIRED", "phase": "Credential Access"},
+        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Persistence"},
+        {"category_id": "1.5.3", "role": "REQUIRED", "phase": "Persistence"},
+        {"category_id": "1.5.5", "role": "CORROBORATING", "phase": "Discovery"},
+        {"category_id": "1.5.7", "role": "CORROBORATING", "phase": "Initial Access"},
+        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+      ],
+      "mitre_techniques": [
+        "T1078.004 (Valid Accounts: Cloud Accounts)",
+        "T1110 (Brute Force)",
+        "T1552 (Unsecured Credentials)",
+        "T1098.001 (Additional Cloud Credentials)"
+      ],
+      "kisa_classification": "불법적인 자원 사용 (계정 도용) — 표 2-1",
+      "csa_threat_category": "#2 IAM",
+      "google_cloud_phase": "초기 침투 (Credential Stuffing)",
+      "rationale": "가장 빈번한 클라우드 침해 패턴. CSP 자체 통계상 70% 이상의 사고가 자격증명 단계에서 시작. KISA 사고 유형 매트릭스에서도 1순위.",
+      "typical_kill_chain": [
+        "Initial Access (1.5.1, 1.5.4) → Persistence (1.5.2, 1.5.3) → Discovery (1.5.5) → 후속 단계로 확장"
+      ]
+    },
+    "PRIVILEGE_ESCALATION": {
+      "ko_label": "권한 상승",
+      "description": "일반 계정 → 관리자 권한 / 정책 부착 / 멤버 역할 변경",
+      "primary_phases": [
+        "Privilege Escalation"
+      ],
+      "secondary_phases": [
+        "Persistence",
+        "Initial Access"
+      ],
+      "applicable_categories": [
+        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Privilege Escalation"},
+        {"category_id": "1.5.3", "role": "REQUIRED", "phase": "Persistence"},
+        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery"},
+        {"category_id": "1.5.1", "role": "CORROBORATING", "phase": "Initial Access"},
+        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+      ],
+      "mitre_techniques": [
+        "T1098 (Account Manipulation)",
+        "T1098.001 (Additional Cloud Credentials)",
+        "T1078.004 (Valid Accounts)"
+      ],
+      "kisa_classification": "불법적인 자원 사용 (권한 침해) — 표 2-1",
+      "csa_threat_category": "#2 IAM",
+      "google_cloud_phase": "권한 확대 (Privilege Escalation)",
+      "rationale": "CREDENTIAL_THEFT의 후속이거나 독립 사고. 신규 계정 + 정책 부착의 짝 흔적 분석이 핵심.",
+      "typical_kill_chain": [
+        "(가설: 자격증명 이미 보유) Persistence (1.5.3) → Privilege Escalation (1.5.2) → Discovery (1.5.5)"
+      ]
+    },
+    "DATA_EXFILTRATION": {
+      "ko_label": "데이터 유출",
+      "description": "Object Storage·DB에서 대용량 다운로드 → 외부 전송",
+      "primary_phases": [
+        "Collection",
+        "Exfiltration"
+      ],
+      "secondary_phases": [
+        "Discovery",
+        "Initial Access"
+      ],
+      "applicable_categories": [
+        {"category_id": "1.4", "role": "REQUIRED", "phase": "Exfiltration"},
+        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery"},
+        {"category_id": "1.8", "role": "CORROBORATING", "phase": "Lateral Movement"},
+        {"category_id": "1.5.1", "role": "CORROBORATING", "phase": "Initial Access"},
+        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+      ],
+      "mitre_techniques": [
+        "T1537 (Transfer Data to Cloud Account)",
+        "T1567 (Exfiltration Over Web Service)",
+        "T1530 (Data from Cloud Storage Object)"
+      ],
+      "kisa_classification": "정보 누설 — 표 2-1",
+      "csa_threat_categories": [
+        "#7 Accidental cloud disclosure",
+        "#10 Unauthenticated resource sharing"
+      ],
+      "google_cloud_phase": "데이터 탈취 (Data Exfiltration)",
+      "rationale": "사고 영향의 직접 증거. 단순 다운로드는 정상 활동과 구분이 어려우므로 시각·IP·크기·정책 변경 조합 분석 필수.",
+      "typical_kill_chain": [
+        "(가설: 자격증명 이미 보유) Discovery (1.5.5) → 권한 약화 (1.4.4) → Exfiltration (1.4.3, 1.4.5)"
+      ]
+    },
+    "AUDIT_LOG_TAMPERING": {
+      "ko_label": "감사 로그 변조",
+      "description": "활동 추적 비활성화·삭제 / 흔적 제거",
+      "primary_phases": [
+        "Stealth",
+        "Defense Impairment"
+      ],
+      "secondary_phases": [
+        "Impact"
+      ],
+      "applicable_categories": [
+        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"},
+        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Privilege Escalation"},
+        {"category_id": "1.5.5", "role": "CORROBORATING", "phase": "Discovery"}
+      ],
+      "mitre_techniques": [
+        "T1562.008 (Disable or Modify Cloud Logs)",
+        "T1070 (Indicator Removal)",
+        "T1531 (Account Access Removal)"
+      ],
+      "kisa_classification": "데이터 손상·변조 (로그) — 표 2-1",
+      "csa_threat_category": "#9 Limited cloud visibility/observability",
+      "google_cloud_phase": "로그 접근/조작 + 포렌식 방해 (Anti-Forensics)",
+      "rationale": "다른 모든 사고유형의 '신뢰성 기반'이기도 함. 단독 사고로도, 다른 사고의 후속 단계로도 발생. 1.7 카테고리가 핵심.",
+      "typical_kill_chain": [
+        "(가설: 관리자 권한 보유) Privilege Escalation (1.5.2) → Stealth (1.7.4 로그 삭제) → Defense Impairment (1.7.3 로그 export 비활성화)"
+      ]
+    },
+    "MULTI_CSP_LATERAL": {
+      "ko_label": "멀티 CSP 횡적 이동",
+      "description": "한 CSP의 자격증명·IP로 다른 CSP까지 침투",
+      "primary_phases": [
+        "Lateral Movement"
+      ],
+      "secondary_phases": [
+        "Initial Access",
+        "Discovery"
+      ],
+      "applicable_categories": [
+        {"category_id": "1.5.1", "role": "REQUIRED", "phase": "Initial Access", "scope": "both_csp"},
+        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery", "scope": "both_csp"},
+        {"category_id": "1.8", "role": "REQUIRED", "phase": "Lateral Movement"},
+        {"category_id": "1.4", "role": "CORROBORATING", "phase": "Exfiltration"},
+        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+      ],
+      "mitre_techniques": [
+        "T1021 (Remote Services)",
+        "T1078.004 (Valid Accounts: Cloud Accounts)"
+      ],
+      "kisa_classification": "불법적인 자원 사용 (확장) — 표 2-1",
+      "csa_threat_category": "#11 Advanced Persistent Threats (APT)",
+      "google_cloud_phase": "악성 활동 전파 + 인프라 생성",
+      "rationale": "단일 CSP 모니터링으로 보이지 않는 사고 유형. 외부 IP 기준 cross-CSP 상관관계 분석이 핵심. NCP attack-sim(11건) + NHN attack(36건)이 동일 IP 115.91.214.5 공유한 실 패턴.",
+      "typical_kill_chain": [
+        "(CSP A 침투 완료 가정) CSP A Discovery (1.5.5) → CSP B Initial Access (1.5.1) → 양쪽 동시 활동 (1.5.5 cross-csp) → 인프라 매핑 (1.8)"
+      ],
+      "special_requirements": {
+        "scope": "양쪽 CSP (naver + nhn) 모두 수집 필수",
+        "cross_correlation": "동일 외부 IP / 동일 사용자명·이메일 / 동일 시각 (±5분) 매칭"
+      }
+    }
+  }
+}

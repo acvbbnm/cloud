@@ -1,0 +1,104 @@
+{
+  "category_id": "1.5.3",
+  "category_name": "클라우드 인증 - 계정 생성",
+  "kb_source": {
+    "primary": {
+      "standard": "Google Cloud Threat Intel",
+      "section": "§1.5.3",
+      "title": "생성된 사용자 계정을 기록",
+      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+      "note": "1.5.2(권한 변경)와 별개로 신규 계정 자체의 생성을 추적. 백도어 계정 식별 핵심."
+    },
+    "secondary": [
+      {
+        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+        "section": "§3절 표 3-3 공격과 관련된 이벤트 로그",
+        "note": "비인가 사용자 계정 생성은 침해 영속화의 결정적 흔적"
+      },
+      {
+        "standard": "MITRE ATT&CK Cloud Matrix v14",
+        "technique": "T1136.003 (Create Account: Cloud Account)",
+        "tactic": "Persistence",
+        "url": "https://attack.mitre.org/techniques/T1136/003/"
+      },
+      {
+        "standard": "NIST SP 800-86",
+        "section": "§3.1 휘발성 계층 - User account changes",
+        "note": "계정 생성 이벤트는 CSP 감사 로그 보존 기간 내 100% 추적 가능"
+      }
+    ]
+  },
+  "applicable_incident_types": [
+    "CREDENTIAL_THEFT",
+    "PRIVILEGE_ESCALATION"
+  ],
+  "kill_chain_phases": [
+    "Persistence"
+  ],
+  "evidence_role": "REQUIRED",
+  "volatility_priority": 9,
+  "volatility_basis": "NIST SP 800-86 §3.1 (User account changes). KISA §3장 표 3-3에서 '비인가 계정 생성'은 침해 영속화 단계의 핵심 증거. 신규 계정 + 권한 부착이 짝으로 발생하므로 1.5.2와 동등 우선순위.",
+  "rationale": "공격자가 탈취한 자격증명으로 신규 IAM/Sub Account를 만들어 영속 접근을 확보하는 단계. 단기간(< 1시간) 다수 계정 생성, 비표준 명명 패턴(임의 문자열, 'admin2', 'test123' 등), 즉시 관리자 권한 부착이 강한 신호. NCP attack-sim 시나리오에서 'Create sub account' → 'Attach policy to sub account' 연쇄가 관찰됨.",
+  "use_cases": [
+    "비업무시간(0~6시) 신규 Sub Account 생성",
+    "단기간(< 30분) 다수 계정 생성 (배치 작업)",
+    "신규 계정에 즉시 AdministratorAccess 정책 부착",
+    "이미 생성된 계정과 명명 패턴 다름 (자동화 흔적)",
+    "신규 계정의 첫 활동이 root password decrypt 또는 server access인 경우"
+  ],
+  "csp_mapping": {
+    "naver": {
+      "log_source": "Cloud Activity Tracer",
+      "action_patterns": [
+        "Create sub account",
+        "createSubAccount",
+        "CreateLoginProfile"
+      ],
+      "field_locations": {
+        "actor": "content.actionUserName",
+        "ip": "content.sourceIp",
+        "new_account": "content.subAccountName"
+      },
+      "example_raw": {
+        "action": "Create sub account",
+        "eventTime": "2026-05-13 02:39:09 UTC",
+        "actionResultType": "SUCCESS",
+        "productName": "SubAccount",
+        "content": {
+          "actionUserName": "attack-sim",
+          "sourceIp": "115.91.214.5"
+        }
+      }
+    },
+    "nhn": {
+      "log_source": "Cloud Trail",
+      "event_id_patterns": [
+        "event_id.org.iam.member.add",
+        "event_id.project.member.add",
+        "event_id.project.member.invite",
+        "event_id.org.iam.member.send_mail"
+      ],
+      "field_locations": {
+        "actor": "userName",
+        "ip": "userIp",
+        "target_email": "request"
+      },
+      "example_raw": {
+        "eventId": "event_id.org.iam.member.add",
+        "eventTime": "2026-04-06T05:00:00.000+0000",
+        "result": "SUCCESS",
+        "userName": "attack",
+        "userIp": "115.91.214.5"
+      }
+    }
+  },
+  "retention_days_default": 90,
+  "applicable_environments": {
+    "auditEnabled_required": true,
+    "iam_member_count_dependent": true,
+    "modifier_hints": [
+      "iam_account_count >= 50 시 priority +1 (대규모 환경 — 신규 계정 노이즈 증가)",
+      "MFA 미적용 환경 시 priority +1 (신규 계정도 MFA 없이 즉시 활성화 가능)"
+    ]
+  }
+}

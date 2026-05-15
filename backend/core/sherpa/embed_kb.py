@@ -1,293 +1,216 @@
-"""Layer 3 — KB 청크를 ChromaDB 에 임베딩하는 모듈.
+"""KB 청크 → ChromaDB 컬렉션 적재 스크립트.
 
-설계서 5.4.5절 RAGRetriever 의 vectorDB 백엔드 구현.
+설계서 5.4.5절 + PROGRESS.md "다음 할 일 #1".
 
-동작 원칙:
-- chromadb · sentence-transformers 가 설치되어 있으면 실제 임베딩
-- 미설치 또는 모델 다운로드 실패 시 RAGRetriever 가 키워드 fallback 으로 자동 전환
-- 별도 인프라 없이 BASE_DIR/chroma_data 에 영속화 (오프라인 동작, SNF-01)
+흐름:
+  knowledge_base.load_all() → KB 4종 청크 → ChromaDB PersistentClient 의
+  "kb_chunks" 컬렉션에 upsert. cosine similarity 인덱스. 임베딩 함수는
+  ChromaDB 1.x 의 DefaultEmbeddingFunction (ONNX MiniLM L6 v2, 384 dim).
 
-사용법:
-1) 서버 startup 시 자동 호출 (main.py lifespan)
-2) CLI 로도 가능: `python -m core.sherpa.embed_kb`
+오프라인 동작:
+  - 첫 실행 시 ONNX 모델(~80MB) 을 `~/.cache/chroma/onnx_models/` 로 다운로드.
+  - 이후 실행은 캐시에서 로드 (오프라인 OK).
+  - 시연 노트북 셋업 시 한 번 인터넷에 연결한 상태에서 `embed_kb --reset` 실행 권장.
 
-향후:
-- 한국어 특화 모델(ko-sroberta-multitask) 교체 가능 (EMBEDDING_MODEL 환경변수)
-- 청크 크기 분할(현재 KB JSON 자체 청크 단위 사용)
+CLI:
+  python -m core.sherpa.embed_kb              # idempotent upsert
+  python -m core.sherpa.embed_kb --reset      # 컬렉션 삭제 후 재적재
+  python -m core.sherpa.embed_kb --stats      # 통계만 출력
+  python -m core.sherpa.embed_kb --query Q    # 임시 검색 (디버그)
+
+서버 startup 시 자동 호출은 의도적으로 안 함 (DB 초기화처럼 명시적 단계).
 """
-from __future__ import annotations
-
+import argparse
+import io
 import logging
+import sys
 from typing import Optional
+
+import chromadb
+from chromadb.api import ClientAPI
+from chromadb.api.models.Collection import Collection
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 from config import settings
 from core.sherpa.knowledge_base import KBChunk, load_all
 
 logger = logging.getLogger(__name__)
 
-
-# ── 모듈 import 보호 — 미설치 시에도 backend 가 기동되도록 ──
-
-_chromadb_available = False
-_sentence_transformers_available = False
-
-try:
-    import chromadb
-    from chromadb.api import ClientAPI
-    from chromadb.api.models.Collection import Collection
-    from chromadb.config import Settings as ChromaSettings
-
-    _chromadb_available = True
-except ImportError:  # pragma: no cover
-    chromadb = None  # type: ignore
-    ClientAPI = None  # type: ignore
-    Collection = None  # type: ignore
-    ChromaSettings = None  # type: ignore
-
-try:
-    from sentence_transformers import SentenceTransformer
-
-    _sentence_transformers_available = True
-except ImportError:  # pragma: no cover
-    SentenceTransformer = None  # type: ignore
+COLLECTION_NAME = "kb_chunks"
 
 
-# ── 전역 캐시 ──
-
-_client: Optional["ClientAPI"] = None
-_collection: Optional["Collection"] = None
-_embedder: Optional["SentenceTransformer"] = None
-_init_attempted = False
-_last_error: Optional[str] = None
+# ─────────────────────────────────────────────────────────────
+# 클라이언트 / 컬렉션
+# ─────────────────────────────────────────────────────────────
+_client: Optional[ClientAPI] = None
+_embedding_fn = None
 
 
-def is_available() -> bool:
-    """패키지가 둘 다 import 되었는지 — 환경 점검용."""
-    return _chromadb_available and _sentence_transformers_available
+def _get_client() -> ClientAPI:
+    """ChromaDB Persistent 클라이언트 — process-wide 싱글톤."""
+    global _client
+    if _client is None:
+        _client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
+    return _client
 
 
-def status() -> dict:
-    """현재 임베딩 백엔드 상태. V-8 KB 패널·health 응답에 사용."""
-    return {
-        "chromadb_installed": _chromadb_available,
-        "sentence_transformers_installed": _sentence_transformers_available,
-        "embedder_loaded": _embedder is not None,
-        "collection_loaded": _collection is not None,
-        "collection_size": _collection.count() if _collection is not None else 0,
-        "last_error": _last_error,
-        "model": settings.EMBEDDING_MODEL if _embedder is not None else None,
-    }
+def _get_embedding_fn():
+    """기본 임베딩 함수 (ONNX MiniLM L6 v2, 384 dim) — process-wide 싱글톤."""
+    global _embedding_fn
+    if _embedding_fn is None:
+        _embedding_fn = DefaultEmbeddingFunction()
+    return _embedding_fn
 
 
-def _ensure_embedder() -> Optional["SentenceTransformer"]:
-    """임베딩 모델 lazy 로드. 실패 시 None."""
-    global _embedder, _last_error
-    if _embedder is not None:
-        return _embedder
-    if not _sentence_transformers_available:
-        _last_error = "sentence-transformers not installed"
-        return None
-    try:
-        logger.info(f"loading embedder: {settings.EMBEDDING_MODEL}")
-        _embedder = SentenceTransformer(settings.EMBEDDING_MODEL)
-        return _embedder
-    except Exception as exc:  # pragma: no cover
-        _last_error = f"embedder load failed: {exc}"
-        logger.exception("embedder load failed")
-        return None
-
-
-def _ensure_client() -> Optional["ClientAPI"]:
-    """ChromaDB persistent client lazy 초기화."""
-    global _client, _last_error
-    if _client is not None:
-        return _client
-    if not _chromadb_available:
-        _last_error = "chromadb not installed"
-        return None
-    try:
-        _client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIR,
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
-        return _client
-    except Exception as exc:  # pragma: no cover
-        _last_error = f"chromadb client init failed: {exc}"
-        logger.exception("chromadb client init failed")
-        return None
-
-
-def _ensure_collection() -> Optional["Collection"]:
-    """KB 컬렉션 lazy 초기화. embedder 와 client 둘 다 준비되어야 함."""
-    global _collection, _last_error
-    if _collection is not None:
-        return _collection
-    client = _ensure_client()
-    if client is None:
-        return None
-    try:
-        _collection = client.get_or_create_collection(
-            name=settings.CHROMA_COLLECTION,
+def get_collection(create_if_missing: bool = True) -> Collection:
+    """KB 컬렉션 반환. cosine 거리, default ONNX 임베딩."""
+    client = _get_client()
+    ef = _get_embedding_fn()
+    if create_if_missing:
+        return client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            embedding_function=ef,
             metadata={"hnsw:space": "cosine"},
         )
-        return _collection
-    except Exception as exc:  # pragma: no cover
-        _last_error = f"collection init failed: {exc}"
-        logger.exception("collection init failed")
-        return None
+    return client.get_collection(name=COLLECTION_NAME, embedding_function=ef)
 
 
-def _encode(texts: list[str]) -> Optional[list[list[float]]]:
-    """문장들을 임베딩 벡터로 변환."""
-    embedder = _ensure_embedder()
-    if embedder is None:
-        return None
-    try:
-        # convert_to_numpy=True → list 변환을 직접 처리
-        vecs = embedder.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-        return [v.tolist() for v in vecs]
-    except Exception as exc:  # pragma: no cover
-        global _last_error
-        _last_error = f"encode failed: {exc}"
-        logger.exception("encode failed")
-        return None
+# ─────────────────────────────────────────────────────────────
+# 메타 정리 — ChromaDB metadata 는 str/int/float/bool 만 허용
+# ─────────────────────────────────────────────────────────────
+def _flatten_meta(chunk: KBChunk) -> dict:
+    """KBChunk → ChromaDB 호환 메타 dict."""
+    meta: dict = {
+        "kb_name": chunk.kb_name,
+        "title": chunk.title or "",
+        "source": chunk.source or "",
+        "url": chunk.url or "",
+    }
+    for k, v in (chunk.meta or {}).items():
+        if v is None:
+            continue
+        if isinstance(v, (str, int, float, bool)):
+            meta[k] = v
+        else:
+            # list / dict 는 문자열로 직렬화 (RAG 메타에서는 검색에만 사용되므로 손실 허용)
+            meta[k] = str(v)
+    return meta
 
 
-def _chunk_to_document(c: KBChunk) -> str:
-    """검색용 문서 텍스트. title + text + meta 의 일부."""
-    parts = [c.title or "", c.text or ""]
-    for k in ("technique_id", "tactic", "incident_type", "csp"):
-        v = c.meta.get(k)
-        if v:
-            parts.append(f"{k}={v}")
-    return "\n".join(p for p in parts if p)
+# ─────────────────────────────────────────────────────────────
+# 적재 / 통계 / 임시 검색
+# ─────────────────────────────────────────────────────────────
+def embed_all(reset: bool = False) -> dict:
+    """KB 4종 청크를 ChromaDB 에 upsert. 동일 chunk_id 는 덮어쓰기."""
+    client = _get_client()
 
-
-def embed_all(force: bool = False) -> dict:
-    """모든 KB 청크를 ChromaDB 에 적재.
-
-    Args:
-        force: True 면 컬렉션을 비우고 새로 적재. False 면 비어있을 때만 적재.
-
-    Returns:
-        통계 dict (적재 건수·skip 여부·에러).
-    """
-    global _init_attempted, _last_error
-    _init_attempted = True
-
-    chunks = load_all()
-    if not chunks:
-        _last_error = "no KB chunks found"
-        return {"loaded": 0, "skipped": True, "reason": "no chunks"}
-
-    collection = _ensure_collection()
-    embedder = _ensure_embedder()
-    if collection is None or embedder is None:
-        return {
-            "loaded": 0,
-            "skipped": True,
-            "reason": "chromadb or embedder unavailable",
-            "error": _last_error,
-        }
-
-    existing = collection.count()
-    if existing > 0 and not force:
-        return {"loaded": existing, "skipped": True, "reason": "already populated"}
-
-    if existing > 0 and force:
-        # ChromaDB 0.5 → 컬렉션 비우기: 전체 ID 삭제
+    if reset:
         try:
-            ids = collection.get()["ids"]
-            if ids:
-                collection.delete(ids=ids)
-        except Exception as exc:
-            _last_error = f"clear failed: {exc}"
-            logger.exception("clear failed")
+            client.delete_collection(COLLECTION_NAME)
+            logger.info("[embed_kb] reset: collection deleted")
+        except Exception:
+            # 컬렉션이 없으면 조용히 패스
+            pass
 
-    docs = [_chunk_to_document(c) for c in chunks]
-    embeddings = _encode(docs)
-    if embeddings is None:
-        return {"loaded": 0, "skipped": True, "reason": "encode failed", "error": _last_error}
+    collection = get_collection(create_if_missing=True)
+    chunks = load_all()
+
+    if not chunks:
+        logger.warning("[embed_kb] no chunks loaded from KB JSON")
+        return {"loaded": 0, "by_kb": {}}
 
     ids = [c.chunk_id for c in chunks]
-    metadatas = [
-        {
-            "kb_name": c.kb_name,
-            "title": c.title or "",
-            "source": c.source or "",
-            # ChromaDB metadata 는 scalar 만 허용 → list 필드는 직렬화
-            **{k: (v if isinstance(v, (str, int, float, bool)) else str(v))
-               for k, v in c.meta.items()
-               if v is not None and not isinstance(v, dict)},
-        }
-        for c in chunks
-    ]
+    documents = [f"{c.title}\n\n{c.text}".strip() for c in chunks]
+    metadatas = [_flatten_meta(c) for c in chunks]
+
+    collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
+
+    by_kb: dict[str, int] = {}
+    for c in chunks:
+        by_kb[c.kb_name] = by_kb.get(c.kb_name, 0) + 1
+
+    return {"loaded": len(chunks), "by_kb": by_kb, "total_in_collection": collection.count()}
+
+
+def stats() -> dict:
+    """현재 컬렉션 상태 — 적재 건수 + 카테고리 카운트."""
     try:
-        collection.add(ids=ids, embeddings=embeddings, documents=docs, metadatas=metadatas)
-        return {"loaded": len(ids), "skipped": False, "total_in_collection": collection.count()}
-    except Exception as exc:  # pragma: no cover
-        _last_error = f"add failed: {exc}"
-        logger.exception("collection.add failed")
-        return {"loaded": 0, "skipped": True, "reason": "add failed", "error": _last_error}
+        collection = get_collection(create_if_missing=False)
+        count = collection.count()
+        if count == 0:
+            return {"indexed": 0, "by_kb": {}, "note": "embed_all() 미실행"}
+        # by_kb 집계는 get() 으로 전체 메타 가져와서 셈
+        result = collection.get(include=["metadatas"])
+        by_kb: dict[str, int] = {}
+        for m in result.get("metadatas") or []:
+            kb = m.get("kb_name", "?")
+            by_kb[kb] = by_kb.get(kb, 0) + 1
+        return {"indexed": count, "by_kb": by_kb}
+    except Exception as e:
+        return {"indexed": 0, "by_kb": {}, "error": str(e)}
 
 
-def query(
-    text: str, k: int = 3, kb_filter: Optional[list[str]] = None
-) -> Optional[list[tuple[str, float, dict]]]:
-    """ChromaDB 에 의미 검색 질의.
-
-    Returns:
-        [(chunk_id, score, metadata)] — score 는 0~1 cosine similarity.
-        ChromaDB 미준비 시 None (호출자가 키워드 fallback 으로 전환).
-    """
-    collection = _ensure_collection()
-    if collection is None or collection.count() == 0:
-        return None
-    embedder = _ensure_embedder()
-    if embedder is None:
-        return None
-
-    q_vecs = _encode([text])
-    if q_vecs is None:
-        return None
-
-    where = None
-    if kb_filter:
-        # ChromaDB where 는 단일 값 또는 $in 연산자
-        where = {"kb_name": {"$in": kb_filter}}
-
-    try:
-        res = collection.query(
-            query_embeddings=q_vecs,
-            n_results=k,
-            where=where,
+def quick_query(query_text: str, k: int = 3) -> list[dict]:
+    """디버그용 임시 검색 — CLI --query 옵션이 사용."""
+    collection = get_collection(create_if_missing=False)
+    result = collection.query(query_texts=[query_text], n_results=k)
+    ids = (result.get("ids") or [[]])[0]
+    distances = (result.get("distances") or [[]])[0]
+    metadatas = (result.get("metadatas") or [[]])[0]
+    out = []
+    for cid, dist, meta in zip(ids, distances, metadatas):
+        out.append(
+            {
+                "chunk_id": cid,
+                "score": round(max(0.0, 1.0 - dist), 4),
+                "kb_name": (meta or {}).get("kb_name"),
+                "title": (meta or {}).get("title"),
+            }
         )
-    except Exception as exc:  # pragma: no cover
-        global _last_error
-        _last_error = f"query failed: {exc}"
-        logger.exception("collection.query failed")
-        return None
-
-    out: list[tuple[str, float, dict]] = []
-    ids = res.get("ids", [[]])[0]
-    distances = res.get("distances", [[]])[0]
-    metas = res.get("metadatas", [[]])[0]
-    for cid, dist, meta in zip(ids, distances, metas):
-        # cosine distance(0~2) → similarity(0~1)
-        similarity = max(0.0, 1.0 - float(dist))
-        out.append((cid, similarity, meta or {}))
     return out
 
 
-# CLI 실행
-if __name__ == "__main__":  # pragma: no cover
-    import json
+# ─────────────────────────────────────────────────────────────
+# CLI
+# ─────────────────────────────────────────────────────────────
+def _force_utf8_stdout() -> None:
+    """Windows 콘솔(cp949)에서 한글·em-dash 출력 시 UnicodeEncodeError 방지."""
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    print("Status:")
-    print(json.dumps(status(), indent=2, ensure_ascii=False))
-    print("\nEmbedding all KB chunks...")
-    result = embed_all(force=True)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
-    print("\nAfter embedding status:")
-    print(json.dumps(status(), indent=2, ensure_ascii=False))
+
+def main() -> None:
+    _force_utf8_stdout()
+    parser = argparse.ArgumentParser(description="KB 청크 ChromaDB 적재 스크립트")
+    parser.add_argument("--reset", action="store_true", help="컬렉션 삭제 후 재적재")
+    parser.add_argument("--stats", action="store_true", help="현재 적재 통계만 출력")
+    parser.add_argument("--query", help="디버그: 임시 검색 (텍스트)")
+    parser.add_argument("--k", type=int, default=3, help="--query 시 top-k (기본 3)")
+    args = parser.parse_args()
+
+    if args.stats:
+        s = stats()
+        print(f"[stats] indexed={s.get('indexed')} by_kb={s.get('by_kb')}")
+        if s.get("note"):
+            print(f"        note: {s['note']}")
+        return
+
+    if args.query:
+        rows = quick_query(args.query, k=args.k)
+        print(f"[query='{args.query}' k={args.k}]")
+        for i, r in enumerate(rows, 1):
+            print(f"  [{i}] score={r['score']} {r['kb_name']:<10} {r['chunk_id']:<40} {r['title'][:60]}")
+        return
+
+    r = embed_all(reset=args.reset)
+    print(
+        f"[OK] embed_kb upsert: loaded={r['loaded']} "
+        f"by_kb={r['by_kb']} total_in_collection={r.get('total_in_collection')}"
+    )
+
+
+if __name__ == "__main__":
+    main()

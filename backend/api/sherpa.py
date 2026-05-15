@@ -132,12 +132,12 @@ async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> 
 
 @router.get("/kb")
 async def get_kb_stats() -> dict:
-    """KB 인덱스 통계 + LLM/RAG 엔진 상태 (V8 우측 패널)."""
+    """KB 인덱스 통계 + 엔진 health (V-8 우측 패널)."""
     return {
         "status": "ok",
         "data": {
             **kb_stats(),
             "engine": LLMEngine.health(),
-            "rag": RAGRetriever.backend_info(),
+            "rag": RAGRetriever.health(),
         },
     }

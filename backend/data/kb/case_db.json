@@ -4,7 +4,8 @@
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json",
     "raw: C:/Users/sasum/nhn_activity_logs.json",
-    "내부 분석본: 3CSP_정규화_비교분석.html (2026-04-10)"
+    "내부 분석본: 3CSP_정규화_비교분석.html (2026-04-10)",
+    "합성 raw: backend/data/synthetic/*.json (scripts/synthesize_logs.py 출력, 2026-05-14)"
   ],
   "kb_id": "KB-4",
   "kb_name": "CASE_DB",
@@ -71,6 +72,80 @@
         "두 사고 모두 자격증명 변경/생성 + Lateral 이동 + Impact의 동일 Kill Chain 패턴"
       ],
       "lessons_learned": "단일 CSP 모니터링으로는 두 사고가 독립 사건으로 보이나, 외부 IP 기준 상관관계 분석 시 동일 행위자 가능성. 멀티 CSP 환경에서는 raw 로그를 OCSF로 정규화한 뒤 src_endpoint.ip 기준 cross-CSP 조회가 필수."
+    },
+    {
+      "chunk_id": "CASE-SYNTHETIC-NCP-2026-05-13-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "naver",
+      "title": "NCP attack-sim 자격증명 탈취 합성 시나리오 — 22분 Kill Chain (NONE / COLLECTION 두 변형)",
+      "actor": "attack-sim (NCP Sub Account, synthetic)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-05-13 02:30 ~ 02:52 UTC (약 22분)",
+      "event_count": 16,
+      "_status": "synthetic_v1",
+      "_source": "backend/data/synthetic/ncp_none.json (16건) · ncp_collection.json (14건, IAM-003 누락 변형)",
+      "timeline": [
+        { "time": "02:30:00", "actor": "alice", "action": "Login", "result": "SUCCESS", "ip": "172.30.10.6", "tactic": "정상 베이스라인" },
+        { "time": "02:30:10", "actor": "bob", "action": "Login", "result": "SUCCESS", "ip": "172.30.10.6", "tactic": "정상 베이스라인" },
+        { "time": "02:35:00", "actor": "attack-sim", "action": "Login", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Initial Access — brute-force (T1110.001)" },
+        { "time": "02:35:03", "actor": "attack-sim", "action": "Login", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Initial Access — brute-force" },
+        { "time": "02:35:09", "actor": "attack-sim", "action": "Login", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Initial Access (T1078.004)" },
+        { "time": "02:36:09", "actor": "attack-sim", "action": "Create AccessKey", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001) — productName: SubAccount" },
+        { "time": "02:38:09", "actor": "attack-sim", "action": "Change password", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
+        { "time": "02:39:09", "actor": "attack-sim", "action": "Create sub account", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence — 백도어 계정 (T1136.003)" },
+        { "time": "02:40:09", "actor": "attack-sim", "action": "Attach policy to sub account", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Privilege Escalation (T1098)" },
+        { "time": "02:43:09", "actor": "attack-sim", "action": "Access Server Connect Console", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Lateral Movement (T1021) — productName: Server" },
+        { "time": "02:44:09", "actor": "attack-sim", "action": "Decrypt root password", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Credential Access (T1552)" },
+        { "time": "02:46:09", "actor": "attack-sim", "action": "Request For Exporting To Object Storage", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Exfiltration (T1537) — productName: Object Storage" },
+        { "time": "02:47:09", "actor": "attack-sim", "action": "Complete For Exporting To Object Storage", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Exfiltration (T1537)" },
+        { "time": "02:48:09", "actor": "attack-sim", "action": "Start Server Instance", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1489)" },
+        { "time": "02:50:09", "actor": "attack-sim", "action": "Shutdown Server Instance", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1489)" },
+        { "time": "02:52:09", "actor": "attack-sim", "action": "Disable AccessKey", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1531) — 흔적 제거" }
+      ],
+      "evidence": [
+        "단일 외부 IP 115.91.214.5에서 5분 만에 brute-force(FAIL/FAIL/SUCCESS) → 권한·자격증명 조작 → Exfil → Impact 풀 Kill Chain 22분 완결",
+        "Persistence 4건(Create AccessKey, Change password, Create sub account, Attach policy to sub account) 모두 productName: SubAccount → collection_target CT-NCP-IAM-002 매칭",
+        "Server Console 접근 + root 비밀번호 복호화 2건 → CT-NCP-IAM-003 매칭 (변형 시나리오 ncp_collection 에서는 이 2건이 누락되어 갭 COLLECTION 판정)",
+        "Object Storage Export Request → Complete 2단계 기록은 NCP Tracer Export 형식(Unix ms)으로 저장됨 → 파서가 두 시간 포맷(UTC 문자열 / Unix ms) 모두 처리해야 함을 검증"
+      ],
+      "lessons_learned": "정상 사용자(alice, bob) Login 베이스라인 뒤 단일 외부 IP에서 5분만에 자동화된 Kill Chain. 변형 시나리오(ncp_collection.json)에서는 IAM-003(Server Console 접근) 증거가 누락되어 갭 COLLECTION 으로 판정 — 수사관은 V-4에서 Layer 0 복귀 후 Server Console 로그 추가 수집이 권고됨. productName 필드 한 가지로 5개 collection_target 이 정확히 분기(SubAccount→002, Server→003·005, Object Storage→004)되므로 NCP Tracer Export 시 productName 누락 시 매칭 정확도 급락."
+    },
+    {
+      "chunk_id": "CASE-SYNTHETIC-NHN-2026-05-13-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "nhn",
+      "title": "NHN attack 자격증명 탈취 합성 시나리오 — 17분 Kill Chain (NONE / COLLECTION 두 변형)",
+      "actor": "attack (NHN IAM, synthetic)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-05-13 02:30 ~ 02:47 UTC (약 17분)",
+      "event_count": 16,
+      "_status": "synthetic_v1",
+      "_source": "backend/data/synthetic/nhn_none.json (16건) · nhn_collection.json (15건, IAM-002 누락 변형 — 실 raw 147건과 동일 패턴)",
+      "timeline": [
+        { "time": "02:30:00", "actor": "alice", "action": "event_id.iam.login", "result": "SUCCESS", "ip": "172.30.10.6", "tactic": "정상 베이스라인" },
+        { "time": "02:30:13", "actor": "bob", "action": "event_id.iam.login", "result": "SUCCESS", "ip": "172.30.10.5", "tactic": "정상 베이스라인" },
+        { "time": "02:35:00", "actor": "attack", "action": "event_id.iam.login", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Initial Access — brute-force" },
+        { "time": "02:35:04", "actor": "attack", "action": "event_id.iam.login", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Initial Access — brute-force" },
+        { "time": "02:35:08", "actor": "attack", "action": "event_id.iam.login", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Initial Access (T1078.004)" },
+        { "time": "02:36:08", "actor": "attack", "action": "event_id.iam.org.selected", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Discovery — 조직 컨텍스트 진입" },
+        { "time": "02:36:38", "actor": "attack", "action": "event_id.iam.project.selected", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Discovery — 프로젝트 컨텍스트 진입" },
+        { "time": "02:37:08", "actor": "attack", "action": "event_id.iam.member.role.update", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Privilege Escalation (T1098) — 변형(nhn_collection)에서는 이 1건이 누락" },
+        { "time": "02:39:08", "actor": "attack", "action": "event_id.iaas.s3credential.create", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001) — 영속 키 확보" },
+        { "time": "02:40:08", "actor": "attack", "action": "event_id.iaas.keypair.create", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
+        { "time": "02:41:08", "actor": "attack", "action": "event_id.iaas.identity.password_change", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
+        { "time": "02:42:08", "actor": "attack", "action": "event_id.project.product.enable", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Privilege Escalation 시도 실패 (T1098)" },
+        { "time": "02:42:38", "actor": "attack", "action": "event_id.project.member.update", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Privilege Escalation (T1098)" },
+        { "time": "02:43:38", "actor": "attack", "action": "event_id.iaas.instance_action.stop", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1489)" },
+        { "time": "02:45:38", "actor": "attack", "action": "event_id.iaas.vpc.delete_end", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1485) — 데이터 파괴" },
+        { "time": "02:46:38", "actor": "attack", "action": "event_id.iaas.s3credential.delete", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1531) — 흔적 제거" }
+      ],
+      "evidence": [
+        "동일 외부 IP 115.91.214.5에서 Initial Access → Persistence 3건(s3credential.create, keypair.create, identity.password_change) → Privilege Escalation(project.member.update) → Impact(instance.stop, vpc.delete, s3credential.delete) 풀 Kill Chain",
+        "iam.member.role.update 가 IAM-002(권한 변경) collection_target 의 유일한 증거 — 변형(nhn_collection.json)에서 이 1건이 누락되어 갭 COLLECTION 판정. 실 raw 147건도 동일 패턴(권한 변경 이벤트 부재)",
+        "project.product.enable FAIL 후 project.member.update SUCCESS 시퀀스 — 권한 상승 시도 패턴이 두 번에 걸쳐 관찰됨",
+        "마지막 단계 vpc.delete_end + s3credential.delete 로 인프라 파괴 + 자격증명 흔적 제거"
+      ],
+      "lessons_learned": "NHN Cloud Trail 의 eventId 가 점-분리 계층 코드(event_id.[카테고리].[작업])이므로 매칭은 prefix 정규식으로 분기됨. 변형 시나리오(nhn_collection.json)는 실 raw 147건이 가진 한계를 그대로 재현 — IAM 권한 변경 이벤트가 raw 에 없어 갭 COLLECTION 판정, V-4 → Layer 0 복귀 → 추가 수집이 정답. NCP 시나리오와 동일 IP 115.91.214.5 를 공유하므로 cross-CSP 상관관계 분석 필요(CASE-MULTI-CSP-2026-04-05-001 참고)."
     }
   ]
 }

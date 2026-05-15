@@ -243,6 +243,108 @@ const V4Gap = () => {
                 </Card>
               </div>
             </div>
+
+            {/* v2 부가 진단 패널 — 4개 참고자료 반영 (논문/Google/SentinelOne/Naver) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* [R4] Naver Cloud — priority 가중 점수 */}
+              {result.priorityScore && (
+                <Card title={<>📊 우선순위 가중 수집률</>}>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-[28px] font-extrabold text-ink-100">
+                      {result.priorityScore.percent}%
+                    </span>
+                    <span className="text-[11.5px] text-ink-400">
+                      ({result.priorityScore.collected} / {result.priorityScore.total} 가중점)
+                    </span>
+                  </div>
+                  <div className="text-[11.5px] text-ink-300 leading-6">
+                    P1=10, P2=7, P3=3, P4=1 가중치 적용. 단순 건수가 아닌 <b>중요도</b> 기준.
+                    {result.priorityScore.missing > 0 && (
+                      <>
+                        {' '}누락 가중점 <b className="text-brand-amber">{result.priorityScore.missing}</b>점.
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-2 text-[10.5px] text-ink-500">
+                    출처: Naver Cloud 보안관제 실무 우선순위 체계
+                  </div>
+                </Card>
+              )}
+
+              {/* [R1] 논문 — ATT&CK kill-chain 커버리지 */}
+              {result.tacticCoverage && (
+                <Card title={<>🎯 ATT&CK 단계 커버리지</>}>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-[28px] font-extrabold text-ink-100">
+                      {result.tacticCoverage.covered}
+                    </span>
+                    <span className="text-[13px] text-ink-400">
+                      / {result.tacticCoverage.total} 단계
+                    </span>
+                  </div>
+                  {Object.keys(result.tacticCoverage.byTactic).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {Object.entries(result.tacticCoverage.byTactic).map(([t, n]) => (
+                        <span
+                          key={t}
+                          className="chip text-[10.5px]"
+                          title={`${n}건 매핑`}
+                        >
+                          {t} · {n}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {result.tacticCoverage.missingTactics.length > 0 && (
+                    <div className="text-[11px] text-ink-400 leading-6">
+                      미커버:{' '}
+                      <span className="text-ink-300">
+                        {result.tacticCoverage.missingTactics.slice(0, 6).join(', ')}
+                        {result.tacticCoverage.missingTactics.length > 6 && ' …'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="mt-2 text-[10.5px] text-ink-500">
+                    출처: ATT&CK 매트릭스 기반 이벤트 로그 분석 (한국정보보호학회)
+                  </div>
+                </Card>
+              )}
+
+              {/* [R3] SentinelOne — anti-forensic 시간 갭 */}
+              {result.timeGaps && result.timeGaps.length > 0 && (
+                <Card title={<>⏱ 시간 축 비정상 공백 — {result.timeGaps.length}건</>} borderColor="#FF4D6D">
+                  <div className="flex flex-col gap-1.5">
+                    {result.timeGaps.slice(0, 5).map((g, i) => (
+                      <div
+                        key={i}
+                        className="text-[11.5px] text-ink-200 font-mono leading-5"
+                      >
+                        <span className="text-brand-red">●</span>{' '}
+                        {g.from.slice(11, 19)} → {g.to.slice(11, 19)}{' '}
+                        <span className="text-ink-400">({g.durationMinutes}분 공백)</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-[10.5px] text-ink-500">
+                    30분 이상 이벤트 공백 = 로그 삭제·변조 후보. 출처: SentinelOne 사이버 포렌식 (anti-forensics)
+                  </div>
+                </Card>
+              )}
+
+              {/* [R2] Google Cloud — bad log config 신호 */}
+              {result.badConfigSignals && result.badConfigSignals.length > 0 && (
+                <Card title={<>⚙️ 수집 구성 경고 — {result.badConfigSignals.length}건</>} borderColor="#FFB020">
+                  <ul className="flex flex-col gap-1.5 list-disc list-inside text-[12px] text-ink-200 leading-6">
+                    {result.badConfigSignals.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-2 text-[10.5px] text-ink-500">
+                    출처: Google Cloud Threat Intel — Cloud Bad Log Configurations
+                  </div>
+                </Card>
+              )}
+            </div>
           </>
         )}
       </PageBody>

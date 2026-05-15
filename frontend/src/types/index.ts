@@ -159,6 +159,31 @@ export interface GapResultResponse {
   recommendation: string;
   completionRate: number;
   created_at: string;
+  // v2 (2026-05-15) — 4개 참고자료 반영 부가 진단. backend 가 항상 포함하므로 optional 처리.
+  /** [R4 Naver Cloud 실무] priority 가중 수집 점수 (P1=10, P2=7, P3=3, P4=1) */
+  priorityScore?: {
+    collected: number;
+    missing: number;
+    total: number;
+    /** 0~100 */
+    percent: number;
+  };
+  /** [R1 ATT&CK 매트릭스 논문] kill-chain 단계 커버리지 */
+  tacticCoverage?: {
+    covered: number;
+    total: number;
+    byTactic: Record<string, number>;
+    missingTactics: string[];
+  };
+  /** [R3 SentinelOne anti-forensics] 시간 축 비정상 공백 — 로그 삭제 후보 */
+  timeGaps?: {
+    from: string;
+    to: string;
+    durationMinutes: number;
+    suspicion: 'anti_forensic_candidate' | string;
+  }[];
+  /** [R2 Google Cloud bad log config] REQUIRED vs CORROBORATING 비대칭 등 수집 구성 경고 */
+  badConfigSignals?: string[];
 }
 
 export interface PaginatedData<T> {

@@ -12,10 +12,15 @@
 
 설정 (config.py + .env):
   - OLLAMA_BASE_URL : 기본 http://localhost:11434
-  - LLM_MODEL       : 기본 llama3.1:8b (gpt-oss:20b 등 교체 가능)
+  - LLM_MODEL       : 기본 gpt-oss:20b (필요 시 llama3.1:8b 등 교체)
   - LLM_TIMEOUT     : 초 (SNF-02 = 30)
+
+GPT-OSS 호환:
+  - 응답에 `<thinking>`, `<think>`, `analysis...assistantfinal` 같은 reasoning 토큰이
+    섞일 수 있어 `_strip_reasoning()` 으로 후처리하여 최종 답변만 V-8 에 노출.
 """
 import logging
+import re
 from typing import Optional
 
 import httpx
@@ -24,6 +29,33 @@ from config import settings
 from core.sherpa.knowledge_base import KBChunk
 
 logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────
+# Reasoning 토큰 후처리 (GPT-OSS / DeepSeek 등 호환)
+# ─────────────────────────────────────────────────────────────
+# 일부 추론 모델은 응답에 사고 과정을 그대로 노출함 (XML 태그 또는 마커).
+# 평가용 화면(V-8)에서는 최종 답변만 보여야 하므로 제거한다.
+_THINKING_TAG = re.compile(r"<thinking>.*?</thinking>", re.DOTALL | re.IGNORECASE)
+_THINK_TAG = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_ANALYSIS_BLOCK = re.compile(
+    r"^.*?analysis.*?assistantfinal\s*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_reasoning(text: str) -> str:
+    """모델 응답에서 reasoning 토큰을 제거하고 최종 답변만 남긴다.
+
+    빈 문자열이면 그대로 반환 (호출자가 fallback 처리).
+    """
+    if not text:
+        return text
+    text = _THINKING_TAG.sub("", text)
+    text = _THINK_TAG.sub("", text)
+    # GPT-OSS "analysis ... assistantfinal" 패턴 (있을 때만 한 번)
+    text = _ANALYSIS_BLOCK.sub("", text, count=1)
+    return text.strip()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -108,6 +140,7 @@ class LLMEngine:
 
         Returns:
             한국어 응답 텍스트. timeout 또는 컨텍스트 부재 시 fallback.
+            추론 모델(gpt-oss 등)의 reasoning 토큰은 자동 제거.
         """
         if not context:
             return _FALLBACK_NO_CONTEXT
@@ -138,6 +171,8 @@ class LLMEngine:
             r.raise_for_status()
             data = r.json()
             content = (data.get("message") or {}).get("content", "").strip()
+            # gpt-oss 등의 reasoning 토큰 제거 후 반환
+            content = _strip_reasoning(content)
             return content or _FALLBACK_NO_CONTEXT
 
         except httpx.TimeoutException:

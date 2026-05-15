@@ -263,10 +263,19 @@ export interface KbEngineHealth {
   engine: string; // 'stub' | 'ollama' 등
   model: string;
   note: string;
+  base_url?: string;
+}
+
+export interface RagBackendInfo {
+  backend: 'chromadb' | 'keyword';
+  model?: string;
+  collection_size?: number;
+  reason?: string;
 }
 
 export interface KbStatsResponse {
   total: number;
   byKb: Record<string, number>;
   engine: KbEngineHealth;
+  rag?: RagBackendInfo;
 }

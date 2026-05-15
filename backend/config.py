@@ -36,13 +36,23 @@ class Settings:
     ]
 
     # ── Ollama (sLLM) ──
+    # 기본 모델: gpt-oss:20b (OpenAI 오픈웨이트, 추론·한국어 모두 우수).
+    # 시스템 RAM 16GB 미만이면 환경변수로 더 작은 모델 지정 권장 (예: llama3.1:8b).
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.1:8b")
-    LLM_TIMEOUT: int = 30  # 초 (SNF-02)
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-oss:20b")
+    LLM_TIMEOUT: int = 30  # 초 (SNF-02 — 초과 시 템플릿 fallback)
 
-    # ── ChromaDB ──
+    # ── ChromaDB (Layer 3 RAG) ──
     CHROMA_PERSIST_DIR: str = os.getenv(
         "CHROMA_PERSIST_DIR", str(BASE_DIR / "chroma_data")
+    )
+    CHROMA_COLLECTION: str = os.getenv("CHROMA_COLLECTION", "ai_sherpa_kb")
+
+    # ── 임베딩 모델 ──
+    # 다국어 지원 (한국어 KB 청크 검색). 첫 로드 시 약 120MB 다운로드.
+    # 미설치 시 RAGRetriever 가 키워드 매칭 fallback 으로 자동 전환.
+    EMBEDDING_MODEL: str = os.getenv(
+        "EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"
     )
 
     # ── 페이지네이션 ──

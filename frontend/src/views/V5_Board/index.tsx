@@ -16,15 +16,15 @@ import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
 import type { AttackEventItem, BoardNode, BriefingResponse, SherpaSource } from '@/types';
 
+import LogPanel from './LogPanel';
+import BoardCanvas from './BoardCanvas';
+
 const SOURCE_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
   ATTACK: 'purple',
   PLAYBOOK: 'teal',
   CSP_DOC: 'blue',
   CASE_DB: 'amber',
 };
-
-import LogPanel from './LogPanel';
-import BoardCanvas from './BoardCanvas';
 
 const ATTACK_PAGE_SIZE = 10;
 

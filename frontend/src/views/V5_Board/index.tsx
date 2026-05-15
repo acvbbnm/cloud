@@ -128,7 +128,7 @@ const V5Board = () => {
   const addedAttackIds = new Set(boardNodes.map((n) => n.attack_id).filter(Boolean));
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-y-auto">
       <PageHeader
         eyebrow="Layer 4 · M4-1"
         title="수사 보드"
@@ -151,7 +151,7 @@ const V5Board = () => {
         }
       />
 
-      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 flex gap-4 flex-1 overflow-hidden min-h-0 animate-fade-up flex-col">
+      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 flex gap-4 animate-fade-up flex-col">
         {/* 백엔드 통신 상태 패널 */}
         <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
           <div className="flex items-center justify-between gap-2 mb-1">
@@ -185,7 +185,7 @@ const V5Board = () => {
           )}
         </div>
 
-        <div className="flex gap-4 flex-1 overflow-hidden min-h-0">
+        <div className="flex gap-4">
           <div className="flex-1 min-w-0 flex flex-col gap-3">
             <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
 
@@ -281,7 +281,7 @@ const V5Board = () => {
           </div>
 
           {/* 우측 컬럼 */}
-          <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1">
+          <div className="w-[340px] shrink-0 flex flex-col gap-3">
             <Card title={<>ℹ️ 상세</>}>
               {activeBoardNode ? (
                 <div className="text-[12.5px]">

@@ -10,7 +10,7 @@ const LogPanel = ({ onDragStart }: LogPanelProps) => {
   const removeLog = useBoardStore((s) => s.removeLog);
 
   return (
-    <div className="panel flex-1 min-h-0 flex flex-col">
+    <div className="panel min-h-[440px] max-h-[640px] flex flex-col">
       <div className="flex items-center justify-between p-4 pb-2.5">
         <h3 className="panel-title">📋 수집 로그</h3>
         <span className="chip text-[10.5px]">{logs.length}건</span>

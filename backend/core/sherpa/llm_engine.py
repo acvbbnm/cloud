@@ -209,7 +209,8 @@ class LLMEngine:
             # 10초로 완화 — Ollama 가 추론 중일 때 /api/tags 응답이 큐잉되어 지연되는 케이스 대응.
             # 너무 짧으면 모델이 RAM 에 로드된 상태에서도 health 가 'stub' 으로 표시되는 문제.
             r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=10.0)
-            if r.ok:
+            # httpx 는 requests 와 달리 .ok 속성이 없음 — is_success 사용
+            if r.is_success:
                 models = [m.get("name") for m in r.json().get("models", [])]
                 connected = settings.LLM_MODEL in models
                 return {

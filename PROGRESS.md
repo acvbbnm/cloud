@@ -31,6 +31,58 @@
 
 ## 작업 내역
 
+### 2026-05-15 — 가이드 시스템 근거 보강 2-트랙 진행 (`dev` vs `dev2` 병행)
+
+기존 `dev`의 수집 가이드(`CollectionGuide.generate()`)가 `system_config` 입력을 무시하고 `incident_type`+`csp` 두 필드만 사용한다는 점, collection_targets 5건 분류 근거가 부재한 점이 외부 표준 부재 학술 약점으로 식별됨. 외부 표준 6종(KISA / MITRE / NIST / ISO / Google Cloud / CSA) 분석 후 두 트랙 병행 결정.
+
+**Track A — `dev` 브랜치: 기존 구조 유지 + 근거 메타 추가**
+
+- 담당: dev 브랜치 작업자 (먼저 작업 시작 가능)
+- 목표: 기존 시드·코드 구조 그대로, 각 항목에 외부 표준 출처 메타 추가
+- 1차안 완료: [`docs/분석_설계_근거.md`](docs/분석_설계_근거.md) ([`71d61d4`](https://github.com/sasumm25-lab/cloud/commit/71d61d4))
+- 남은 작업 (이어서 진행할 팀원에게):
+  1. `data/collection_targets/{naver,nhn}_CREDENTIAL_THEFT.json` 각 항목에 `rationale` 객체 추가
+     - `kisa_reference`: 침해사고 분석절차 안내서 §해당절 인용
+     - `mitre_techniques`: T1078.004 등 ATT&CK 매핑
+     - `google_cloud_ref`: §1.5.1 등 카테고리 인용
+     - `nist_evidence_type`: NIST SP 800-86 §3.1 휘발성 계층
+     - `use_case`: 한 줄 활용 시나리오
+  2. `data/attack_rules/rules.json` 22 룰에 `rationale.mitre_url` + `kisa_reference` 추가
+  3. `data/mapping_rules/{ncp,nhn}_*.json` 의 `source_doc` 필드 보강
+  4. `frontend/src/views/V1_Setup/Step3_GuideChecklist.tsx` 각 항목 옆에 출처 칩 추가 (작은 UI 변경)
+  5. `docs/근거_매핑.md` 신규 — 시드 ↔ 외부 표준 매핑 표
+- 제약: 기존 코드 로직·시드 구조 변경 금지. 메타 추가만.
+- PR base: `dev` (또는 새 personal feature 브랜치 → dev)
+
+**Track B — `dev2` 브랜치: 외부 표준 기반 신규 가이드 시스템 재설계**
+
+- 담당: 김병우 (sasumm25-lab) — 다른 계정/PC에서 이어서 작업 예정
+- 목표: Google Cloud 9 카테고리 + MITRE Kill Chain + KISA 점검표를 채택해 가이드 시스템 자체를 재설계
+- 청사진: [`docs/신규_수집가이드_설계.md`](docs/신규_수집가이드_설계.md) ([`102f3c0`](https://github.com/sasumm25-lab/cloud/commit/102f3c0), dev2 브랜치)
+- Phase A~H 작업 정의 완료 (총 18~24h)
+- 핵심 차이 (vs Track A):
+  - 시드 단위: 사고유형 × CSP (5건) → 카테고리 × 다대다 매핑 (40~50건)
+  - 가이드 입력: incident_type+csp 두 필드 → system_config 전체 동적 반영
+  - 우선순위: 임의 → NIST 휘발성 계층
+  - API: `GET /api/guide/v2` 신규 (기존 `/api/guide` 병행 유지)
+  - UI: 단순 체크리스트 → Kill Chain 단계 매트릭스 + 출처 칩
+- 충돌 회피: 별도 디렉토리 `collection_targets_v2/` + 별도 모듈 `collection_guide_v2.py` + 별도 컴포넌트 `Step3_GuideChecklist_V2.tsx`
+- PR base: `dev2` → 양 트랙 비교 후 결정
+
+**머지·채택 결정 (김병우)**
+
+두 트랙 PR이 모두 완성되면 다음 기준으로 비교:
+- 학술 변호 강도 / 시연 임팩트 / 개발 비용 / 기존 시스템 호환성 / 시드 가짓수 / 확장성
+- 단일 채택 or 하이브리드 (v2 매트릭스 + v1 rationale 메타 둘 다)
+
+**현재 진행 상황**:
+- ✅ KISA 침해사고 분석절차 안내서 PDF (제2010-8호, 168 페이지) — 김병우 PC 로컬 확보
+- ✅ MITRE ATT&CK Cloud Matrix v14 14 전술 매핑 확보
+- ✅ Google Cloud Threat Intel 9 로그 카테고리 본문 추출
+- ✅ NIST SP 800-86 휘발성 계층 / ISO 27037 4단계 / CSA Top Threats 11종 개요 확보
+- ⏳ KrCERT "정보통신분야 침해사고 대응 안내서 개정본 (2025-08)" — 페이지에 다운로드 링크 없음, 다른 경로 필요
+- ⏳ Ollama llama3.1:8b 다운로드 (87 KB/s, 20% / 12h — 사용자 PC 네트워크 제약)
+
 ### 2026-05-14 (저녁) — 합성 raw 로그 생성기 + 시연 노트북 대응 (브랜치: `easy`)
 
 실 raw 로그(NCP 81 + NHN 147)는 김병우 PC에만 있고 민감 정보(이메일·UUID·세션쿠키)라 git 공유 불가. 시연 노트북·다른 팀원 환경·CI 에서도 V-2 업로드 → 풀 파이프라인이 동작하도록 합성 raw 로그 생성기를 추가.

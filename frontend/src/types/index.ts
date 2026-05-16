@@ -279,3 +279,74 @@ export interface KbStatsResponse {
   engine: KbEngineHealth;
   rag?: RagBackendInfo;
 }
+
+// ─────────────────────────────────────────────────────────
+// /api/guide/v2 응답 (dev2 청사진 § 5 정합)
+// ─────────────────────────────────────────────────────────
+
+export interface GuideV2SourceRef {
+  std: string | null;
+  ref: string | null;
+  title: string | null;
+  url: string | null;
+}
+
+export interface GuideV2Target {
+  category_id: string;
+  category_name: string;
+  evidence_role: 'REQUIRED' | 'CORROBORATING' | string;
+  priority: number;
+  priority_basis: string;
+  rationale: string;
+  csp_specific: Record<string, string>;
+  sources: GuideV2SourceRef[];
+  collected: boolean;
+}
+
+export interface GuideV2PhaseGroup {
+  phase_id: string | null;
+  phase_name: string | null; // 한국어 (예: "초기 침투")
+  phase_description: string;
+  mitre_url: string;
+  kisa_reference: string;
+  targets: GuideV2Target[];
+}
+
+export interface GuideV2EnvWarning {
+  category_id: string;
+  category_name: string;
+  evidence_role: string;
+  priority: number;
+  rationale: string;
+  from_modifier: string | null;
+}
+
+export interface GuideV2AppliedModifier {
+  id: string;
+  field?: string;
+  matched_value?: unknown;
+  effect: string;
+  category_id?: string | null;
+  kill_chain_phase?: string | null;
+  boost?: number | null;
+  secondary?: Array<{
+    effect: string;
+    category_id?: string | null;
+    kill_chain_phase?: string | null;
+    boost?: number | null;
+  }>;
+  reason: string;
+  source: string;
+}
+
+export interface GuideV2Response {
+  caseId: string;
+  incidentType: string;
+  csp: string;
+  completionRate: number;
+  phases: Record<string, GuideV2PhaseGroup>;
+  environment_warnings: GuideV2EnvWarning[];
+  applied_modifiers: GuideV2AppliedModifier[];
+  source_standards: string[];
+  version: 'v2';
+}

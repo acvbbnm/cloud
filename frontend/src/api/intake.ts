@@ -1,6 +1,11 @@
 import client from './client';
 
-import type { CreateCaseReq, CaseResponse, GuideResponse } from '@/types';
+import type {
+  CreateCaseReq,
+  CaseResponse,
+  GuideResponse,
+  GuideV2Response,
+} from '@/types';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -37,5 +42,12 @@ export const getGuide = async (caseId: string): Promise<GuideResponse> => {
     };
   }
   const res = await client.get('/api/guide', { params: { caseId } });
+  return res.data.data;
+};
+
+/** GET /api/guide/v2 — dev2 청사진의 외부 표준 6종 기반 Kill Chain 매트릭스 가이드.
+ *  기존 getGuide() 와 병행. V1 화면에서 v1/v2 토글로 두 응답 비교 가능. */
+export const getGuideV2 = async (caseId: string): Promise<GuideV2Response> => {
+  const res = await client.get('/api/guide/v2', { params: { caseId } });
   return res.data.data;
 };

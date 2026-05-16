@@ -67,7 +67,15 @@ def is_available() -> bool:
 
 
 def status() -> dict:
-    """현재 임베딩 백엔드 상태. V-8 KB 패널·health 응답에 사용."""
+    """현재 임베딩 백엔드 상태. V-8 KB 패널·health 응답에 사용.
+
+    lazy init 보장 — embed_kb CLI 로 빌드 후 backend 재기동 시 첫 status() 가
+    _collection 을 자동 로드하므로 'collection empty' 라벨이 잘못 표시되지 않는다.
+    """
+    if _collection is None and _chromadb_available:
+        _ensure_collection()
+    if _embedder is None and _sentence_transformers_available:
+        _ensure_embedder()
     return {
         "chromadb_installed": _chromadb_available,
         "sentence_transformers_installed": _sentence_transformers_available,

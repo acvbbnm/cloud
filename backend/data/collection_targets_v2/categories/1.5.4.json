@@ -71,7 +71,14 @@
           "actionUserName": "attack-sim",
           "sourceIp": "115.91.214.29"
         }
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer",
+        "필터: action='Login' · actionResultType='FAIL'",
+        "기간: 사고 발생 시각 ±24시간 (brute-force·credential stuffing 식별)",
+        "분석: 동일 IP × 동일 계정 × 5초 내 3회 이상 실패 → 즉시 성공 패턴 추출"
+      ],
+      "cli_hint": "콘솔 검색 외 CLI 미제공. 추후 자동화는 Object Storage Export 활용."
     },
     "nhn": {
       "log_source": "Cloud Trail",
@@ -91,7 +98,14 @@
         "userName": "attack",
         "userIp": "115.91.214.5",
         "response": "{\"header\":{\"resultCode\":13002,\"isSuccessful\":false}}"
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: eventId='event_id.iam.login' · result='FAIL'",
+        "기간: 사고 발생 시각 ±24시간",
+        "분석: 1.5.1 성공 인증과 시간 매칭 (실패 → 성공 전환점이 brute-force 성공)"
+      ],
+      "cli_hint": "nhncloud cloudtrail events --event-id event_id.iam.login --result FAIL"
     }
   },
   "retention_days_default": 90,

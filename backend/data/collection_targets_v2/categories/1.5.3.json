@@ -68,7 +68,14 @@
           "actionUserName": "attack-sim",
           "sourceIp": "115.91.214.5"
         }
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer",
+        "필터: action='Create sub account' · productName='SubAccount'",
+        "기간: 사고 발생 24~48시간 전부터 현재 (백도어 계정 식별)",
+        "추가: 생성된 계정명에서 비표준 패턴(임의 문자열·'admin2'·'test123')과 정상 명명 규칙 비교"
+      ],
+      "cli_hint": "ncloud subaccount listSubAccounts 로 현재 계정 목록 추출 후 timeline 대조"
     },
     "nhn": {
       "log_source": "Cloud Trail",
@@ -89,7 +96,14 @@
         "result": "SUCCESS",
         "userName": "attack",
         "userIp": "115.91.214.5"
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: eventId='event_id.org.iam.member.add' 또는 'event_id.project.member.add'",
+        "기간: 사고 발생 24~48시간 전부터 현재",
+        "추가: Organization > Members 현재 목록 추출 후 cross-check"
+      ],
+      "cli_hint": "nhncloud iam members list 로 현재 목록 → timeline 대조"
     }
   },
   "retention_days_default": 90,

@@ -84,7 +84,14 @@
           "sourceIp": "10.218.70.139"
         }
       },
-      "note": "NCP는 단일 통합 로그라 productName으로 서비스 분류 필요"
+      "note": "NCP는 단일 통합 로그라 productName으로 서비스 분류 필요",
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer (전체 통합 로그)",
+        "필터: 침해 의심 actionUserName + sourceIp 로 좁히기",
+        "기간: 사고 발생 시각 이후 ~ 현재 (영향 범위 식별)",
+        "분류: productName 기준으로 Server / IAM / Object Storage / VPC 단계별 그룹화"
+      ],
+      "cli_hint": "통합 로그이므로 productName 별로 다중 export 후 OCSF 정규화 권장"
     },
     "nhn": {
       "log_source": "Cloud Trail",
@@ -113,7 +120,14 @@
         "userName": "attack",
         "userIp": "115.91.214.5"
       },
-      "note": "NHN은 event_id namespace로 서비스 자동 분류 가능"
+      "note": "NHN은 event_id namespace로 서비스 자동 분류 가능",
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: userName=침해 계정 · userIp=침해 IP",
+        "기간: 사고 발생 시각 이후 ~ 현재",
+        "분류: eventId prefix 별 (iaas.* / object_storage.* / iam.* / org.*)"
+      ],
+      "cli_hint": "nhncloud cloudtrail events --user-name <actor> --user-ip <ip>"
     }
   },
   "retention_days_default": 90,

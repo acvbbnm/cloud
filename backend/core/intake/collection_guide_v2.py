@@ -451,6 +451,41 @@ def _summarize_csp_mapping(cat: dict) -> dict[str, str]:
     return out
 
 
+def _collection_methods_from_csp_mapping(cat: dict) -> dict[str, dict]:
+    """csp_mapping → '어떻게 수집하나' 응답 구조.
+
+    각 CSP 별로 (log_source, action_patterns, event_id_patterns, collection_steps,
+    cli_hint, field_locations, example_raw) 를 묶어서 KB 패널 렌더링에 그대로 사용.
+
+    Returns:
+        예: {
+            "naver": {
+                "log_source": "Cloud Activity Tracer",
+                "patterns": ["Login", "Logout", "Console Login"],
+                "collection_steps": [...4 단계...],
+                "cli_hint": "...",
+                "field_locations": {...},
+                "example_raw": {...}
+            },
+            "nhn": {...}
+        }
+    """
+    out: dict[str, dict] = {}
+    cm = cat.get("csp_mapping", {}) or {}
+    for csp, spec in cm.items():
+        out[csp] = {
+            "log_source": spec.get("log_source") or "",
+            "patterns": list(spec.get("action_patterns") or spec.get("event_id_patterns") or []),
+            "pattern_kind": "action" if spec.get("action_patterns") else ("eventId" if spec.get("event_id_patterns") else ""),
+            "collection_steps": list(spec.get("collection_steps") or []),
+            "cli_hint": spec.get("cli_hint") or "",
+            "field_locations": spec.get("field_locations") or {},
+            "example_raw": spec.get("example_raw") or {},
+            "note": spec.get("note") or "",
+        }
+    return out
+
+
 def _sources_from_kb(cat: dict) -> list[dict]:
     """카테고리의 kb_source(primary + secondary) → API 응답 sources 배열."""
     out: list[dict] = []
@@ -508,7 +543,9 @@ def _group_by_phase(
                 "priority": priority,
                 "priority_basis": _priority_basis(cat),
                 "rationale": cat.get("rationale"),
+                "use_cases": list(cat.get("use_cases") or []),
                 "csp_specific": _summarize_csp_mapping(cat),
+                "collection_methods": _collection_methods_from_csp_mapping(cat),
                 "sources": _sources_from_kb(cat),
                 "collected": False,  # Phase G: raw_events 매칭 후 갱신 예정
             }

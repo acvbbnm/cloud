@@ -60,7 +60,14 @@
         "score": "위험 점수 (CSP 정의)"
       },
       "note": "NCP MVP 환경에서는 위험 기반 검색 표준 API 부재 — Cloud Insight 메트릭 + Activity Tracer 룰 조합으로 대체",
-      "limitation": "이 카테고리는 NCP에서 부분 지원. PRO/Enterprise 플랜 권장."
+      "limitation": "이 카테고리는 NCP에서 부분 지원. PRO/Enterprise 플랜 권장.",
+      "collection_steps": [
+        "콘솔 > Cloud Insight (PRO/Enterprise 플랜 필요)",
+        "이상 탐지 알림 (Threat Detection Alert) 이력 조회",
+        "기간: 사고 발생 시각 ±72시간",
+        "보강: 1.5.1 비국내 IP 로그인과 cross-check (단독 증거 X · CORROBORATING)"
+      ],
+      "cli_hint": "Cloud Insight API — 부가 서비스 활성화 필요. NCP MVP 환경은 부분 지원."
     },
     "nhn": {
       "log_source": "Security Monitoring / Network Security (제한적)",
@@ -72,7 +79,14 @@
         "ip": "탐지된 IP"
       },
       "note": "NHN MVP 환경에서도 위험 기반 IAM 검색 직접 매핑 어려움 — Audit Trail의 변조 감지 알림으로 대체",
-      "limitation": "Security Monitoring 부가 서비스 활성화 필요."
+      "limitation": "Security Monitoring 부가 서비스 활성화 필요.",
+      "collection_steps": [
+        "콘솔 > 관리 > Security Monitoring (부가 서비스)",
+        "Alert 이력 조회 — eventId='event_id.security_monitoring.alert.*'",
+        "기간: 사고 발생 시각 ±72시간",
+        "보강: Cloud Trail 변조 감지 알림과 cross-check (CORROBORATING)"
+      ],
+      "cli_hint": "Security Monitoring 부가 서비스 활성화 필요. NHN MVP 환경은 부분 지원."
     }
   },
   "retention_days_default": 30,

@@ -6,9 +6,18 @@
       "standard": "Google Cloud Threat Intel",
       "section": "§1.8.1 ~ §1.8.3",
       "items": [
-        {"ref": "1.8.1", "title": "네트워크 플로우 메타 데이터 기록"},
-        {"ref": "1.8.2", "title": "네트워크 구성 변경 사항 기록"},
-        {"ref": "1.8.3", "title": "만들기, 삭제, 수정 같은 가상 IP 주소 관리 작업 기록"}
+        {
+          "ref": "1.8.1",
+          "title": "네트워크 플로우 메타 데이터 기록"
+        },
+        {
+          "ref": "1.8.2",
+          "title": "네트워크 구성 변경 사항 기록"
+        },
+        {
+          "ref": "1.8.3",
+          "title": "만들기, 삭제, 수정 같은 가상 IP 주소 관리 작업 기록"
+        }
       ],
       "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
       "use_phase_quote": "인프라 생성 단계 — 네트워크 플로우 메타데이터, 네트워크 구성 변경, 가상 IP 주소 관리 작업"
@@ -104,7 +113,14 @@
           "sourceIp": "115.91.214.5",
           "vpcName": "exfil-vpc-01"
         }
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer",
+        "필터: productName='VPC'/'ACG'/'Subnet' · action='Create*'/'Update*'/'Delete*'/'Attach*'",
+        "기간: 사고 발생 시각 ±48시간",
+        "추가: ACG Rule 변경 시 '0.0.0.0/0' 신규 추가 / NAT·VPN Gateway 생성 / VPC 삭제 흔적 우선"
+      ],
+      "cli_hint": "VPC Flow Log 부가 서비스 활성화 시 별도 확보 (트래픽 상세 매핑)"
     },
     "nhn": {
       "log_source": "Cloud Trail (iaas namespace)",
@@ -135,7 +151,14 @@
         "result": "SUCCESS",
         "userName": "attack",
         "userIp": "115.91.214.5"
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: eventId prefix='event_id.iaas.vpc.' / 'event_id.iaas.security_group.' / 'event_id.iaas.port.' / 'event_id.iaas.nat_gateway.'",
+        "기간: 사고 발생 시각 ±48시간",
+        "추가: vpc.delete_end / security_group.create / port.create_end 우선 (인프라 파괴·외부 채널·횡이동 흔적)"
+      ],
+      "cli_hint": "nhncloud network vpc list / nhncloud network securitygroup list 로 현재 상태 cross-check"
     }
   },
   "retention_days_default": 90,

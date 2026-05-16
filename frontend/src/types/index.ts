@@ -291,6 +291,17 @@ export interface GuideV2SourceRef {
   url: string | null;
 }
 
+export interface GuideV2CollectionMethod {
+  log_source: string;
+  patterns: string[];
+  pattern_kind: 'action' | 'eventId' | '';
+  collection_steps: string[];
+  cli_hint: string;
+  field_locations: Record<string, string>;
+  example_raw: Record<string, unknown>;
+  note: string;
+}
+
 export interface GuideV2Target {
   category_id: string;
   category_name: string;
@@ -298,7 +309,9 @@ export interface GuideV2Target {
   priority: number;
   priority_basis: string;
   rationale: string;
+  use_cases: string[];
   csp_specific: Record<string, string>;
+  collection_methods: Record<string, GuideV2CollectionMethod>;
   sources: GuideV2SourceRef[];
   collected: boolean;
 }

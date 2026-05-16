@@ -82,7 +82,14 @@
           "actionUserName": "attack-sim",
           "sourceIp": "115.91.214.5"
         }
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer",
+        "필터: productName='SubAccount' · action='Change password'/'Create AccessKey'/'Attach policy to sub account'",
+        "기간: 1.5.1 최초 접근 시점 이후 ±6시간 (영속화·확대 흔적)",
+        "내보내기: CSV → V-2 업로드. 추가로 IAM 정책 현재 스냅샷 확보"
+      ],
+      "cli_hint": "ncloud subaccount listAccessKeys 등 SDK API 로 현재 키 목록 cross-check"
     },
     "nhn": {
       "log_source": "Cloud Trail",
@@ -107,7 +114,14 @@
         "result": "SUCCESS",
         "userName": "attack",
         "userIp": "115.91.214.5"
-      }
+      },
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: eventId prefix='event_id.iam.' 또는 'event_id.iaas.identity.' 또는 'event_id.iaas.s3credential.'",
+        "기간: 1.5.1 최초 접근 이후 ±6시간",
+        "다운로드: JSON → V-2 업로드. IAM 멤버 역할 현재 스냅샷 확보"
+      ],
+      "cli_hint": "nhncloud cloudtrail events --event-id-prefix event_id.iam.member.role"
     }
   },
   "retention_days_default": 90,

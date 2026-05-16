@@ -172,6 +172,13 @@ const V1Setup = () => {
                   publicIp: config.publicIp,
                   auditEnabled: config.auditEnabled,
                   scope: config.scope,
+                  // dev2 v2 가이드 — environment_modifiers.json 트리거 필드
+                  mfa_status: config.mfa_status,
+                  iam_account_count: config.iam_account_count,
+                  audit_log_retention_days: config.audit_log_retention_days,
+                  data_sensitivity: config.data_sensitivity,
+                  sso_enabled: config.sso_enabled,
+                  multi_cloud: config.multi_cloud,
                 },
               });
             }}

@@ -197,16 +197,34 @@ def invalidate_cache() -> None:
 
 
 def _lookup_phases(incident_type: str) -> list[str]:
-    """사고유형 → primary + secondary phases (중복 제거, primary 순서 유지)."""
+    """사고유형 → primary + secondary phases + applicable_categories[*].phase (중복 제거).
+
+    incident_type_phases.json 의 applicable_categories 항목에 명시된 phase 도
+    합집합에 포함해야 'AUDIT_LOG_TAMPERING 외 사고유형에서도 1.7(Stealth) 카테고리가
+    적용된다' 같은 명시적 시드 의도를 백엔드가 그대로 따른다.
+
+    primary → secondary → applicable_categories 순으로 dedup. 원본 순서를 유지해
+    Kill Chain UI 그룹 표시 시 'primary 단계 먼저' 시각화가 유지된다.
+    """
     pdata = _load_incident_phases().get("incident_types", {}).get(incident_type)
     if not pdata:
         return []
     seen: set[str] = set()
     out: list[str] = []
-    for p in list(pdata.get("primary_phases", [])) + list(pdata.get("secondary_phases", [])):
-        if p not in seen:
-            seen.add(p)
-            out.append(p)
+    sources: list[list] = [
+        list(pdata.get("primary_phases", [])),
+        list(pdata.get("secondary_phases", [])),
+        [
+            ac.get("phase")
+            for ac in pdata.get("applicable_categories", [])
+            if ac.get("phase")
+        ],
+    ]
+    for src in sources:
+        for p in src:
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
     return out
 
 

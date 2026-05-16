@@ -12,6 +12,13 @@ interface SystemConfig {
   publicIp: string;
   auditEnabled: string;
   scope: string;
+  // dev2 v2 가이드 보강 — environment_modifiers.json m-004~m-011 트리거 필드
+  mfa_status: string;
+  iam_account_count: number;
+  audit_log_retention_days: number;
+  data_sensitivity: string;
+  sso_enabled: string;
+  multi_cloud: string;
 }
 
 interface Step2Props {
@@ -22,12 +29,13 @@ interface Step2Props {
   isSubmitting?: boolean;
 }
 
-type TabKey = 'basic' | 'system' | 'csp' | 'scope';
+type TabKey = 'basic' | 'system' | 'csp' | 'security' | 'scope';
 
 const TABS: { id: TabKey; label: string }[] = [
   { id: 'basic', label: '🗂 사고 기본' },
   { id: 'system', label: '🖥 시스템 공통' },
   { id: 'csp', label: '☁ CSP 특화' },
+  { id: 'security', label: '🛡 보안 정책' },
   { id: 'scope', label: '🎯 영향 범위' },
 ];
 
@@ -57,6 +65,12 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
   const [publicIp, setPublicIp] = useState('있음 (LB 경유)');
   const [auditEnabled, setAuditEnabled] = useState('활성화 (정상 수집 중)');
   const [scope, setScope] = useState('admin-user, svc-backup');
+  // dev2 v2 가이드 — environment_modifiers.json 트리거 필드
+  const [mfaStatus, setMfaStatus] = useState('적용');
+  const [iamAccountCount, setIamAccountCount] = useState<number>(12);
+  const [auditLogRetentionDays, setAuditLogRetentionDays] = useState<number>(90);
+  const [dataSensitivity, setDataSensitivity] = useState('없음');
+  const [ssoEnabled, setSsoEnabled] = useState('없음');
 
   const toggleSvc = (s: string) => {
     setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -73,6 +87,13 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
       publicIp,
       auditEnabled,
       scope,
+      mfa_status: mfaStatus,
+      iam_account_count: iamAccountCount,
+      audit_log_retention_days: auditLogRetentionDays,
+      data_sensitivity: dataSensitivity,
+      sso_enabled: ssoEnabled,
+      // csp='all' 선택 시 자동으로 멀티 클라우드 환경으로 인식 (m-010 트리거)
+      multi_cloud: isAll ? '있음 (NCP + NHN 동시 사용)' : '없음',
     });
   };
 
@@ -307,6 +328,103 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 })}
               </div>
             </Field>
+          </div>
+        )}
+
+        {tab === 'security' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 pb-2 mb-1 border-b border-ink-700/60 flex items-center gap-2 flex-wrap">
+              <span className="eyebrow text-brand-teal">🛡 보안 정책 (V2 가이드 환경 보정)</span>
+              <span className="text-[10.5px] text-ink-400">
+                입력값이 수집 가이드 V2 의 우선순위·추가 항목에 즉시 반영됩니다 (KISA §2.4 + NIST SP 800-86 §3 기반).
+              </span>
+            </div>
+
+            <Field
+              label={
+                <span className="flex items-center gap-1.5">
+                  MFA (다중 인증) 적용 현황
+                  <span className="tag-red text-[10px]">필수 확인</span>
+                </span>
+              }
+            >
+              <select value={mfaStatus} onChange={(e) => setMfaStatus(e.target.value)} className="input">
+                <option>적용</option>
+                <option>부분 적용</option>
+                <option>미적용</option>
+                <option>미확인</option>
+              </select>
+              <p className="text-[10.5px] text-ink-400 mt-1">
+                • 미적용 → 1.5.1 인증 + 1.5.4 실패 인증 priority +2 (CSA #2 IAM)
+                <br />• 부분 적용 → 1.5.1 priority +1
+              </p>
+            </Field>
+
+            <Field label="SSO (외부 IdP 연동)">
+              <select value={ssoEnabled} onChange={(e) => setSsoEnabled(e.target.value)} className="input">
+                <option>없음</option>
+                <option>있음 (외부 IdP 연동)</option>
+                <option>미확인</option>
+              </select>
+              <p className="text-[10.5px] text-ink-400 mt-1">
+                • 있음 → 1.5.5 API 액세스 + 1.5.7 위험 기반 검색 priority +1
+              </p>
+            </Field>
+
+            <Field label="IAM 사용자 계정 수 (대략)">
+              <input
+                type="number"
+                min={0}
+                value={iamAccountCount}
+                onChange={(e) => setIamAccountCount(Number(e.target.value) || 0)}
+                className="input"
+              />
+              <p className="text-[10.5px] text-ink-400 mt-1">
+                • 50명 이상 → 1.5.2 권한 + 1.5.3 계정 생성 priority +1 (대규모 환경 노이즈)
+              </p>
+            </Field>
+
+            <Field
+              label={
+                <span className="flex items-center gap-1.5">
+                  감사 로그 보존 기간 (일)
+                  <span className="tag-yellow text-[10px]">휘발성</span>
+                </span>
+              }
+            >
+              <input
+                type="number"
+                min={0}
+                value={auditLogRetentionDays}
+                onChange={(e) => setAuditLogRetentionDays(Number(e.target.value) || 0)}
+                className="input"
+              />
+              <p className="text-[10.5px] text-ink-400 mt-1">
+                • 90일 미만 → ⚠️ CT-RETENTION-WARNING 항목 추가 (NIST SP 800-86 §3.1 휘발성)
+              </p>
+            </Field>
+
+            <Field label="민감 데이터 보유" full>
+              <select
+                value={dataSensitivity}
+                onChange={(e) => setDataSensitivity(e.target.value)}
+                className="input"
+              >
+                <option>없음</option>
+                <option>있음 (개인정보·민감정보)</option>
+                <option>미확인</option>
+              </select>
+              <p className="text-[10.5px] text-ink-400 mt-1">
+                • 있음 → 1.4 파일 스토리지 priority +2, 1.7 로깅 메타 +1 (CSA #7 Accidental Disclosure)
+              </p>
+            </Field>
+
+            {isAll && (
+              <div className="md:col-span-2 panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
+                <span className="eyebrow text-brand-teal">자동 인식</span>{' '}
+                CSP 전체(naver + nhn) 선택 — <strong>멀티 클라우드 환경</strong>으로 분류되어 1.5.5 API 액세스 + Lateral Movement 단계 priority +2 가 적용됩니다 (m-010).
+              </div>
+            )}
           </div>
         )}
 

@@ -16,6 +16,7 @@ from api.analysis import router as analysis_router
 from api.sherpa import router as sherpa_router
 from api.board import router as board_router
 from api.report import router as report_router
+from api.common import router as common_router
 
 app = FastAPI(
     title="AI Sherpa",
@@ -39,6 +40,7 @@ app.include_router(analysis_router)
 app.include_router(sherpa_router)
 app.include_router(board_router)
 app.include_router(report_router)
+app.include_router(common_router)
 
 
 @app.get("/api/health", tags=["common"])

@@ -1,6 +1,6 @@
 {
-  "_status": "MVP_minimal",
-  "_note": "자격증명 탈취 대응 플레이북 2종. 시연용 — 추후 KISA·NIST 표준 기반 확장.",
+  "_status": "operational_v1",
+  "_note": "5 사고유형 × 2 청크 (즉시 대응 + 증거 보존) = 10 청크 운영급. KISA 침해사고 분석절차 안내서 3·4 + NIST SP 800-61r2 + ISO/IEC 27037 6.5·6.6 기반.",
   "kb_id": "KB-2",
   "kb_name": "PLAYBOOK",
   "chunks": [
@@ -10,7 +10,11 @@
       "title": "클라우드 계정 탈취 — 즉시 대응 절차",
       "text": "1) 의심 계정 비활성화(Disable) — 영속화 차단. 2) 활성 세션 토큰 강제 만료(Revoke). 3) AccessKey 회전 및 미사용 키 폐기. 4) 최근 30일 IAM 변경 이력 감사. 5) 비정상 권한 부여·역할 변경 롤백. 6) 영향 자원 격리(보안그룹 분리). 7) MFA 미적용 계정 식별·강제 적용.",
       "source": "내부 운영 가이드 v0.1",
-      "tactics_addressed": ["Initial Access", "Persistence", "Privilege Escalation"]
+      "tactics_addressed": [
+        "Initial Access",
+        "Persistence",
+        "Privilege Escalation"
+      ]
     },
     {
       "chunk_id": "PLAYBOOK-CREDTHEFT-002",
@@ -18,7 +22,98 @@
       "title": "포렌식 증거 보존 절차",
       "text": "1) 사고 발생 시점 ±24h 모든 audit log SHA-256 해시로 봉인. 2) 원본 로그 별도 저장소 복제(WORM 권장). 3) 의심 IP의 모든 API 호출 timeline 추출. 4) 메모리·스냅샷 확보 가능 시 우선. 5) 분석 대상 데이터의 chain of custody 문서화.",
       "source": "내부 운영 가이드 v0.1",
-      "tactics_addressed": ["Collection", "Defense Evasion"]
+      "tactics_addressed": [
+        "Collection",
+        "Defense Evasion"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-PRIVESC-001",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "title": "권한 상승 사고 — 즉시 대응 절차",
+      "text": "1) 의심 사용자/역할의 비정상 정책 즉시 분리(DetachPolicy). 2) 최근 24h 내 정책·역할·신뢰관계 변경 이력 전수 감사. 3) 신규 생성된 IAM 자격증명(키·세션) 회수. 4) Trust Policy 변경 롤백 (특히 외부 계정 AssumeRole 허용 추가분). 5) 신규 권한으로 접근된 리소스 식별 및 격리. 6) 권한 변경 알림 규칙 활성화·강화.",
+      "source": "KISA 침해사고 분석절차 안내서 3.3 + NIST SP 800-61r2 3.2",
+      "tactics_addressed": [
+        "Privilege Escalation",
+        "Persistence"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-PRIVESC-002",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "title": "권한 상승 사고 — 증거 보존 절차",
+      "text": "1) 정책 변경 직전·직후 IAM 정책 JSON 스냅샷 봉인(SHA-256). 2) AttachPolicy·UpdateAssumeRolePolicy·CreateRole API 호출 timeline 추출. 3) 권한 변경 후 호출된 모든 비IAM API 추적(영향 자원 식별). 4) 외부 계정/리전 AssumeRole 흔적이 있다면 cross-account 로그 확보. 5) chain of custody 문서화 (ISO/IEC 27037).",
+      "source": "ISO/IEC 27037 6.5 + KISA 4.2 (증거 보존)",
+      "tactics_addressed": [
+        "Privilege Escalation",
+        "Defense Evasion"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-EXFIL-001",
+      "incident_type": "DATA_EXFILTRATION",
+      "title": "데이터 유출 사고 — 즉시 대응 절차",
+      "text": "1) 유출 의심 버킷·DB 즉시 외부 접근 차단(PublicAccessBlock·PrivateEndpoint 강제). 2) 새로 발급된 Pre-signed URL 폐기, BucketPolicy/ACL 변경 롤백. 3) 단시간 대량 GetObject·CopyObject 호출 패턴 IP/계정별 집계. 4) 외부 클라우드 계정으로의 ReplicationRule·CopyObject 흔적 즉시 감사. 5) 민감 데이터 분류 정책 적용 여부 확인. 6) 관계 부처·DPO 신고 절차 개시.",
+      "source": "KISA 3.3 정보 누설 + CSA Top Threats 2024 #7",
+      "tactics_addressed": [
+        "Exfiltration",
+        "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-EXFIL-002",
+      "incident_type": "DATA_EXFILTRATION",
+      "title": "데이터 유출 사고 — 증거 보존 절차",
+      "text": "1) Object Storage 액세스 로그(S3 access log·NCP Tracer Export·NHN CloudTrail) SHA-256 봉인. 2) 유출 의심 객체의 size·etag·last_modified 메타 데이터 보존. 3) Pre-signed URL 발급 이력과 사용 이력(IP·UA) 시계열 추출. 4) Object 버전관리 활성화 시 버전 timeline 보존. 5) 네트워크 outbound 트래픽 로그(VPC Flow) 확보 — 외부 SaaS·자체 인프라로의 업로드 패턴.",
+      "source": "ISO/IEC 27037 6.6 + NIST SP 800-86 3",
+      "tactics_addressed": [
+        "Exfiltration",
+        "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-AUDITLOG-001",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "title": "감사 로그 변조 사고 — 즉시 대응 절차",
+      "text": "1) 감사 로그 서비스 비활성·삭제 사실 확인 즉시 Object Storage 외부 사본 격리(WORM 잠금). 2) StopLogging·DeleteTrail·DisableTracer API 호출자 IAM 정책 즉시 박탈. 3) 다른 보조 로그(VPC Flow·Application Log·OS audit) 우선 보존. 4) 외부 클라우드 계정으로의 export 채널 검사(권한 외 export 시도 흔적). 5) 모든 분석 결과의 신뢰도 재평가 — 메타 로그 누락 구간 표시.",
+      "source": "KISA 3 (로그 무결성) + NIST SP 800-86 3.4",
+      "tactics_addressed": [
+        "Defense Evasion",
+        "Impact"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-AUDITLOG-002",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "title": "감사 로그 변조 사고 — 증거 보존 절차",
+      "text": "1) Tracer/CloudTrail 자체 메타 로그(Delete Tracer·Disable AccessKey 이력) SHA-256 즉시 봉인. 2) 외부 Object Storage 자동 export 사본의 변조 감지 알림 이력 확보(NHN의 외부 로그 변조 알림 기능). 3) 로그 보존 정책 변경 이력(retention_days 단축 흔적) timeline 추출. 4) 시간 갭(10분 이상 로그 누락)이 있는 구간을 별도 표시 + 대조 로그(다른 계정·다른 서비스)로 보강. 5) 메타 로그 변조 시점 전후 1h 모든 API 호출 cross-reference.",
+      "source": "ISO/IEC 27037 6.3 (Preservation) + KISA 3.4",
+      "tactics_addressed": [
+        "Defense Evasion",
+        "Stealth"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-MULTICSP-001",
+      "incident_type": "MULTI_CSP_LATERAL",
+      "title": "멀티 CSP 횡적 이동 사고 — 즉시 대응 절차",
+      "text": "1) 침해 의심 외부 IP 양쪽 CSP에서 즉시 차단(NACL·Security Group). 2) 동일 사용자명·이메일이 양쪽 CSP에서 동시 활동 중인지 확인 → 자격증명 공유 가능성. 3) 두 CSP의 SSO/IdP 연동 점검 — 한 쪽 침해가 다른 쪽으로 자동 전파됐을 가능성. 4) 인스턴스 콘솔 접근·Pre-signed URL·외부 KMS 접근을 양쪽에서 동시 격리. 5) 두 CSP 모두에 동일 권한 변경 알림 규칙 활성화.",
+      "source": "CSA Top Threats 2024 #11 APT + KISA 3.3 확장",
+      "tactics_addressed": [
+        "Lateral Movement",
+        "Initial Access"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-MULTICSP-002",
+      "incident_type": "MULTI_CSP_LATERAL",
+      "title": "멀티 CSP 횡적 이동 사고 — 증거 보존 절차",
+      "text": "1) 양쪽 CSP의 감사 로그 동일 시점(±5분 윈도우)으로 동기화 봉인. 2) 동일 외부 IP에서 양쪽 CSP에 접근한 모든 API 호출 cross-CSP 매칭 테이블 생성. 3) 두 CSP의 OCSF 정규화 후 src_endpoint.ip 기준 join 결과 보존. 4) 동일 사용자명·이메일·키 지문(JWT iss/aud, MFA seed 등) 시계열 비교. 5) 두 CSP의 시간 동기 오차(NTP) 측정 — 분석 신뢰성 보강.",
+      "source": "ISO/IEC 27037 6.6 + 본 시스템 cross-CSP 검증",
+      "tactics_addressed": [
+        "Lateral Movement",
+        "Collection"
+      ]
     }
   ]
 }

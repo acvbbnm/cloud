@@ -19,7 +19,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
-    Numeric,
     String,
     Text,
 )
@@ -120,7 +119,8 @@ class AttackEventModel(Base):
     technique_id = Column(String(16), nullable=False, index=True)  # T1078.004
     tactic = Column(String(32), nullable=False, index=True)
     rule_id = Column(String(36), nullable=False)  # 매핑 규칙 출처
-    risk_score = Column(Numeric(5, 2), nullable=True)  # 0.00~100.00
+    # risk_score 제거 (산출 근거 부재 / 학술 변호 불가). 우선순위 정렬은 mapped_at 또는
+    # technique 빈도 기반으로 대체.
     mapped_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 

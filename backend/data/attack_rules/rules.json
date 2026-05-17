@@ -1,6 +1,6 @@
 {
   "_status": "real_log_v1",
-  "_note": "실제 raw log(activity_logs_full.json 81건 + nhn_activity_logs.json 147건)에 등장하는 action/eventId 만 룰화. activity_name_pattern은 NCP는 action 값(예: 'Login'), NHN은 eventId 값(예: 'event_id.iam.login')에 대해 정규식 매칭. condition은 시연용 MVP에서는 비워두고 패턴만으로 매핑.",
+  "_note": "ATT&CK 매핑 룰 22건 (NCP 11 + NHN 11). base_risk_score 필드는 제거됨 — 산출 근거 부재로 학술 변호 불가. 매칭 시 첫 매칭 룰을 선택하며, 다중 매칭 시 patterns 순서(구체성 높은 룰 먼저)에 의존.",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json (NCP 81건, 분석본 일치)",
     "raw: C:/Users/sasum/nhn_activity_logs.json (NHN 147건, 분석본 일치)",
@@ -15,7 +15,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — attack-sim 다중 Login(SUCCESS+FAIL 혼재)"
     },
@@ -27,7 +26,6 @@
       "condition": {},
       "technique_id": "T1021",
       "tactic": "Lateral Movement",
-      "base_risk_score": 7.5,
       "real_log_count": 10,
       "source": "raw activity_logs_full.json"
     },
@@ -39,7 +37,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 6.5,
       "real_log_count": 6,
       "source": "raw activity_logs_full.json"
     },
@@ -51,7 +48,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — 'Create AccessKey'와 'Create access key' 두 명칭 동시 존재"
     },
@@ -63,7 +59,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json — attack-sim 06:12:59"
     },
@@ -75,7 +70,6 @@
       "condition": {},
       "technique_id": "T1552",
       "tactic": "Credential Access",
-      "base_risk_score": 9.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — kbw11111 사용자"
     },
@@ -87,7 +81,6 @@
       "condition": {},
       "technique_id": "T1537",
       "tactic": "Exfiltration",
-      "base_risk_score": 9.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — Request/Complete 2단계로 기록됨"
     },
@@ -99,7 +92,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 7.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -111,7 +103,6 @@
       "condition": {},
       "technique_id": "T1136.003",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -123,7 +114,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -135,7 +125,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 6.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -147,7 +136,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 계정 다중 Login"
     },
@@ -159,7 +147,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.5,
       "real_log_count": 10,
       "source": "raw nhn_activity_logs.json — attack 계정 2회 FAIL"
     },
@@ -171,7 +158,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json"
     },
@@ -183,7 +169,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw nhn_activity_logs.json"
     },
@@ -195,7 +180,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:02"
     },
@@ -207,7 +191,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 9.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:24"
     },
@@ -219,7 +202,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -231,7 +213,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 8.5,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:07 (stop), 04-05 17:47 (shelve)"
     },
@@ -243,7 +224,6 @@
       "condition": {},
       "technique_id": "T1485",
       "tactic": "Impact",
-      "base_risk_score": 9.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -255,7 +235,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.0,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:02"
     },
@@ -267,7 +246,6 @@
       "condition": {},
       "technique_id": "T1567",
       "tactic": "Exfiltration",
-      "base_risk_score": 7.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:06 (관리자 정상 업로드와 구분 필요, condition 추가 권장)"
     }

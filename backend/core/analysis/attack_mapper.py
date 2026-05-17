@@ -6,8 +6,11 @@ ocsf_events → attack_events 변환:
   1. data/attack_rules/rules.json 로딩 (startup 1회 캐시)
   2. 각 ocsf_event 에 대해 csp 필터 + activity_name_pattern Regex 매칭
   3. condition 평가 (MVP 단계에선 비어있는 룰만 → 무시)
-  4. 매칭 룰 1개 이상이면 가장 위험도 높은 룰로 attack_events INSERT
-  5. 룰 정보(technique_id/tactic/base_risk_score)를 그대로 사용
+  4. 매칭 룰 1개 이상이면 첫 매칭 룰로 attack_events INSERT
+  5. 룰 정보(technique_id/tactic/rule_id)를 그대로 사용
+
+리스크 스코어링은 제거 (산출 근거 부재). 다중 매칭 시 룰 시드의 등록 순서
+(구체성 높은 룰을 앞쪽에 배치) 에 의존.
 """
 import json
 import re
@@ -93,15 +96,15 @@ class AttackMapper:
         if not candidates:
             return None
 
-        # base_risk_score 가 가장 높은 룰을 선택
-        best = max(candidates, key=lambda r: r.get("base_risk_score") or 0)
+        # 다중 매칭 시 룰 시드의 등록 순서대로 첫 번째 룰 선택 (구체성 높은 룰을 앞쪽에 배치).
+        # risk_score 기반 정렬은 제거 (산출 근거 부재 — 학술 변호 불가).
+        best = candidates[0]
 
         attack = AttackEventModel(
             ocsf_id=ocsf.ocsf_id,
             technique_id=best["technique_id"],
             tactic=best["tactic"],
             rule_id=best["rule_id"],
-            risk_score=best.get("base_risk_score"),
         )
         try:
             db.add(attack)

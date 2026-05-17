@@ -49,13 +49,13 @@ class AISherpa:
             ).scalar_one_or_none()
 
         if attack_row is None:
-            # 케이스 내 최상위 위험도 attack 선택
+            # 케이스 내 최신 매핑된 attack 선택 (위험도 정렬 제거 — 산출 근거 부재)
             attack_row = db.execute(
                 select(AttackEventModel)
                 .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
-                .order_by(AttackEventModel.risk_score.desc())
+                .order_by(AttackEventModel.mapped_at.desc())
                 .limit(1)
             ).scalar_one_or_none()
 
@@ -88,7 +88,7 @@ class AISherpa:
 
         briefing = (
             f"매핑된 기법: **{attack_row.technique_id}** ({attack_row.tactic}). "
-            f"룰 {attack_row.rule_id}, 위험도 {float(attack_row.risk_score or 0):.1f}.\n\n"
+            f"룰 {attack_row.rule_id}.\n\n"
             f"{primary_text}\n\n"
             f"※ 본 브리핑은 결정론적 KB 검색 결과입니다. 출처 {len(sources)}건 첨부."
         )
@@ -151,7 +151,7 @@ class AISherpa:
         """nodeA → nodeB 사이에 끼워넣을 후보 ATT&CK 기법.
 
         깡통 구현: case 내 attack_events 중 nodeA·nodeB 의 기법 ID 와 다른 기법을
-        위험도 순으로 추천. 진짜 추론은 향후 LLM 으로.
+        최신 매핑 순으로 추천. 진짜 추론은 향후 LLM 으로.
         """
         rows = list(
             db.execute(
@@ -159,7 +159,7 @@ class AISherpa:
                 .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
-                .order_by(AttackEventModel.risk_score.desc())
+                .order_by(AttackEventModel.mapped_at.desc())
                 .limit(20)
             ).scalars()
         )

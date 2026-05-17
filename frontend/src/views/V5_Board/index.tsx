@@ -299,7 +299,7 @@ const V5Board = () => {
             {/* ATT&CK 매핑 결과 후보 */}
             <Card
               title={<>🤖 ATT&CK 매핑 후보 (top {ATTACK_PAGE_SIZE})</>}
-              subtitle="risk_score 내림차순. 카드 클릭 시 우측 상세 표시 + '보드 추가'"
+              subtitle="최신 매핑 순. 카드 클릭 시 우측 상세 표시 + '보드 추가'"
               className="flex-shrink-0"
             >
               {attackItems.length === 0 ? (
@@ -329,9 +329,6 @@ const V5Board = () => {
                         <span className="text-ink-400 text-[10.5px]">
                           <span className="text-brand-purple">{att.technique_id}</span>
                           {att.tactic && <> · {att.tactic}</>}
-                          {att.risk_score !== null && (
-                            <> · risk <b className="text-brand-amber">{att.risk_score}</b></>
-                          )}
                           {added && <> · <span className="text-brand-teal">보드에 있음</span></>}
                         </span>
                       </button>
@@ -404,9 +401,6 @@ const V5Board = () => {
                   </Row>
                   <Row label="기법명">{activeAttack.technique_name ?? '—'}</Row>
                   <Row label="전술">{activeAttack.tactic}</Row>
-                  <Row label="risk_score">
-                    <b className="text-brand-amber">{activeAttack.risk_score ?? '—'}</b>
-                  </Row>
                   <Row label="시각">
                     <span className="font-mono text-[10.5px]">
                       {activeAttack.event_time?.slice(0, 19) ?? '—'}

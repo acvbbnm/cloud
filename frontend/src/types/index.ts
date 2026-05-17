@@ -101,7 +101,7 @@ export interface AttackEventItem {
   technique_name: string | null;
   tactic: string;
   rule_id: string;
-  risk_score: number | null;
+  // risk_score 제거 (산출 근거 부재). 정렬·시각화는 mapped_at·count 기반.
   mapped_at: string;
   event_time: string | null;
   activity_name: string | null;

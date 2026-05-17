@@ -111,7 +111,7 @@ class ReportGenerator:
                 .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
-                .order_by(AttackEventModel.risk_score.desc())
+                .order_by(AttackEventModel.mapped_at.desc())
             ).all()
         )
 
@@ -187,20 +187,17 @@ class ReportGenerator:
             f"공격 체인 노드 {len(chain_nodes)}개 / 엣지 {len(chain_edges)}개 식별."
         )
 
-        # ── 섹션 4: ATT&CK 분석 ──
+        # ── 섹션 4: ATT&CK 분석 (risk_score 제거 — 산출 근거 부재) ──
         tech_counter: dict[str, dict] = {}
         for att, _ocsf in attack_rows:
             key = att.technique_id
             entry = tech_counter.setdefault(
                 key,
-                {"tactic": att.tactic, "count": 0, "max_risk": 0.0},
+                {"tactic": att.tactic, "count": 0},
             )
             entry["count"] += 1
-            risk = float(att.risk_score) if att.risk_score is not None else 0.0
-            if risk > entry["max_risk"]:
-                entry["max_risk"] = risk
         tech_lines = [
-            f"  {tid} ({info['tactic']}) — {info['count']}건, max risk {info['max_risk']}"
+            f"  {tid} ({info['tactic']}) — 탐지 {info['count']}건"
             for tid, info in sorted(
                 tech_counter.items(), key=lambda kv: kv[1]["count"], reverse=True
             )

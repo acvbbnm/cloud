@@ -192,7 +192,7 @@
  "boost": 1
  }
  ],
- "reason": "SSO 사용 — IdP 측 침해가 클라우드 IAM 까지 영향. API 액세스(IdP 토큰 사용 흔적) + 위험 기반 검색(IdP risk_score) 모두 부스팅.",
+ "reason": "SSO 사용 — IdP 측 침해가 클라우드 IAM 까지 영향. API 액세스(IdP 토큰 사용 흔적) + 위험 기반 검색(IdP 이상 알림) 모두 부스팅.",
  "source": "CSA #2 IAM + Google 1.5.5·1.5.7"
  },
  {

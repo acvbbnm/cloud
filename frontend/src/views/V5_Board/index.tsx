@@ -11,13 +11,14 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge } from '@/api/board';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
 import type { AttackEventItem, BoardNode, BriefingResponse, SherpaSource } from '@/types';
 
 import LogPanel from './LogPanel';
 import BoardCanvas from './BoardCanvas';
+import ChainGraphCanvas from './ChainGraphCanvas';
 
 const SOURCE_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
   ATTACK: 'purple',
@@ -39,6 +40,10 @@ const V5Board = () => {
   const [activeAttack, setActiveAttack] = useState<AttackEventItem | null>(null);
   const [activeBoardNode, setActiveBoardNode] = useState<BoardNode | null>(null);
   const [memo, setMemo] = useState('');
+
+  // UF-04 — 엣지 생성 모드 (chain_nodes 간 화살표 연결)
+  const [edgeMode, setEdgeMode] = useState(false);
+  const [edgeStartId, setEdgeStartId] = useState<string | null>(null);
 
   const boardQuery = useQuery({
     queryKey: ['board', caseId],
@@ -98,6 +103,43 @@ const V5Board = () => {
       showToast(`상태 변경 실패: ${msg}`);
     },
   });
+
+  // UF-04 — 엣지 생성 (chain_edges)
+  const createEdgeMutation = useMutation({
+    mutationFn: ({ fromId, toId }: { fromId: string; toId: string }) =>
+      createEdge({
+        caseId: caseId!,
+        from_node_id: fromId,
+        to_node_id: toId,
+      }),
+    onSuccess: () => {
+      showToast('엣지 생성 — 공격 체인 연결');
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+      setEdgeStartId(null);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`엣지 생성 실패: ${msg}`);
+      setEdgeStartId(null);
+    },
+  });
+
+  const toggleEdgeMode = () => {
+    setEdgeMode((m) => !m);
+    setEdgeStartId(null);
+  };
+
+  const handleGraphNodeSelect = (n: BoardNode) => {
+    // 엣지 모드 + 시작점 미선택 → 이번 클릭을 시작점으로
+    if (edgeMode && edgeStartId === null) {
+      setEdgeStartId(n.node_id);
+      showToast(`엣지 시작점: ${n.label}. 두 번째 노드를 클릭하세요.`);
+      return;
+    }
+    // 일반 모드 — 우측 상세 패널 갱신
+    setActiveBoardNode(n);
+    setActiveAttack(null);
+  };
 
   if (!caseId) {
     return (
@@ -189,42 +231,62 @@ const V5Board = () => {
           <div className="flex-1 min-w-0 flex flex-col gap-3">
             <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
 
-            {/* 보드 노드 (실 백엔드 데이터) */}
-            <Card title={<>🎯 공격 체인 노드 (chain_nodes)</>} className="flex-shrink-0">
-              {boardNodes.length === 0 ? (
-                <div className="text-[12px] text-ink-400 py-2">
-                  보드에 추가된 노드가 없습니다. 아래 ATT&CK 후보에서 "보드 추가" 를 눌러 노드를 생성하세요.
+            {/* 보드 노드 + 엣지 (SVG 그래프, UF-04) */}
+            <Card
+              title={<>🎯 공격 체인 그래프 (chain_nodes + chain_edges)</>}
+              subtitle={
+                <span className="text-[10.5px] text-ink-400">
+                  노드 클릭 = 상세 표시 · 엣지 모드에서 두 노드 연속 클릭 = 화살표 생성
+                </span>
+              }
+              action={
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={toggleEdgeMode}
+                    disabled={boardNodes.length < 2}
+                    className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      edgeMode
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                        : 'bg-ink-900 border-ink-700 text-ink-300 hover:border-brand-blue/40'
+                    }`}
+                    title={
+                      boardNodes.length < 2
+                        ? '노드 2개 이상 필요'
+                        : edgeMode
+                        ? '엣지 모드 켜짐 — 두 노드 연속 클릭으로 화살표 생성'
+                        : '엣지 모드 켜기'
+                    }
+                  >
+                    🔗 {edgeMode ? '엣지 모드 ON' : '엣지 모드'}
+                  </button>
+                  {edgeMode && edgeStartId && (
+                    <button
+                      onClick={() => setEdgeStartId(null)}
+                      className="text-[11px] px-2 py-1 rounded-lg border border-ink-700 text-ink-400 hover:text-white"
+                    >
+                      취소
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {boardNodes.map((n) => {
-                    const sel = activeBoardNode?.node_id === n.node_id;
-                    const rejected = n.status === 'REJECTED';
-                    return (
-                      <button
-                        key={n.node_id}
-                        onClick={() => {
-                          setActiveBoardNode(n);
-                          setActiveAttack(null);
-                        }}
-                        className={`bg-ink-900/60 border rounded-xl px-3 py-2 text-[12px] flex flex-col gap-0.5 transition-all hover:border-brand-blue/50 ${
-                          sel ? 'border-brand-blue/60 ring-1 ring-brand-blue/40 shadow-glow' : 'border-ink-700/70'
-                        } ${rejected ? 'opacity-50 line-through' : ''}`}
-                      >
-                        <span className="font-semibold truncate max-w-[180px]">{n.label}</span>
-                        <span className="text-ink-400 text-[10.5px]">
-                          {n.is_ai_suggested ? '🧠 AI · ' : '👤 수동 · '}
-                          <span
-                            className={
-                              n.status === 'CONFIRMED' ? 'text-brand-teal' : 'text-brand-red'
-                            }
-                          >
-                            {n.status}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
+              }
+              className="flex-shrink-0"
+            >
+              <ChainGraphCanvas
+                nodes={boardNodes}
+                edges={boardEdges}
+                activeNodeId={activeBoardNode?.node_id ?? null}
+                edgeMode={edgeMode}
+                edgeStartId={edgeStartId}
+                onSelectNode={handleGraphNodeSelect}
+                onPickEdgeEnd={(fromId, toId) =>
+                  createEdgeMutation.mutate({ fromId, toId })
+                }
+              />
+              {edgeMode && (
+                <div className="mt-2 text-[10.5px] text-ink-400 leading-5">
+                  {edgeStartId === null
+                    ? '시작 노드를 클릭하세요.'
+                    : '연결할 끝 노드를 클릭하세요. (취소: 우측 상단 [취소])'}
                 </div>
               )}
               {cards.length > 0 && (

@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (시연 체크리스트 § 5 흔한 버그 후보 3건 대응 — 상태 영속화 + dirty beforeunload)
+> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (시연 체크리스트 5 흔한 버그 후보 3건 대응 — 상태 영속화 + dirty beforeunload)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,16 +41,16 @@
 - 목표: 기존 시드·코드 구조 그대로, 각 항목에 외부 표준 출처 메타 추가
 - 1차안 완료: [`docs/분석_설계_근거.md`](docs/분석_설계_근거.md) ([`71d61d4`](https://github.com/sasumm25-lab/cloud/commit/71d61d4))
 - 남은 작업 (이어서 진행할 팀원에게):
-  1. `data/collection_targets/{naver,nhn}_CREDENTIAL_THEFT.json` 각 항목에 `rationale` 객체 추가
-     - `kisa_reference`: 침해사고 분석절차 안내서 §해당절 인용
-     - `mitre_techniques`: T1078.004 등 ATT&CK 매핑
-     - `google_cloud_ref`: §1.5.1 등 카테고리 인용
-     - `nist_evidence_type`: NIST SP 800-86 §3.1 휘발성 계층
-     - `use_case`: 한 줄 활용 시나리오
-  2. `data/attack_rules/rules.json` 22 룰에 `rationale.mitre_url` + `kisa_reference` 추가
-  3. `data/mapping_rules/{ncp,nhn}_*.json` 의 `source_doc` 필드 보강
-  4. `frontend/src/views/V1_Setup/Step3_GuideChecklist.tsx` 각 항목 옆에 출처 칩 추가 (작은 UI 변경)
-  5. `docs/근거_매핑.md` 신규 — 시드 ↔ 외부 표준 매핑 표
+ 1. `data/collection_targets/{naver,nhn}_CREDENTIAL_THEFT.json` 각 항목에 `rationale` 객체 추가
+ - `kisa_reference`: 침해사고 분석절차 안내서 해당절 인용
+ - `mitre_techniques`: T1078.004 등 ATT&CK 매핑
+ - `google_cloud_ref`: 1.5.1 등 카테고리 인용
+ - `nist_evidence_type`: NIST SP 800-86 3.1 휘발성 계층
+ - `use_case`: 한 줄 활용 시나리오
+ 2. `data/attack_rules/rules.json` 22 룰에 `rationale.mitre_url` + `kisa_reference` 추가
+ 3. `data/mapping_rules/{ncp,nhn}_*.json` 의 `source_doc` 필드 보강
+ 4. `frontend/src/views/V1_Setup/Step3_GuideChecklist.tsx` 각 항목 옆에 출처 칩 추가 (작은 UI 변경)
+ 5. `docs/근거_매핑.md` 신규 — 시드 ↔ 외부 표준 매핑 표
 - 제약: 기존 코드 로직·시드 구조 변경 금지. 메타 추가만.
 - PR base: `dev` (또는 새 personal feature 브랜치 → dev)
 
@@ -61,11 +61,11 @@
 - 청사진: [`docs/신규_수집가이드_설계.md`](docs/신규_수집가이드_설계.md) ([`102f3c0`](https://github.com/sasumm25-lab/cloud/commit/102f3c0), dev2 브랜치)
 - Phase A~H 작업 정의 완료 (총 18~24h)
 - 핵심 차이 (vs Track A):
-  - 시드 단위: 사고유형 × CSP (5건) → 카테고리 × 다대다 매핑 (40~50건)
-  - 가이드 입력: incident_type+csp 두 필드 → system_config 전체 동적 반영
-  - 우선순위: 임의 → NIST 휘발성 계층
-  - API: `GET /api/guide/v2` 신규 (기존 `/api/guide` 병행 유지)
-  - UI: 단순 체크리스트 → Kill Chain 단계 매트릭스 + 출처 칩
+ - 시드 단위: 사고유형 × CSP (5건) → 카테고리 × 다대다 매핑 (40~50건)
+ - 가이드 입력: incident_type+csp 두 필드 → system_config 전체 동적 반영
+ - 우선순위: 임의 → NIST 휘발성 계층
+ - API: `GET /api/guide/v2` 신규 (기존 `/api/guide` 병행 유지)
+ - UI: 단순 체크리스트 → Kill Chain 단계 매트릭스 + 출처 칩
 - 충돌 회피: 별도 디렉토리 `collection_targets_v2/` + 별도 모듈 `collection_guide_v2.py` + 별도 컴포넌트 `Step3_GuideChecklist_V2.tsx`
 - PR base: `dev2` → 양 트랙 비교 후 결정
 
@@ -88,28 +88,28 @@
 실 raw 로그(NCP 81 + NHN 147)는 김병우 PC에만 있고 민감 정보(이메일·UUID·세션쿠키)라 git 공유 불가. 시연 노트북·다른 팀원 환경·CI 에서도 V-2 업로드 → 풀 파이프라인이 동작하도록 합성 raw 로그 생성기를 추가.
 
 1. **`scripts/synthesize_logs.py`** — CLI 합성기
-   - 4종 시나리오: `ncp_none` · `ncp_collection` · `nhn_none` · `nhn_collection`
-   - `data/mapping_rules` · `data/attack_rules` · `core/ingestion/matchers.py` 와 100% 호환되는 raw 스키마 생성
-   - Kill Chain 시뮬레이션: Initial Access(brute-force) → Persistence(자격증명) → Lateral Movement → Exfiltration → Impact → 흔적 제거
-   - 공격자 IP `115.91.214.5` 공유 — 실 raw에서 관찰된 멀티 CSP 연계 패턴 유지
-   - NCP eventTime 두 형식(Unix ms + 'YYYY-MM-DD HH:MM:SS UTC') 의도적으로 혼합 → 파서 강건성 검증
-   - `--seed` 옵션으로 재현성 보장
+ - 4종 시나리오: `ncp_none` · `ncp_collection` · `nhn_none` · `nhn_collection`
+ - `data/mapping_rules` · `data/attack_rules` · `core/ingestion/matchers.py` 와 100% 호환되는 raw 스키마 생성
+ - Kill Chain 시뮬레이션: Initial Access(brute-force) → Persistence(자격증명) → Lateral Movement → Exfiltration → Impact → 흔적 제거
+ - 공격자 IP `115.91.214.5` 공유 — 실 raw에서 관찰된 멀티 CSP 연계 패턴 유지
+ - NCP eventTime 두 형식(Unix ms + 'YYYY-MM-DD HH:MM:SS UTC') 의도적으로 혼합 → 파서 강건성 검증
+ - `--seed` 옵션으로 재현성 보장
 2. **`data/synthetic/*.json` 4개 커밋** — 시연자가 즉시 사용 가능
 3. **`scripts/verify_synthetic.py`** — 4개 시나리오를 dev 풀 파이프라인(case→upload→normalize→map→gap)에 통과시켜 기대값(NONE/COLLECTION) 자동 단언
 4. **검증 결과** (2026-05-14):
-   - `ncp_none`: 16건 적재 → IAM-001~005 5/5 매칭 → 정규화 100% → ATT&CK 16/16 → **NONE, 100%** ✅
-   - `ncp_collection`: 14건 → IAM-001/002/004/005 → 정규화 100% → ATT&CK 14/14 → **COLLECTION, CT-NCP-IAM-003 missing** ✅
-   - `nhn_none`: 16건 → IAM-001~005 5/5 → 정규화 100% → ATT&CK 13/16 (org/project.selected 등은 attack_rules에 없음 — 정상) → **NONE, 100%** ✅
-   - `nhn_collection`: 15건 → IAM-001/003/004/005 → 정규화 100% → ATT&CK 13/15 → **COLLECTION, CT-NHN-IAM-002 missing** ✅
+ - `ncp_none`: 16건 적재 → IAM-001~005 5/5 매칭 → 정규화 100% → ATT&CK 16/16 → **NONE, 100%** ✅
+ - `ncp_collection`: 14건 → IAM-001/002/004/005 → 정규화 100% → ATT&CK 14/14 → **COLLECTION, CT-NCP-IAM-003 missing** ✅
+ - `nhn_none`: 16건 → IAM-001~005 5/5 → 정규화 100% → ATT&CK 13/16 (org/project.selected 등은 attack_rules에 없음 — 정상) → **NONE, 100%** ✅
+ - `nhn_collection`: 15건 → IAM-001/003/004/005 → 정규화 100% → ATT&CK 13/15 → **COLLECTION, CT-NHN-IAM-002 missing** ✅
 5. **`docs/시연_체크리스트.md`** — "테스트 데이터" 섹션을 A(합성, 저장소 포함) / B(실 raw, 별도 전달) 2단계로 재편
 
 ### 2026-05-14 (시연 리허설 대응) — UX 안정화 3건 (브랜치: `geunhyung`)
 
-`docs/시연_체크리스트.md` § 5 "흔한 버그 후보" 중 코드 수정으로 명확히 개선 가능한 3건을 한 PR 로 묶어 처리. 시연 직전 발견 확률 높은 영역.
+`docs/시연_체크리스트.md` 5 "흔한 버그 후보" 중 코드 수정으로 명확히 개선 가능한 3건을 한 PR 로 묶어 처리. 시연 직전 발견 확률 높은 영역.
 
-1. **`useCaseStore` localStorage 영속화** — caseId / csp / incidentType / severity / currentStep 가 새로고침 / 탭 이동 / 브라우저 재시작 후에도 유지. `zustand/middleware` 의 `persist` 사용 (store name: `ai-sherpa-case`, version 1, `partialize` 로 액션 함수 제외). 체크리스트 § 5 "V-1→V-2 caseId 전달" 이슈 대응.
-2. **`useSherpaStore` 영속화** — sessionId + messages 영속화 (open 토글은 휘발 — 새로고침 시 닫혀 있는 게 자연). `onRehydrateStorage` 로 message id seq 충돌 방지. 체크리스트 § 5 "V-8 sessionId 새로고침 시 사라짐" 대응. 백엔드 서버 재시작 시 sessionId 유효하지 않으면 백엔드가 새 세션을 응답하므로 자동 복구됨.
-3. **V-7 `beforeunload` 경고** — dirty Set 이 비어있지 않을 때만 페이지 떠나기 confirm 다이얼로그. `useEffect` cleanup 으로 누수 방지. 체크리스트 § 5 "V-7 dirty 추적 — 페이지 떠나기 전 미저장 변경 경고 없음" 대응.
+1. **`useCaseStore` localStorage 영속화** — caseId / csp / incidentType / severity / currentStep 가 새로고침 / 탭 이동 / 브라우저 재시작 후에도 유지. `zustand/middleware` 의 `persist` 사용 (store name: `ai-sherpa-case`, version 1, `partialize` 로 액션 함수 제외). 체크리스트 5 "V-1→V-2 caseId 전달" 이슈 대응.
+2. **`useSherpaStore` 영속화** — sessionId + messages 영속화 (open 토글은 휘발 — 새로고침 시 닫혀 있는 게 자연). `onRehydrateStorage` 로 message id seq 충돌 방지. 체크리스트 5 "V-8 sessionId 새로고침 시 사라짐" 대응. 백엔드 서버 재시작 시 sessionId 유효하지 않으면 백엔드가 새 세션을 응답하므로 자동 복구됨.
+3. **V-7 `beforeunload` 경고** — dirty Set 이 비어있지 않을 때만 페이지 떠나기 confirm 다이얼로그. `useEffect` cleanup 으로 누수 방지. 체크리스트 5 "V-7 dirty 추적 — 페이지 떠나기 전 미저장 변경 경고 없음" 대응.
 
 검증: `tsc -b && vite build` 통과 (186 modules — persist 미들웨어 +1).
 
@@ -119,15 +119,15 @@ walking-skeleton의 마지막 mock 화면 제거. V-7 첫 진입 시 자동 초�
 
 1. **`api/report.ts` 신규** — `createReport / getReport / patchReport / downloadReportDocx` 4개. `downloadReportDocx` 는 `responseType: 'blob'` + `a[download]` 트리거로 파일 저장.
 2. **`V7_Report/index.tsx` 전면 재작성**
-   - caseId 가드 (V-2~V-5 패턴)
-   - 첫 진입 시 `createReport(regenerate=false)` 자동 호출 → 8섹션 자동 초안 (`useQuery` 로 멱등 활용)
-   - 섹션 6→8 확장: `evidence` + `comments` 추가 (백엔드 `ReportSections` 와 1:1)
-   - **dirty 추적**: `Set<keyof ReportSections>` 로 편집된 섹션만 PATCH → 다른 섹션 덮어쓰기 방지
-   - 서버 응답 갱신 시 dirty 한 필드는 보존, 나머지만 동기화
-   - 버튼 4종: **AI 초안 재생성** / **저장(N)** / **DOCX** / **최종화**
-     · 최종화 후 textarea readonly + 모든 편집 버튼 비활성
-     · 미저장 변경 있으면 최종화 비활성 (안전 가드)
-   - 상태 배지(draft 파랑 · edited 호박 · finalized 청록) + 백엔드 응답 패널 (V-2~6 동일 스타일)
+ - caseId 가드 (V-2~V-5 패턴)
+ - 첫 진입 시 `createReport(regenerate=false)` 자동 호출 → 8섹션 자동 초안 (`useQuery` 로 멱등 활용)
+ - 섹션 6→8 확장: `evidence` + `comments` 추가 (백엔드 `ReportSections` 와 1:1)
+ - **dirty 추적**: `Set<keyof ReportSections>` 로 편집된 섹션만 PATCH → 다른 섹션 덮어쓰기 방지
+ - 서버 응답 갱신 시 dirty 한 필드는 보존, 나머지만 동기화
+ - 버튼 4종: **AI 초안 재생성** / **저장(N)** / **DOCX** / **최종화**
+ · 최종화 후 textarea readonly + 모든 편집 버튼 비활성
+ · 미저장 변경 있으면 최종화 비활성 (안전 가드)
+ - 상태 배지(draft 파랑 · edited 호박 · finalized 청록) + 백엔드 응답 패널 (V-2~6 동일 스타일)
 3. **검증**: `tsc -b && vite build` 통과 (185 modules — `api/report.ts` 1 모듈 증가).
 
 이로써 **walking-skeleton 8/8 화면이 모두 실 API 통신** 상태. 남은 mock 없음.
@@ -155,13 +155,13 @@ walking-skeleton 중요한 한 조각. 채팅 입력 → `POST /api/sherpa/chat`
 2. **`api/sherpa.ts` 신규** — `postBrief / postChat / postSuggest / postPlaybook / getKbStats` 5개 래퍼.
 3. **`stores/useSherpaStore.ts`** — `sessionId` 상태 + `sources` 필드 추가, `reset` 액션.
 4. **`V8_Sherpa/index.tsx` 전면 재작성**
-   - 정적 KB 카운트(`623·412…`) 제거 → `useQuery(getKbStats)` 실 통계
-   - 채팅 입력 → `useMutation(postChat)` → 응답 `sources` 를 KB_TONE 색상 칩으로 렌더
-   - 첫 응답의 `sessionId` 를 zustand에 저장해 후속 질의 재사용 (stateful)
-   - 빠른 질의 3종: `T1078.004` · `NCP Tracer 보존` · `데이터 유출 플레이북`
-   - `engine.engine === 'stub'` 일 때 "stub" 배지 + 안내 문구
-   - 백엔드 응답 패널 (V-2~6 동일 스타일)
-   - "AI는 판단하지 않습니다" 활용 안내 카드
+ - 정적 KB 카운트(`623·412…`) 제거 → `useQuery(getKbStats)` 실 통계
+ - 채팅 입력 → `useMutation(postChat)` → 응답 `sources` 를 KB_TONE 색상 칩으로 렌더
+ - 첫 응답의 `sessionId` 를 zustand에 저장해 후속 질의 재사용 (stateful)
+ - 빠른 질의 3종: `T1078.004` · `NCP Tracer 보존` · `데이터 유출 플레이북`
+ - `engine.engine === 'stub'` 일 때 "stub" 배지 + 안내 문구
+ - 백엔드 응답 패널 (V-2~6 동일 스타일)
+ - "AI는 판단하지 않습니다" 활용 안내 카드
 
 ### 2026-05-14 (밤) — Layer 3 AI 셰르파 백엔드 1차 (브랜치: `byungwoo`)
 
@@ -172,13 +172,13 @@ PROGRESS.md 권장(Ollama/ChromaDB 없이 mock 깡통으로 흐름 검증)에 �
 3. **`core/sherpa/llm_engine.py`** — 템플릿 기반 `generate(prompt, context)`. context 청크를 인용한 응답 + "수사관께서 직접 판단" 문구. `health()` 가 `engine: stub` 을 반환해 프론트에서 깡통 모드 표시.
 4. **`core/sherpa/chat_session.py`** — 인메모리 세션 저장소. `get_or_create / append / history`.
 5. **`core/sherpa/ai_sherpa.py`** — `AISherpa` 4가지 역할
-   - `brief(case_id, event_id?)` — `attack_events ⋈ ocsf_events ⋈ raw_events` 조인으로 case 최상위 위험도 attack 자동 선택, technique_id 기반 KB 검색, 출처 첨부
-   - `chat(case_id, session_id, query, history?)` — RAG retrieve(k=3) + LLM generate + 세션 누적
-   - `suggest_missing_link(case_id, node_a, node_b)` — case 내 다른 기법을 위험도순으로 추천 (깡통)
-   - `recommend_playbook(chain)` — PLAYBOOK 카테고리 KB 검색 (깡통)
+ - `brief(case_id, event_id?)` — `attack_events ⋈ ocsf_events ⋈ raw_events` 조인으로 case 최상위 위험도 attack 자동 선택, technique_id 기반 KB 검색, 출처 첨부
+ - `chat(case_id, session_id, query, history?)` — RAG retrieve(k=3) + LLM generate + 세션 누적
+ - `suggest_missing_link(case_id, node_a, node_b)` — case 내 다른 기법을 위험도순으로 추천 (깡통)
+ - `recommend_playbook(chain)` — PLAYBOOK 카테고리 KB 검색 (깡통)
 6. **`api/sherpa.py`** — 5개 엔드포인트
-   - `POST /api/sherpa/brief|chat|suggest|playbook`
-   - `GET /api/sherpa/kb` (V-8 우측 패널용 KB 인덱스 통계 + engine.health)
+ - `POST /api/sherpa/brief|chat|suggest|playbook`
+ - `GET /api/sherpa/kb` (V-8 우측 패널용 KB 인덱스 통계 + engine.health)
 7. **`main.py`** — `sherpa_router` 등록 (이근형의 `board_router/report_router` 와 함께).
 
 설계 원칙 준수: 모든 응답에 `sources` 첨부, brief 에 `confidence` 필드, AI 가 결정·판단하지 않음. AST 문법 검증 6/6 통과.
@@ -202,18 +202,18 @@ V-7 프론트는 mock UI 만 있었고 백엔드는 미구현 상태였음. 보�
 1. **`config.py`** — `REPORTS_DIR` (data/reports), `EXPORTS_DIR` (exports) 추가, 자동 mkdir
 2. **`.gitignore`** — `backend/data/reports/*.json`, `backend/exports/` 추가
 3. **`core/board/report_generator.py`** — ReportGenerator
-   - `generate_draft(db, case_id)`: case/raw/ocsf/attack/gap/chain 데이터를 종합해 **8 섹션 자동 초안** (overview/timeline/impact/attack_analysis/response/recommendation/evidence/comments)
-     · 타임라인: OCSF 시간순 상위 20건
-     · attack 집계: technique별 count + max_risk_score
-     · 증거: collection_targets 카탈로그 vs 실제 matched_target_id 비교 (✓/✗ 마킹)
-     · 권고: gap_type 별 분기 (COLLECTION → Layer 0 복귀 등)
-   - JSON 영속화: `data/reports/{caseId}.json` (load/save/get_or_create/update_sections)
-   - DOCX 내보내기: `python-docx`로 `exports/{caseId}.docx` 생성 (8 섹션 헤딩 + 본문)
+ - `generate_draft(db, case_id)`: case/raw/ocsf/attack/gap/chain 데이터를 종합해 **8 섹션 자동 초안** (overview/timeline/impact/attack_analysis/response/recommendation/evidence/comments)
+ · 타임라인: OCSF 시간순 상위 20건
+ · attack 집계: technique별 count + max_risk_score
+ · 증거: collection_targets 카탈로그 vs 실제 matched_target_id 비교 (✓/✗ 마킹)
+ · 권고: gap_type 별 분기 (COLLECTION → Layer 0 복귀 등)
+ - JSON 영속화: `data/reports/{caseId}.json` (load/save/get_or_create/update_sections)
+ - DOCX 내보내기: `python-docx`로 `exports/{caseId}.docx` 생성 (8 섹션 헤딩 + 본문)
 4. **`api/report.py`** — 4개 엔드포인트
-   - `POST /api/report` (regenerate 옵션) — 초안 생성, 응답에 8섹션 dict
-   - `GET /api/report/{case_id}` — 저장된 보고서 조회
-   - `PATCH /api/report/{case_id}` — sections 부분 갱신 + status 변경. `EDIT_REPORT` / `FINALIZE_REPORT` action_logs 자동 적재
-   - `GET /api/report/{case_id}/export?format=docx` — `FileResponse` 다운로드. `EXPORT_REPORT` action_logs 적재. PDF 는 501 NotImplemented
+ - `POST /api/report` (regenerate 옵션) — 초안 생성, 응답에 8섹션 dict
+ - `GET /api/report/{case_id}` — 저장된 보고서 조회
+ - `PATCH /api/report/{case_id}` — sections 부분 갱신 + status 변경. `EDIT_REPORT` / `FINALIZE_REPORT` action_logs 자동 적재
+ - `GET /api/report/{case_id}/export?format=docx` — `FileResponse` 다운로드. `EXPORT_REPORT` action_logs 적재. PDF 는 501 NotImplemented
 5. **`main.py`** — `report_router` 등록
 6. **검증** — AST syntax check 4/4 통과
 
@@ -226,12 +226,12 @@ PDF 내보내기는 LibreOffice 또는 wkhtmltopdf 의존성이 커서 후속 �
 attack_events 데이터를 동적 집계해서 ATT&CK Cloud Matrix 형태로 시각화. 기존 mock(7기법 6전술 하드코딩) 폐기.
 
 1. **`views/V6_Attack/index.tsx` 전면 재작성**
-   - `useQuery(getAttack, page, 100)` — 한 페이지 100건 페이지네이션
-   - `useMutation(runMap)` — 상단 "↻ ATT&CK 매핑 실행" 버튼으로 POST `/api/analysis/map` 트리거
-   - `aggregate(items)` 함수: `(tactic, technique_id)` 그룹별 `count` + `max_risk_score` 집계
-   - 히트맵: 전술 위험도 내림차순 정렬, max_risk 기반 색상 분기 (≥70 red / ≥40 amber / 그 외 blue)
-   - 기법 상세 표: count 내림차순, 심각도 자동 분류 (Critical/High/Medium)
-   - 백엔드 응답 패널 (V-2~5 동일 스타일): caseId / 페이지 / 기법 종수 / 전술 커버리지
+ - `useQuery(getAttack, page, 100)` — 한 페이지 100건 페이지네이션
+ - `useMutation(runMap)` — 상단 "↻ ATT&CK 매핑 실행" 버튼으로 POST `/api/analysis/map` 트리거
+ - `aggregate(items)` 함수: `(tactic, technique_id)` 그룹별 `count` + `max_risk_score` 집계
+ - 히트맵: 전술 위험도 내림차순 정렬, max_risk 기반 색상 분기 (≥70 red / ≥40 amber / 그 외 blue)
+ - 기법 상세 표: count 내림차순, 심각도 자동 분류 (Critical/High/Medium)
+ - 백엔드 응답 패널 (V-2~5 동일 스타일): caseId / 페이지 / 기법 종수 / 전술 커버리지
 2. **검증**: `tsc -b && vite build` 통과 (183 modules)
 
 walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 → V-6 까지 풀 연동. 남은 mock: V-7 보고서 / V-8 셰르파 채팅 (둘 다 Layer 3/4 백엔드 미구현 종속).
@@ -242,16 +242,16 @@ walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 → V-6 까지 풀 
 
 1. **`api/board.ts` 신규** — `getBoard / createNode / updateNode / createEdge` 4개 함수
 2. **`views/V5_Board/index.tsx` 재작성**
-   - caseId 가드 (V-2~4 패턴)
-   - 백엔드 응답 패널 (chain_nodes / edges / ATT&CK 후보 카운트)
-   - 메인 영역: `BoardCanvas` (드래그-드롭 캔버스 — 클라이언트 시각화 보조, 백엔드 미연동 유지)
-     · "공격 체인 노드 (chain_nodes)" 카드 — `useQuery(getBoard).nodes` 표시. CONFIRMED/REJECTED 상태별 색상, REJECTED 는 strike-through
-     · "ATT&CK 매핑 후보 (top 10)" 카드 — `useQuery(getAttack)` risk_score 내림차순 grid 2열
-   - 우측 상세 카드:
-     · 보드 노드 선택 시: 라벨/상태/유형/attack_id + ✓ 수락/✗ 거부 버튼 → `useMutation(updateNode)` PATCH (백엔드가 action_logs 자동 적재)
-     · ATT&CK 후보 선택 시: 기법/전술/risk/시각 + "+ 보드에 추가" 버튼 → `useMutation(createNode)` POST (label 자동 생성)
-   - 중복 추가 방지: `addedAttackIds` 집합으로 이미 보드에 있는 attack 카드는 opacity-60 + 버튼 비활성화
-   - AI 셰르파 브리핑 카드는 "[Layer 3 미구현 — mock 표시 중]" 라벨로 명시
+ - caseId 가드 (V-2~4 패턴)
+ - 백엔드 응답 패널 (chain_nodes / edges / ATT&CK 후보 카운트)
+ - 메인 영역: `BoardCanvas` (드래그-드롭 캔버스 — 클라이언트 시각화 보조, 백엔드 미연동 유지)
+ · "공격 체인 노드 (chain_nodes)" 카드 — `useQuery(getBoard).nodes` 표시. CONFIRMED/REJECTED 상태별 색상, REJECTED 는 strike-through
+ · "ATT&CK 매핑 후보 (top 10)" 카드 — `useQuery(getAttack)` risk_score 내림차순 grid 2열
+ - 우측 상세 카드:
+ · 보드 노드 선택 시: 라벨/상태/유형/attack_id + ✓ 수락/✗ 거부 버튼 → `useMutation(updateNode)` PATCH (백엔드가 action_logs 자동 적재)
+ · ATT&CK 후보 선택 시: 기법/전술/risk/시각 + "+ 보드에 추가" 버튼 → `useMutation(createNode)` POST (label 자동 생성)
+ - 중복 추가 방지: `addedAttackIds` 집합으로 이미 보드에 있는 attack 카드는 opacity-60 + 버튼 비활성화
+ - AI 셰르파 브리핑 카드는 "[Layer 3 미구현 — mock 표시 중]" 라벨로 명시
 3. **검증** — `tsc -b && vite build` 통과 (184 modules)
 
 walking-skeleton 현황: V-1 → V-2 → V-3 → V-4 → V-5 노드 패널까지 풀 연동. 남은 mock: V-6 ATT&CK 히트맵 / V-7 보고서 / V-8 셰르파 채팅.
@@ -263,19 +263,19 @@ V-5 프론트는 mock 으로 작성되어 있었으나 백엔드가 미구현이
 > 참고: V-3/V-4 mock → 실 API 전환을 김병우(byungwoo)와 이근형이 동시 진행했고, 김병우 거(`e7da3ab`)가 dev 에 먼저 머지되어 그 거를 정답으로 채택. 이근형의 V-3/V-4 작업분(`87478ad`)은 폐기, Layer 4 백엔드 + V-5 프론트만 dev 위에 cherry-pick. `backup/2gu-before-dev-rebase` 태그에 폐기 전 상태 보존. 그리고 협업 공지에 맞춰 브랜치 이름 `2gu` → `geunhyung` 으로 변경.
 
 1. **`core/board/chain.py`** — ChainNode / ChainEdge 도메인 객체
-   - `ChainNode.create` — attack_id 옵셔널(AI 후보 노드는 NULL), 기본 status=CONFIRMED
-   - `ChainNode.update` — status·pos·label 부분 갱신
-   - `ChainNode.serialize` — frontend `BoardNode` 와 동일 형식 (snake_case, pos 기본 0)
-   - `ChainNode.derive_label_from_attack` — attack_id 주어지면 `"T1078.004 · Initial Access"` 형태 라벨 자동 생성
-   - `ChainEdge.create / serialize` — `BoardEdge` 형식
+ - `ChainNode.create` — attack_id 옵셔널(AI 후보 노드는 NULL), 기본 status=CONFIRMED
+ - `ChainNode.update` — status·pos·label 부분 갱신
+ - `ChainNode.serialize` — frontend `BoardNode` 와 동일 형식 (snake_case, pos 기본 0)
+ - `ChainNode.derive_label_from_attack` — attack_id 주어지면 `"T1078.004 · Initial Access"` 형태 라벨 자동 생성
+ - `ChainEdge.create / serialize` — `BoardEdge` 형식
 2. **`core/board/investigation_board.py`** — case 단위 집계
-   - `get_state(case_id)` — nodes + edges 직렬화, case 미존재 시 None
-   - `validate_edge` — self-loop 금지 + 노드 존재성 + 같은 case 소속 검증
+ - `get_state(case_id)` — nodes + edges 직렬화, case 미존재 시 None
+ - `validate_edge` — self-loop 금지 + 노드 존재성 + 같은 case 소속 검증
 3. **`api/board.py`** — 4개 엔드포인트
-   - `POST /api/board/nodes` — attack_id 유효성 검증, label 미지정 시 자동 생성
-   - `PATCH /api/board/nodes/{node_id}` — status 변경 시 `action_logs` 에 ACCEPT/REJECT 자동 적재 (CLAUDE.md actor='investigator')
-   - `POST /api/board/edges` — `validate_edge` 통과해야 생성
-   - `GET /api/board?caseId=` — `BoardResponse` 반환
+ - `POST /api/board/nodes` — attack_id 유효성 검증, label 미지정 시 자동 생성
+ - `PATCH /api/board/nodes/{node_id}` — status 변경 시 `action_logs` 에 ACCEPT/REJECT 자동 적재 (CLAUDE.md actor='investigator')
+ - `POST /api/board/edges` — `validate_edge` 통과해야 생성
+ - `GET /api/board?caseId=` — `BoardResponse` 반환
 4. **`main.py`** — `board_router` 등록
 5. **검증** — AST syntax check 4/4 통과. DB E2E 는 다음 작업.
 
@@ -288,93 +288,93 @@ Layer 2 백엔드와 V3/V4 위저드를 연결. **V1 → V2 → V3 → V4 풀 �
 1. `types/index.ts`: OCSFEventItem 평탄화·AttackEventItem 갱신·NormalizeStats/MapStats/GapResultResponse/PaginatedData<T> 추가
 2. `api/analysis.ts` 신규: `runNormalize / getOcsf / runMap / getAttack / runGap` (5종)
 3. **V3 OCSF 재작성** ([`e7da3ab`](https://github.com/sasumm25-lab/cloud/commit/e7da3ab))
-   - 「정규화 실행」 버튼 → `POST /api/analysis/normalize` (useMutation)
-   - `GET /api/analysis/ocsf` 페이지네이션 + 샘플 selector 10개
-   - 좌측 `unmapped_raw` (원본 JSON) / 우측 OCSF 평탄화 컬럼 양면 비교
-   - FieldMappingTable: 시드 mapping_rules 핵심 매핑 정적 표
+ - 「정규화 실행」 버튼 → `POST /api/analysis/normalize` (useMutation)
+ - `GET /api/analysis/ocsf` 페이지네이션 + 샘플 selector 10개
+ - 좌측 `unmapped_raw` (원본 JSON) / 우측 OCSF 평탄화 컬럼 양면 비교
+ - FieldMappingTable: 시드 mapping_rules 핵심 매핑 정적 표
 4. **V4 Gap 재작성**
-   - 「갭 감지 실행」 버튼 → `POST /api/analysis/gap`
-   - gap_type 4종 별 색·아이콘·메시지 + 조건부 CTA (COLLECTION→Layer 0, NONE→보드, INTERPRETATION→AI 셰르파)
-   - completionRate 도넛 + missing 항목 리스트
+ - 「갭 감지 실행」 버튼 → `POST /api/analysis/gap`
+ - gap_type 4종 별 색·아이콘·메시지 + 조건부 CTA (COLLECTION→Layer 0, NONE→보드, INTERPRETATION→AI 셰르파)
+ - completionRate 도넛 + missing 항목 리스트
 5. `backend/config.py`: CORS_ORIGINS 에 `http://localhost:5174` 추가 (Vite 충돌 시 자동 fallback 대응)
 6. **E2E 검증 완료**:
-   - NCP 시나리오: V1→V2(81건 업로드)→V3(정규화 100%)→V4('NONE', 100%)
-   - NHN 시나리오: V1→V2(147건)→V3(100%)→V4('COLLECTION', 66.67%, CT-NHN-IAM-002 미수집 정확히 짚음)
+ - NCP 시나리오: V1→V2(81건 업로드)→V3(정규화 100%)→V4('NONE', 100%)
+ - NHN 시나리오: V1→V2(147건)→V3(100%)→V4('COLLECTION', 66.67%, CT-NHN-IAM-002 미수집 정확히 짚음)
 
 ### 2026-05-14 (오후) — Layer 2 백엔드 1차 완성 (브랜치: `byungwoo` → `dev` 머지)
 
 Layer 2 분석 파이프라인 3종 + API 5개를 구현. **시드 mapping_rules와 attack_rules 22룰이 드디어 코드에 연결**되어 실제 raw 로그가 OCSF → ATT&CK → 갭으로 흐름.
 
 1. **`core/analysis/ocsf_normalizer.py`** ([`f7a0123`](https://github.com/sasumm25-lab/cloud/commit/f7a0123))
-   - CSP별 mapping rule JSON 로딩·캐시 (`naver` → ncp_cloudtrail, `nhn` → nhn_cloud_trail)
-   - field_mappings dot 표기 nested 접근 (`content.actionUserName` 등)
-   - value_transforms: datetime 이중 형식(unix_ms / iso8601 / UTC 문자열), SUCCESS/FAIL → 200/500
-   - 중복 정규화 skip (`event_id` UNIQUE 제약 활용)
-   - 원본 JSON 전체를 `unmapped_raw` 에 보존
+ - CSP별 mapping rule JSON 로딩·캐시 (`naver` → ncp_cloudtrail, `nhn` → nhn_cloud_trail)
+ - field_mappings dot 표기 nested 접근 (`content.actionUserName` 등)
+ - value_transforms: datetime 이중 형식(unix_ms / iso8601 / UTC 문자열), SUCCESS/FAIL → 200/500
+ - 중복 정규화 skip (`event_id` UNIQUE 제약 활용)
+ - 원본 JSON 전체를 `unmapped_raw` 에 보존
 2. **`core/analysis/attack_mapper.py`** — attack_rules 22룰 로딩(정규식 사전 컴파일), csp 필터 + activity_name_pattern 매칭, 다중 매칭 시 base_risk_score 최댓값 룰 선택
 3. **`core/analysis/gap_detector.py`** — required/collected/mapped 비교 → COLLECTION/EVIDENCE/INTERPRETATION/NONE 분류, completionRate 계산
 4. **`api/analysis.py`** 5개 엔드포인트 (POST normalize · GET ocsf · POST map · GET attack · POST gap), `main.py` 등록
 5. **E2E 검증 결과**:
-   - NCP 81건 + NHN 147건 정규화율 100% (failed 0)
-   - ATT&CK 매핑 76건 (NCP 45 / NHN 31) — R-NCP-007 Exfiltration 9건, R-NHN-002 Privilege Escalation 10건 등
-   - 갭 판정: **NCP 'NONE'** (수사 보드 진행), **NHN 'COLLECTION'** (CT-NHN-IAM-002 미수집 — 권한 변경 이벤트가 raw에 없음을 정확히 짚어냄)
+ - NCP 81건 + NHN 147건 정규화율 100% (failed 0)
+ - ATT&CK 매핑 76건 (NCP 45 / NHN 31) — R-NCP-007 Exfiltration 9건, R-NHN-002 Privilege Escalation 10건 등
+ - 갭 판정: **NCP 'NONE'** (수사 보드 진행), **NHN 'COLLECTION'** (CT-NHN-IAM-002 미수집 — 권한 변경 이벤트가 raw에 없음을 정확히 짚어냄)
 
 ### 2026-05-14 (오전) — Layer 1 DB E2E 검증 + V2 실 API 연결 (브랜치: `byungwoo` → `dev` 머지)
 
 walking-skeleton의 두 번째 고리(V1 → V2)가 mock 없이 실제 DB와 통신하는 형태로 완성. 진행 순서:
 
 1. **Layer 1 백엔드 DB 적재 E2E 검증** (이근형의 [`35eba2b`](https://github.com/sasumm25-lab/cloud/commit/35eba2b) 코드 사용)
-   - NCP `activity_logs_full.json` 81건 + NHN `nhn_activity_logs.json` 147건 = **총 228건 raw_events 적재**
-   - SHA-256 해시 무결성 일치 (파일 실제 해시 = API 응답)
-   - `matched_target_id` 시드 카탈로그와 정확 매칭
-     · NCP: CT-NCP-IAM-001~005 모두 매칭 (12/3/2/13/37건)
-     · NHN: CT-NHN-IAM-001/003/004/005 매칭 (25/6/15/8건)
-   - 페이지네이션 + 단건 조회(raw 포함) + 404 케이스 정상
-   - 이근형 브랜치 `origin/2gu` → `dev` 머지 ([`375265c`](https://github.com/sasumm25-lab/cloud/commit/375265c))
+ - NCP `activity_logs_full.json` 81건 + NHN `nhn_activity_logs.json` 147건 = **총 228건 raw_events 적재**
+ - SHA-256 해시 무결성 일치 (파일 실제 해시 = API 응답)
+ - `matched_target_id` 시드 카탈로그와 정확 매칭
+ · NCP: CT-NCP-IAM-001~005 모두 매칭 (12/3/2/13/37건)
+ · NHN: CT-NHN-IAM-001/003/004/005 매칭 (25/6/15/8건)
+ - 페이지네이션 + 단건 조회(raw 포함) + 404 케이스 정상
+ - 이근형 브랜치 `origin/2gu` → `dev` 머지 ([`375265c`](https://github.com/sasumm25-lab/cloud/commit/375265c))
 
 2. **V2 프론트엔드 mock → 실 API 전환** ([`8034de1`](https://github.com/sasumm25-lab/cloud/commit/8034de1))
-   - `types/index.ts`: `RawEventItem` 백엔드 응답 형식(camelCase)과 일치. `IngestionStats` / `LogsListData` 타입 추가
-   - `api/logs.ts` 신규: `uploadLogs(multipart)` / `getLogs(페이지네이션)` / `getEvent` 3개 함수
-   - `views/V2_Logs/index.tsx` 대대적 재작성
-     · mock 초기 데이터 제거
-     · `useCaseStore.caseId` 미존재 시 V-1 안내 패널 (라우트 가드)
-     · `useMutation` → `uploadLogs` (성공 시 `invalidate('logs')` → 자동 리프레시)
-     · `useQuery` → `getLogs(page, pageSize=20)` + 페이지 이동 버튼
-     · "백엔드 응답 ✓" 패널 (caseId / total / 마지막 업로드 stats / sha256)
-     · "매칭 분포" 패널 (`byTarget` 동적 표시)
-     · KPI 4개 실 데이터화 (총 raw_events / matched / unmatched / 파일)
-   - `EventPreviewTable.tsx`: `id` 타입 `number → string` (UUID 대응)
-   - 브라우저 E2E 검증 완료
+ - `types/index.ts`: `RawEventItem` 백엔드 응답 형식(camelCase)과 일치. `IngestionStats` / `LogsListData` 타입 추가
+ - `api/logs.ts` 신규: `uploadLogs(multipart)` / `getLogs(페이지네이션)` / `getEvent` 3개 함수
+ - `views/V2_Logs/index.tsx` 대대적 재작성
+ · mock 초기 데이터 제거
+ · `useCaseStore.caseId` 미존재 시 V-1 안내 패널 (라우트 가드)
+ · `useMutation` → `uploadLogs` (성공 시 `invalidate('logs')` → 자동 리프레시)
+ · `useQuery` → `getLogs(page, pageSize=20)` + 페이지 이동 버튼
+ · "백엔드 응답 ✓" 패널 (caseId / total / 마지막 업로드 stats / sha256)
+ · "매칭 분포" 패널 (`byTarget` 동적 표시)
+ · KPI 4개 실 데이터화 (총 raw_events / matched / unmatched / 파일)
+ - `EventPreviewTable.tsx`: `id` 타입 `number → string` (UUID 대응)
+ - 브라우저 E2E 검증 완료
 
 3. **협업 워크플로 정착**
-   - feature 브랜치 기반 협업 도입. 각자 사람 이름 브랜치 사용:
-     · 김병우 → `byungwoo`, 이근형 → `2gu`, 최진규 → `jingyu`, 이지호 → `easy` (추정)
-   - `feat/<기능>` 패턴은 일회성 작업용. 장기 작업은 personal branch + 작업 단위 PR → dev 머지
+ - feature 브랜치 기반 협업 도입. 각자 사람 이름 브랜치 사용:
+ · 김병우 → `byungwoo`, 이근형 → `2gu`, 최진규 → `jingyu`, 이지호 → `easy` (추정)
+ - `feat/<기능>` 패턴은 일회성 작업용. 장기 작업은 personal branch + 작업 단위 PR → dev 머지
 
 ### 2026-05-13 — Layer 1 로그 수집 백엔드 1차 구현 (브랜치: `2gu`)
 
 Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작업에서 수행 예정.
 
 1. **`core/ingestion/parsers/ncp.py`** — NCP Cloud Activity Tracer 파서
-   - `eventTime` 양식 두 가지(Tracer Export Unix ms / 콘솔 "YYYY-MM-DD HH:MM:SS UTC") 모두 처리
-   - BOM 강건성 (`utf-8-sig` 디코딩) — Tracer Export 파일 BOM 케이스 대비
-   - 매칭에 필요한 필드만 평탄화(`action`, `product_name`, `actor_user_name`, `source_ip`, `event_time`, `result`), 원본은 `raw` 키로 보존
+ - `eventTime` 양식 두 가지(Tracer Export Unix ms / 콘솔 "YYYY-MM-DD HH:MM:SS UTC") 모두 처리
+ - BOM 강건성 (`utf-8-sig` 디코딩) — Tracer Export 파일 BOM 케이스 대비
+ - 매칭에 필요한 필드만 평탄화(`action`, `product_name`, `actor_user_name`, `source_ip`, `event_time`, `result`), 원본은 `raw` 키로 보존
 2. **`core/ingestion/parsers/nhn.py`** — NHN Cloud Trail 파서
-   - ISO8601 `+0900` 포맷 처리, tz-aware → naive UTC 통일 (DB 컬럼이 naive 라 시스템 timezone 의존 제거)
+ - ISO8601 `+0900` 포맷 처리, tz-aware → naive UTC 통일 (DB 컬럼이 naive 라 시스템 timezone 의존 제거)
 3. **`core/ingestion/matchers.py`** — collection_targets 매칭 룰 (DB 의존성 없는 순수 함수)
-   - NCP CREDENTIAL_THEFT: action/product 키워드로 IAM-001~005 분류
-   - NHN CREDENTIAL_THEFT: `event_id.` prefix Regex 로 IAM-001~005 분류
-   - `(csp, incident_type) → matcher fn` 레지스트리 패턴 → 향후 5종×2CSP 확장 시 함수만 추가
+ - NCP CREDENTIAL_THEFT: action/product 키워드로 IAM-001~005 분류
+ - NHN CREDENTIAL_THEFT: `event_id.` prefix Regex 로 IAM-001~005 분류
+ - `(csp, incident_type) → matcher fn` 레지스트리 패턴 → 향후 5종×2CSP 확장 시 함수만 추가
 4. **`core/ingestion/log_ingestor.py`** — 통합 파이프라인
-   - `verify_hash(content)` SHA-256
-   - `parse(csp, content)` — case.csp 별 파서 디스패치 (`all` 일 때 NCP→NHN 순차 시도)
-   - `ingest(db, case, filename, content)` — 파싱·매칭·`raw_events` bulk insert, `IngestionStats` 반환 (`totalEvents/matched/unmatched/byTarget/sha256/sourceFile`)
-   - `list_events(...)`, `get_event(...)` 조회 헬퍼
-   - 시드에 없는 target_id 매칭 시 unmatched 로 강등 (DB 정합성 보호)
+ - `verify_hash(content)` SHA-256
+ - `parse(csp, content)` — case.csp 별 파서 디스패치 (`all` 일 때 NCP→NHN 순차 시도)
+ - `ingest(db, case, filename, content)` — 파싱·매칭·`raw_events` bulk insert, `IngestionStats` 반환 (`totalEvents/matched/unmatched/byTarget/sha256/sourceFile`)
+ - `list_events(...)`, `get_event(...)` 조회 헬퍼
+ - 시드에 없는 target_id 매칭 시 unmatched 로 강등 (DB 정합성 보호)
 5. **`api/ingestion.py`** — 3개 엔드포인트
-   - `POST /api/logs/upload` — multipart (caseId + file)
-   - `GET  /api/logs?caseId=&page=&pageSize=`
-   - `GET  /api/logs/{eventId}` — 원본 raw JSON 포함
+ - `POST /api/logs/upload` — multipart (caseId + file)
+ - `GET /api/logs?caseId=&page=&pageSize=`
+ - `GET /api/logs/{eventId}` — 원본 raw JSON 포함
 6. **`main.py`** — `ingestion_router` 등록
 7. **단위 smoke test 통과** — 동적 합성 raw 6건 × 2 CSP 로 파서 변환 + 매처 분류 검증. 각 CSP 5/5 target 정확 분류, 미지원 케이스 None 반환.
 8. **문서 동기화** — 체크리스트 1-2 (Layer 0, stale 이었음) + 2-1 (Layer 1 신규) 업데이트.
@@ -394,27 +394,27 @@ Layer 1 백엔드 골격을 코드로 구현. DB 적재 E2E 검증은 다음 작
 4. **공식 가이드 기반 정정** — `WebSearch` + `WebFetch`로 NCP Cloud Activity Tracer 가이드 + NHN Cloud Trail 가이드 정본 확보. 시드의 추정치를 모두 공식 필드명·서비스명·운영 정보(보존 90일 / 변조 감지 / 2.5시간 업로드 지연 등)로 교체.
 5. **실제 raw log 발견** — `C:/Users/sasum/activity_logs_full.json` (NCP 81건) + `nhn_activity_logs.json` (NHN 147건). HTML 분석본의 분석 대상 원본이었음. NCP attack-sim 11건 + NHN attack 36건 Kill Chain 시뮬레이션 확인. 두 계정이 **동일 외부 IP 115.91.214.5 공유** → 멀티 CSP 연계 시나리오 검증.
 6. **시드 v2 — 실제 raw 기반 재작성** ([`1c2d59d`](https://github.com/sasumm25-lab/cloud/commit/1c2d59d))
-   - `mapping_rules/ncp_cloudtrail.json` — `action`/`actionResultType`/`content.actionUserName`/`content.sourceIp`로 정정. `eventTime`은 Unix ms(Export) + UTC 문자열(콘솔) 이중 형식.
-   - `mapping_rules/nhn_cloud_trail.json` — 구 `nhn_cloud_audit.json` 폐기. `eventId`/`userName`/`userIp`/`result` 매핑.
-   - `attack_rules/rules.json` — NCP 11룰 + NHN 11룰 = **22개**. 모든 룰의 `activity_name_pattern`이 raw log에 실제 등장하는 값에 매칭됨. 각 룰에 `real_log_count` + 출처 명시.
-   - `collection_targets/` — `retention_days=90`, `storage_path` 채움. NHN은 "Cloud Trail"로 서비스명 통일. 구 `naver_iam-takeover.json` 삭제.
-   - `kb/case_db.json` — 실제 시뮬 타임라인 3개 사례: NCP attack-sim 11건 (2시간 Kill Chain), NHN attack 36건 (20시간 Kill Chain), 멀티 CSP 연계 의심.
+ - `mapping_rules/ncp_cloudtrail.json` — `action`/`actionResultType`/`content.actionUserName`/`content.sourceIp`로 정정. `eventTime`은 Unix ms(Export) + UTC 문자열(콘솔) 이중 형식.
+ - `mapping_rules/nhn_cloud_trail.json` — 구 `nhn_cloud_audit.json` 폐기. `eventId`/`userName`/`userIp`/`result` 매핑.
+ - `attack_rules/rules.json` — NCP 11룰 + NHN 11룰 = **22개**. 모든 룰의 `activity_name_pattern`이 raw log에 실제 등장하는 값에 매칭됨. 각 룰에 `real_log_count` + 출처 명시.
+ - `collection_targets/` — `retention_days=90`, `storage_path` 채움. NHN은 "Cloud Trail"로 서비스명 통일. 구 `naver_iam-takeover.json` 삭제.
+ - `kb/case_db.json` — 실제 시뮬 타임라인 3개 사례: NCP attack-sim 11건 (2시간 Kill Chain), NHN attack 36건 (20시간 Kill Chain), 멀티 CSP 연계 의심.
 7. **모듈별 명세 정정** ([`cbd83e1`](https://github.com/sasumm25-lab/cloud/commit/cbd83e1)) — `모듈별_구현_명세.md` 80~87줄의 NCP 매핑 예시가 AWS CloudTrail 스키마였음. 실제 NCP/NHN 두 예시로 교체.
 8. **Layer 0 API 구현** ([`4bc5582`](https://github.com/sasumm25-lab/cloud/commit/4bc5582))
-   - `core/intake/incident_case.py` — `IncidentCase` (CRUD)
-   - `core/intake/collection_guide.py` — `CollectionGuide.generate()` (priority 내림차순 + completionRate 계산)
-   - `core/intake/knowledge.py` — `IncidentTypeKnowledge.lookup()` (5종 사고유형별 ATT&CK·서비스 매핑, 하드코딩)
-   - `api/intake.py` — FastAPI 라우터 4개 (POST/GET/PATCH `/api/cases` + GET `/api/guide`). Pydantic `Literal`로 enum 검증, 응답은 `{"status":"ok","data":...}` envelope.
-   - `main.py` — `intake_router` 등록.
-   - `requirements.txt` — Python 3.14 호환을 위해 `pydantic>=2.10` 상향, 핀 형식 `>=`로 완화.
-   - **E2E 검증**: POST → GET → PATCH → GET `/api/guide` + 404 케이스 동작 확인. SQLite `ai_sherpa.db` 생성 + 시드 10건 적재 확인.
+ - `core/intake/incident_case.py` — `IncidentCase` (CRUD)
+ - `core/intake/collection_guide.py` — `CollectionGuide.generate()` (priority 내림차순 + completionRate 계산)
+ - `core/intake/knowledge.py` — `IncidentTypeKnowledge.lookup()` (5종 사고유형별 ATT&CK·서비스 매핑, 하드코딩)
+ - `api/intake.py` — FastAPI 라우터 4개 (POST/GET/PATCH `/api/cases` + GET `/api/guide`). Pydantic `Literal`로 enum 검증, 응답은 `{"status":"ok","data":...}` envelope.
+ - `main.py` — `intake_router` 등록.
+ - `requirements.txt` — Python 3.14 호환을 위해 `pydantic>=2.10` 상향, 핀 형식 `>=`로 완화.
+ - **E2E 검증**: POST → GET → PATCH → GET `/api/guide` + 404 케이스 동작 확인. SQLite `ai_sherpa.db` 생성 + 시드 10건 적재 확인.
 9. **incidentType enum 5종 통일 + V1 실 연동** ([`04638b4`](https://github.com/sasumm25-lab/cloud/commit/04638b4))
-   - 프론트가 옛 명칭(`iam-takeover/credential/webapp/insider/ransomware`)을 쓰고 있어 백엔드 검증 실패. 모든 프론트 코드를 백엔드 5종(`CREDENTIAL_THEFT/PRIVILEGE_ESCALATION/DATA_EXFILTRATION/AUDIT_LOG_TAMPERING/MULTI_CSP_LATERAL`)으로 통일.
-   - `types/index.ts`, `meta.ts`(TYPE_META 재작성), `Step1_TypeCards`(orderedTypes), `Step3_GuideChecklist`(fallback) 일괄.
-   - `main.tsx`에 `QueryClientProvider` 추가 (React Query v5).
-   - `V1_Setup/index.tsx` Step2 onSubmit에서 `useMutation` → `createCase`. 성공 시 진짜 UUID를 `useCaseStore.setCaseId`에 저장 + 자동 Step3 진입.
-   - `Step3_GuideChecklist`에 `useQuery` → `getGuide(caseId)`. 화면 상단에 "백엔드 응답 ✓ / caseId / 수집 대상 N건 / 칩 5개" 패널 추가.
-   - 브라우저 E2E 검증 완료: V1 → POST `/api/cases` → 진짜 UUID 반환 → Step3에서 `GET /api/guide` 호출 → CT-NCP-IAM-001~005 칩 5개 표시.
+ - 프론트가 옛 명칭(`iam-takeover/credential/webapp/insider/ransomware`)을 쓰고 있어 백엔드 검증 실패. 모든 프론트 코드를 백엔드 5종(`CREDENTIAL_THEFT/PRIVILEGE_ESCALATION/DATA_EXFILTRATION/AUDIT_LOG_TAMPERING/MULTI_CSP_LATERAL`)으로 통일.
+ - `types/index.ts`, `meta.ts`(TYPE_META 재작성), `Step1_TypeCards`(orderedTypes), `Step3_GuideChecklist`(fallback) 일괄.
+ - `main.tsx`에 `QueryClientProvider` 추가 (React Query v5).
+ - `V1_Setup/index.tsx` Step2 onSubmit에서 `useMutation` → `createCase`. 성공 시 진짜 UUID를 `useCaseStore.setCaseId`에 저장 + 자동 Step3 진입.
+ - `Step3_GuideChecklist`에 `useQuery` → `getGuide(caseId)`. 화면 상단에 "백엔드 응답 ✓ / caseId / 수집 대상 N건 / 칩 5개" 패널 추가.
+ - 브라우저 E2E 검증 완료: V1 → POST `/api/cases` → 진짜 UUID 반환 → Step3에서 `GET /api/guide` 호출 → CT-NCP-IAM-001~005 칩 5개 표시.
 
 ### 2026-05-11 — DB 스키마 정렬 + 체크리스트 동기화 (요약)
 
@@ -479,7 +479,7 @@ walking-skeleton 8/8 화면이 mock 없이 실 API와 통신하는 상태. 남�
 cd cloud/backend
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt
-.venv/Scripts/python.exe -m db.init_db          # DB 생성 + 시드 적재
+.venv/Scripts/python.exe -m db.init_db # DB 생성 + 시드 적재
 .venv/Scripts/python.exe -m uvicorn main:app --reload
 # Swagger UI: http://localhost:8000/docs
 ```
@@ -498,7 +498,7 @@ git switch dev
 git pull --rebase origin dev
 # (작업)
 git status
-git add <특정 파일들>     # git add . 지양
+git add <특정 파일들> # git add . 지양
 git commit -m "feat: ..."
 git pull --rebase origin dev
 git push
@@ -529,7 +529,7 @@ f7a0123 feat(layer2): OCSF 정규화 + ATT&CK 매핑 + 갭 감지 — Layer 2 �
 (머지) Merge feat(v2) V2 로그 수집 mock → 실 API 전환 from byungwoo
 8034de1 feat(v2): V2 로그 수집 mock → 실 API 전환
 (머지) Merge feat(layer1) 로그 수집 API 1차 from 2gu (이근형)
-35eba2b feat(layer1): 로그 수집 API 1차 — NCP/NHN 파서 + LogIngestor + 라우터 3개  (이근형)
+35eba2b feat(layer1): 로그 수집 API 1차 — NCP/NHN 파서 + LogIngestor + 라우터 3개 (이근형)
 04638b4 feat(v1): incidentType 5종 통일 + V1 위저드 실 API 연결
 4bc5582 feat(layer0): 사고 접수 API 4개 구현
 cbd83e1 docs: 모듈별_구현_명세 NCP/NHN 매핑 예시 정정

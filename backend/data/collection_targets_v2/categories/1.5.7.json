@@ -1,102 +1,102 @@
 {
-  "category_id": "1.5.7",
-  "category_name": "클라우드 인증 - 위험 기반 검색 (Risk-based Detection)",
-  "kb_source": {
-    "primary": {
-      "standard": "Google Cloud Threat Intel",
-      "section": "§1.5.7",
-      "title": "사용 가능한 경우 위험 기반 검색 활성화",
-      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
-      "note": "CSP가 제공하는 자체 이상 탐지(예: AWS GuardDuty, Azure AD Identity Protection). 우리 시스템과 별도지만 가용 시 보강 증거."
-    },
-    "secondary": [
-      {
-        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
-        "section": "§3절 사고 탐지",
-        "note": "보안 솔루션의 자동 탐지 결과는 침해 가설의 출발점"
-      },
-      {
-        "standard": "NIST SP 800-86",
-        "section": "§3.2 데이터 소스 - IDS/Anomaly logs",
-        "note": "이상 탐지 로그는 정상 활동 로그(1.5.1, 1.5.5)와 교차 검증해야 의미"
-      },
-      {
-        "standard": "CSA Top Threats 2024",
-        "category": "#9 Limited cloud visibility/observability",
-        "note": "위험 기반 검색 미활성화 환경은 CSA 위협 #9에 직접 노출"
-      }
-    ]
-  },
-  "applicable_incident_types": [
-    "CREDENTIAL_THEFT",
-    "PRIVILEGE_ESCALATION",
-    "MULTI_CSP_LATERAL"
-  ],
-  "kill_chain_phases": [
-    "Initial Access",
-    "Credential Access"
-  ],
-  "evidence_role": "CORROBORATING",
-  "volatility_priority": 6,
-  "volatility_basis": "이상 탐지 결과는 별도 시스템이 생성하므로 즉시 휘발은 아니나, CSP별 보존 정책 다양. NCP/NHN MVP 환경에서는 명시적 위험 기반 검색 서비스 미확인 — CORROBORATING으로 분류.",
-  "rationale": "CSP가 자체적으로 제공하는 이상 탐지(예: 'unusual sign-in', 'impossible travel', 'leaked credential')의 결과. NCP는 'Cloud Insight' 일부 기능, NHN은 'Security Monitoring' 일부 기능에 해당하지만 IAM 특화 위험 검색은 제한적. 단독으로는 침해 증명 불가하지만 1.5.1·1.5.4와 교차 검증 시 신뢰도 ↑↑. AWS/Azure 등 다른 CSP 환경에서는 더 풍부하므로 향후 확장 시 비중 ↑.",
-  "use_cases": [
-    "'unusual sign-in location' 알림 + 1.5.1의 비국내 IP 로그인 매칭",
-    "'impossible travel' 알림 + 동일 계정 다중 위치 로그인 (1.5.1)",
-    "'leaked credential' 알림 + 1.5.2의 즉시 비밀번호 변경 흔적",
-    "CSP 자체 차단 이력 (자동 잠금) + 1.5.4 다수 실패 인증",
-    "CSP가 위험 점수 부여한 세션의 추가 활동 (1.5.5)"
-  ],
-  "csp_mapping": {
-    "naver": {
-      "log_source": "Cloud Insight / System Security Checker (제한적)",
-      "action_patterns": [
-        "Threat Detection Alert",
-        "Cloud Insight Anomaly"
-      ],
-      "field_locations": {
-        "actor": "관련 사용자 (별도 필드)",
-        "ip": "탐지된 IP",
-        "score": "위험 점수 (CSP 정의)"
-      },
-      "note": "NCP MVP 환경에서는 위험 기반 검색 표준 API 부재 — Cloud Insight 메트릭 + Activity Tracer 룰 조합으로 대체",
-      "limitation": "이 카테고리는 NCP에서 부분 지원. PRO/Enterprise 플랜 권장.",
-      "collection_steps": [
-        "콘솔 > Cloud Insight (PRO/Enterprise 플랜 필요)",
-        "이상 탐지 알림 (Threat Detection Alert) 이력 조회",
-        "기간: 사고 발생 시각 ±72시간",
-        "보강: 1.5.1 비국내 IP 로그인과 cross-check (단독 증거 X · CORROBORATING)"
-      ],
-      "cli_hint": "Cloud Insight API — 부가 서비스 활성화 필요. NCP MVP 환경은 부분 지원."
-    },
-    "nhn": {
-      "log_source": "Security Monitoring / Network Security (제한적)",
-      "event_id_patterns": [
-        "event_id.security_monitoring.alert.*"
-      ],
-      "field_locations": {
-        "actor": "관련 사용자",
-        "ip": "탐지된 IP"
-      },
-      "note": "NHN MVP 환경에서도 위험 기반 IAM 검색 직접 매핑 어려움 — Audit Trail의 변조 감지 알림으로 대체",
-      "limitation": "Security Monitoring 부가 서비스 활성화 필요.",
-      "collection_steps": [
-        "콘솔 > 관리 > Security Monitoring (부가 서비스)",
-        "Alert 이력 조회 — eventId='event_id.security_monitoring.alert.*'",
-        "기간: 사고 발생 시각 ±72시간",
-        "보강: Cloud Trail 변조 감지 알림과 cross-check (CORROBORATING)"
-      ],
-      "cli_hint": "Security Monitoring 부가 서비스 활성화 필요. NHN MVP 환경은 부분 지원."
-    }
-  },
-  "retention_days_default": 30,
-  "applicable_environments": {
-    "auditEnabled_required": false,
-    "csp_advanced_security_dependent": true,
-    "modifier_hints": [
-      "NCP Cloud Insight 또는 NHN Security Monitoring 미활성화 환경에서는 본 카테고리 제외 권장",
-      "MFA 미적용 환경 시 priority +1 (CSP 자체 차단 외 의존)",
-      "본 시스템에서는 'OPTIONAL' 라벨로 표시 권장 — 가용 시에만 활용"
-    ]
-  }
+ "category_id": "1.5.7",
+ "category_name": "클라우드 인증 - 위험 기반 검색 (Risk-based Detection)",
+ "kb_source": {
+ "primary": {
+ "standard": "Google Cloud Threat Intel",
+ "section": "1.5.7",
+ "title": "사용 가능한 경우 위험 기반 검색 활성화",
+ "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+ "note": "CSP가 제공하는 자체 이상 탐지(예: AWS GuardDuty, Azure AD Identity Protection). 우리 시스템과 별도지만 가용 시 보강 증거."
+ },
+ "secondary": [
+ {
+ "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+ "section": "3절 사고 탐지",
+ "note": "보안 솔루션의 자동 탐지 결과는 침해 가설의 출발점"
+ },
+ {
+ "standard": "NIST SP 800-86",
+ "section": "3.2 데이터 소스 - IDS/Anomaly logs",
+ "note": "이상 탐지 로그는 정상 활동 로그(1.5.1, 1.5.5)와 교차 검증해야 의미"
+ },
+ {
+ "standard": "CSA Top Threats 2024",
+ "category": "#9 Limited cloud visibility/observability",
+ "note": "위험 기반 검색 미활성화 환경은 CSA 위협 #9에 직접 노출"
+ }
+ ]
+ },
+ "applicable_incident_types": [
+ "CREDENTIAL_THEFT",
+ "PRIVILEGE_ESCALATION",
+ "MULTI_CSP_LATERAL"
+ ],
+ "kill_chain_phases": [
+ "Initial Access",
+ "Credential Access"
+ ],
+ "evidence_role": "CORROBORATING",
+ "volatility_priority": 6,
+ "volatility_basis": "이상 탐지 결과는 별도 시스템이 생성하므로 즉시 휘발은 아니나, CSP별 보존 정책 다양. NCP/NHN MVP 환경에서는 명시적 위험 기반 검색 서비스 미확인 — CORROBORATING으로 분류.",
+ "rationale": "CSP가 자체적으로 제공하는 이상 탐지(예: 'unusual sign-in', 'impossible travel', 'leaked credential')의 결과. NCP는 'Cloud Insight' 일부 기능, NHN은 'Security Monitoring' 일부 기능에 해당하지만 IAM 특화 위험 검색은 제한적. 단독으로는 침해 증명 불가하지만 1.5.1·1.5.4와 교차 검증 시 신뢰도 ↑↑. AWS/Azure 등 다른 CSP 환경에서는 더 풍부하므로 향후 확장 시 비중 ↑.",
+ "use_cases": [
+ "'unusual sign-in location' 알림 + 1.5.1의 비국내 IP 로그인 매칭",
+ "'impossible travel' 알림 + 동일 계정 다중 위치 로그인 (1.5.1)",
+ "'leaked credential' 알림 + 1.5.2의 즉시 비밀번호 변경 흔적",
+ "CSP 자체 차단 이력 (자동 잠금) + 1.5.4 다수 실패 인증",
+ "CSP가 위험 점수 부여한 세션의 추가 활동 (1.5.5)"
+ ],
+ "csp_mapping": {
+ "naver": {
+ "log_source": "Cloud Insight / System Security Checker (제한적)",
+ "action_patterns": [
+ "Threat Detection Alert",
+ "Cloud Insight Anomaly"
+ ],
+ "field_locations": {
+ "actor": "관련 사용자 (별도 필드)",
+ "ip": "탐지된 IP",
+ "score": "위험 점수 (CSP 정의)"
+ },
+ "note": "NCP MVP 환경에서는 위험 기반 검색 표준 API 부재 — Cloud Insight 메트릭 + Activity Tracer 룰 조합으로 대체",
+ "limitation": "이 카테고리는 NCP에서 부분 지원. PRO/Enterprise 플랜 권장.",
+ "collection_steps": [
+ "콘솔 > Cloud Insight (PRO/Enterprise 플랜 필요)",
+ "이상 탐지 알림 (Threat Detection Alert) 이력 조회",
+ "기간: 사고 발생 시각 ±72시간",
+ "보강: 1.5.1 비국내 IP 로그인과 cross-check (단독 증거 X · CORROBORATING)"
+ ],
+ "cli_hint": "Cloud Insight API — 부가 서비스 활성화 필요. NCP MVP 환경은 부분 지원."
+ },
+ "nhn": {
+ "log_source": "Security Monitoring / Network Security (제한적)",
+ "event_id_patterns": [
+ "event_id.security_monitoring.alert.*"
+ ],
+ "field_locations": {
+ "actor": "관련 사용자",
+ "ip": "탐지된 IP"
+ },
+ "note": "NHN MVP 환경에서도 위험 기반 IAM 검색 직접 매핑 어려움 — Audit Trail의 변조 감지 알림으로 대체",
+ "limitation": "Security Monitoring 부가 서비스 활성화 필요.",
+ "collection_steps": [
+ "콘솔 > 관리 > Security Monitoring (부가 서비스)",
+ "Alert 이력 조회 — eventId='event_id.security_monitoring.alert.*'",
+ "기간: 사고 발생 시각 ±72시간",
+ "보강: Cloud Trail 변조 감지 알림과 cross-check (CORROBORATING)"
+ ],
+ "cli_hint": "Security Monitoring 부가 서비스 활성화 필요. NHN MVP 환경은 부분 지원."
+ }
+ },
+ "retention_days_default": 30,
+ "applicable_environments": {
+ "auditEnabled_required": false,
+ "csp_advanced_security_dependent": true,
+ "modifier_hints": [
+ "NCP Cloud Insight 또는 NHN Security Monitoring 미활성화 환경에서는 본 카테고리 제외 권장",
+ "MFA 미적용 환경 시 priority +1 (CSP 자체 차단 외 의존)",
+ "본 시스템에서는 'OPTIONAL' 라벨로 표시 권장 — 가용 시에만 활용"
+ ]
+ }
 }

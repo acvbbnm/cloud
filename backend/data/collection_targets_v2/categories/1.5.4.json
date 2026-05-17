@@ -1,121 +1,121 @@
 {
-  "category_id": "1.5.4",
-  "category_name": "클라우드 인증 - 실패 인증 기록",
-  "kb_source": {
-    "primary": {
-      "standard": "Google Cloud Threat Intel",
-      "section": "§1.5.4",
-      "title": "성공한 인증과 실패한 인증을 모두 클라우드 관리 플랫폼에 기록",
-      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
-      "use_phase_quote": "초기 침투 단계 (Credential Stuffing 공격) 분석을 위해 클라우드 관리자 계정에 대한 로그인을 분석합니다."
-    },
-    "secondary": [
-      {
-        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
-        "section": "§2.4 초기 대응 점검표 ⑥",
-        "note": "성공 인증과 실패 인증을 함께 보면 brute-force·자격증명 스터핑 식별 가능"
-      },
-      {
-        "standard": "MITRE ATT&CK Cloud Matrix v14",
-        "technique": "T1110 (Brute Force)",
-        "tactic": "Credential Access",
-        "url": "https://attack.mitre.org/techniques/T1110/"
-      },
-      {
-        "standard": "MITRE ATT&CK",
-        "technique": "T1110.001 (Password Guessing)",
-        "url": "https://attack.mitre.org/techniques/T1110/001/"
-      },
-      {
-        "standard": "NIST SP 800-86",
-        "section": "§3.1 휘발성 계층",
-        "note": "실패 인증은 성공 인증과 동일 휘발성 — 함께 수집"
-      }
-    ]
-  },
-  "applicable_incident_types": [
-    "CREDENTIAL_THEFT"
-  ],
-  "kill_chain_phases": [
-    "Credential Access",
-    "Initial Access"
-  ],
-  "evidence_role": "REQUIRED",
-  "volatility_priority": 9,
-  "volatility_basis": "1.5.1(성공 인증)과 동일 휘발성. NIST SP 800-86 §3.1. 성공·실패 쌍으로 분석해야 패턴 식별 가능 (예: 동일 IP에서 N회 실패 후 1회 성공 = brute-force 성공).",
-  "rationale": "성공 인증만 보면 침해 사실이 보이지만 '어떻게' 들어왔는지는 실패 인증과의 대조로만 드러남. NCP attack-sim 합성 시나리오에서 02:35:00 / 02:35:03 두 번 FAIL → 02:35:09 SUCCESS 패턴이 brute-force 성공의 전형. 정상 사용자도 가끔 실패하므로 '단시간 다수 실패' + '동일 계정 다른 IP 시도' 등 조합으로 룰화 필요.",
-  "use_cases": [
-    "동일 계정 동일 IP에서 5초 내 3회 이상 실패 → 즉시 성공 (brute-force 성공)",
-    "동일 계정 다중 IP에서 분산 시도 (credential stuffing)",
-    "비국내 IP의 실패 시도 (지리 기반 차단 우회 시도)",
-    "비활성 계정에 대한 실패 시도 (계정 enumeration)",
-    "MFA 우회 시도 (MFA prompt 단계 실패 패턴)"
-  ],
-  "csp_mapping": {
-    "naver": {
-      "log_source": "Cloud Activity Tracer",
-      "action_patterns": [
-        "Login"
-      ],
-      "field_locations": {
-        "actor": "content.actionUserName",
-        "ip": "content.sourceIp",
-        "result": "actionResultType",
-        "filter": "actionResultType == 'FAIL'"
-      },
-      "example_raw": {
-        "action": "Login",
-        "eventTime": "2026-04-05 06:26:13 UTC",
-        "actionResultType": "FAIL",
-        "content": {
-          "actionUserName": "attack-sim",
-          "sourceIp": "115.91.214.29"
-        }
-      },
-      "collection_steps": [
-        "콘솔 > 관리·통계 > Cloud Activity Tracer",
-        "필터: action='Login' · actionResultType='FAIL'",
-        "기간: 사고 발생 시각 ±24시간 (brute-force·credential stuffing 식별)",
-        "분석: 동일 IP × 동일 계정 × 5초 내 3회 이상 실패 → 즉시 성공 패턴 추출"
-      ],
-      "cli_hint": "콘솔 검색 외 CLI 미제공. 추후 자동화는 Object Storage Export 활용."
-    },
-    "nhn": {
-      "log_source": "Cloud Trail",
-      "event_id_patterns": [
-        "event_id.iam.login"
-      ],
-      "field_locations": {
-        "actor": "userName",
-        "ip": "userIp",
-        "result": "result",
-        "filter": "result == 'FAIL'"
-      },
-      "example_raw": {
-        "eventId": "event_id.iam.login",
-        "eventTime": "2026-04-05T09:02:19.750+0000",
-        "result": "FAIL",
-        "userName": "attack",
-        "userIp": "115.91.214.5",
-        "response": "{\"header\":{\"resultCode\":13002,\"isSuccessful\":false}}"
-      },
-      "collection_steps": [
-        "콘솔 > 관리 > Cloud Trail",
-        "필터: eventId='event_id.iam.login' · result='FAIL'",
-        "기간: 사고 발생 시각 ±24시간",
-        "분석: 1.5.1 성공 인증과 시간 매칭 (실패 → 성공 전환점이 brute-force 성공)"
-      ],
-      "cli_hint": "nhncloud cloudtrail events --event-id event_id.iam.login --result FAIL"
-    }
-  },
-  "retention_days_default": 90,
-  "applicable_environments": {
-    "auditEnabled_required": true,
-    "mfa_status_dependent": true,
-    "modifier_hints": [
-      "MFA 미적용 시 priority +2 (brute-force 성공 가능성 ↑↑)",
-      "publicIp '있음 (서버 직접 할당)' 시 priority +1 (외부 노출 ↑)",
-      "Risk-based detection (1.5.7) 활성 환경에서는 priority -1 (자동 차단 있음)"
-    ]
-  }
+ "category_id": "1.5.4",
+ "category_name": "클라우드 인증 - 실패 인증 기록",
+ "kb_source": {
+ "primary": {
+ "standard": "Google Cloud Threat Intel",
+ "section": "1.5.4",
+ "title": "성공한 인증과 실패한 인증을 모두 클라우드 관리 플랫폼에 기록",
+ "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+ "use_phase_quote": "초기 침투 단계 (Credential Stuffing 공격) 분석을 위해 클라우드 관리자 계정에 대한 로그인을 분석합니다."
+ },
+ "secondary": [
+ {
+ "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+ "section": "2.4 초기 대응 점검표 ⑥",
+ "note": "성공 인증과 실패 인증을 함께 보면 brute-force·자격증명 스터핑 식별 가능"
+ },
+ {
+ "standard": "MITRE ATT&CK Cloud Matrix v14",
+ "technique": "T1110 (Brute Force)",
+ "tactic": "Credential Access",
+ "url": "https://attack.mitre.org/techniques/T1110/"
+ },
+ {
+ "standard": "MITRE ATT&CK",
+ "technique": "T1110.001 (Password Guessing)",
+ "url": "https://attack.mitre.org/techniques/T1110/001/"
+ },
+ {
+ "standard": "NIST SP 800-86",
+ "section": "3.1 휘발성 계층",
+ "note": "실패 인증은 성공 인증과 동일 휘발성 — 함께 수집"
+ }
+ ]
+ },
+ "applicable_incident_types": [
+ "CREDENTIAL_THEFT"
+ ],
+ "kill_chain_phases": [
+ "Credential Access",
+ "Initial Access"
+ ],
+ "evidence_role": "REQUIRED",
+ "volatility_priority": 9,
+ "volatility_basis": "1.5.1(성공 인증)과 동일 휘발성. NIST SP 800-86 3.1. 성공·실패 쌍으로 분석해야 패턴 식별 가능 (예: 동일 IP에서 N회 실패 후 1회 성공 = brute-force 성공).",
+ "rationale": "성공 인증만 보면 침해 사실이 보이지만 '어떻게' 들어왔는지는 실패 인증과의 대조로만 드러남. NCP attack-sim 합성 시나리오에서 02:35:00 / 02:35:03 두 번 FAIL → 02:35:09 SUCCESS 패턴이 brute-force 성공의 전형. 정상 사용자도 가끔 실패하므로 '단시간 다수 실패' + '동일 계정 다른 IP 시도' 등 조합으로 룰화 필요.",
+ "use_cases": [
+ "동일 계정 동일 IP에서 5초 내 3회 이상 실패 → 즉시 성공 (brute-force 성공)",
+ "동일 계정 다중 IP에서 분산 시도 (credential stuffing)",
+ "비국내 IP의 실패 시도 (지리 기반 차단 우회 시도)",
+ "비활성 계정에 대한 실패 시도 (계정 enumeration)",
+ "MFA 우회 시도 (MFA prompt 단계 실패 패턴)"
+ ],
+ "csp_mapping": {
+ "naver": {
+ "log_source": "Cloud Activity Tracer",
+ "action_patterns": [
+ "Login"
+ ],
+ "field_locations": {
+ "actor": "content.actionUserName",
+ "ip": "content.sourceIp",
+ "result": "actionResultType",
+ "filter": "actionResultType == 'FAIL'"
+ },
+ "example_raw": {
+ "action": "Login",
+ "eventTime": "2026-04-05 06:26:13 UTC",
+ "actionResultType": "FAIL",
+ "content": {
+ "actionUserName": "attack-sim",
+ "sourceIp": "115.91.214.29"
+ }
+ },
+ "collection_steps": [
+ "콘솔 > 관리·통계 > Cloud Activity Tracer",
+ "필터: action='Login' · actionResultType='FAIL'",
+ "기간: 사고 발생 시각 ±24시간 (brute-force·credential stuffing 식별)",
+ "분석: 동일 IP × 동일 계정 × 5초 내 3회 이상 실패 → 즉시 성공 패턴 추출"
+ ],
+ "cli_hint": "콘솔 검색 외 CLI 미제공. 추후 자동화는 Object Storage Export 활용."
+ },
+ "nhn": {
+ "log_source": "Cloud Trail",
+ "event_id_patterns": [
+ "event_id.iam.login"
+ ],
+ "field_locations": {
+ "actor": "userName",
+ "ip": "userIp",
+ "result": "result",
+ "filter": "result == 'FAIL'"
+ },
+ "example_raw": {
+ "eventId": "event_id.iam.login",
+ "eventTime": "2026-04-05T09:02:19.750+0000",
+ "result": "FAIL",
+ "userName": "attack",
+ "userIp": "115.91.214.5",
+ "response": "{\"header\":{\"resultCode\":13002,\"isSuccessful\":false}}"
+ },
+ "collection_steps": [
+ "콘솔 > 관리 > Cloud Trail",
+ "필터: eventId='event_id.iam.login' · result='FAIL'",
+ "기간: 사고 발생 시각 ±24시간",
+ "분석: 1.5.1 성공 인증과 시간 매칭 (실패 → 성공 전환점이 brute-force 성공)"
+ ],
+ "cli_hint": "nhncloud cloudtrail events --event-id event_id.iam.login --result FAIL"
+ }
+ },
+ "retention_days_default": 90,
+ "applicable_environments": {
+ "auditEnabled_required": true,
+ "mfa_status_dependent": true,
+ "modifier_hints": [
+ "MFA 미적용 시 priority +2 (brute-force 성공 가능성 ↑↑)",
+ "publicIp '있음 (서버 직접 할당)' 시 priority +1 (외부 노출 ↑)",
+ "Risk-based detection (1.5.7) 활성 환경에서는 priority -1 (자동 차단 있음)"
+ ]
+ }
 }

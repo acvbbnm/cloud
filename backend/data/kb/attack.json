@@ -1,6 +1,6 @@
 {
-  "_status": "MVP_minimal",
-  "_note": "MITRE ATT&CK for Cloud 핵심 기법 청크. 시연 시나리오 CREDENTIAL_THEFT 관련 3개. 추후 9전술 전체로 확장.",
+  "_status": "operational_v1",
+  "_note": "MITRE ATT&CK Cloud Matrix v14 12 전술 × 핵심 기법 30 청크. 운영급 RAG 검색 대응. 각 청크는 한국어 요약 + 클라우드 환경 적용 + 탐지 단서 3~5문장.",
   "kb_id": "KB-1",
   "kb_name": "ATTACK",
   "chunks": [
@@ -12,6 +12,33 @@
       "text": "공격자는 합법적인 클라우드 계정을 탈취하여 초기 접근을 시도한다. 피싱·자격증명 누출·Brute force 등을 통해 획득된 자격증명으로 콘솔/API 로그인한다. 탐지 단서: 비업무시간 접근, 비국내 IP, 동일 계정의 동시 다중 위치 접근.",
       "source": "MITRE ATT&CK v14",
       "url": "https://attack.mitre.org/techniques/T1078/004"
+    },
+    {
+      "chunk_id": "ATTACK-T1110-001",
+      "technique_id": "T1110",
+      "tactic": "Initial Access",
+      "title": "Brute Force (무차별 대입)",
+      "text": "공격자는 자동화된 도구로 다수의 비밀번호 조합을 시도하여 클라우드 계정에 침입한다. Credential Stuffing·Password Spraying·Dictionary Attack 4종 하위 기법이 있다. 탐지 단서: 동일 IP·UA 에서 짧은 시간 다수 로그인 실패, 같은 비밀번호로 여러 계정 시도, 새벽·해외 IP 패턴.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1110"
+    },
+    {
+      "chunk_id": "ATTACK-T1199-001",
+      "technique_id": "T1199",
+      "tactic": "Initial Access",
+      "title": "Trusted Relationship (신뢰 관계 악용)",
+      "text": "공격자는 클라우드 환경 간 신뢰 관계(SSO·IdP 연동·외주 협력사 계정)를 악용해 침투한다. 외부 IdP 가 침해되면 연동된 클라우드 IAM 까지 영향이 확장된다. 탐지 단서: 신뢰 IdP 의 비정상 인증 시점, 협력사 계정의 비정상 권한 사용, SAML/OIDC 토큰 발급 이상 패턴.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1199"
+    },
+    {
+      "chunk_id": "ATTACK-T1059-001",
+      "technique_id": "T1059",
+      "tactic": "Execution",
+      "title": "Command and Scripting Interpreter (클라우드 셸·CLI 악용)",
+      "text": "공격자는 클라우드 콘솔의 Cloud Shell, CLI, 자동화 스크립트(CloudFormation·Terraform 등)를 통해 명령을 실행한다. 정상 관리자 활동과 구분이 어려운 점이 위험. 탐지 단서: 처음 보는 사용자의 Cloud Shell 실행, 비정상 시간대 CLI API 호출, 한 세션에서 다수 리소스 조작.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1059"
     },
     {
       "chunk_id": "ATTACK-T1136.003-001",
@@ -30,6 +57,213 @@
       "text": "공격자는 기존 계정에 새 AccessKey/Password를 추가하여 영속 자격증명을 확보한다. CreateAccessKey, ChangePassword, UpdateLoginProfile API 호출 + 정책 변경이 함께 나타나면 강한 신호다.",
       "source": "MITRE ATT&CK v14",
       "url": "https://attack.mitre.org/techniques/T1098/001"
+    },
+    {
+      "chunk_id": "ATTACK-T1556-001",
+      "technique_id": "T1556",
+      "tactic": "Persistence",
+      "title": "Modify Authentication Process (인증 절차 변조)",
+      "text": "공격자는 MFA·SSO·인증 정책을 변조해 향후 침투를 쉽게 만든다. MFA 비활성화, 인증 로그 비활성화, IdP 설정 변경 등이 대표 동작. 탐지 단서: 보안 설정 변경 직후 외부 IP 로그인, 관리자 권한 없는 사용자의 인증 정책 수정 시도.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1556"
+    },
+    {
+      "chunk_id": "ATTACK-T1098-001",
+      "technique_id": "T1098",
+      "tactic": "Privilege Escalation",
+      "title": "Account Manipulation (권한 부여·정책 변경)",
+      "text": "공격자는 자신 또는 새 계정에 더 강한 권한·정책을 부여해 권한을 확대한다. AttachPolicy, AssignRole, AddSubAccountToGroup 같은 API 가 대표. 탐지 단서: 신규 계정에 즉시 관리자 권한 부여, 단시간 다수 정책 변경, 정책 변경 후 민감 리소스 접근.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1098"
+    },
+    {
+      "chunk_id": "ATTACK-T1484-001",
+      "technique_id": "T1484",
+      "tactic": "Privilege Escalation",
+      "title": "Domain Policy Modification (정책·신뢰 정책 수정)",
+      "text": "공격자는 클라우드 조직 정책·신뢰 정책(Trust Policy)·서비스 제어 정책(SCP)을 수정해 권한을 우회한다. AssumeRole 정책 변조로 외부 계정의 접근을 허용하는 패턴이 대표. 탐지 단서: 정책 변경 직후 외부 계정/리전에서 AssumeRole 성공.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1484"
+    },
+    {
+      "chunk_id": "ATTACK-T1562-001",
+      "technique_id": "T1562",
+      "tactic": "Defense Evasion",
+      "title": "Impair Defenses (방어 무력화)",
+      "text": "공격자는 클라우드 보안 서비스(WAF·CloudTrail·GuardDuty 등)을 비활성화하거나 알림 규칙을 우회해 탐지를 회피한다. 탐지 단서: 보안 서비스 Disable·StopLogging API 호출, 알림 규칙 변경 직후의 의심 활동.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1562"
+    },
+    {
+      "chunk_id": "ATTACK-T1562.008-001",
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "title": "Disable or Modify Cloud Logs (클라우드 로그 비활성·변조)",
+      "text": "공격자는 CloudTrail·Activity Tracer·CloudWatch Logs 같은 감사 로그를 비활성·삭제·필터링해 흔적을 제거한다. 가장 강한 침해 단서 중 하나이며, 사후 분석을 직접 방해한다. 탐지 단서: StopLogging, DeleteTrail, DeleteLogGroup, PutEventSelectors 같은 메타로그 자체 변경 API.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1562/008"
+    },
+    {
+      "chunk_id": "ATTACK-T1070-001",
+      "technique_id": "T1070",
+      "tactic": "Defense Evasion",
+      "title": "Indicator Removal (흔적 제거)",
+      "text": "공격자는 사용한 AccessKey 삭제, 생성한 계정 제거, 로그 파일 삭제 등으로 흔적을 지운다. Kill Chain 종료 단계 행동. 탐지 단서: 짧은 시간 내 'Create→Use→Delete' 동일 리소스 라이프사이클, 특정 로그 파일만 선택적 삭제.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1070"
+    },
+    {
+      "chunk_id": "ATTACK-T1552-001",
+      "technique_id": "T1552",
+      "tactic": "Credential Access",
+      "title": "Unsecured Credentials (노출된 자격증명 수집)",
+      "text": "공격자는 코드 저장소·환경변수·메타데이터 서비스 등에 평문 노출된 자격증명을 수집한다. GitHub 공개 저장소 AccessKey 누출, Object Storage 메타데이터 노출 사고가 자주 발생. 탐지 단서: 인스턴스 메타데이터 서비스(169.254.169.254) 다회 호출, 코드 저장소 다운로드 직후 신규 AccessKey 사용.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1552"
+    },
+    {
+      "chunk_id": "ATTACK-T1110.001-001",
+      "technique_id": "T1110.001",
+      "tactic": "Credential Access",
+      "title": "Brute Force: Password Guessing (비밀번호 추측)",
+      "text": "T1110 의 하위 — 특정 계정 대상으로 비밀번호 사전 공격을 반복한다. 비밀번호 잠금 정책이 없거나 MFA 미적용일 때 성공률이 높다. 탐지 단서: 같은 사용자에 대한 다수 로그인 실패 후 성공, 동일 IP 에서 여러 계정 순차 시도.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1110/001"
+    },
+    {
+      "chunk_id": "ATTACK-T1555-001",
+      "technique_id": "T1555",
+      "tactic": "Credential Access",
+      "title": "Credentials from Password Stores (비밀번호 저장소 탈취)",
+      "text": "공격자는 클라우드 자격증명을 보관하는 Secrets Manager·KMS·Parameter Store 등에서 비밀을 탈취한다. 정상 애플리케이션 호출과 구분이 어려운 점이 위험. 탐지 단서: 평소와 다른 계정·IP 에서 다수의 GetSecretValue·Decrypt 호출, 한 세션에서 여러 비밀 일괄 조회.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1555"
+    },
+    {
+      "chunk_id": "ATTACK-T1087-001",
+      "technique_id": "T1087",
+      "tactic": "Discovery",
+      "title": "Account Discovery (계정 탐색)",
+      "text": "공격자는 환경 내 IAM 사용자·역할·그룹을 열거해 다음 공격 대상을 식별한다. ListUsers·ListRoles·GetAccountSummary 같은 비파괴 read-only API 라 탐지가 어렵다. 탐지 단서: 짧은 시간 내 다수의 ListUsers/ListRoles, 평소 사용 안 하는 계정의 IAM 메타 조회.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1087"
+    },
+    {
+      "chunk_id": "ATTACK-T1538-001",
+      "technique_id": "T1538",
+      "tactic": "Discovery",
+      "title": "Cloud Service Dashboard (콘솔 정찰)",
+      "text": "공격자는 클라우드 콘솔의 대시보드·결제·요금 페이지를 통해 환경 규모와 활성 서비스를 빠르게 파악한다. 탐지 단서: 신규 로그인 직후 결제·콘솔 메타 정보 다수 조회, 다중 리전·서비스 페이지 순회.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1538"
+    },
+    {
+      "chunk_id": "ATTACK-T1526-001",
+      "technique_id": "T1526",
+      "tactic": "Discovery",
+      "title": "Cloud Service Discovery (클라우드 서비스 탐색)",
+      "text": "공격자는 어떤 클라우드 서비스가 활성·비활성 상태인지 API 로 열거한다. 다음 단계 공격(데이터 탈취·자원 조작)의 사전 정찰 행동. 탐지 단서: ListBuckets, DescribeInstances 같은 다중 서비스 ListAPI 의 비정상 호출 패턴.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1526"
+    },
+    {
+      "chunk_id": "ATTACK-T1580-001",
+      "technique_id": "T1580",
+      "tactic": "Discovery",
+      "title": "Cloud Infrastructure Discovery (인프라 구조 탐색)",
+      "text": "공격자는 VPC, 서브넷, 라우팅 테이블, 보안 그룹, 인스턴스 구성을 열거해 네트워크 구조를 이해한다. 횡이동·데이터 탈취 경로 설계의 핵심 사전 작업. 탐지 단서: 짧은 시간 다수의 DescribeVpcs·DescribeSecurityGroups·DescribeInstances 호출.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1580"
+    },
+    {
+      "chunk_id": "ATTACK-T1021-001",
+      "technique_id": "T1021",
+      "tactic": "Lateral Movement",
+      "title": "Remote Services (원격 서비스 접근)",
+      "text": "공격자는 SSH·RDP·클라우드 서버 콘솔(NCP Server Connect Console 등)을 통해 다른 인스턴스로 횡이동한다. Bastion·Jump Server 사용 환경에서 자주 관찰. 탐지 단서: 비표준 IP 에서 다수 인스턴스 동시 접근, 한 세션에서 여러 리전 접근.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1021"
+    },
+    {
+      "chunk_id": "ATTACK-T1550-001",
+      "technique_id": "T1550",
+      "tactic": "Lateral Movement",
+      "title": "Use Alternate Authentication Material (대체 인증 자격증명 사용)",
+      "text": "공격자는 SSO 토큰·Cookie·세션 키 등 비밀번호 외의 인증 수단을 탈취·재사용해 다른 클라우드 자원으로 이동한다. 토큰 도난(Pass-the-Token) 이 대표 시나리오. 탐지 단서: 동일 토큰의 비정상 사용 패턴(다른 IP·UA·짧은 시간 다수 자원 접근).",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1550"
+    },
+    {
+      "chunk_id": "ATTACK-T1530-001",
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "title": "Data from Cloud Storage Object (클라우드 스토리지 데이터 수집)",
+      "text": "공격자는 Object Storage(S3·NCP OS·NHN OS) 또는 데이터베이스에서 민감 데이터를 수집한다. Pre-signed URL 발급, 정책 변경(공개 읽기) 등 사전 작업이 동반된다. 탐지 단서: 짧은 시간 다수 GetObject·ListObjects, Pre-signed URL 발급 직후 외부 IP 다운로드.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1530"
+    },
+    {
+      "chunk_id": "ATTACK-T1213-001",
+      "technique_id": "T1213",
+      "tactic": "Collection",
+      "title": "Data from Information Repositories (정보 저장소 수집)",
+      "text": "공격자는 Confluence·SharePoint·Wiki 같은 사내 정보 저장소에서 민감 문서를 수집한다. SSO 로 클라우드와 연결된 SaaS 가 표적이 되는 경우가 많다. 탐지 단서: 평소 접근 안 하는 사용자의 다수 문서 다운로드, 검색 쿼리에 '비밀번호'·'키' 등 민감 키워드.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1213"
+    },
+    {
+      "chunk_id": "ATTACK-T1537-001",
+      "technique_id": "T1537",
+      "tactic": "Exfiltration",
+      "title": "Transfer Data to Cloud Account (외부 클라우드 계정으로 전송)",
+      "text": "공격자는 침해한 클라우드 자원의 데이터를 자신의 외부 클라우드 계정으로 전송한다. Object Storage 복제, 스냅샷 공유, Replication Rule 변조 등이 대표. 탐지 단서: 외부 계정·외부 리전을 대상으로 한 PutBucketReplication·CopyObject·ShareSnapshot 호출.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1537"
+    },
+    {
+      "chunk_id": "ATTACK-T1567-001",
+      "technique_id": "T1567",
+      "tactic": "Exfiltration",
+      "title": "Exfiltration Over Web Service (외부 웹 서비스 통한 유출)",
+      "text": "공격자는 침해한 자원의 데이터를 외부 웹 서비스(Dropbox·Google Drive·Telegram 등)로 업로드해 유출한다. 정상 HTTP/HTTPS 트래픽으로 위장되어 탐지가 어렵다. 탐지 단서: 인스턴스에서 비정상 외부 도메인으로의 대량 outbound, 비업무시간 외부 SaaS 업로드 트래픽.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1567"
+    },
+    {
+      "chunk_id": "ATTACK-T1485-001",
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "title": "Data Destruction (데이터 파괴)",
+      "text": "공격자는 인스턴스·볼륨·스냅샷·Object Storage 객체를 삭제해 서비스를 방해하거나 흔적을 제거한다. 랜섬웨어 후속 동작으로도 자주 등장. 탐지 단서: 다수의 DeleteVolume·DeleteSnapshot·DeleteBucket·DeleteDBCluster 가 동일 세션에서 연쇄.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1485"
+    },
+    {
+      "chunk_id": "ATTACK-T1489-001",
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "title": "Service Stop (서비스 중단)",
+      "text": "공격자는 클라우드 인스턴스·DB·서비스 시작/중지 권한을 이용해 서비스를 강제 중단한다. 영향 단계의 대표 행동. 탐지 단서: 평소 안 멈추는 핵심 서비스에 대한 StopInstance·ShutdownServerInstance·DeleteDBCluster 호출.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1489"
+    },
+    {
+      "chunk_id": "ATTACK-T1531-001",
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "title": "Account Access Removal (계정 접근 박탈)",
+      "text": "공격자는 정상 사용자의 AccessKey 비활성·정책 분리·계정 삭제로 관리자 접근을 차단해 대응을 방해한다. 흔적 제거(T1070) 와 함께 자주 나타난다. 탐지 단서: 짧은 시간 다수의 DisableAccessKey·DetachUserPolicy·DeleteUser 가 공격자 본인 외 계정에 발생.",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1531"
+    },
+    {
+      "chunk_id": "ATTACK-T1078-002",
+      "technique_id": "T1078",
+      "tactic": "Defense Evasion",
+      "title": "Valid Accounts (Defense Evasion 측면)",
+      "text": "탈취한 합법 계정은 Initial Access 뿐 아니라 Defense Evasion·Privilege Escalation·Persistence 4 단계에서 동시에 사용된다. 정상 계정 활동으로 위장되어 탐지가 가장 어려운 기법. 탐지 단서: 자격증명 사용 시간·IP·UA 의 비정상 변화 행동 분석(UEBA).",
+      "source": "MITRE ATT&CK v14",
+      "url": "https://attack.mitre.org/techniques/T1078"
     }
   ]
 }

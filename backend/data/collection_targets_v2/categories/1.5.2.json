@@ -1,136 +1,136 @@
 {
-  "category_id": "1.5.2",
-  "category_name": "클라우드 인증 - 권한·구성 변경",
-  "kb_source": {
-    "primary": {
-      "standard": "Google Cloud Threat Intel",
-      "section": "§1.5.2",
-      "title": "사용자 권한 및 구성에 대한 변경 사항을 기록",
-      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
-      "use_phase_quote": "비밀번호, 권한, MFA 또는 비밀번호 재설정을 위한 전화번호 같은 연락처 정보 등 사용자 계정의 변경 사항을 분석합니다 (Privilege Escalation 단계)."
-    },
-    "secondary": [
-      {
-        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
-        "section": "§3장 표 3-3 공격과 관련된 이벤트 로그",
-        "note": "권한·정책 변경 이벤트는 침해 후 영속화·확대 흔적의 핵심"
-      },
-      {
-        "standard": "MITRE ATT&CK Cloud Matrix v14",
-        "technique": "T1098 (Account Manipulation)",
-        "tactic": "Persistence + Privilege Escalation",
-        "url": "https://attack.mitre.org/techniques/T1098/"
-      },
-      {
-        "standard": "MITRE ATT&CK",
-        "technique": "T1098.001 (Additional Cloud Credentials)",
-        "url": "https://attack.mitre.org/techniques/T1098/001/"
-      },
-      {
-        "standard": "NIST SP 800-86",
-        "section": "§3.1 휘발성 계층 - Configuration changes",
-        "note": "권한 변경은 즉시 휘발은 아니지만 CSP 로그 보존 한계로 90일 내 수집 필수"
-      }
-    ]
-  },
-  "applicable_incident_types": [
-    "CREDENTIAL_THEFT",
-    "PRIVILEGE_ESCALATION",
-    "AUDIT_LOG_TAMPERING"
-  ],
-  "kill_chain_phases": [
-    "Privilege Escalation",
-    "Persistence"
-  ],
-  "evidence_role": "REQUIRED",
-  "volatility_priority": 9,
-  "volatility_basis": "NIST SP 800-86 §3.1 (구성 변경 이벤트). KISA 안내서 §3절 표 3-3에서 공격 관련 이벤트 로그 분류상 IAM 변경은 침해 분석의 2순위 핵심.",
-  "rationale": "공격자가 초기 접근 이후 권한 영속화·확대를 시도한 흔적. AccessKey 발급, 비밀번호 변경, IAM 정책 부착·변경, MFA 설정 변경 등이 여기 해당. 정상 관리자 활동과 구분이 어려우므로 'priority 9이지만 우선순위 1.5.1 직후 분석' 권장. T1098.001은 NCP attack-sim·NHN attack 시뮬레이션 모두에서 확정된 침해 패턴.",
-  "use_cases": [
-    "비밀번호 변경 → 신규 AccessKey 생성 → 정책 부착의 연쇄 (30분 내 발생 시 강한 신호)",
-    "관리자 권한 정책(AdministratorAccess 등) 비표준 시각 부착",
-    "MFA 비활성화·전화번호 변경 (자격증명 통제 우회)",
-    "Sub Account 비밀번호 정책 약화 (Update password expiration settings)",
-    "신규 IAM 멤버에 즉시 관리자 역할 부착"
-  ],
-  "csp_mapping": {
-    "naver": {
-      "log_source": "Cloud Activity Tracer",
-      "action_patterns": [
-        "Change password",
-        "Create AccessKey",
-        "Create access key",
-        "Remove AccessKey",
-        "Disable AccessKey",
-        "Attach policy to sub account",
-        "Replace policy to sub account",
-        "Update password expiration settings",
-        "Update login url"
-      ],
-      "field_locations": {
-        "actor": "content.actionUserName",
-        "ip": "content.sourceIp",
-        "result": "actionResultType",
-        "target_account": "content.targetSubAccountNo"
-      },
-      "example_raw": {
-        "action": "Create AccessKey",
-        "eventTime": "2026-04-05 06:14:16 UTC",
-        "actionResultType": "SUCCESS",
-        "productName": "SubAccount",
-        "content": {
-          "actionUserName": "attack-sim",
-          "sourceIp": "115.91.214.5"
-        }
-      },
-      "collection_steps": [
-        "콘솔 > 관리·통계 > Cloud Activity Tracer",
-        "필터: productName='SubAccount' · action='Change password'/'Create AccessKey'/'Attach policy to sub account'",
-        "기간: 1.5.1 최초 접근 시점 이후 ±6시간 (영속화·확대 흔적)",
-        "내보내기: CSV → V-2 업로드. 추가로 IAM 정책 현재 스냅샷 확보"
-      ],
-      "cli_hint": "ncloud subaccount listAccessKeys 등 SDK API 로 현재 키 목록 cross-check"
-    },
-    "nhn": {
-      "log_source": "Cloud Trail",
-      "event_id_patterns": [
-        "event_id.iam.member.role.update",
-        "event_id.org.iam.member.update",
-        "event_id.role_group.*",
-        "event_id.iaas.identity.password_change",
-        "event_id.iaas.s3credential.create",
-        "event_id.iaas.s3credential.delete",
-        "event_id.iaas.keypair.create"
-      ],
-      "field_locations": {
-        "actor": "userName",
-        "ip": "userIp",
-        "result": "result",
-        "target": "request"
-      },
-      "example_raw": {
-        "eventId": "event_id.iaas.identity.password_change",
-        "eventTime": "2026-04-06T07:26:00.000+0000",
-        "result": "SUCCESS",
-        "userName": "attack",
-        "userIp": "115.91.214.5"
-      },
-      "collection_steps": [
-        "콘솔 > 관리 > Cloud Trail",
-        "필터: eventId prefix='event_id.iam.' 또는 'event_id.iaas.identity.' 또는 'event_id.iaas.s3credential.'",
-        "기간: 1.5.1 최초 접근 이후 ±6시간",
-        "다운로드: JSON → V-2 업로드. IAM 멤버 역할 현재 스냅샷 확보"
-      ],
-      "cli_hint": "nhncloud cloudtrail events --event-id-prefix event_id.iam.member.role"
-    }
-  },
-  "retention_days_default": 90,
-  "applicable_environments": {
-    "auditEnabled_required": true,
-    "iam_member_count_dependent": true,
-    "modifier_hints": [
-      "iam_account_count >= 50 시 priority +1 (대규모 환경 — 변경 누락 위험 ↑)",
-      "auditEnabled '비활성화' 시 별도 경고 항목 추가 (이 로그 자체가 없음)"
-    ]
-  }
+ "category_id": "1.5.2",
+ "category_name": "클라우드 인증 - 권한·구성 변경",
+ "kb_source": {
+ "primary": {
+ "standard": "Google Cloud Threat Intel",
+ "section": "1.5.2",
+ "title": "사용자 권한 및 구성에 대한 변경 사항을 기록",
+ "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+ "use_phase_quote": "비밀번호, 권한, MFA 또는 비밀번호 재설정을 위한 전화번호 같은 연락처 정보 등 사용자 계정의 변경 사항을 분석합니다 (Privilege Escalation 단계)."
+ },
+ "secondary": [
+ {
+ "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+ "section": "3장 표 3-3 공격과 관련된 이벤트 로그",
+ "note": "권한·정책 변경 이벤트는 침해 후 영속화·확대 흔적의 핵심"
+ },
+ {
+ "standard": "MITRE ATT&CK Cloud Matrix v14",
+ "technique": "T1098 (Account Manipulation)",
+ "tactic": "Persistence + Privilege Escalation",
+ "url": "https://attack.mitre.org/techniques/T1098/"
+ },
+ {
+ "standard": "MITRE ATT&CK",
+ "technique": "T1098.001 (Additional Cloud Credentials)",
+ "url": "https://attack.mitre.org/techniques/T1098/001/"
+ },
+ {
+ "standard": "NIST SP 800-86",
+ "section": "3.1 휘발성 계층 - Configuration changes",
+ "note": "권한 변경은 즉시 휘발은 아니지만 CSP 로그 보존 한계로 90일 내 수집 필수"
+ }
+ ]
+ },
+ "applicable_incident_types": [
+ "CREDENTIAL_THEFT",
+ "PRIVILEGE_ESCALATION",
+ "AUDIT_LOG_TAMPERING"
+ ],
+ "kill_chain_phases": [
+ "Privilege Escalation",
+ "Persistence"
+ ],
+ "evidence_role": "REQUIRED",
+ "volatility_priority": 9,
+ "volatility_basis": "NIST SP 800-86 3.1 (구성 변경 이벤트). KISA 안내서 3절 표 3-3에서 공격 관련 이벤트 로그 분류상 IAM 변경은 침해 분석의 2순위 핵심.",
+ "rationale": "공격자가 초기 접근 이후 권한 영속화·확대를 시도한 흔적. AccessKey 발급, 비밀번호 변경, IAM 정책 부착·변경, MFA 설정 변경 등이 여기 해당. 정상 관리자 활동과 구분이 어려우므로 'priority 9이지만 우선순위 1.5.1 직후 분석' 권장. T1098.001은 NCP attack-sim·NHN attack 시뮬레이션 모두에서 확정된 침해 패턴.",
+ "use_cases": [
+ "비밀번호 변경 → 신규 AccessKey 생성 → 정책 부착의 연쇄 (30분 내 발생 시 강한 신호)",
+ "관리자 권한 정책(AdministratorAccess 등) 비표준 시각 부착",
+ "MFA 비활성화·전화번호 변경 (자격증명 통제 우회)",
+ "Sub Account 비밀번호 정책 약화 (Update password expiration settings)",
+ "신규 IAM 멤버에 즉시 관리자 역할 부착"
+ ],
+ "csp_mapping": {
+ "naver": {
+ "log_source": "Cloud Activity Tracer",
+ "action_patterns": [
+ "Change password",
+ "Create AccessKey",
+ "Create access key",
+ "Remove AccessKey",
+ "Disable AccessKey",
+ "Attach policy to sub account",
+ "Replace policy to sub account",
+ "Update password expiration settings",
+ "Update login url"
+ ],
+ "field_locations": {
+ "actor": "content.actionUserName",
+ "ip": "content.sourceIp",
+ "result": "actionResultType",
+ "target_account": "content.targetSubAccountNo"
+ },
+ "example_raw": {
+ "action": "Create AccessKey",
+ "eventTime": "2026-04-05 06:14:16 UTC",
+ "actionResultType": "SUCCESS",
+ "productName": "SubAccount",
+ "content": {
+ "actionUserName": "attack-sim",
+ "sourceIp": "115.91.214.5"
+ }
+ },
+ "collection_steps": [
+ "콘솔 > 관리·통계 > Cloud Activity Tracer",
+ "필터: productName='SubAccount' · action='Change password'/'Create AccessKey'/'Attach policy to sub account'",
+ "기간: 1.5.1 최초 접근 시점 이후 ±6시간 (영속화·확대 흔적)",
+ "내보내기: CSV → V-2 업로드. 추가로 IAM 정책 현재 스냅샷 확보"
+ ],
+ "cli_hint": "ncloud subaccount listAccessKeys 등 SDK API 로 현재 키 목록 cross-check"
+ },
+ "nhn": {
+ "log_source": "Cloud Trail",
+ "event_id_patterns": [
+ "event_id.iam.member.role.update",
+ "event_id.org.iam.member.update",
+ "event_id.role_group.*",
+ "event_id.iaas.identity.password_change",
+ "event_id.iaas.s3credential.create",
+ "event_id.iaas.s3credential.delete",
+ "event_id.iaas.keypair.create"
+ ],
+ "field_locations": {
+ "actor": "userName",
+ "ip": "userIp",
+ "result": "result",
+ "target": "request"
+ },
+ "example_raw": {
+ "eventId": "event_id.iaas.identity.password_change",
+ "eventTime": "2026-04-06T07:26:00.000+0000",
+ "result": "SUCCESS",
+ "userName": "attack",
+ "userIp": "115.91.214.5"
+ },
+ "collection_steps": [
+ "콘솔 > 관리 > Cloud Trail",
+ "필터: eventId prefix='event_id.iam.' 또는 'event_id.iaas.identity.' 또는 'event_id.iaas.s3credential.'",
+ "기간: 1.5.1 최초 접근 이후 ±6시간",
+ "다운로드: JSON → V-2 업로드. IAM 멤버 역할 현재 스냅샷 확보"
+ ],
+ "cli_hint": "nhncloud cloudtrail events --event-id-prefix event_id.iam.member.role"
+ }
+ },
+ "retention_days_default": 90,
+ "applicable_environments": {
+ "auditEnabled_required": true,
+ "iam_member_count_dependent": true,
+ "modifier_hints": [
+ "iam_account_count >= 50 시 priority +1 (대규모 환경 — 변경 누락 위험 ↑)",
+ "auditEnabled '비활성화' 시 별도 경고 항목 추가 (이 로그 자체가 없음)"
+ ]
+ }
 }

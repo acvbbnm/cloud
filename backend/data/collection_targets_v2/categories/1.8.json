@@ -1,180 +1,180 @@
 {
-  "category_id": "1.8",
-  "category_name": "네트워킹 - 인프라 구성 및 트래픽",
-  "kb_source": {
-    "primary": {
-      "standard": "Google Cloud Threat Intel",
-      "section": "§1.8.1 ~ §1.8.3",
-      "items": [
-        {
-          "ref": "1.8.1",
-          "title": "네트워크 플로우 메타 데이터 기록"
-        },
-        {
-          "ref": "1.8.2",
-          "title": "네트워크 구성 변경 사항 기록"
-        },
-        {
-          "ref": "1.8.3",
-          "title": "만들기, 삭제, 수정 같은 가상 IP 주소 관리 작업 기록"
-        }
-      ],
-      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
-      "use_phase_quote": "인프라 생성 단계 — 네트워크 플로우 메타데이터, 네트워크 구성 변경, 가상 IP 주소 관리 작업"
-    },
-    "secondary": [
-      {
-        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
-        "section": "§2장 제3절 네트워크 사고 분석 + 표 3-7",
-        "note": "네트워크 사고 종류별 수집 정보 명시. VPC/Security Group 변경은 횡적 이동·외부 진입 통제의 핵심"
-      },
-      {
-        "standard": "MITRE ATT&CK Cloud Matrix v14",
-        "techniques": [
-          "T1021 (Remote Services) — Lateral Movement",
-          "T1078.004 (Valid Accounts: Cloud Accounts) — Initial Access (네트워크 변경 후)",
-          "T1485 (Data Destruction) — Impact (VPC 삭제)",
-          "T1489 (Service Stop) — Impact"
-        ],
-        "urls": [
-          "https://attack.mitre.org/techniques/T1021/",
-          "https://attack.mitre.org/techniques/T1485/"
-        ]
-      },
-      {
-        "standard": "NIST SP 800-86",
-        "section": "§3.1 휘발성 계층 - Network connections + Configuration",
-        "note": "현재 네트워크 연결은 P10 휘발성. 과거 네트워크 변경은 P6 (CSP 영구 보존)"
-      },
-      {
-        "standard": "ISO/IEC 27037:2012",
-        "section": "§6.5 네트워크 증거",
-        "note": "네트워크 플로우는 휘발성 증거. 즉시 수집·해시 보존 필요"
-      }
-    ]
-  },
-  "applicable_incident_types": [
-    "MULTI_CSP_LATERAL",
-    "DATA_EXFILTRATION",
-    "PRIVILEGE_ESCALATION",
-    "AUDIT_LOG_TAMPERING"
-  ],
-  "kill_chain_phases": [
-    "Lateral Movement",
-    "Discovery",
-    "Impact"
-  ],
-  "evidence_role": "REQUIRED",
-  "volatility_priority": 7,
-  "volatility_basis": "NIST SP 800-86 §3.1 (Configuration changes — Network). VPC/ACG 변경은 영구 보존되지만 사고 분석 우선순위는 인증(P10) 다음. 단 MULTI_CSP_LATERAL 사고유형에서는 P9로 부스팅 — 횡적 이동 식별의 핵심.",
-  "rationale": "공격자가 자격증명 탈취 이후 환경을 자기 편의로 재구성하는 흔적. VPC 신규 생성(탈출 경로), Security Group 규칙 약화(외부 접근 허용), 가상 IP 할당(C2 채널), VPC 삭제(데이터 파괴) 등이 포함. NHN attack 시나리오에서 'iaas.vpc.delete_end'가 침해 마지막 단계 흔적으로 관찰됨. 멀티 CSP 환경에서는 양쪽 CSP의 VPC 매핑 + 동일 IP 추적이 횡적 이동 식별의 핵심.",
-  "use_cases": [
-    "Security Group 규칙에 '0.0.0.0/0' 추가 (외부 전체 허용 — 매우 강한 신호)",
-    "비표준 시각 신규 VPC 생성 + 즉시 인스턴스 배치 (탈출 경로 구축)",
-    "기존 VPC의 Route Table 변경 (트래픽 우회)",
-    "NAT Gateway·VPN Gateway 생성 (외부 채널)",
-    "VPC 삭제 (T1485 Data Destruction — 인프라 파괴)",
-    "공인 IP 신규 할당 + 즉시 인스턴스 연결",
-    "Network ACL 규칙 약화 (인바운드 deny 제거)",
-    "동일 외부 IP가 NCP/NHN 양쪽에서 인프라 변경 (MULTI_CSP_LATERAL 신호)"
-  ],
-  "csp_mapping": {
-    "naver": {
-      "log_source": "Cloud Activity Tracer (VPC/ACG/Subnet productName)",
-      "action_patterns": [
-        "Create VPC (Request)",
-        "Create VPC (Complete)",
-        "Create Subnet (Request)",
-        "Create Subnet (Complete)",
-        "Delete Subnet (Complete)",
-        "Create ACG",
-        "Create Network ACL",
-        "Create Route Table",
-        "Update ACG Rule (Request)",
-        "Update ACG on Network Interface (Complete)",
-        "Attach Network Interface (Request)",
-        "Attach Network Interface (Complete)",
-        "Create Public IP"
-      ],
-      "field_locations": {
-        "actor": "content.actionUserName",
-        "ip": "content.sourceIp",
-        "resource_type": "resourceType",
-        "vpc_id": "content.vpcNo",
-        "acg_rule": "content.acgRule"
-      },
-      "example_raw": {
-        "action": "Create VPC (Complete)",
-        "eventTime": "2026-04-05 04:55:32 UTC",
-        "actionResultType": "SUCCESS",
-        "productName": "VPC",
-        "content": {
-          "actionUserName": "kbw11111@naver.com",
-          "sourceIp": "115.91.214.5",
-          "vpcName": "exfil-vpc-01"
-        }
-      },
-      "collection_steps": [
-        "콘솔 > 관리·통계 > Cloud Activity Tracer",
-        "필터: productName='VPC'/'ACG'/'Subnet' · action='Create*'/'Update*'/'Delete*'/'Attach*'",
-        "기간: 사고 발생 시각 ±48시간",
-        "추가: ACG Rule 변경 시 '0.0.0.0/0' 신규 추가 / NAT·VPN Gateway 생성 / VPC 삭제 흔적 우선"
-      ],
-      "cli_hint": "VPC Flow Log 부가 서비스 활성화 시 별도 확보 (트래픽 상세 매핑)"
-    },
-    "nhn": {
-      "log_source": "Cloud Trail (iaas namespace)",
-      "event_id_patterns": [
-        "event_id.iaas.vpc.create",
-        "event_id.iaas.vpc.delete_end",
-        "event_id.iaas.subnet.*",
-        "event_id.iaas.security_group.*",
-        "event_id.iaas.port.create_end",
-        "event_id.iaas.loadbalancer.*",
-        "event_id.iaas.vpngw.*",
-        "event_id.iaas.nat_gateway.*",
-        "event_id.iaas.transit_hub.*",
-        "event_id.iaas.privatedns.*",
-        "event_id.iaas.instance.create",
-        "event_id.iaas.instance.create_end",
-        "event_id.iaas.volume.create_end"
-      ],
-      "field_locations": {
-        "actor": "userName",
-        "ip": "userIp",
-        "resource": "request",
-        "result_details": "response"
-      },
-      "example_raw": {
-        "eventId": "event_id.iaas.vpc.delete_end",
-        "eventTime": "2026-04-06T07:27:00.000+0000",
-        "result": "SUCCESS",
-        "userName": "attack",
-        "userIp": "115.91.214.5"
-      },
-      "collection_steps": [
-        "콘솔 > 관리 > Cloud Trail",
-        "필터: eventId prefix='event_id.iaas.vpc.' / 'event_id.iaas.security_group.' / 'event_id.iaas.port.' / 'event_id.iaas.nat_gateway.'",
-        "기간: 사고 발생 시각 ±48시간",
-        "추가: vpc.delete_end / security_group.create / port.create_end 우선 (인프라 파괴·외부 채널·횡이동 흔적)"
-      ],
-      "cli_hint": "nhncloud network vpc list / nhncloud network securitygroup list 로 현재 상태 cross-check"
-    }
-  },
-  "retention_days_default": 90,
-  "applicable_environments": {
-    "auditEnabled_required": true,
-    "network_topology_dependent": true,
-    "modifier_hints": [
-      "csp='all' (멀티 CSP 환경) 시 priority +2 (양쪽 VPC 변경 cross-check)",
-      "MULTI_CSP_LATERAL 사고유형 선택 시 모든 1.8.* 자동 expand + priority +2",
-      "publicIp '있음 (서버 직접 할당)' 시 priority +1",
-      "network '기본 네트워크' (격리 부재) 시 priority +1"
-    ]
-  },
-  "sub_categories": {
-    "1.8.1": "네트워크 플로우 메타데이터 — VPC Flow Log (NCP/NHN 별도 서비스)",
-    "1.8.2": "네트워크 구성 변경 — VPC/Subnet/ACG/SG 모든 CRUD",
-    "1.8.3": "가상 IP 관리 — 공인 IP, Floating IP, NAT IP"
-  }
+ "category_id": "1.8",
+ "category_name": "네트워킹 - 인프라 구성 및 트래픽",
+ "kb_source": {
+ "primary": {
+ "standard": "Google Cloud Threat Intel",
+ "section": "1.8.1 ~ 1.8.3",
+ "items": [
+ {
+ "ref": "1.8.1",
+ "title": "네트워크 플로우 메타 데이터 기록"
+ },
+ {
+ "ref": "1.8.2",
+ "title": "네트워크 구성 변경 사항 기록"
+ },
+ {
+ "ref": "1.8.3",
+ "title": "만들기, 삭제, 수정 같은 가상 IP 주소 관리 작업 기록"
+ }
+ ],
+ "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+ "use_phase_quote": "인프라 생성 단계 — 네트워크 플로우 메타데이터, 네트워크 구성 변경, 가상 IP 주소 관리 작업"
+ },
+ "secondary": [
+ {
+ "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+ "section": "2장 제3절 네트워크 사고 분석 + 표 3-7",
+ "note": "네트워크 사고 종류별 수집 정보 명시. VPC/Security Group 변경은 횡적 이동·외부 진입 통제의 핵심"
+ },
+ {
+ "standard": "MITRE ATT&CK Cloud Matrix v14",
+ "techniques": [
+ "T1021 (Remote Services) — Lateral Movement",
+ "T1078.004 (Valid Accounts: Cloud Accounts) — Initial Access (네트워크 변경 후)",
+ "T1485 (Data Destruction) — Impact (VPC 삭제)",
+ "T1489 (Service Stop) — Impact"
+ ],
+ "urls": [
+ "https://attack.mitre.org/techniques/T1021/",
+ "https://attack.mitre.org/techniques/T1485/"
+ ]
+ },
+ {
+ "standard": "NIST SP 800-86",
+ "section": "3.1 휘발성 계층 - Network connections + Configuration",
+ "note": "현재 네트워크 연결은 P10 휘발성. 과거 네트워크 변경은 P6 (CSP 영구 보존)"
+ },
+ {
+ "standard": "ISO/IEC 27037:2012",
+ "section": "6.5 네트워크 증거",
+ "note": "네트워크 플로우는 휘발성 증거. 즉시 수집·해시 보존 필요"
+ }
+ ]
+ },
+ "applicable_incident_types": [
+ "MULTI_CSP_LATERAL",
+ "DATA_EXFILTRATION",
+ "PRIVILEGE_ESCALATION",
+ "AUDIT_LOG_TAMPERING"
+ ],
+ "kill_chain_phases": [
+ "Lateral Movement",
+ "Discovery",
+ "Impact"
+ ],
+ "evidence_role": "REQUIRED",
+ "volatility_priority": 7,
+ "volatility_basis": "NIST SP 800-86 3.1 (Configuration changes — Network). VPC/ACG 변경은 영구 보존되지만 사고 분석 우선순위는 인증(P10) 다음. 단 MULTI_CSP_LATERAL 사고유형에서는 P9로 부스팅 — 횡적 이동 식별의 핵심.",
+ "rationale": "공격자가 자격증명 탈취 이후 환경을 자기 편의로 재구성하는 흔적. VPC 신규 생성(탈출 경로), Security Group 규칙 약화(외부 접근 허용), 가상 IP 할당(C2 채널), VPC 삭제(데이터 파괴) 등이 포함. NHN attack 시나리오에서 'iaas.vpc.delete_end'가 침해 마지막 단계 흔적으로 관찰됨. 멀티 CSP 환경에서는 양쪽 CSP의 VPC 매핑 + 동일 IP 추적이 횡적 이동 식별의 핵심.",
+ "use_cases": [
+ "Security Group 규칙에 '0.0.0.0/0' 추가 (외부 전체 허용 — 매우 강한 신호)",
+ "비표준 시각 신규 VPC 생성 + 즉시 인스턴스 배치 (탈출 경로 구축)",
+ "기존 VPC의 Route Table 변경 (트래픽 우회)",
+ "NAT Gateway·VPN Gateway 생성 (외부 채널)",
+ "VPC 삭제 (T1485 Data Destruction — 인프라 파괴)",
+ "공인 IP 신규 할당 + 즉시 인스턴스 연결",
+ "Network ACL 규칙 약화 (인바운드 deny 제거)",
+ "동일 외부 IP가 NCP/NHN 양쪽에서 인프라 변경 (MULTI_CSP_LATERAL 신호)"
+ ],
+ "csp_mapping": {
+ "naver": {
+ "log_source": "Cloud Activity Tracer (VPC/ACG/Subnet productName)",
+ "action_patterns": [
+ "Create VPC (Request)",
+ "Create VPC (Complete)",
+ "Create Subnet (Request)",
+ "Create Subnet (Complete)",
+ "Delete Subnet (Complete)",
+ "Create ACG",
+ "Create Network ACL",
+ "Create Route Table",
+ "Update ACG Rule (Request)",
+ "Update ACG on Network Interface (Complete)",
+ "Attach Network Interface (Request)",
+ "Attach Network Interface (Complete)",
+ "Create Public IP"
+ ],
+ "field_locations": {
+ "actor": "content.actionUserName",
+ "ip": "content.sourceIp",
+ "resource_type": "resourceType",
+ "vpc_id": "content.vpcNo",
+ "acg_rule": "content.acgRule"
+ },
+ "example_raw": {
+ "action": "Create VPC (Complete)",
+ "eventTime": "2026-04-05 04:55:32 UTC",
+ "actionResultType": "SUCCESS",
+ "productName": "VPC",
+ "content": {
+ "actionUserName": "kbw11111@naver.com",
+ "sourceIp": "115.91.214.5",
+ "vpcName": "exfil-vpc-01"
+ }
+ },
+ "collection_steps": [
+ "콘솔 > 관리·통계 > Cloud Activity Tracer",
+ "필터: productName='VPC'/'ACG'/'Subnet' · action='Create*'/'Update*'/'Delete*'/'Attach*'",
+ "기간: 사고 발생 시각 ±48시간",
+ "추가: ACG Rule 변경 시 '0.0.0.0/0' 신규 추가 / NAT·VPN Gateway 생성 / VPC 삭제 흔적 우선"
+ ],
+ "cli_hint": "VPC Flow Log 부가 서비스 활성화 시 별도 확보 (트래픽 상세 매핑)"
+ },
+ "nhn": {
+ "log_source": "Cloud Trail (iaas namespace)",
+ "event_id_patterns": [
+ "event_id.iaas.vpc.create",
+ "event_id.iaas.vpc.delete_end",
+ "event_id.iaas.subnet.*",
+ "event_id.iaas.security_group.*",
+ "event_id.iaas.port.create_end",
+ "event_id.iaas.loadbalancer.*",
+ "event_id.iaas.vpngw.*",
+ "event_id.iaas.nat_gateway.*",
+ "event_id.iaas.transit_hub.*",
+ "event_id.iaas.privatedns.*",
+ "event_id.iaas.instance.create",
+ "event_id.iaas.instance.create_end",
+ "event_id.iaas.volume.create_end"
+ ],
+ "field_locations": {
+ "actor": "userName",
+ "ip": "userIp",
+ "resource": "request",
+ "result_details": "response"
+ },
+ "example_raw": {
+ "eventId": "event_id.iaas.vpc.delete_end",
+ "eventTime": "2026-04-06T07:27:00.000+0000",
+ "result": "SUCCESS",
+ "userName": "attack",
+ "userIp": "115.91.214.5"
+ },
+ "collection_steps": [
+ "콘솔 > 관리 > Cloud Trail",
+ "필터: eventId prefix='event_id.iaas.vpc.' / 'event_id.iaas.security_group.' / 'event_id.iaas.port.' / 'event_id.iaas.nat_gateway.'",
+ "기간: 사고 발생 시각 ±48시간",
+ "추가: vpc.delete_end / security_group.create / port.create_end 우선 (인프라 파괴·외부 채널·횡이동 흔적)"
+ ],
+ "cli_hint": "nhncloud network vpc list / nhncloud network securitygroup list 로 현재 상태 cross-check"
+ }
+ },
+ "retention_days_default": 90,
+ "applicable_environments": {
+ "auditEnabled_required": true,
+ "network_topology_dependent": true,
+ "modifier_hints": [
+ "csp='all' (멀티 CSP 환경) 시 priority +2 (양쪽 VPC 변경 cross-check)",
+ "MULTI_CSP_LATERAL 사고유형 선택 시 모든 1.8.* 자동 expand + priority +2",
+ "publicIp '있음 (서버 직접 할당)' 시 priority +1",
+ "network '기본 네트워크' (격리 부재) 시 priority +1"
+ ]
+ },
+ "sub_categories": {
+ "1.8.1": "네트워크 플로우 메타데이터 — VPC Flow Log (NCP/NHN 별도 서비스)",
+ "1.8.2": "네트워크 구성 변경 — VPC/Subnet/ACG/SG 모든 CRUD",
+ "1.8.3": "가상 IP 관리 — 공인 IP, Floating IP, NAT IP"
+ }
 }

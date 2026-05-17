@@ -1,165 +1,165 @@
 {
-  "category_id": "1.7",
-  "category_name": "클라우드 로깅 - 메타 (감사 로그 자체에 대한 활동)",
-  "kb_source": {
-    "primary": {
-      "standard": "Google Cloud Threat Intel",
-      "section": "§1.7.1 ~ §1.7.4",
-      "items": [
-        {
-          "ref": "1.7.1",
-          "title": "로깅 서비스에 대한 로그 인증"
-        },
-        {
-          "ref": "1.7.2",
-          "title": "로그 데이터에 대해 실행된 로그 쿼리"
-        },
-        {
-          "ref": "1.7.3",
-          "title": "로그 데이터 내보내기"
-        },
-        {
-          "ref": "1.7.4",
-          "title": "로그 수정 및 로그 데이터 삭제"
-        }
-      ],
-      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
-      "use_phase_quote": "로그 접근/조작 단계 — 로그 데이터에 대해 실행된 로그 쿼리, 내보낸 로그, 로그 수정 및 삭제를 분석합니다 (포렌식 방해 단계)."
-    },
-    "secondary": [
-      {
-        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
-        "section": "§3절 로그 무결성 검증",
-        "note": "감사 로그 자체가 변조되면 모든 분석이 무의미. 1.7은 '메타 로그' 카테고리."
-      },
-      {
-        "standard": "MITRE ATT&CK Cloud Matrix v14",
-        "techniques": [
-          "T1070 (Indicator Removal) — Stealth",
-          "T1562.008 (Disable or Modify Cloud Logs) — Defense Impairment",
-          "T1531 (Account Access Removal) — Impact (감사 계정 차단)"
-        ],
-        "urls": [
-          "https://attack.mitre.org/techniques/T1070/",
-          "https://attack.mitre.org/techniques/T1562/008/"
-        ]
-      },
-      {
-        "standard": "NIST SP 800-86",
-        "section": "§3.4 무결성 검증 + §5 분석 단계",
-        "note": "로그 무결성 검증은 분석 전 필수. 메타 로그가 비어있거나 변조됐다면 1차 결과 신뢰 불가."
-      },
-      {
-        "standard": "ISO/IEC 27037:2012",
-        "section": "§6.3 Preservation 단계",
-        "note": "본 카테고리는 ISO 27037의 '증거 무결성 보존'과 직접 대응"
-      }
-    ]
-  },
-  "applicable_incident_types": [
-    "AUDIT_LOG_TAMPERING",
-    "CREDENTIAL_THEFT",
-    "PRIVILEGE_ESCALATION",
-    "DATA_EXFILTRATION",
-    "MULTI_CSP_LATERAL"
-  ],
-  "kill_chain_phases": [
-    "Stealth",
-    "Defense Impairment"
-  ],
-  "evidence_role": "REQUIRED",
-  "volatility_priority": 10,
-  "volatility_basis": "공격자가 가장 먼저 노리는 것이 메타 로그. NIST SP 800-86 §3.4 무결성 검증은 분석 전 필수. KISA 안내서 §3절 '로그 자체의 무결성'이 침해 분석의 1차 전제. 메타 로그 자체가 사라지거나 변조되면 모든 후속 분석 신뢰도 0.",
-  "rationale": "AUDIT_LOG_TAMPERING 사고유형의 핵심이며, 다른 모든 사고유형에서도 '로그 자체가 변조됐는지'를 가장 먼저 확인해야 함. NCP Activity Tracer / NHN Cloud Trail 자체의 설정 변경·삭제·내보내기 이력이 추적 대상. 'Delete Tracer', 'Disable AccessKey', 's3credential.delete', '로그 보존 설정 변경' 등이 강한 신호. 모든 사고유형에 REQUIRED + P10으로 분류 — 분석 신뢰성의 기반.",
-  "use_cases": [
-    "Tracer 자체 삭제 또는 비활성화 (NCP: 'Delete Tracer' / NHN: cloud-trail 설정 변경)",
-    "로그 보존 정책 단축 (90일 → 7일 등 — 증거 인멸 목적)",
-    "Object Storage 내보내기 활성화 후 외부 버킷으로 export (로그 빼돌리기)",
-    "AccessKey 삭제 (감사 추적 단절) — NHN의 s3credential.delete 09:24:06 패턴",
-    "로그 쿼리 이력 — 공격자가 자기 흔적을 검색·확인한 흔적",
-    "타임라인의 시간 갭 (10분 이상 로그 누락 — 정상 운영에서는 드뭄)"
-  ],
-  "csp_mapping": {
-    "naver": {
-      "log_source": "Cloud Activity Tracer (자기 자신)",
-      "action_patterns": [
-        "Create Tracer",
-        "Delete Tracer",
-        "Enable Auto Export",
-        "Disable Auto Export",
-        "Update Tracer",
-        "Request For Exporting To Object Storage",
-        "Complete For Exporting To Object Storage",
-        "Disable AccessKey",
-        "Remove AccessKey"
-      ],
-      "field_locations": {
-        "actor": "content.actionUserName",
-        "ip": "content.sourceIp",
-        "target_tracer": "content.tracerName"
-      },
-      "example_raw": {
-        "action": "Delete Tracer",
-        "eventTime": "2026-04-10 03:35:24 UTC",
-        "actionResultType": "SUCCESS",
-        "productName": "Cloud Activity Tracer",
-        "content": {
-          "actionUserName": "attack-sim",
-          "sourceIp": "115.91.214.5"
-        }
-      },
-      "note": "NCP Activity Tracer는 자기 자신의 변경도 기록 — 메타 로그 추적 가능",
-      "collection_steps": [
-        "콘솔 > 관리·통계 > Cloud Activity Tracer (자기 자신 추적)",
-        "필터: productName='Cloud Activity Tracer' · action='Delete Tracer'/'Disable AccessKey'/'Enable Auto Export'",
-        "기간: 사고 발생 직전 ~ 현재 (증거 인멸 흔적)",
-        "⚠ 최우선: Delete Tracer · Disable AccessKey 이력은 즉시 추출 — 메타 로그가 사라지면 모든 분석 무효"
-      ],
-      "cli_hint": "Object Storage Auto Export 활성화 시 외부 버킷의 추출본 추가 확보 (분석 신뢰성 보강)"
-    },
-    "nhn": {
-      "log_source": "Cloud Trail (자기 자신)",
-      "event_id_patterns": [
-        "event_id.iaas.s3credential.delete",
-        "event_id.cloud_trail.*",
-        "event_id.governance.*"
-      ],
-      "field_locations": {
-        "actor": "userName",
-        "ip": "userIp",
-        "details": "request"
-      },
-      "example_raw": {
-        "eventId": "event_id.iaas.s3credential.delete",
-        "eventTime": "2026-04-06T05:24:06.925+0000",
-        "result": "SUCCESS",
-        "userName": "attack",
-        "userIp": "115.91.214.5"
-      },
-      "note": "NHN Cloud Trail의 변조 감지 알림(외부 Object Storage export 시 자동) + s3credential 삭제 이력 활용",
-      "collection_steps": [
-        "콘솔 > 관리 > Cloud Trail",
-        "필터: eventId='event_id.iaas.s3credential.delete' / 'event_id.cloud_trail.*' / 'event_id.governance.*'",
-        "기간: 사고 발생 직전 ~ 현재",
-        "⚠ 최우선: s3credential.delete 이력 = 감사 추적 단절 신호. Cloud Trail 자체 설정 변경 이력 cross-check"
-      ],
-      "cli_hint": "Cloud Trail 외부 Object Storage Export 활성화 시 추출본 추가 확보"
-    }
-  },
-  "retention_days_default": 90,
-  "applicable_environments": {
-    "auditEnabled_required": true,
-    "audit_log_retention_dependent": true,
-    "modifier_hints": [
-      "auditEnabled '비활성화' 시 priority 무관 — 별도 'AUDIT_DISABLED_CRITICAL' 항목 추가 (분석 불가 경고)",
-      "audit_log_retention_days < 90 시 priority +1 (보존 기간 단축 자체가 의심 신호)",
-      "AUDIT_LOG_TAMPERING 사고유형 선택 시 모든 1.7.* 하위 항목을 자동 expand"
-    ]
-  },
-  "sub_categories": {
-    "1.7.1": "로깅 서비스 인증 — 누가 로그에 접근했나",
-    "1.7.2": "로그 쿼리 이력 — 무엇을 찾았나",
-    "1.7.3": "로그 내보내기 — 어디로 빼돌렸나",
-    "1.7.4": "로그 수정·삭제 — 무엇을 지웠나 (최우선)"
-  }
+ "category_id": "1.7",
+ "category_name": "클라우드 로깅 - 메타 (감사 로그 자체에 대한 활동)",
+ "kb_source": {
+ "primary": {
+ "standard": "Google Cloud Threat Intel",
+ "section": "1.7.1 ~ 1.7.4",
+ "items": [
+ {
+ "ref": "1.7.1",
+ "title": "로깅 서비스에 대한 로그 인증"
+ },
+ {
+ "ref": "1.7.2",
+ "title": "로그 데이터에 대해 실행된 로그 쿼리"
+ },
+ {
+ "ref": "1.7.3",
+ "title": "로그 데이터 내보내기"
+ },
+ {
+ "ref": "1.7.4",
+ "title": "로그 수정 및 로그 데이터 삭제"
+ }
+ ],
+ "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+ "use_phase_quote": "로그 접근/조작 단계 — 로그 데이터에 대해 실행된 로그 쿼리, 내보낸 로그, 로그 수정 및 삭제를 분석합니다 (포렌식 방해 단계)."
+ },
+ "secondary": [
+ {
+ "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+ "section": "3절 로그 무결성 검증",
+ "note": "감사 로그 자체가 변조되면 모든 분석이 무의미. 1.7은 '메타 로그' 카테고리."
+ },
+ {
+ "standard": "MITRE ATT&CK Cloud Matrix v14",
+ "techniques": [
+ "T1070 (Indicator Removal) — Stealth",
+ "T1562.008 (Disable or Modify Cloud Logs) — Defense Impairment",
+ "T1531 (Account Access Removal) — Impact (감사 계정 차단)"
+ ],
+ "urls": [
+ "https://attack.mitre.org/techniques/T1070/",
+ "https://attack.mitre.org/techniques/T1562/008/"
+ ]
+ },
+ {
+ "standard": "NIST SP 800-86",
+ "section": "3.4 무결성 검증 + 5 분석 단계",
+ "note": "로그 무결성 검증은 분석 전 필수. 메타 로그가 비어있거나 변조됐다면 1차 결과 신뢰 불가."
+ },
+ {
+ "standard": "ISO/IEC 27037:2012",
+ "section": "6.3 Preservation 단계",
+ "note": "본 카테고리는 ISO 27037의 '증거 무결성 보존'과 직접 대응"
+ }
+ ]
+ },
+ "applicable_incident_types": [
+ "AUDIT_LOG_TAMPERING",
+ "CREDENTIAL_THEFT",
+ "PRIVILEGE_ESCALATION",
+ "DATA_EXFILTRATION",
+ "MULTI_CSP_LATERAL"
+ ],
+ "kill_chain_phases": [
+ "Stealth",
+ "Defense Impairment"
+ ],
+ "evidence_role": "REQUIRED",
+ "volatility_priority": 10,
+ "volatility_basis": "공격자가 가장 먼저 노리는 것이 메타 로그. NIST SP 800-86 3.4 무결성 검증은 분석 전 필수. KISA 안내서 3절 '로그 자체의 무결성'이 침해 분석의 1차 전제. 메타 로그 자체가 사라지거나 변조되면 모든 후속 분석 신뢰도 0.",
+ "rationale": "AUDIT_LOG_TAMPERING 사고유형의 핵심이며, 다른 모든 사고유형에서도 '로그 자체가 변조됐는지'를 가장 먼저 확인해야 함. NCP Activity Tracer / NHN Cloud Trail 자체의 설정 변경·삭제·내보내기 이력이 추적 대상. 'Delete Tracer', 'Disable AccessKey', 's3credential.delete', '로그 보존 설정 변경' 등이 강한 신호. 모든 사고유형에 REQUIRED + P10으로 분류 — 분석 신뢰성의 기반.",
+ "use_cases": [
+ "Tracer 자체 삭제 또는 비활성화 (NCP: 'Delete Tracer' / NHN: cloud-trail 설정 변경)",
+ "로그 보존 정책 단축 (90일 → 7일 등 — 증거 인멸 목적)",
+ "Object Storage 내보내기 활성화 후 외부 버킷으로 export (로그 빼돌리기)",
+ "AccessKey 삭제 (감사 추적 단절) — NHN의 s3credential.delete 09:24:06 패턴",
+ "로그 쿼리 이력 — 공격자가 자기 흔적을 검색·확인한 흔적",
+ "타임라인의 시간 갭 (10분 이상 로그 누락 — 정상 운영에서는 드뭄)"
+ ],
+ "csp_mapping": {
+ "naver": {
+ "log_source": "Cloud Activity Tracer (자기 자신)",
+ "action_patterns": [
+ "Create Tracer",
+ "Delete Tracer",
+ "Enable Auto Export",
+ "Disable Auto Export",
+ "Update Tracer",
+ "Request For Exporting To Object Storage",
+ "Complete For Exporting To Object Storage",
+ "Disable AccessKey",
+ "Remove AccessKey"
+ ],
+ "field_locations": {
+ "actor": "content.actionUserName",
+ "ip": "content.sourceIp",
+ "target_tracer": "content.tracerName"
+ },
+ "example_raw": {
+ "action": "Delete Tracer",
+ "eventTime": "2026-04-10 03:35:24 UTC",
+ "actionResultType": "SUCCESS",
+ "productName": "Cloud Activity Tracer",
+ "content": {
+ "actionUserName": "attack-sim",
+ "sourceIp": "115.91.214.5"
+ }
+ },
+ "note": "NCP Activity Tracer는 자기 자신의 변경도 기록 — 메타 로그 추적 가능",
+ "collection_steps": [
+ "콘솔 > 관리·통계 > Cloud Activity Tracer (자기 자신 추적)",
+ "필터: productName='Cloud Activity Tracer' · action='Delete Tracer'/'Disable AccessKey'/'Enable Auto Export'",
+ "기간: 사고 발생 직전 ~ 현재 (증거 인멸 흔적)",
+ "⚠ 최우선: Delete Tracer · Disable AccessKey 이력은 즉시 추출 — 메타 로그가 사라지면 모든 분석 무효"
+ ],
+ "cli_hint": "Object Storage Auto Export 활성화 시 외부 버킷의 추출본 추가 확보 (분석 신뢰성 보강)"
+ },
+ "nhn": {
+ "log_source": "Cloud Trail (자기 자신)",
+ "event_id_patterns": [
+ "event_id.iaas.s3credential.delete",
+ "event_id.cloud_trail.*",
+ "event_id.governance.*"
+ ],
+ "field_locations": {
+ "actor": "userName",
+ "ip": "userIp",
+ "details": "request"
+ },
+ "example_raw": {
+ "eventId": "event_id.iaas.s3credential.delete",
+ "eventTime": "2026-04-06T05:24:06.925+0000",
+ "result": "SUCCESS",
+ "userName": "attack",
+ "userIp": "115.91.214.5"
+ },
+ "note": "NHN Cloud Trail의 변조 감지 알림(외부 Object Storage export 시 자동) + s3credential 삭제 이력 활용",
+ "collection_steps": [
+ "콘솔 > 관리 > Cloud Trail",
+ "필터: eventId='event_id.iaas.s3credential.delete' / 'event_id.cloud_trail.*' / 'event_id.governance.*'",
+ "기간: 사고 발생 직전 ~ 현재",
+ "⚠ 최우선: s3credential.delete 이력 = 감사 추적 단절 신호. Cloud Trail 자체 설정 변경 이력 cross-check"
+ ],
+ "cli_hint": "Cloud Trail 외부 Object Storage Export 활성화 시 추출본 추가 확보"
+ }
+ },
+ "retention_days_default": 90,
+ "applicable_environments": {
+ "auditEnabled_required": true,
+ "audit_log_retention_dependent": true,
+ "modifier_hints": [
+ "auditEnabled '비활성화' 시 priority 무관 — 별도 'AUDIT_DISABLED_CRITICAL' 항목 추가 (분석 불가 경고)",
+ "audit_log_retention_days < 90 시 priority +1 (보존 기간 단축 자체가 의심 신호)",
+ "AUDIT_LOG_TAMPERING 사고유형 선택 시 모든 1.7.* 하위 항목을 자동 expand"
+ ]
+ },
+ "sub_categories": {
+ "1.7.1": "로깅 서비스 인증 — 누가 로그에 접근했나",
+ "1.7.2": "로그 쿼리 이력 — 무엇을 찾았나",
+ "1.7.3": "로그 내보내기 — 어디로 빼돌렸나",
+ "1.7.4": "로그 수정·삭제 — 무엇을 지웠나 (최우선)"
+ }
 }

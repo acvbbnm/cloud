@@ -1,229 +1,229 @@
 {
-  "_meta": {
-    "version": "1.0",
-    "purpose": "system_config 입력값이 V2 수집 가이드 생성에 실제로 영향을 미치도록 정의한 환경 보정 룰.",
-    "policy": [
-      "modifier 는 카테고리 우선순위(priority)·Kill Chain 단계 가중치를 동적으로 조정하거나 임시 target 을 추가한다.",
-      "BOOST 효과는 누적 가능 (예: MFA 미적용 + IAM 50명 이상이면 1.5.1 두 번 부스팅).",
-      "ADD_TARGET 은 정규 collection_targets_v2 시드에 없는 임시 권고 항목을 추가 (예: 'MFA 즉시 적용 권장').",
-      "applied_modifiers 응답 필드에 트리거된 modifier 의 reason 을 누적하여 UI 에서 '왜 우선순위가 바뀌었나' 즉시 확인 가능."
-    ],
-    "source_standards": [
-      "KISA 침해사고 분석절차 안내서 (제2010-8호) §2.4 초기 대응 점검표",
-      "NIST SP 800-86 §3 (휘발성 계층 + 환경 인자에 따른 수집 우선순위 조정)",
-      "Google Cloud Threat Intel — 9.x 침해 시나리오별 권장 로그",
-      "CSA Top Threats to Cloud Computing 2024 (#2 IAM, #7 Disclosure)"
-    ],
-    "step2_field_mapping": [
-      "system_config.auditEnabled         → m-001",
-      "system_config.services             → m-002, m-009, m-013",
-      "system_config.publicIp             → m-003, m-012",
-      "system_config.mfa_status           → m-004, m-005",
-      "system_config.iam_account_count    → m-006",
-      "system_config.audit_log_retention_days → m-007",
-      "system_config.data_sensitivity     → m-008",
-      "system_config.multi_cloud          → m-010",
-      "system_config.sso_enabled          → m-011"
-    ]
-  },
-  "modifiers": [
-    {
-      "id": "m-001",
-      "field": "system_config.auditEnabled",
-      "operator": "equals",
-      "value": "비활성화",
-      "effect": "ADD_TARGET",
-      "target_id": "CT-AUDIT-DISABLED-WARNING",
-      "target": {
-        "category_id": "1.7",
-        "category_name": "감사 로그 비활성화 — 즉시 활성화 권장",
-        "evidence_role": "REQUIRED",
-        "priority": 10,
-        "rationale": "감사 로그가 꺼져 있으면 사후 분석 자체가 불가. 사건 발생 인지 직후 활성화부터 권장. KISA §2.4 초기 대응 점검표 ⑥ '네트워크 연결 지점' 기록 불가 상태."
-      },
-      "reason": "감사 로그 미수집 상태 — 사후 분석에 큰 제약. 우선 활성화 권장.",
-      "source": "KISA §2.4 + Google §1.7"
-    },
-    {
-      "id": "m-002",
-      "field": "system_config.services",
-      "operator": "contains",
-      "value": "Object Storage",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.4",
-      "boost": 2,
-      "reason": "Object Storage 사용 환경 — 데이터 유출(Exfiltration) 단계 로그 우선순위 ↑",
-      "source": "Google §1.4 + MITRE T1537"
-    },
-    {
-      "id": "m-003",
-      "field": "system_config.publicIp",
-      "operator": "equals",
-      "value": "있음 (서버 직접 할당)",
-      "effect": "BOOST_PHASE",
-      "kill_chain_phase": "Initial Access",
-      "boost": 1,
-      "reason": "공인 IP 직접 노출 — 외부 진입 가능성 ↑. 초기 침투 로그 우선 수집.",
-      "source": "CSA Top Threats #11 (APT) + KISA §3.3"
-    },
-    {
-      "id": "m-004",
-      "field": "system_config.mfa_status",
-      "operator": "equals",
-      "value": "미적용",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.5.1",
-      "boost": 2,
-      "secondary_effects": [
-        {
-          "effect": "BOOST_CATEGORY",
-          "category_id": "1.5.4",
-          "boost": 2
-        }
-      ],
-      "reason": "MFA 미적용 — 자격증명 단일 실패 지점. 인증·실패 인증 로그 모두 부스팅.",
-      "source": "CSA #2 IAM + MITRE T1078.004"
-    },
-    {
-      "id": "m-005",
-      "field": "system_config.mfa_status",
-      "operator": "equals",
-      "value": "부분 적용",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.5.1",
-      "boost": 1,
-      "reason": "MFA 부분 적용 — MFA 미적용 계정이 공격 대상 가능성. 인증 로그 우선순위 +1.",
-      "source": "CSA #2 IAM"
-    },
-    {
-      "id": "m-006",
-      "field": "system_config.iam_account_count",
-      "operator": "greater_than_or_equal",
-      "value": 50,
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.5.2",
-      "boost": 1,
-      "secondary_effects": [
-        {
-          "effect": "BOOST_CATEGORY",
-          "category_id": "1.5.3",
-          "boost": 1
-        }
-      ],
-      "reason": "IAM 계정 50명 이상 — 권한 변경·신규 계정 생성 이벤트가 많아 탐지 난이도 ↑. 권한·계정 로그 부스팅.",
-      "source": "Google §1.5.2~3 + KISA §3.3 (불법적인 자원 사용)"
-    },
-    {
-      "id": "m-007",
-      "field": "system_config.audit_log_retention_days",
-      "operator": "less_than",
-      "value": 90,
-      "effect": "ADD_TARGET",
-      "target_id": "CT-RETENTION-WARNING",
-      "target": {
-        "category_id": "1.7",
-        "category_name": "감사 로그 보존 기간 부족 — 즉시 추출 권장",
-        "evidence_role": "REQUIRED",
-        "priority": 9,
-        "rationale": "보존 기간이 90일 미만이면 사건 발견 시점 이전 로그가 이미 폐기됐을 가능성. 가용한 로그 즉시 추출 + 보존 기간 연장 권장."
-      },
-      "reason": "감사 로그 보존 < 90일 — 휘발성 위험. 즉시 수집.",
-      "source": "NIST SP 800-86 §3.1 휘발성 + KISA §2.6"
-    },
-    {
-      "id": "m-008",
-      "field": "system_config.data_sensitivity",
-      "operator": "equals",
-      "value": "있음 (개인정보·민감정보)",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.4",
-      "boost": 2,
-      "secondary_effects": [
-        {
-          "effect": "BOOST_CATEGORY",
-          "category_id": "1.7",
-          "boost": 1
-        }
-      ],
-      "reason": "민감 데이터 보유 — 데이터 유출 시 영향 큼. Object Storage 액세스 + 감사 로그 위·변조 탐지 부스팅.",
-      "source": "CSA #7 Accidental Disclosure + KISA §3.3 (정보 누설)"
-    },
-    {
-      "id": "m-009",
-      "field": "system_config.services",
-      "operator": "contains_any",
-      "value": ["Cloud DB", "MySQL", "PostgreSQL", "Database"],
-      "effect": "BOOST_PHASE",
-      "kill_chain_phase": "Collection",
-      "boost": 1,
-      "reason": "관계형 DB 서비스 사용 — 데이터 수집(Collection) 단계 로그 우선순위 ↑",
-      "source": "Google §9.4 데이터 탈취 시나리오 + MITRE TA0009"
-    },
-    {
-      "id": "m-010",
-      "field": "system_config.multi_cloud",
-      "operator": "equals",
-      "value": "있음 (NCP + NHN 동시 사용)",
-      "effect": "BOOST_PHASE",
-      "kill_chain_phase": "Lateral Movement",
-      "boost": 2,
-      "secondary_effects": [
-        {
-          "effect": "BOOST_CATEGORY",
-          "category_id": "1.5.5",
-          "boost": 1
-        }
-      ],
-      "reason": "멀티 클라우드 환경 — 한 CSP 침투 후 다른 CSP 로 횡이동 가능성. API 액세스 로그·횡이동 단계 모두 부스팅.",
-      "source": "CSA #11 APT + 실 raw 분석 (동일 IP 115.91.214.5 가 NCP·NHN 양쪽 등장)"
-    },
-    {
-      "id": "m-011",
-      "field": "system_config.sso_enabled",
-      "operator": "equals",
-      "value": "있음 (외부 IdP 연동)",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.5.5",
-      "boost": 1,
-      "secondary_effects": [
-        {
-          "effect": "BOOST_CATEGORY",
-          "category_id": "1.5.7",
-          "boost": 1
-        }
-      ],
-      "reason": "SSO 사용 — IdP 측 침해가 클라우드 IAM 까지 영향. API 액세스(IdP 토큰 사용 흔적) + 위험 기반 검색(IdP risk_score) 모두 부스팅.",
-      "source": "CSA #2 IAM + Google §1.5.5·1.5.7"
-    },
-    {
-      "id": "m-012",
-      "field": "system_config.publicIp",
-      "operator": "equals",
-      "value": "있음 (서버 직접 할당)",
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.8",
-      "boost": 1,
-      "reason": "공인 IP 노출 환경 — 네트워크 정책 변경·플로우 로그 동시에 중요.",
-      "source": "Google §1.8 + KISA §3.3 (네트워크 기반 증거)"
-    },
-    {
-      "id": "m-013",
-      "field": "system_config.services",
-      "operator": "contains_any",
-      "value": ["VPN", "Direct Connect", "Cloud Connect"],
-      "effect": "BOOST_CATEGORY",
-      "category_id": "1.8",
-      "boost": 1,
-      "reason": "외부 연결 서비스(VPN 등) 사용 — 네트워크 구성 변경 + IP 관리 작업 로그 우선순위 ↑",
-      "source": "Google §1.8.3 IP 관리 + CSA #11"
-    }
-  ],
-  "fallback_modifiers": [
-    {
-      "id": "f-001",
-      "trigger": "system_config 가 비어있거나 응답 누락",
-      "effect": "NO_MODIFY",
-      "reason": "환경 입력이 없으면 기본 우선순위 그대로 사용. 단 UI 에 'Step2 시스템 구성 입력을 완료하면 정확도가 올라갑니다' 안내 표시."
-    }
-  ]
+ "_meta": {
+ "version": "1.0",
+ "purpose": "system_config 입력값이 V2 수집 가이드 생성에 실제로 영향을 미치도록 정의한 환경 보정 룰.",
+ "policy": [
+ "modifier 는 카테고리 우선순위(priority)·Kill Chain 단계 가중치를 동적으로 조정하거나 임시 target 을 추가한다.",
+ "BOOST 효과는 누적 가능 (예: MFA 미적용 + IAM 50명 이상이면 1.5.1 두 번 부스팅).",
+ "ADD_TARGET 은 정규 collection_targets_v2 시드에 없는 임시 권고 항목을 추가 (예: 'MFA 즉시 적용 권장').",
+ "applied_modifiers 응답 필드에 트리거된 modifier 의 reason 을 누적하여 UI 에서 '왜 우선순위가 바뀌었나' 즉시 확인 가능."
+ ],
+ "source_standards": [
+ "KISA 침해사고 분석절차 안내서 (제2010-8호) 2.4 초기 대응 점검표",
+ "NIST SP 800-86 3 (휘발성 계층 + 환경 인자에 따른 수집 우선순위 조정)",
+ "Google Cloud Threat Intel — 9.x 침해 시나리오별 권장 로그",
+ "CSA Top Threats to Cloud Computing 2024 (#2 IAM, #7 Disclosure)"
+ ],
+ "step2_field_mapping": [
+ "system_config.auditEnabled → m-001",
+ "system_config.services → m-002, m-009, m-013",
+ "system_config.publicIp → m-003, m-012",
+ "system_config.mfa_status → m-004, m-005",
+ "system_config.iam_account_count → m-006",
+ "system_config.audit_log_retention_days → m-007",
+ "system_config.data_sensitivity → m-008",
+ "system_config.multi_cloud → m-010",
+ "system_config.sso_enabled → m-011"
+ ]
+ },
+ "modifiers": [
+ {
+ "id": "m-001",
+ "field": "system_config.auditEnabled",
+ "operator": "equals",
+ "value": "비활성화",
+ "effect": "ADD_TARGET",
+ "target_id": "CT-AUDIT-DISABLED-WARNING",
+ "target": {
+ "category_id": "1.7",
+ "category_name": "감사 로그 비활성화 — 즉시 활성화 권장",
+ "evidence_role": "REQUIRED",
+ "priority": 10,
+ "rationale": "감사 로그가 꺼져 있으면 사후 분석 자체가 불가. 사건 발생 인지 직후 활성화부터 권장. KISA 2.4 초기 대응 점검표 ⑥ '네트워크 연결 지점' 기록 불가 상태."
+ },
+ "reason": "감사 로그 미수집 상태 — 사후 분석에 큰 제약. 우선 활성화 권장.",
+ "source": "KISA 2.4 + Google 1.7"
+ },
+ {
+ "id": "m-002",
+ "field": "system_config.services",
+ "operator": "contains",
+ "value": "Object Storage",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.4",
+ "boost": 2,
+ "reason": "Object Storage 사용 환경 — 데이터 유출(Exfiltration) 단계 로그 우선순위 ↑",
+ "source": "Google 1.4 + MITRE T1537"
+ },
+ {
+ "id": "m-003",
+ "field": "system_config.publicIp",
+ "operator": "equals",
+ "value": "있음 (서버 직접 할당)",
+ "effect": "BOOST_PHASE",
+ "kill_chain_phase": "Initial Access",
+ "boost": 1,
+ "reason": "공인 IP 직접 노출 — 외부 진입 가능성 ↑. 초기 침투 로그 우선 수집.",
+ "source": "CSA Top Threats #11 (APT) + KISA 3.3"
+ },
+ {
+ "id": "m-004",
+ "field": "system_config.mfa_status",
+ "operator": "equals",
+ "value": "미적용",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.1",
+ "boost": 2,
+ "secondary_effects": [
+ {
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.4",
+ "boost": 2
+ }
+ ],
+ "reason": "MFA 미적용 — 자격증명 단일 실패 지점. 인증·실패 인증 로그 모두 부스팅.",
+ "source": "CSA #2 IAM + MITRE T1078.004"
+ },
+ {
+ "id": "m-005",
+ "field": "system_config.mfa_status",
+ "operator": "equals",
+ "value": "부분 적용",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.1",
+ "boost": 1,
+ "reason": "MFA 부분 적용 — MFA 미적용 계정이 공격 대상 가능성. 인증 로그 우선순위 +1.",
+ "source": "CSA #2 IAM"
+ },
+ {
+ "id": "m-006",
+ "field": "system_config.iam_account_count",
+ "operator": "greater_than_or_equal",
+ "value": 50,
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.2",
+ "boost": 1,
+ "secondary_effects": [
+ {
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.3",
+ "boost": 1
+ }
+ ],
+ "reason": "IAM 계정 50명 이상 — 권한 변경·신규 계정 생성 이벤트가 많아 탐지 난이도 ↑. 권한·계정 로그 부스팅.",
+ "source": "Google 1.5.2~3 + KISA 3.3 (불법적인 자원 사용)"
+ },
+ {
+ "id": "m-007",
+ "field": "system_config.audit_log_retention_days",
+ "operator": "less_than",
+ "value": 90,
+ "effect": "ADD_TARGET",
+ "target_id": "CT-RETENTION-WARNING",
+ "target": {
+ "category_id": "1.7",
+ "category_name": "감사 로그 보존 기간 부족 — 즉시 추출 권장",
+ "evidence_role": "REQUIRED",
+ "priority": 9,
+ "rationale": "보존 기간이 90일 미만이면 사건 발견 시점 이전 로그가 이미 폐기됐을 가능성. 가용한 로그 즉시 추출 + 보존 기간 연장 권장."
+ },
+ "reason": "감사 로그 보존 < 90일 — 휘발성 위험. 즉시 수집.",
+ "source": "NIST SP 800-86 3.1 휘발성 + KISA 2.6"
+ },
+ {
+ "id": "m-008",
+ "field": "system_config.data_sensitivity",
+ "operator": "equals",
+ "value": "있음 (개인정보·민감정보)",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.4",
+ "boost": 2,
+ "secondary_effects": [
+ {
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.7",
+ "boost": 1
+ }
+ ],
+ "reason": "민감 데이터 보유 — 데이터 유출 시 영향 큼. Object Storage 액세스 + 감사 로그 위·변조 탐지 부스팅.",
+ "source": "CSA #7 Accidental Disclosure + KISA 3.3 (정보 누설)"
+ },
+ {
+ "id": "m-009",
+ "field": "system_config.services",
+ "operator": "contains_any",
+ "value": ["Cloud DB", "MySQL", "PostgreSQL", "Database"],
+ "effect": "BOOST_PHASE",
+ "kill_chain_phase": "Collection",
+ "boost": 1,
+ "reason": "관계형 DB 서비스 사용 — 데이터 수집(Collection) 단계 로그 우선순위 ↑",
+ "source": "Google 9.4 데이터 탈취 시나리오 + MITRE TA0009"
+ },
+ {
+ "id": "m-010",
+ "field": "system_config.multi_cloud",
+ "operator": "equals",
+ "value": "있음 (NCP + NHN 동시 사용)",
+ "effect": "BOOST_PHASE",
+ "kill_chain_phase": "Lateral Movement",
+ "boost": 2,
+ "secondary_effects": [
+ {
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.5",
+ "boost": 1
+ }
+ ],
+ "reason": "멀티 클라우드 환경 — 한 CSP 침투 후 다른 CSP 로 횡이동 가능성. API 액세스 로그·횡이동 단계 모두 부스팅.",
+ "source": "CSA #11 APT + 실 raw 분석 (동일 IP 115.91.214.5 가 NCP·NHN 양쪽 등장)"
+ },
+ {
+ "id": "m-011",
+ "field": "system_config.sso_enabled",
+ "operator": "equals",
+ "value": "있음 (외부 IdP 연동)",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.5",
+ "boost": 1,
+ "secondary_effects": [
+ {
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.5.7",
+ "boost": 1
+ }
+ ],
+ "reason": "SSO 사용 — IdP 측 침해가 클라우드 IAM 까지 영향. API 액세스(IdP 토큰 사용 흔적) + 위험 기반 검색(IdP risk_score) 모두 부스팅.",
+ "source": "CSA #2 IAM + Google 1.5.5·1.5.7"
+ },
+ {
+ "id": "m-012",
+ "field": "system_config.publicIp",
+ "operator": "equals",
+ "value": "있음 (서버 직접 할당)",
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.8",
+ "boost": 1,
+ "reason": "공인 IP 노출 환경 — 네트워크 정책 변경·플로우 로그 동시에 중요.",
+ "source": "Google 1.8 + KISA 3.3 (네트워크 기반 증거)"
+ },
+ {
+ "id": "m-013",
+ "field": "system_config.services",
+ "operator": "contains_any",
+ "value": ["VPN", "Direct Connect", "Cloud Connect"],
+ "effect": "BOOST_CATEGORY",
+ "category_id": "1.8",
+ "boost": 1,
+ "reason": "외부 연결 서비스(VPN 등) 사용 — 네트워크 구성 변경 + IP 관리 작업 로그 우선순위 ↑",
+ "source": "Google 1.8.3 IP 관리 + CSA #11"
+ }
+ ],
+ "fallback_modifiers": [
+ {
+ "id": "f-001",
+ "trigger": "system_config 가 비어있거나 응답 누락",
+ "effect": "NO_MODIFY",
+ "reason": "환경 입력이 없으면 기본 우선순위 그대로 사용. 단 UI 에 'Step2 시스템 구성 입력을 완료하면 정확도가 올라갑니다' 안내 표시."
+ }
+ ]
 }

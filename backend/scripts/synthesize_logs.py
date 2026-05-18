@@ -469,9 +469,310 @@ def scenario_nhn_kill_chain(
 
 
 # ───────────────────────────────────────────────────────────
+# 시나리오 — NCP Privilege Escalation
+# ───────────────────────────────────────────────────────────
+def scenario_ncp_privilege_escalation(*, start: datetime) -> list[dict]:
+    """NCP 점진적 권한 상승 시나리오.
+
+    dev3 방향(빈 케이스 → 단서 분석 → 사고유형 분류)에 활용:
+      - 정상 Login 후 권한 변경(Create sub + Attach policy 다수)이 누적되는 패턴
+      - 단서로 사고유형 PRIVILEGE_ESCALATION 분류 가능
+      - matchers.py 의 CREDENTIAL_THEFT 룰엔 일부만 매칭(SubAccount=IAM-002 한 묶음)
+    """
+    events: list[dict] = []
+    attacker = "attack-sim"
+    t = start
+
+    # 정상 사용자 베이스라인
+    for normal_user in ("alice", "bob", "charlie"):
+        events.append(
+            _ncp_event(
+                action="Login",
+                result="SUCCESS",
+                when=t,
+                actor=normal_user,
+                ip=random.choice(NORMAL_IPS),
+            )
+        )
+        t += timedelta(seconds=random.randint(15, 45))
+
+    # 공격자 정상 로그인 (위장)
+    t = start + timedelta(minutes=8)
+    events.append(
+        _ncp_event(
+            action="Login",
+            result="SUCCESS",
+            when=t,
+            actor=attacker,
+            ip=ATTACKER_IP,
+        )
+    )
+    t += timedelta(minutes=2)
+
+    # 권한 상승 체인 (PE 핵심 — Sub Account + Policy 작업 다수)
+    for action in (
+        "Create sub account",
+        "Attach policy to sub account",
+        "Create sub account",
+        "Attach policy to sub account",
+        "Replace policy to sub account",
+        "Create Login Key",
+        "Create AccessKey",
+    ):
+        events.append(
+            _ncp_event(
+                action=action,
+                result="SUCCESS",
+                when=t,
+                actor=attacker,
+                ip=ATTACKER_IP,
+                product_name="SubAccount",
+            )
+        )
+        t += timedelta(minutes=random.randint(1, 4))
+
+    return events
+
+
+# ───────────────────────────────────────────────────────────
+# 시나리오 — NHN Privilege Escalation
+# ───────────────────────────────────────────────────────────
+def scenario_nhn_privilege_escalation(*, start: datetime) -> list[dict]:
+    """NHN 점진적 권한 상승 시나리오."""
+    events: list[dict] = []
+    attacker = "attack"
+    attacker_id = "attack@victim.org"
+    attacker_no = "uuid-attacker-001"
+    t = start
+
+    # 정상 베이스라인
+    for user_name, email in (
+        ("alice", "alice@victim.org"),
+        ("bob", "bob@victim.org"),
+    ):
+        events.append(
+            _nhn_event(
+                event_id="event_id.iam.login",
+                result="SUCCESS",
+                when=t,
+                user_name=user_name,
+                user_id=email,
+                user_id_no=f"uuid-{user_name}",
+                ip=random.choice(NORMAL_IPS),
+            )
+        )
+        t += timedelta(seconds=random.randint(15, 45))
+
+    # 공격자 위장 로그인
+    t = start + timedelta(minutes=8)
+    events.append(
+        _nhn_event(
+            event_id="event_id.iam.login",
+            result="SUCCESS",
+            when=t,
+            user_name=attacker,
+            user_id=attacker_id,
+            user_id_no=attacker_no,
+            ip=ATTACKER_IP,
+        )
+    )
+    t += timedelta(minutes=2)
+
+    # 권한 상승 체인 — IAM role + org member + project member 단계적
+    for event_id in (
+        "event_id.iam.member.role.update",
+        "event_id.org.iam.member.update",
+        "event_id.org.iam.member.add",
+        "event_id.iam.member.role.update",
+        "event_id.project.product.enable",
+        "event_id.project.member.update",
+        "event_id.project.member.update",
+    ):
+        events.append(
+            _nhn_event(
+                event_id=event_id,
+                result="SUCCESS",
+                when=t,
+                user_name=attacker,
+                user_id=attacker_id,
+                user_id_no=attacker_no,
+                ip=ATTACKER_IP,
+            )
+        )
+        t += timedelta(minutes=random.randint(1, 4))
+
+    return events
+
+
+# ───────────────────────────────────────────────────────────
+# 시나리오 — NCP Data Exfiltration
+# ───────────────────────────────────────────────────────────
+def scenario_ncp_data_exfiltration(*, start: datetime) -> list[dict]:
+    """NCP Object Storage 대량 Export 시나리오 — Exfiltration 단서 다수."""
+    events: list[dict] = []
+    attacker = "attack-sim"
+    t = start
+
+    # 정상 베이스라인
+    for normal_user in ("alice", "bob"):
+        events.append(
+            _ncp_event(
+                action="Login",
+                result="SUCCESS",
+                when=t,
+                actor=normal_user,
+                ip=random.choice(NORMAL_IPS),
+            )
+        )
+        t += timedelta(seconds=random.randint(10, 30))
+
+    # 공격자 로그인
+    t = start + timedelta(minutes=10)
+    events.append(
+        _ncp_event(
+            action="Login",
+            result="SUCCESS",
+            when=t,
+            actor=attacker,
+            ip=ATTACKER_IP,
+        )
+    )
+    t += timedelta(minutes=2)
+
+    # Object Storage 대량 Export (Request/Complete 페어 다수)
+    for _ in range(5):
+        events.append(
+            _ncp_event(
+                action="Request For Exporting To Object Storage",
+                result="SUCCESS",
+                when=t,
+                actor=attacker,
+                ip=ATTACKER_IP,
+                product_name="Object Storage",
+                use_unix_ms=True,
+            )
+        )
+        t += timedelta(seconds=random.randint(20, 90))
+        events.append(
+            _ncp_event(
+                action="Complete For Exporting To Object Storage",
+                result="SUCCESS",
+                when=t,
+                actor=attacker,
+                ip=ATTACKER_IP,
+                product_name="Object Storage",
+                use_unix_ms=True,
+            )
+        )
+        t += timedelta(minutes=random.randint(1, 3))
+
+    # AccessKey 폐기 (흔적 제거)
+    events.append(
+        _ncp_event(
+            action="Disable AccessKey",
+            result="SUCCESS",
+            when=t,
+            actor=attacker,
+            ip=ATTACKER_IP,
+            product_name="SubAccount",
+        )
+    )
+
+    return events
+
+
+# ───────────────────────────────────────────────────────────
+# 시나리오 — NHN Data Exfiltration
+# ───────────────────────────────────────────────────────────
+def scenario_nhn_data_exfiltration(*, start: datetime) -> list[dict]:
+    """NHN Object Storage 대량 업로드 시나리오 — Exfiltration 단서."""
+    events: list[dict] = []
+    attacker = "attack"
+    attacker_id = "attack@victim.org"
+    attacker_no = "uuid-attacker-001"
+    t = start
+
+    # 정상 베이스라인
+    for user_name, email in (
+        ("alice", "alice@victim.org"),
+        ("bob", "bob@victim.org"),
+    ):
+        events.append(
+            _nhn_event(
+                event_id="event_id.iam.login",
+                result="SUCCESS",
+                when=t,
+                user_name=user_name,
+                user_id=email,
+                user_id_no=f"uuid-{user_name}",
+                ip=random.choice(NORMAL_IPS),
+            )
+        )
+        t += timedelta(seconds=random.randint(10, 30))
+
+    # 공격자 로그인 + 자격증명 발급
+    t = start + timedelta(minutes=10)
+    events.append(
+        _nhn_event(
+            event_id="event_id.iam.login",
+            result="SUCCESS",
+            when=t,
+            user_name=attacker,
+            user_id=attacker_id,
+            user_id_no=attacker_no,
+            ip=ATTACKER_IP,
+        )
+    )
+    t += timedelta(minutes=1)
+    events.append(
+        _nhn_event(
+            event_id="event_id.iaas.s3credential.create",
+            result="SUCCESS",
+            when=t,
+            user_name=attacker,
+            user_id=attacker_id,
+            user_id_no=attacker_no,
+            ip=ATTACKER_IP,
+        )
+    )
+    t += timedelta(minutes=2)
+
+    # Object Storage 대량 업로드 (외부로 데이터 이동 단서)
+    for _ in range(6):
+        events.append(
+            _nhn_event(
+                event_id="event_id.object_storage.object.upload",
+                result="SUCCESS",
+                when=t,
+                user_name=attacker,
+                user_id=attacker_id,
+                user_id_no=attacker_no,
+                ip=ATTACKER_IP,
+            )
+        )
+        t += timedelta(seconds=random.randint(15, 60))
+
+    # 자격증명 삭제 (흔적 제거)
+    events.append(
+        _nhn_event(
+            event_id="event_id.iaas.s3credential.delete",
+            result="SUCCESS",
+            when=t,
+            user_name=attacker,
+            user_id=attacker_id,
+            user_id_no=attacker_no,
+            ip=ATTACKER_IP,
+        )
+    )
+
+    return events
+
+
+# ───────────────────────────────────────────────────────────
 # 시나리오 레지스트리
 # ───────────────────────────────────────────────────────────
 SCENARIOS: dict[str, Callable[[datetime], list[dict]]] = {
+    # CREDENTIAL_THEFT 두 변형 (NONE / COLLECTION)
     "ncp_none": lambda start: scenario_ncp_kill_chain(start=start, include_iam_003=True),
     "ncp_collection": lambda start: scenario_ncp_kill_chain(
         start=start, include_iam_003=False
@@ -480,6 +781,11 @@ SCENARIOS: dict[str, Callable[[datetime], list[dict]]] = {
     "nhn_collection": lambda start: scenario_nhn_kill_chain(
         start=start, include_iam_002=False
     ),
+    # 사고유형 확장 — dev3 "빈 케이스 → 단서 분석 → 사고유형 분류" 흐름 지원용
+    "ncp_privilege_escalation": lambda start: scenario_ncp_privilege_escalation(start=start),
+    "nhn_privilege_escalation": lambda start: scenario_nhn_privilege_escalation(start=start),
+    "ncp_data_exfiltration": lambda start: scenario_ncp_data_exfiltration(start=start),
+    "nhn_data_exfiltration": lambda start: scenario_nhn_data_exfiltration(start=start),
 }
 
 
@@ -497,7 +803,7 @@ def _write(events: list[dict], path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="합성 NCP/NHN raw 로그 생성기")
     parser.add_argument("--scenario", choices=list(SCENARIOS.keys()))
-    parser.add_argument("--all", action="store_true", help="4종 시나리오 일괄 생성")
+    parser.add_argument("--all", action="store_true", help="등록된 모든 시나리오 일괄 생성")
     parser.add_argument("--out", type=Path, help="단일 시나리오 출력 경로")
     parser.add_argument("--out-dir", type=Path, help="--all 출력 디렉토리")
     parser.add_argument("--seed", type=int, default=42)

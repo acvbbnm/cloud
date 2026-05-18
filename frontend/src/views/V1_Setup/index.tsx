@@ -8,11 +8,11 @@ import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { createCase } from '@/api/intake';
-import type { IncidentType, CSP, Severity } from '@/types';
+import type { CSP, Severity } from '@/types';
 
 import Step0_CSPCards from './Step0_CSPCards';
 import Step1_CaseMetadata from './Step1_CaseMetadata';
-import Step2_SystemConfig from './Step2_SystemConfig';
+import Step2_Discovery from './Step2_Discovery';
 import Step3_GuideChecklist_V2 from './Step3_GuideChecklist_V2';
 
 // v1 수집 가이드는 2026-05-18 회의 결정에 따라 폐기 — V2 가 유일 화면.
@@ -127,11 +127,11 @@ const V1Setup = () => {
           />
         )}
         {step === 2 && (
-          <Step2_SystemConfig
+          <Step2_Discovery
             csp={csp}
             incidentType={incidentType}
             onPrev={() => setStep(1)}
-            onSubmit={(config) => {
+            onSubmit={(config, confirmedIncidentType) => {
               if (!csp) {
                 showToast('CSP 누락. Step 0 으로 돌아가세요.');
                 return;
@@ -143,11 +143,9 @@ const V1Setup = () => {
                 const d = new Date(raw);
                 return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
               })();
-              // dev3: 사고유형은 UNCLASSIFIED 로 시작 — Step 2 Discovery Loop 에서 확정
-              const effectiveIncidentType: IncidentType =
-                (incidentType as IncidentType | null) ?? 'UNCLASSIFIED';
+              // dev3: 사고유형 = Discovery Loop 결과 (UNCLASSIFIED 가능)
               createCaseMutation.mutate({
-                incident_type: effectiveIncidentType,
+                incident_type: confirmedIncidentType,
                 csp: csp as CSP,
                 severity: config.severity as Severity,
                 occurred_at: occurredIso,

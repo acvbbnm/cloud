@@ -104,6 +104,20 @@ const V5Board = () => {
     },
   });
 
+  // Phase 2.2 — 노드 드래그 위치 영속화
+  const movePositionMutation = useMutation({
+    mutationFn: ({ nodeId, x, y }: { nodeId: string; x: number; y: number }) =>
+      updateNode(nodeId, { pos_x: x, pos_y: y }),
+    onSuccess: () => {
+      // 최신 위치를 받기 위해 보드 invalidate (조용히 — 토스트 안 띄움)
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`노드 위치 저장 실패: ${msg}`);
+    },
+  });
+
   // UF-04 — 엣지 생성 (chain_edges)
   const createEdgeMutation = useMutation({
     mutationFn: ({ fromId, toId }: { fromId: string; toId: string }) =>
@@ -280,6 +294,9 @@ const V5Board = () => {
                 onSelectNode={handleGraphNodeSelect}
                 onPickEdgeEnd={(fromId, toId) =>
                   createEdgeMutation.mutate({ fromId, toId })
+                }
+                onMoveNode={(nodeId, x, y) =>
+                  movePositionMutation.mutate({ nodeId, x, y })
                 }
               />
               {edgeMode && (

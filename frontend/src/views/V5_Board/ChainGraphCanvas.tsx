@@ -4,14 +4,22 @@
  * SF-07 (Investigation Board) + UF-04 (수사관 주도 시나리오 구성) 의 일부.
  * 백엔드 응답 BoardResponse.nodes / .edges 를 받아 SVG 그래프로 렌더링.
  *
- * 자동 배치: NODES_PER_ROW 개씩 격자. chain_nodes.pos_x / pos_y 영속화는
- * 추후 작업 — 현재 모두 (0,0) 이라 자동 배치로 처리.
+ * 배치:
+ *   - node.pos_x / pos_y 가 양수면 그 위치 사용 (영속화된 위치, Phase 2.2)
+ *   - 0/null 이면 자동 격자 배치 (좌상단 PAD 부터 NODES_PER_ROW 단위)
+ *
+ * 드래그 (Phase 2.2):
+ *   - pointerdown on rect → 드래그 시작 + 캔버스 좌표계 기준 오프셋 저장
+ *   - pointermove on svg → 임시 위치 갱신 (로컬 state, 백엔드 호출 X)
+ *   - pointerup → onMoveNode(nodeId, x, y) 호출 → 부모가 PATCH /api/board/nodes/{id}
+ *   - 드래그 거리 < 4px 이면 클릭으로 간주 (onSelectNode 호출)
  *
  * 엣지 생성 모드:
  *   - edgeMode=true 일 때 노드 1번째 클릭 = 시작점 (초록), 2번째 클릭 = 끝점 → onCreateEdge
  *   - edgeMode=false 일 때 노드 클릭 = onSelectNode (기존 동작)
+ *   - edgeMode 일 때는 드래그 비활성
  */
-import { useMemo } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 
 import type { BoardEdge, BoardNode } from '@/types';
 
@@ -23,6 +31,7 @@ interface ChainGraphCanvasProps {
   edgeStartId: string | null;
   onSelectNode: (n: BoardNode) => void;
   onPickEdgeEnd: (fromId: string, toId: string) => void;
+  onMoveNode?: (nodeId: string, x: number, y: number) => void;
 }
 
 const NODE_W = 168;
@@ -40,19 +49,132 @@ const ChainGraphCanvas = ({
   edgeStartId,
   onSelectNode,
   onPickEdgeEnd,
+  onMoveNode,
 }: ChainGraphCanvasProps) => {
-  // 자동 배치 — 격자 (row, col). 좌상단 (PAD, PAD) 부터.
-  const layout = useMemo(() => {
+  // 영속 위치 우선 + 미설정 시 격자 배치
+  const baseLayout = useMemo(() => {
     const m = new Map<string, { x: number; y: number }>();
     nodes.forEach((n, i) => {
-      const row = Math.floor(i / NODES_PER_ROW);
-      const col = i % NODES_PER_ROW;
-      m.set(n.node_id, {
-        x: PAD + col * (NODE_W + GAP_X),
-        y: PAD + row * (NODE_H + GAP_Y),
-      });
+      const hasSaved = (n.pos_x ?? 0) > 0 || (n.pos_y ?? 0) > 0;
+      if (hasSaved) {
+        m.set(n.node_id, { x: n.pos_x ?? PAD, y: n.pos_y ?? PAD });
+      } else {
+        const row = Math.floor(i / NODES_PER_ROW);
+        const col = i % NODES_PER_ROW;
+        m.set(n.node_id, {
+          x: PAD + col * (NODE_W + GAP_X),
+          y: PAD + row * (NODE_H + GAP_Y),
+        });
+      }
     });
     return m;
+  }, [nodes]);
+
+  // 드래그 중 임시 위치 오버라이드 (백엔드 호출 전)
+  const [tempPos, setTempPos] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const layout = useMemo(() => {
+    if (tempPos.size === 0) return baseLayout;
+    const m = new Map(baseLayout);
+    tempPos.forEach((v, k) => m.set(k, v));
+    return m;
+  }, [baseLayout, tempPos]);
+
+  // 드래그 상태
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragRef = useRef<{
+    nodeId: string;
+    offX: number;
+    offY: number;
+    startClientX: number;
+    startClientY: number;
+    moved: boolean;
+  } | null>(null);
+
+  // SVG 좌표계로 client 좌표 변환
+  const toSvgCoords = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  };
+
+  const handleNodePointerDown = (e: React.PointerEvent, n: BoardNode) => {
+    if (edgeMode) return; // 엣지 모드일 때는 드래그 비활성
+    if (!onMoveNode) return;
+    e.stopPropagation();
+    const pos = layout.get(n.node_id);
+    if (!pos) return;
+    const { x: svgX, y: svgY } = toSvgCoords(e.clientX, e.clientY);
+    dragRef.current = {
+      nodeId: n.node_id,
+      offX: svgX - pos.x,
+      offY: svgY - pos.y,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      moved: false,
+    };
+  };
+
+  useEffect(() => {
+    const handleMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const dist = Math.abs(e.clientX - d.startClientX) + Math.abs(e.clientY - d.startClientY);
+      if (dist > 3) d.moved = true;
+      const { x: svgX, y: svgY } = toSvgCoords(e.clientX, e.clientY);
+      const nx = Math.max(0, Math.round(svgX - d.offX));
+      const ny = Math.max(0, Math.round(svgY - d.offY));
+      setTempPos((prev) => {
+        const m = new Map(prev);
+        m.set(d.nodeId, { x: nx, y: ny });
+        return m;
+      });
+    };
+    const handleUp = () => {
+      const d = dragRef.current;
+      if (!d) return;
+      dragRef.current = null;
+      if (d.moved) {
+        // 드래그 종료 → 영속화
+        const final = tempPos.get(d.nodeId);
+        if (final && onMoveNode) {
+          onMoveNode(d.nodeId, final.x, final.y);
+        }
+      } else {
+        // 클릭으로 간주
+        const n = nodes.find((x) => x.node_id === d.nodeId);
+        if (n) {
+          if (edgeMode && edgeStartId && edgeStartId !== n.node_id) {
+            onPickEdgeEnd(edgeStartId, n.node_id);
+          } else {
+            onSelectNode(n);
+          }
+        }
+        // 클릭은 임시 위치 폐기
+        setTempPos((prev) => {
+          if (!prev.has(d.nodeId)) return prev;
+          const m = new Map(prev);
+          m.delete(d.nodeId);
+          return m;
+        });
+      }
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [nodes, edgeMode, edgeStartId, onMoveNode, onPickEdgeEnd, onSelectNode, tempPos]);
+
+  // 백엔드 응답이 갱신되면 임시 위치 초기화 (서버 값으로 통합)
+  useEffect(() => {
+    setTempPos(new Map());
   }, [nodes]);
 
   if (nodes.length === 0) {
@@ -63,25 +185,27 @@ const ChainGraphCanvas = ({
     );
   }
 
+  // 캔버스 크기 — 격자 기본 + 드래그로 이동한 노드 범위 모두 포함
   const rows = Math.ceil(nodes.length / NODES_PER_ROW);
   const cols = Math.min(nodes.length, NODES_PER_ROW);
-  const width = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
-  const height = PAD * 2 + rows * NODE_H + (rows - 1) * GAP_Y;
-
-  const handleNodeClick = (n: BoardNode) => {
-    if (edgeMode && edgeStartId && edgeStartId !== n.node_id) {
-      onPickEdgeEnd(edgeStartId, n.node_id);
-      return;
-    }
-    onSelectNode(n);
-  };
+  const baseWidth = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
+  const baseHeight = PAD * 2 + rows * NODE_H + (rows - 1) * GAP_Y;
+  let maxRight = baseWidth;
+  let maxBottom = baseHeight;
+  layout.forEach((p) => {
+    maxRight = Math.max(maxRight, p.x + NODE_W + PAD);
+    maxBottom = Math.max(maxBottom, p.y + NODE_H + PAD);
+  });
+  const width = maxRight;
+  const height = maxBottom;
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid meet"
       className="w-full bg-ink-950/40 border border-ink-700/40 rounded-xl"
-      style={{ maxHeight: 380 }}
+      style={{ maxHeight: 380, touchAction: 'none' }}
     >
       <defs>
         {/* 엣지 끝 화살표 — 파란 톤 */}
@@ -168,8 +292,8 @@ const ChainGraphCanvas = ({
           <g
             key={n.node_id}
             transform={`translate(${pos.x},${pos.y})`}
-            onClick={() => handleNodeClick(n)}
-            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => handleNodePointerDown(e, n)}
+            style={{ cursor: edgeMode ? 'pointer' : 'grab', touchAction: 'none' }}
           >
             <rect
               width={NODE_W}

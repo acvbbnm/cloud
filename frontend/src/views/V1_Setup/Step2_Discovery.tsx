@@ -18,7 +18,11 @@ import { useEffect, useState } from 'react';
 
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
+import CluesInput from '@/components/CluesInput';
 import DecisionTreeQuestion from '@/components/DecisionTreeQuestion';
+import DiscoveryIntroModal, {
+  hasDismissedDiscoveryIntro,
+} from '@/components/DiscoveryIntroModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
@@ -70,6 +74,9 @@ const Step2_Discovery = ({
   isSubmitting,
 }: Step2DiscoveryProps) => {
   const caseId = useCaseStore((s) => s.caseId);
+  const observables = useCaseStore((s) => s.observables);
+  const addObservable = useCaseStore((s) => s.addObservable);
+  const removeObservable = useCaseStore((s) => s.removeObservable);
   const showToast = useToastStore((s) => s.show);
 
   const {
@@ -89,6 +96,14 @@ const Step2_Discovery = ({
 
   const [currentNode, setCurrentNodeData] = useState<TriageTreeNode | null>(null);
   const [loading, setLoading] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
+
+  // 진입 시 사전 안내 모달 표시 (영속화 체크)
+  useEffect(() => {
+    if (!hasDismissedDiscoveryIntro()) {
+      setIntroOpen(true);
+    }
+  }, []);
 
   // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때
   useEffect(() => {
@@ -205,6 +220,9 @@ const Step2_Discovery = ({
 
   return (
     <div className="space-y-4 animate-fade-up">
+      {/* 진입 사전 안내 모달 — 첫 진입 시만 */}
+      <DiscoveryIntroModal open={introOpen} onClose={() => setIntroOpen(false)} />
+
       {/* 헤더 — 가벼운 안내 */}
       <div className="panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
         <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -215,6 +233,12 @@ const Step2_Discovery = ({
           <span className="text-ink-400">
             단서·트리아주 누적으로 사고유형을 추정합니다
           </span>
+          <button
+            onClick={() => setIntroOpen(true)}
+            className="ml-auto text-[10.5px] text-brand-blue hover:underline"
+          >
+            ⓘ 사전 안내 다시 보기
+          </button>
         </div>
         <div className="text-ink-500 text-[10.5px]">
           TheHive·DFIR-IRIS·NIST 800-61r2 표준 흐름. 결정성 100% — 같은 답변 시퀀스는 같은 결과.
@@ -225,7 +249,20 @@ const Step2_Discovery = ({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
         {/* 좌측+중앙 묶음 (큰 영역) */}
         <div className="space-y-3 min-w-0">
-          {/* 중앙 — 결정 트리 질문 */}
+          {/* ① 단서 입력 */}
+          <Card
+            title={<>📌 단서 입력 (Observable)</>}
+            subtitle="DFIR-IRIS IOC + NIST 800-61r2 표 3-2 + Velociraptor artifact 기반 6종"
+          >
+            <CluesInput
+              observables={observables}
+              onAdd={addObservable}
+              onRemove={removeObservable}
+              disabled={loading}
+            />
+          </Card>
+
+          {/* ③ 결정 트리 질문 */}
           <Card
             title={<>📋 결정 트리 (KISA §2.4 + NIST 800-61r2 §3.2)</>}
             subtitle="질문 답변이 우측 가설 점수에 즉시 반영됩니다"
@@ -282,6 +319,28 @@ const Step2_Discovery = ({
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
             />
+
+            {/* 단서 누적 요약 */}
+            {observables.length > 0 && (
+              <div className="border-t border-ink-700/40 pt-3">
+                <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
+                  📌 단서 {observables.length}개
+                </div>
+                <ul className="space-y-0.5">
+                  {observables.slice(0, 5).map((o, i) => (
+                    <li key={i} className="text-[10.5px] text-ink-300 leading-5 truncate">
+                      <span className="text-ink-500">{o.type}</span> · {o.value}
+                    </li>
+                  ))}
+                  {observables.length > 5 && (
+                    <li className="text-[10.5px] text-ink-500">… 외 {observables.length - 5}개</li>
+                  )}
+                </ul>
+                <p className="text-[10px] text-ink-500 mt-1.5 leading-4">
+                  ※ 단서별 가설 점수 기여는 백엔드 /api/triage/analyze 가 구현되면 활성화됩니다.
+                </p>
+              </div>
+            )}
 
             {/* 트리 경로 요약 (간단) */}
             {completedPath.length > 0 && (

@@ -27,6 +27,7 @@ IncidentType = Literal[
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
     "MULTI_CSP_LATERAL",
+    "UNCLASSIFIED",  # dev3: V-1 Step 1 빈 케이스 기본값 (Step 2 Discovery 에서 확정)
 ]
 CSP = Literal["naver", "nhn", "all"]
 Severity = Literal["critical", "high", "medium", "low"]

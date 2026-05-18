@@ -28,6 +28,85 @@ export const postChat = async (req: ChatRequest): Promise<ChatResponse> => {
   return res.data.data;
 };
 
+/** POST /api/sherpa/chat/stream — 스트리밍 자연어 질의 (Phase 2.3).
+ *
+ *  ndjson 응답을 토큰 단위로 콜백에 전달:
+ *    {type:"start", sessionId, sources[]}     → onStart
+ *    {type:"delta", content}                   → onDelta (반복)
+ *    {type:"done"}                             → onDone
+ *
+ *  UX: 100초 대기 → 첫 토큰 ~5초 + 점진 표시. fetch + ReadableStream 사용. */
+export interface StreamChatHandlers {
+  onStart?: (sessionId: string, sources: ChatResponse['sources']) => void;
+  onDelta?: (delta: string) => void;
+  onDone?: () => void;
+  onError?: (err: Error) => void;
+}
+
+export async function streamChat(
+  req: ChatRequest,
+  handlers: StreamChatHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const baseURL = client.defaults.baseURL || '';
+  try {
+    const res = await fetch(`${baseURL}/api/sherpa/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(req),
+      signal,
+    });
+    if (!res.ok) {
+      throw new Error(`stream HTTP ${res.status}`);
+    }
+    if (!res.body) {
+      throw new Error('ReadableStream 미지원');
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        try {
+          const event = JSON.parse(line) as
+            | { type: 'start'; sessionId: string; sources: ChatResponse['sources'] }
+            | { type: 'delta'; content: string }
+            | { type: 'done' };
+          if (event.type === 'start') {
+            handlers.onStart?.(event.sessionId, event.sources);
+          } else if (event.type === 'delta') {
+            handlers.onDelta?.(event.content);
+          } else if (event.type === 'done') {
+            handlers.onDone?.();
+          }
+        } catch {
+          // ndjson 파싱 실패 라인은 무시
+        }
+      }
+    }
+    // 마지막 잔여 버퍼 처리
+    const tail = buffer.trim();
+    if (tail) {
+      try {
+        const event = JSON.parse(tail);
+        if (event.type === 'delta') handlers.onDelta?.(event.content);
+        if (event.type === 'done') handlers.onDone?.();
+      } catch {
+        // ignore
+      }
+    }
+  } catch (e) {
+    handlers.onError?.(e instanceof Error ? e : new Error(String(e)));
+  }
+}
+
 /** POST /api/sherpa/suggest — 두 노드 사이 빠진 고리 후보 추천 (후순위 깡통). */
 export const postSuggest = async (req: SuggestRequest): Promise<SuggestResponse> => {
   const res = await client.post('/api/sherpa/suggest', req);

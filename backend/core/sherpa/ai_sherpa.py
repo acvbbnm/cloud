@@ -143,6 +143,59 @@ class AISherpa:
             "sources": [_source_dict(c) for c in context_chunks],
         }
 
+    # ── chat (stream) — Phase 2.3 ────────────────────────────
+    @classmethod
+    def chat_stream(
+        cls,
+        case_id: Optional[str],
+        session_id: Optional[str],
+        query: str,
+        history: Optional[list[dict]] = None,
+    ):
+        """자연어 질의 스트리밍 — 토큰 단위 ndjson yield.
+
+        프로토콜 (ndjson — 각 라인이 JSON object):
+          1) {"type":"start","sessionId":"...","sources":[...]}   — 첫 라인
+          2) {"type":"delta","content":"..."}                       — 토큰 0..N건
+          3) {"type":"done"}                                        — 종료 마커
+
+        세션 정책은 chat() 과 동일. 모든 토큰이 끝난 후 ChatSession 에 누적 저장.
+        """
+        sess = ChatSession.get_or_create(session_id, case_id)
+        if history and not sess.messages:
+            for h in history:
+                role = h.get("role")
+                content = h.get("content")
+                if role in ("user", "assistant") and isinstance(content, str):
+                    ChatSession.append(sess.session_id, role, content)
+        ChatSession.append(sess.session_id, "user", query)
+
+        scored = RAGRetriever.retrieve(query, k=3)
+        context_chunks = [c for c, _ in scored]
+
+        # 첫 라인: 세션 ID + sources (출처는 RAG 단계에서 즉시 알 수 있음)
+        import json as _json
+        yield _json.dumps({
+            "type": "start",
+            "sessionId": sess.session_id,
+            "sources": [_source_dict(c) for c in context_chunks],
+        }, ensure_ascii=False) + "\n"
+
+        # 토큰 스트림
+        full_text_parts: list[str] = []
+        for delta in LLMEngine.generate_stream(prompt=query, context=context_chunks):
+            if not delta:
+                continue
+            full_text_parts.append(delta)
+            yield _json.dumps(
+                {"type": "delta", "content": delta},
+                ensure_ascii=False,
+            ) + "\n"
+
+        # 종료 마커 + ChatSession 누적 저장 (assistant 한 번에)
+        ChatSession.append(sess.session_id, "assistant", "".join(full_text_parts))
+        yield _json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
+
     # ── suggest (후순위 깡통) ──
     @classmethod
     def suggest_missing_link(

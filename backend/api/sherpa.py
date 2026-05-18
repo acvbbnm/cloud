@@ -9,6 +9,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -107,6 +108,38 @@ async def post_chat(req: ChatRequest, db: Session = Depends(get_db)) -> dict:
         history=history,
     )
     return {"status": "ok", "data": data}
+
+
+@router.post("/chat/stream")
+async def post_chat_stream(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
+    """자연어 질의 스트리밍 (Phase 2.3, 2026-05-18).
+
+    ndjson 응답 — 각 라인이 JSON object:
+      {"type":"start","sessionId":"...","sources":[...]}    첫 라인
+      {"type":"delta","content":"..."}                       토큰 0..N건
+      {"type":"done"}                                        종료
+
+    UX: 100초 대기 → 첫 토큰까지 ~5초 + 점진 표시. 사용자 체감 응답시간 1/3.
+    인증·case 검증은 동기 chat 과 동일.
+    """
+    if req.caseId:
+        case = IncidentCase.get_by_id(db, req.caseId)
+        if case is None:
+            raise _case_not_found()
+
+    history = [h.model_dump() for h in (req.history or [])]
+    gen = AISherpa.chat_stream(
+        case_id=req.caseId,
+        session_id=req.sessionId,
+        query=req.query,
+        history=history,
+    )
+    return StreamingResponse(
+        gen,
+        media_type="application/x-ndjson",
+        # 프록시·브라우저 버퍼링 방지
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/suggest")

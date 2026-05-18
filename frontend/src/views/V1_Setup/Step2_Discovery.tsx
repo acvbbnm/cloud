@@ -25,7 +25,10 @@ import DiscoveryIntroModal, {
 } from '@/components/DiscoveryIntroModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
+import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import TriageTreeMinimap from '@/components/TriageTreeMinimap';
+
+import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
@@ -34,10 +37,42 @@ import { nextTriage, startTriage } from '@/api/triage';
 import Step2_SystemConfig from './Step2_SystemConfig';
 
 import type {
+  HypothesisScores,
   IncidentType,
   TriageRecommendation,
   TriageTreeNode,
 } from '@/types';
+
+// 기법 ID 별 사고유형 가중치 — backend/data/triage/weights.json 의 technique_weights 발췌
+// 백엔드 /api/triage/analyze 가 구현되면 그것을 사용. mock fallback 용.
+const TECH_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
+  'T1078': { CREDENTIAL_THEFT: 15 },
+  'T1078.004': { CREDENTIAL_THEFT: 20 },
+  'T1098': { PRIVILEGE_ESCALATION: 20 },
+  'T1098.001': { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 15 },
+  'T1110': { CREDENTIAL_THEFT: 20 },
+  'T1530': { DATA_EXFILTRATION: 25 },
+  'T1531': { AUDIT_LOG_TAMPERING: 20 },
+  'T1562': { AUDIT_LOG_TAMPERING: 25 },
+  'T1562.008': { AUDIT_LOG_TAMPERING: 30 },
+  'T1567': { DATA_EXFILTRATION: 20 },
+  'T1485': { AUDIT_LOG_TAMPERING: 15, DATA_EXFILTRATION: 10 },
+};
+
+const applyTechniqueWeights = (
+  base: HypothesisScores,
+  techniques: string[],
+): HypothesisScores => {
+  const next: HypothesisScores = { ...base };
+  for (const t of techniques) {
+    const w = TECH_WEIGHTS[t];
+    if (!w) continue;
+    (Object.keys(w) as IncidentType[]).forEach((k) => {
+      next[k] = (next[k] ?? 0) + (w[k] ?? 0);
+    });
+  }
+  return next;
+};
 
 interface Step2DiscoveryProps {
   csp: string | null;
@@ -85,10 +120,12 @@ const Step2_Discovery = ({
     currentNodeId,
     completedPath,
     hypothesisScores,
+    mappedTechniques,
     recommendation,
     isTerminal,
     startTriage: storeStart,
     recordAnswer,
+    addMappedTechniques,
     setCurrentNode,
     setHypothesisScores,
     setRecommendation,
@@ -99,6 +136,8 @@ const Step2_Discovery = ({
   const [currentNode, setCurrentNodeData] = useState<TriageTreeNode | null>(null);
   const [loading, setLoading] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+  /** NextCluePanel 권장 단서 클릭 시 CluesInput 의 selectedType 동기화 (mount 시점 키) */
+  const [preferredClueType, setPreferredClueType] = useState<ClueType | null>(null);
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -254,12 +293,40 @@ const Step2_Discovery = ({
           {/* ① 단서 입력 */}
           <Card
             title={<>📌 단서 입력 (Observable)</>}
-            subtitle="DFIR-IRIS IOC + NIST 800-61r2 표 3-2 + Velociraptor artifact 기반 6종"
+            subtitle={
+              preferredClueType
+                ? `우측 권장 단서 — ${preferredClueType} 를 추가하세요`
+                : 'DFIR-IRIS IOC + NIST 800-61r2 표 3-2 + Velociraptor artifact 기반 6종'
+            }
           >
             <CluesInput
+              key={preferredClueType ?? 'default'}
               observables={observables}
-              onAdd={addObservable}
+              onAdd={(o) => {
+                addObservable(o);
+                setPreferredClueType(null); // 권장 단서 추가 후 힌트 제거
+              }}
               onRemove={removeObservable}
+              disabled={loading}
+            />
+          </Card>
+
+          {/* ② 부분 로그 분석 (선택) */}
+          <Card
+            title={<>📊 부분 로그 분석 (선택)</>}
+            subtitle="AWS Detective scope time + Microsoft Sentinel entity 표준 흐름"
+          >
+            <PartialLogAnalysis
+              mappedTechniques={mappedTechniques}
+              onAnalyzed={(techIds) => {
+                addMappedTechniques(techIds);
+                // mock 가중치 — 백엔드 /api/triage/analyze 응답이 있으면 그것을 우선
+                const next = applyTechniqueWeights(hypothesisScores, techIds);
+                setHypothesisScores(next);
+                showToast(
+                  `${techIds.length}개 기법 매핑 → 가설 점수 갱신 (mock)`,
+                );
+              }}
               disabled={loading}
             />
           </Card>
@@ -334,8 +401,16 @@ const Step2_Discovery = ({
               />
             </div>
 
-            {/* 다음 단서 제안 */}
-            <NextCluePanel scores={hypothesisScores} />
+            {/* 다음 단서 제안 — 클릭 시 좌측 CluesInput 활성 */}
+            <NextCluePanel
+              scores={hypothesisScores}
+              onPickClueType={(type) => {
+                setPreferredClueType(type);
+                showToast(`좌측 단서 입력에서 ${type} 를 추가해주세요`);
+                // 좌측 단서 입력 영역으로 자동 스크롤 — 컨테이너 미정의 시 무시
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
 
             {/* 단서 누적 요약 */}
             {observables.length > 0 && (

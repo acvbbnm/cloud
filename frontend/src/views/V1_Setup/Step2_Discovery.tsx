@@ -24,6 +24,8 @@ import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
+import NextCluePanel from '@/components/NextCluePanel';
+import TriageTreeMinimap from '@/components/TriageTreeMinimap';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
@@ -319,6 +321,21 @@ const Step2_Discovery = ({
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
             />
+
+            {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
+            <div>
+              <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
+                🌳 결정 트리 진행
+              </div>
+              <TriageTreeMinimap
+                currentNodeId={currentNodeId}
+                completedNodeIds={completedPath.map((p) => p.node_id)}
+                isTerminal={isTerminal}
+              />
+            </div>
+
+            {/* 다음 단서 제안 */}
+            <NextCluePanel scores={hypothesisScores} />
 
             {/* 단서 누적 요약 */}
             {observables.length > 0 && (

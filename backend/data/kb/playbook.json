@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "5 사고유형 × 2 청크 = 10 + NIST SP 800-61r2 6단계 IR 절차 5 청크 = 총 15 청크. KISA 침해사고 분석절차 안내서 + NIST IR Guide + ISO/IEC 27037 기반.",
+  "_note": "20 청크. 5 사고유형 × 2 + NIST IR 5 + KISA·ISO·NIST·멀티CSP 절차 5. KISA 침해사고 분석절차 안내서 + NIST SP 800-61r2/86 + ISO/IEC 27037 기반.",
   "kb_id": "KB-2",
   "kb_name": "PLAYBOOK",
   "chunks": [
@@ -165,6 +165,60 @@
       "source": "NIST SP 800-61 Rev. 2 + 개인정보보호법 §34 + KISA 신고 절차",
       "tactics_addressed": [
         "Post-Incident"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-KISA-001",
+      "incident_type": "ALL",
+      "title": "KISA 침해사고 분석절차 안내서 §4.1 — 초기 대응 7단계",
+      "text": "KISA 표준 절차 (제2010-8호 안내서): (1) 사고 인지 — 자체 모니터링·외부 신고·관계기관 통보, (2) 1차 보고 — 책임자에게 즉시 보고, (3) 초기 대응팀 구성 — 권한·역할·기록자 지정, (4) 영향 범위 1차 파악 — 어느 시스템·계정·데이터, (5) 봉쇄 — 추가 확산 차단, (6) 증거 보존 — 휘발성 우선, (7) 본격 분석 착수. 클라우드 환경에서는 (4)~(6)이 가장 빠르게 진행 가능 (API 즉시 적용). 본 시스템 V-1 v2 가이드 + V-2 로그 업로드가 (4)~(6)을 자동화.",
+      "source": "KISA 침해사고 분석절차 안내서 (제2010-8호) §4.1",
+      "tactics_addressed": [
+        "Detection",
+        "Containment"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-KISA-002",
+      "incident_type": "ALL",
+      "title": "KISA §2.4 — 초기 대응 점검표 6항목 (클라우드 환경 매핑)",
+      "text": "KISA 안내서의 초기 대응 점검표 6항목 — 클라우드 환경에 매핑: (1) 사건 일시 → V-1 Step2 의 사고 인지 일시 + 케이스 occurred_at, (2) 사건 유형 → V-1 Step1 사고유형 5종, (3) 영향 시스템 → V-1 Step2 의 services·vpc_id·scope, (4) 영향 데이터 → V-1 Step2 의 data_sensitivity, (5) 네트워크 연결 지점 → V-1 1.5.1(인증 기록)·1.8(네트워크) 카테고리 자동 적용, (6) 외부 IP·계정 → V-2 로그 업로드 후 1.5.1·1.5.4 자동 식별. 본 시스템 V-1 입력 자체가 KISA 점검표를 정확히 충족.",
+      "source": "KISA 침해사고 분석절차 안내서 §2.4",
+      "tactics_addressed": [
+        "Detection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-ISO-27037-001",
+      "incident_type": "ALL",
+      "title": "ISO/IEC 27037:2012 — 디지털 증거 처리 4단계",
+      "text": "디지털 증거 처리 국제 표준 (ISO 27037): (1) 식별(Identification) — 어느 시스템·로그가 증거인지 결정, (2) 수집(Collection) — 원본을 안전한 위치로 이동, (3) 획득(Acquisition) — 비트 단위 사본 또는 논리적 export 생성, (4) 보존(Preservation) — 무결성 유지 (SHA-256 해시·WORM 스토리지). 클라우드 환경에서 (3)이 가장 까다로움 — CSP 가 비트 단위 사본을 허용하지 않음. 대안: 감사 로그 export + 메타 데이터 별도 보존. 본 시스템 V-2 로그 업로드 시 SHA-256 자동 계산이 (3)·(4) 충족.",
+      "source": "ISO/IEC 27037:2012 §6 + KISA 안내서 §3",
+      "tactics_addressed": [
+        "Collection",
+        "Preservation"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-86-001",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-86 §3.1 — 휘발성 계층 (Order of Volatility)",
+      "text": "디지털 증거 수집 우선순위 — 휘발성 높은 것부터: (P10) CPU 캐시·레지스터, (P9) Network connections·ARP cache, (P8) RAM·실행 중 프로세스, (P7) 디스크 임시 파일·스왑, (P6) 시스템 시간·라우팅 테이블, (P5) 영구 파일 시스템, (P4) 백업·아카이브, (P3) 원격 로그·오프사이트. 클라우드 환경에서는 P9(네트워크 연결) ≈ IAM 인증 세션·API 호출 흔적 (Activity Tracer/CloudTrail) → 즉시 수집 필수. 본 시스템 V-1 v2 가이드의 volatility_priority 가 이 계층을 그대로 사용.",
+      "source": "NIST SP 800-86 §3.1",
+      "tactics_addressed": [
+        "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-MULTICSP-003",
+      "incident_type": "MULTI_CSP_LATERAL",
+      "title": "멀티 CSP 환경 침해 대응 — Cross-CSP 상관관계 분석 절차",
+      "text": "양쪽 CSP(NCP+NHN) 동시 운영 환경의 침해 분석 7단계: (1) 두 CSP 감사 로그 동시 export → 시간 동기화 확인 (NTP 오차 측정), (2) OCSF 정규화 후 src_endpoint.ip 기준 join → 동일 IP 양쪽 활동 식별, (3) 동일 username·email 양쪽 동시 로그인 시각 차 측정 (5분 이내 = 강한 자격증명 공유 신호), (4) JWT iss/aud·MFA seed 등 토큰 지문 비교, (5) 한쪽 CSP 봉쇄 시 다른 쪽도 동시 봉쇄 — IdP 침해 가능성 대비, (6) 양쪽 보안 정책 동기화 (MFA·SSO 양쪽 동일 강제), (7) 신고 시 양쪽 활동 통합 보고서. 본 시스템 V-1 v2 가이드의 multi_cloud=='있음' modifier(m-010) 가 직접 트리거.",
+      "source": "본 시스템 합성 분석 + CSA Top Threats 2024 #11 APT",
+      "tactics_addressed": [
+        "Lateral Movement",
+        "Detection",
+        "Collection"
       ]
     }
   ]

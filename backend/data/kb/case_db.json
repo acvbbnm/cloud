@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "내부 시뮬레이션 + 합성 5건 + 사고유형별 6건 + 공개 침해 3건(국제) + 공개 침해 4건(국내·트렌드) + 종합 분석 1건 = 총 20 청크.",
+  "_note": "25 청크. 내부 시뮬레이션 7 + 합성 2 + 사고유형별 6 + 공개 침해 10건 (국제 6 + 국내 4 + 종합 1). CSA Top Threats + Mandiant + KISA·금융보안원 인용.",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json",
     "raw: C:/Users/sasum/nhn_activity_logs.json",
@@ -711,6 +711,92 @@
       ],
       "lessons_learned": "본 시스템 5 사고유형 분류가 글로벌 침해 패턴 TOP 3 와 정합. CSA Top Threats 2024 의 #2 IAM(자격증명) + #7 Disclosure(설정) + #11 APT(공급망) 3 항목이 본 시스템 사고유형으로 100% 커버됨. 시스템 학술 변호의 핵심 근거 — 외부 통계 데이터로 사고유형 분류 정당성 입증.",
       "source": "CSA Top Threats 2024 + Mandiant M-Trends 2024 + Verizon DBIR 2024 + IBM Cost of Data Breach 2024"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-MS-STORM-0558",
+      "incident_type": "MULTI_CSP_LATERAL",
+      "csp": "azure",
+      "title": "공개 사례 — Microsoft Storm-0558 (2023): Azure AD MSA 키 탈취",
+      "actor": "Storm-0558 (중국 후원 위협 그룹 추정)",
+      "external_ip": "(다수, 분산)",
+      "time_window": "2023-05 ~ 2023-07 (Microsoft 발견 및 무효화)",
+      "evidence": [
+        "MSA(consumer) 서명 키 탈취 → MSA + AAD 양쪽 토큰 위조 가능",
+        "이메일 등 약 25개 조직 표적 (미국 국무부 포함)",
+        "T1550 (Use Alternate Authentication Material) + T1078 (Valid Accounts)",
+        "키 자체가 production 시스템에 노출됐던 dump 에서 추출 추정",
+        "발견 시 약 2개월 잠복 — Microsoft 가 사후 조사로 발견"
+      ],
+      "lessons_learned": "키·인증서 자체의 탈취는 본 시스템의 1.5.5(API 액세스)·1.5.7(위험 기반 검색)·1.7(메타 로그) 카테고리 모두에 해당. SSO·IdP 의 마스터 키 = 본 시스템 PLAYBOOK-MULTICSP-001 의 최우선 봉쇄 대상. 발견 자체가 어려워 외부 위협 인텔리전스 + 정기 키 회전이 유일 방어.",
+      "source": "Microsoft Threat Intelligence 공식 발표 2023-07-11 + CISA Alert AA23-193A"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-MOVEIT-2023",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(파일 전송 SaaS)",
+      "title": "공개 사례 — MOVEit Transfer 2023: Cl0p 랜섬웨어 그룹 zero-day 악용",
+      "actor": "Cl0p (러시아 후원 추정)",
+      "time_window": "2023-05 (zero-day) ~ 2023-08 (1000개 이상 조직 피해)",
+      "evidence": [
+        "Progress Software MOVEit Transfer SQL Injection zero-day (CVE-2023-34362)",
+        "T1190 (Exploit Public-Facing Application) → T1530 (Data from Cloud Storage)",
+        "약 2300개 조직·6200만 명 개인정보 유출 추정",
+        "공급망 공격 — 한 SaaS 취약점으로 다수 조직 영향",
+        "발견 후 패치 + Cl0p 가 다크웹에서 데이터 단계적 공개"
+      ],
+      "lessons_learned": "공급망(third-party SaaS) 취약점이 본 시스템의 MULTI_CSP_LATERAL 사고유형 + 1.4(데이터 유출) 카테고리와 직접 연결. 외부 SaaS 도 본 시스템의 모니터링 대상에 포함해야 함을 시사 — 향후 확장 영역. KB에 SaaS 침해 절차 별도 추가 필요.",
+      "source": "Progress Software 공식 발표 + CISA Alert AA23-158A + Mandiant 분석"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LAZARUS-CLOUD",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "(클라우드 전반)",
+      "title": "공개 사례 — Lazarus Group (북한) 2024: 클라우드 표적 동향",
+      "actor": "Lazarus Group (북한 정찰총국 후원)",
+      "time_window": "2023~2024 (지속)",
+      "evidence": [
+        "AWS/Azure 환경 표적 — 가상자산 거래소·국방 협력사 다수",
+        "T1078.004 (Valid Accounts: Cloud) + T1098 (Account Manipulation) + T1530 (Data from Cloud Storage)",
+        "초기 침투: 공급망(라이브러리·툴체인) + 소셜 엔지니어링 (LinkedIn 가짜 채용)",
+        "최종 목표: 가상자산 탈취 (지갑 키·KYC 데이터)",
+        "한국 표적 빈도 가장 높음 — KISA 보안권고문 정기 발행"
+      ],
+      "lessons_learned": "국가 후원 APT 의 클라우드 표적은 본 시스템의 CREDENTIAL_THEFT → PRIVILEGE_ESCALATION → DATA_EXFILTRATION 풀 Kill Chain 정확 일치. 한국 환경에서는 NCP·NHN 도 표적 가능 — 정기 KISA 보안권고문 모니터링 + 위협 인텔리전스 자동 반영 인프라가 향후 필요. 본 시스템 CASE_DB 에 APT 그룹 별 패턴 청크 더 보강 권장.",
+      "source": "KISA 보안권고문 다수 + Mandiant APT38·43 보고서 + 금융보안원 정기 분석"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-KOREA-FINANCE-2024",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(국내 금융)",
+      "title": "공개 사례 — 국내 금융권 클라우드 침해 트렌드 2024",
+      "actor": "(다수 — 일부는 Lazarus 추정)",
+      "time_window": "2023~2024 (집계)",
+      "evidence": [
+        "금융보안원 2024 보고서: 클라우드 환경 침해 시도 전년 대비 +37%",
+        "주요 vector: (1) 협력사 IAM 자격증명 탈취 (42%), (2) 컨테이너 미설정 (18%), (3) Public Storage (11%)",
+        "감독 규정(전자금융감독규정) 강화 — 2024-01 시행: 클라우드 핵심 정보 처리 시 별도 신고",
+        "사고 시 신고 의무 — 24시간 내 금융위·금감원 + 72시간 내 정보주체",
+        "본 시스템과 직접 매핑: CREDENTIAL_THEFT(42%) + PRIVILEGE_ESCALATION(18%) + DATA_EXFILTRATION(11%)"
+      ],
+      "lessons_learned": "국내 금융권은 KISA 안내서 + 전금감 + 개보법 3중 규제. 본 시스템 V-7 보고서 자동 생성이 신고 의무(24h/72h) 충족 시간 단축에 직접 기여. 향후 금융 특화 사고유형 분기 또는 보고서 템플릿 추가 검토.",
+      "source": "금융보안원 2024 클라우드 위협 동향 보고서 + 전자금융감독규정 2024-01 개정"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-KOREA-PUBLIC-2023",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "(국내 공공)",
+      "title": "공개 사례 — 행정안전부 2023 공공기관 사이버 침해 통계",
+      "actor": "(다수)",
+      "time_window": "2023 (연간 집계)",
+      "evidence": [
+        "행안부 2023 보고: 공공기관 클라우드 침해 시도 1만 건+ — 전년 대비 +28%",
+        "주요 vector: (1) 자격증명 노출 (35%), (2) 패치 미적용 (22%), (3) 잘못된 설정 (15%)",
+        "공공기관 G-Cloud(국가정보자원관리원) 의무 사용 — NCP·NHN 등 민간 클라우드도 일부 활용",
+        "전자정부법 + 정보통신망법 + 개보법 다중 규제 — 사고 시 행안부 + KISA 동시 신고",
+        "본 시스템 직접 매핑: CREDENTIAL_THEFT(35%) + 1.5.x 카테고리 + AUDIT_LOG_TAMPERING(흔적 제거 동반)"
+      ],
+      "lessons_learned": "공공기관은 G-Cloud 중심이라 본 시스템 NCP/NHN 매핑이 100% 적용되진 않음. 단 G-Cloud 자체도 OCSF 호환 가능하므로 향후 확장 시 매핑 룰만 추가하면 됨. 학술 변호 측면: 국가기관 통계로 본 시스템 5 사고유형 분류 정당성 추가 입증.",
+      "source": "행정안전부·KISA 2023 사이버 침해 연간 보고서"
     }
   ]
 }

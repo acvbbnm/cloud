@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "NCP/NHN 핵심 서비스(IAM·Object Storage·VPC·CloudTrail) 공식 가이드 12 청크. NCP guide.ncloud-docs.com + NHN docs.nhncloud.com 인용.",
+  "_note": "NCP/NHN 핵심 서비스 18 청크. IAM·Object Storage·VPC·CloudTrail·KMS·모니터링. NCP guide.ncloud-docs.com + NHN docs.nhncloud.com 인용.",
   "kb_id": "KB-3",
   "kb_name": "CSP_DOC",
   "chunks": [
@@ -111,6 +111,60 @@
       "text": "CloudTrail은 외부 Object Storage로 자동 export 시 변조 감지 기능을 제공한다. 각 로그 파일은 SHA-256 해시가 별도 저장되며, 외부 사본의 해시가 원본과 일치하지 않으면 콘솔 알림이 발생한다. 이 기능은 감사 로그 변조(AUDIT_LOG_TAMPERING) 사고의 핵심 방어선이며, 메타 로그 자체가 변조됐을 때 외부 사본을 신뢰 사본으로 활용 가능. 3회 이상 export 실패 시 인증 정보가 자동 비활성화되어 import 채널 차단.",
       "source": "NHN Cloud 공식 가이드",
       "url": "https://docs.nhncloud.com/ko/Governance%20%26%20Audit/CloudTrail/ko/console-guide/"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-IAM-002",
+      "csp": "naver",
+      "service": "Sub Account · AccessKey",
+      "title": "NCP AccessKey 운영 정책 — 회전·MFA·만료",
+      "text": "Sub Account 의 AccessKey 는 계정당 최대 2개 발급 가능 (Active/Inactive). 권장 정책: (1) 90일마다 회전 — 신규 키 발급 → 이중 운영 → 구 키 비활성 → 7일 후 삭제. (2) MFA 활성 사용자만 AccessKey 생성 가능하도록 IAM 정책 분기. (3) 만료된 키는 자동 비활성. Activity Tracer action='Create AccessKey'/'Disable AccessKey'/'Remove AccessKey' 로 추적. Console Login 과 별개 채널이므로 API 자동화 + Console 모두 모니터링 필요.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/subaccount-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-KMS-001",
+      "csp": "naver",
+      "service": "Key Management Service (KMS)",
+      "title": "NCP KMS — 마스터 키 관리 + 자동 회전",
+      "text": "NCP Key Management Service 는 데이터 암호화에 사용되는 마스터 키(CMK)를 관리. 키별 자동 회전 주기 설정 가능 (90/180/365일). Activity Tracer 에서 추적되는 핵심 액션: CreateKey, DisableKey, ScheduleKeyDeletion, Encrypt, Decrypt. 침해 사고 시 (1) ScheduleKeyDeletion 호출 흔적 = 데이터 파괴 의도 (T1485), (2) 비정상 Decrypt burst = 데이터 유출 단서 (T1530). KMS 자체 접근 로그는 별도로 90일 보존.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/kms-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-MON-001",
+      "csp": "naver",
+      "service": "Cloud Insight",
+      "title": "NCP Cloud Insight — 메트릭 + 알람 채널",
+      "text": "Cloud Insight 는 NCP 자원의 메트릭·로그 수집 + 알람 설정 도구. 침해 대응 측면 활용: (1) IAM Login 실패 횟수 임계값(5분당 10회 이상) 알람, (2) Object Storage GetObject 시간당 GB 임계값, (3) VPC ACG 규칙 변경 즉시 알림. 알람 채널은 Email/SMS/Webhook. 본 시스템 V-1 v2 가이드의 1.5.7(위험 기반 검색) 카테고리가 Cloud Insight 알람 이력과 연결 — Enterprise 플랜에서 자동 위협 탐지 모듈 추가 활성화 가능.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/clinsight-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-IAM-002",
+      "csp": "nhn",
+      "service": "IAM Role · Group",
+      "title": "NHN Cloud IAM 역할(Role) + 그룹 매트릭스",
+      "text": "NHN IAM 의 역할은 사전 정의(Admin/User/Viewer) + 사용자 정의 가능. 그룹(Role Group)으로 권한을 묶어서 멤버에게 일괄 부여. 핵심 이벤트: event_id.role_group.create/update/delete + event_id.iam.member.role.update. 침해 시그널: (1) 일반 멤버가 자기 자신을 Admin 역할로 update → 자기상승, (2) 새 Role Group 생성 + 즉시 다수 멤버 부여 = 횡적 권한 확대. Organization → Project 계층이라 Project 단위 분리 운영이 봉쇄 시 유리.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Identity%20and%20Access%20Management/IAM/ko/console-guide/"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-KMS-001",
+      "csp": "nhn",
+      "service": "Key Management Service (Secure Key Manager)",
+      "title": "NHN Secure Key Manager — 키·시크릿 통합 관리",
+      "text": "NHN Cloud 의 Secure Key Manager 는 마스터 키 + 시크릿 + 인증서를 통합 관리. 이벤트: event_id.skm.key.create/use/delete, event_id.skm.secret.fetch. 침해 단서: 평소 사용 안 하는 사용자의 다수 secret.fetch (T1555 Credentials from Password Stores), 키 사용량 비정상 burst. KMS API 호출은 CloudTrail 외 별도 SKM access log 로도 기록 — 사고 분석 시 두 로그 cross-check 필수.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Security/Secure%20Key%20Manager/ko/overview/"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-MON-001",
+      "csp": "nhn",
+      "service": "Security Monitoring",
+      "title": "NHN Cloud Security Monitoring — 자체 위협 탐지",
+      "text": "NHN Cloud 의 Security Monitoring 부가 서비스 — 자체 위협 인텔리전스 기반 자동 탐지. 탐지 이벤트: event_id.security_monitoring.alert.* (이상 로그인, 비정상 API 호출, 알려진 악성 IP 접근). 본 시스템 V-1 v2 가이드 1.5.7(위험 기반 검색) 의 NHN 측 데이터 소스. NCP Cloud Insight 와 마찬가지로 부가 서비스 활성화 필요. 활성화 안 된 환경에서는 V-1 가이드의 modifier 가 1.5.7 priority -1 권고.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Security/Security%20Monitoring/ko/overview/"
     }
   ]
 }

@@ -86,8 +86,28 @@ class AISherpa:
         if len(primary_text) > 400:
             primary_text = primary_text[:397] + "…"
 
+        # 기법명 결정 우선순위 (Phase 2.4):
+        #   1) ATTACK KB 청크 중 technique_id 정확 매칭한 청크의 title
+        #   2) attack_rules.json 의 룰 description (rule_id 매칭)
+        #   3) attack_row.technique_id (raw)
+        technique_name = attack_row.technique_id  # fallback
+        exact_chunk = next(
+            (c for c in ctx_chunks if c.meta.get("technique_id") == attack_row.technique_id),
+            None,
+        )
+        if exact_chunk:
+            technique_name = exact_chunk.title
+        else:
+            from core.analysis.attack_mapper import get_rule_technique_name
+
+            rule_desc = get_rule_technique_name(attack_row.rule_id)
+            if rule_desc:
+                technique_name = rule_desc
+            elif primary:
+                technique_name = primary.title
+
         briefing = (
-            f"매핑된 기법: **{attack_row.technique_id}** ({attack_row.tactic}). "
+            f"매핑된 기법: **{attack_row.technique_id}** {technique_name} ({attack_row.tactic}). "
             f"룰 {attack_row.rule_id}.\n\n"
             f"{primary_text}\n\n"
             f"※ 본 브리핑은 결정론적 KB 검색 결과입니다. 출처 {len(sources)}건 첨부."
@@ -95,7 +115,7 @@ class AISherpa:
 
         return {
             "technique_id": attack_row.technique_id,
-            "technique_name": primary.title if primary else attack_row.technique_id,
+            "technique_name": technique_name,
             "tactic": attack_row.tactic,
             "briefing": briefing,
             "sources": sources,

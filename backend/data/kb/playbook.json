@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "5 사고유형 × 2 청크 (즉시 대응 + 증거 보존) = 10 청크 운영급. KISA 침해사고 분석절차 안내서 3·4 + NIST SP 800-61r2 + ISO/IEC 27037 6.5·6.6 기반.",
+  "_note": "5 사고유형 × 2 청크 = 10 + NIST SP 800-61r2 6단계 IR 절차 5 청크 = 총 15 청크. KISA 침해사고 분석절차 안내서 + NIST IR Guide + ISO/IEC 27037 기반.",
   "kb_id": "KB-2",
   "kb_name": "PLAYBOOK",
   "chunks": [
@@ -113,6 +113,58 @@
       "tactics_addressed": [
         "Lateral Movement",
         "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-IR-001",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-61r2 — Phase 1: 준비 (Preparation)",
+      "text": "침해사고 대응 6단계의 1단계. 사고 발생 이전에 갖춰야 할 능력 — 대응팀(CSIRT) 구성, 연락 체계, 도구·교육·훈련. 클라우드 환경에서는 CSP 별 감사 로그 활성화 상태 사전 점검(NCP Activity Tracer, NHN Cloud Trail), Object Storage 외부 export 채널 사전 검증, IAM 멤버 역할 매트릭스 문서화가 핵심. 본 시스템의 V-1 Step2 보안 정책 입력 자체가 준비 단계의 일부.",
+      "source": "NIST SP 800-61 Rev. 2 (Computer Security Incident Handling Guide)",
+      "tactics_addressed": [
+        "Preparation"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-IR-002",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-61r2 — Phase 2: 탐지 + 분석 (Detection & Analysis)",
+      "text": "사고 발생을 인지하고 영향 범위를 평가하는 단계. 클라우드 환경에서는 (1) 감사 로그 수집/정규화(OCSF) (2) ATT&CK Cloud Matrix 기법 매핑 (3) 영향받은 자원/계정/IP 식별이 3대 작업. 본 시스템의 L1~L4 가 이 단계를 직접 자동화. 핵심 의사 결정: '진짜 침해 vs 정상 활동' 분기 → KISA 안내서 §2.4 초기 대응 점검표 6항목으로 검증.",
+      "source": "NIST SP 800-61 Rev. 2 + KISA 침해사고 분석절차 안내서 (제2010-8호)",
+      "tactics_addressed": [
+        "Detection",
+        "Analysis"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-IR-003",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-61r2 — Phase 3: 봉쇄 (Containment)",
+      "text": "공격자가 추가 자원에 접근하지 못하도록 즉시 격리. 클라우드 환경의 5가지 봉쇄 방법: (1) 의심 IAM AccessKey 비활성(Disable), (2) Security Group/ACG 인바운드 규칙에서 침해 IP 차단, (3) 영향받은 VPC/서브넷 격리, (4) Pre-signed URL 일괄 폐기, (5) MFA 강제 활성화. 단계 선택은 영향 범위와 비즈니스 영향 트레이드오프. 단기 봉쇄 후 증거 보존을 위한 장기 봉쇄로 전환.",
+      "source": "NIST SP 800-61 Rev. 2",
+      "tactics_addressed": [
+        "Containment"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-IR-004",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-61r2 — Phase 4: 제거 + 복구 (Eradication & Recovery)",
+      "text": "공격자의 영속 채널·백도어 제거 후 정상 운영 복원. 클라우드 환경 제거 절차: (1) 비인가 IAM 계정·AccessKey 삭제, (2) 변조된 정책 롤백(이전 버전 IAM Policy), (3) 침투 vector 차단(취약 인스턴스 패치/교체), (4) 침해된 비밀번호 강제 회전, (5) 변조된 데이터 백업에서 복원. 복구 후 24~72h 강화 모니터링 — 같은 공격자의 재침투 탐지.",
+      "source": "NIST SP 800-61 Rev. 2",
+      "tactics_addressed": [
+        "Eradication",
+        "Recovery"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-NIST-IR-005",
+      "incident_type": "ALL",
+      "title": "NIST SP 800-61r2 — Phase 5+6: 사후 활동 + 보고 (Post-Incident Activity)",
+      "text": "사고 종결 후 학습·문서화·법적 보고. 산출물: (1) 사고 분석 보고서 (KISA 양식), (2) Lessons Learned 회의록, (3) 보안 정책·기술 통제 개선안, (4) 관계 기관 신고서 (개인정보위·KISA·금융보안원 등 도메인별). 본 시스템의 V-7 보고서 자동 생성 + DOCX/PDF export 가 이 단계를 직접 지원. 신고 의무: 개인정보 유출 시 72시간 내 정보주체 통지 (개인정보보호법 §34).",
+      "source": "NIST SP 800-61 Rev. 2 + 개인정보보호법 §34 + KISA 신고 절차",
+      "tactics_addressed": [
+        "Post-Incident"
       ]
     }
   ]

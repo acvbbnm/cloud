@@ -1,14 +1,16 @@
+import type { IncidentType } from '@/types';
+
 import { TYPE_META, CSP_META } from './meta';
 
 interface Step1Props {
-  selected: string | null;
+  selected: IncidentType | null;
   csp: string | null;
-  onSelect: (type: string) => void;
+  onSelect: (type: IncidentType) => void;
   onPrev: () => void;
   onNext: () => void;
 }
 
-const orderedTypes = [
+const orderedTypes: IncidentType[] = [
   'CREDENTIAL_THEFT',
   'PRIVILEGE_ESCALATION',
   'DATA_EXFILTRATION',

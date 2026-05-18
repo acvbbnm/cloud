@@ -4,7 +4,7 @@
 - POST   /api/cases
 - GET    /api/cases/{case_id}
 - PATCH  /api/cases/{case_id}
-- GET    /api/guide?caseId=
+- GET    /api/guide/v2?caseId=    (v1 폐기 — dev2 채택 결정 2026-05-18)
 """
 from datetime import datetime
 from typing import Literal, Optional
@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core.intake.collection_guide import CollectionGuide
 from core.intake.collection_guide_v2 import CollectionGuideV2
 from core.intake.incident_case import IncidentCase
 from db.models import IncidentCaseModel
@@ -123,32 +122,21 @@ async def update_case(
     return {"status": "ok", "data": _serialize_case(case)}
 
 
-@router.get("/guide")
-async def get_guide(
-    caseId: str = Query(..., description="케이스 UUID"),
-    db: Session = Depends(get_db),
-) -> dict:
-    """수집 체크리스트를 생성한다. caseId의 incident_type·csp에 매칭되는 targets 반환."""
-    guide = CollectionGuide.generate(db, caseId)
-    if guide is None:
-        raise _case_not_found()
-    return {"status": "ok", "data": guide}
-
-
 @router.get("/guide/v2")
 async def get_guide_v2(
     caseId: str = Query(..., description="케이스 UUID"),
     db: Session = Depends(get_db),
 ) -> dict:
-    """v2 수집 체크리스트 — 외부 표준 6종 기반 Kill Chain 매트릭스 (dev2 청사진).
+    """수집 체크리스트 — 외부 표준 6종 기반 Kill Chain 매트릭스 (dev2 채택, 2026-05-18).
 
-    기존 `/api/guide` 와 병행 동작. 사고유형 → MITRE Kill Chain 단계 매핑 →
-    Google Cloud 1.x 카테고리 시드 매칭 → `system_config` 환경 보정 적용 →
-    NIST/KISA 휘발성 우선순위 정렬 → phase 별 그룹화.
+    사고유형 → MITRE Kill Chain 단계 매핑 → Google Cloud 1.x 카테고리 시드 매칭 →
+    `system_config` 환경 보정 적용 → NIST/KISA 휘발성 우선순위 정렬 → phase 별 그룹화.
 
-    응답 형식 (청사진  5):
+    응답 형식:
       { caseId, completionRate, phases: {[phase]: {targets, ...}},
-        applied_modifiers, source_standards, version: "v2" }
+        applied_modifiers, environment_warnings, source_standards, version: "v2" }
+
+    v1 `/api/guide` 는 2026-05-18 회의 결정에 따라 폐기됨.
     """
     guide = CollectionGuideV2.generate(db, caseId)
     if guide is None:

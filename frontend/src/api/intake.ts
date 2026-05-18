@@ -3,7 +3,6 @@ import client from './client';
 import type {
   CreateCaseReq,
   CaseResponse,
-  GuideResponse,
   GuideV2Response,
 } from '@/types';
 
@@ -33,20 +32,8 @@ export const getCase = async (caseId: string): Promise<CaseResponse> => {
   return res.data.data;
 };
 
-export const getGuide = async (caseId: string): Promise<GuideResponse> => {
-  if (USE_MOCK) {
-    return {
-      caseId,
-      completionRate: 0,
-      targets: [],
-    };
-  }
-  const res = await client.get('/api/guide', { params: { caseId } });
-  return res.data.data;
-};
-
-/** GET /api/guide/v2 — dev2 청사진의 외부 표준 6종 기반 Kill Chain 매트릭스 가이드.
- *  기존 getGuide() 와 병행. V1 화면에서 v1/v2 토글로 두 응답 비교 가능. */
+/** GET /api/guide/v2 — 외부 표준 6종 기반 Kill Chain 매트릭스 가이드 (dev2 채택).
+ *  v1 getGuide() 는 2026-05-18 회의 결정에 따라 폐기됨. */
 export const getGuideV2 = async (caseId: string): Promise<GuideV2Response> => {
   const res = await client.get('/api/guide/v2', { params: { caseId } });
   return res.data.data;

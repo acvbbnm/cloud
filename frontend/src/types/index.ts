@@ -37,20 +37,8 @@ export interface CaseResponse {
   closed_at: string | null;
 }
 
-export interface CollectionTargetItem {
-  target_id: string;
-  log_type: string;
-  evidence_role: EvidenceRole;
-  priority: number;
-  description: string;
-  collected: boolean;
-}
-
-export interface GuideResponse {
-  caseId: string;
-  completionRate: number;
-  targets: CollectionTargetItem[];
-}
+// v1 CollectionTargetItem · GuideResponse 는 2026-05-18 회의 결정으로 제거.
+// V2 가이드(GuideV2Target / GuideV2Response) 가 유일한 가이드 타입.
 
 // Layer 1 — 백엔드 응답 형식과 일치 (camelCase, 2026-05-14 이근형 작업 기준)
 export interface RawEventItem {

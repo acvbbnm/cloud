@@ -11,7 +11,7 @@ import { createCase } from '@/api/intake';
 import type { IncidentType, CSP, Severity } from '@/types';
 
 import Step0_CSPCards from './Step0_CSPCards';
-import Step1_TypeCards from './Step1_TypeCards';
+import Step1_CaseMetadata from './Step1_CaseMetadata';
 import Step2_SystemConfig from './Step2_SystemConfig';
 import Step3_GuideChecklist_V2 from './Step3_GuideChecklist_V2';
 
@@ -19,16 +19,19 @@ import Step3_GuideChecklist_V2 from './Step3_GuideChecklist_V2';
 
 const stepLabels = [
   { code: 'M0-0', title: '분석 환경 선택' },
-  { code: 'M0-1', title: '사고 유형' },
+  // dev3: 사고유형 5장 카드 폐기 — 케이스 메타 (Title/시각/Severity/TLP) 입력
+  { code: 'M0-1', title: '케이스 메타' },
   { code: 'M0-2', title: '시스템 구성' },
   { code: 'M0-3', title: '초동 수집 가이드' },
 ];
 
 const V1Setup = () => {
   const navigate = useNavigate();
-  const { csp, incidentType, setCsp, setIncidentType, setSeverity, setCaseId } = useCaseStore();
+  const { csp, incidentType, setCsp, setSeverity, setCaseId } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
   const [step, setStep] = useState(0);
+  // dev3: Step 1 에서 발생 시각 입력 → Step 2 createCase 까지 전달용
+  const [occurredAtFromStep1, setOccurredAtFromStep1] = useState<string | null>(null);
 
   const current = stepLabels[step];
 
@@ -115,12 +118,12 @@ const V1Setup = () => {
           />
         )}
         {step === 1 && (
-          <Step1_TypeCards
-            selected={incidentType}
-            csp={csp}
-            onSelect={setIncidentType}
+          <Step1_CaseMetadata
             onPrev={() => setStep(0)}
-            onNext={() => setStep(2)}
+            onNext={(occurredAt) => {
+              setOccurredAtFromStep1(occurredAt);
+              setStep(2);
+            }}
           />
         )}
         {step === 2 && (
@@ -129,17 +132,22 @@ const V1Setup = () => {
             incidentType={incidentType}
             onPrev={() => setStep(1)}
             onSubmit={(config) => {
-              if (!csp || !incidentType) {
-                showToast('CSP·사고유형 누락. 이전 단계로 돌아가세요.');
+              if (!csp) {
+                showToast('CSP 누락. Step 0 으로 돌아가세요.');
                 return;
               }
               setSeverity(config.severity);
+              // dev3: occurred_at 우선순위 — Step 1 입력 > Step 2 폼 입력 > 현재 시각
               const occurredIso = (() => {
-                const d = new Date(config.occurred_at);
+                const raw = occurredAtFromStep1 ?? config.occurred_at;
+                const d = new Date(raw);
                 return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
               })();
+              // dev3: 사고유형은 UNCLASSIFIED 로 시작 — Step 2 Discovery Loop 에서 확정
+              const effectiveIncidentType: IncidentType =
+                (incidentType as IncidentType | null) ?? 'UNCLASSIFIED';
               createCaseMutation.mutate({
-                incident_type: incidentType as IncidentType,
+                incident_type: effectiveIncidentType,
                 csp: csp as CSP,
                 severity: config.severity as Severity,
                 occurred_at: occurredIso,

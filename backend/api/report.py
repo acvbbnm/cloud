@@ -5,7 +5,7 @@
 - POST   /api/report                       — 보고서 초안 생성 (없으면 자동, 있으면 기존 반환)
 - GET    /api/report/{case_id}             — 보고서 조회
 - PATCH  /api/report/{case_id}             — 섹션 부분 갱신 + 상태 변경
-- GET    /api/report/{case_id}/export?format=docx — DOCX 다운로드
+- GET    /api/report/{case_id}/export?format=docx|pdf — 산출물 다운로드
 """
 from typing import Literal, Optional
 
@@ -152,7 +152,7 @@ async def export_report(
     format: Literal["docx", "pdf"] = Query("docx"),
     db: Session = Depends(get_db),
 ) -> FileResponse:
-    """보고서 산출물 다운로드. 현재 docx 만 지원, pdf 는 501."""
+    """보고서 산출물 다운로드. docx + pdf 양쪽 지원 (Phase 2.1 — 2026-05-18)."""
     if IncidentCase.get_by_id(db, case_id) is None:
         raise _case_not_found()
 
@@ -161,16 +161,15 @@ async def export_report(
         raise _report_not_found()
 
     if format == "pdf":
-        raise HTTPException(
-            status_code=501,
-            detail={
-                "status": "error",
-                "message": "PDF 내보내기는 아직 구현되지 않았습니다. format=docx 사용",
-                "code": "PDF_NOT_IMPLEMENTED",
-            },
+        out_path = ReportGenerator.render_pdf(report)
+        media_type = "application/pdf"
+        extension = "pdf"
+    else:
+        out_path = ReportGenerator.render_docx(report)
+        media_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-
-    out_path = ReportGenerator.render_docx(report)
+        extension = "docx"
 
     # 액션 로깅 — 내보내기
     db.add(
@@ -187,6 +186,6 @@ async def export_report(
 
     return FileResponse(
         path=str(out_path),
-        filename=f"incident_report_{case_id}.docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=f"incident_report_{case_id}.{extension}",
+        media_type=media_type,
     )

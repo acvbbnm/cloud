@@ -1,12 +1,26 @@
 // ── 공통 Enum 타입 (백엔드 DB enum과 정확히 일치) ──
 
-// 백엔드 Pydantic Literal + types/index.ts 정책과 일치 (5종, 2026-05-12 확정)
+// 백엔드 Pydantic Literal + types/index.ts 정책과 일치
+// dev3 (2026-05-18): UNCLASSIFIED 추가 — 빈 케이스 시작 패턴 (TheHive·IRIS·NIST 800-61r2)
 export type IncidentType =
   | 'CREDENTIAL_THEFT'
   | 'PRIVILEGE_ESCALATION'
   | 'DATA_EXFILTRATION'
   | 'AUDIT_LOG_TAMPERING'
-  | 'MULTI_CSP_LATERAL';
+  | 'MULTI_CSP_LATERAL'
+  | 'UNCLASSIFIED';
+
+// dev3 신규 — TheHive 5 차용 (정보 공유 등급)
+export type TLP = 'RED' | 'AMBER' | 'GREEN' | 'WHITE';
+
+// dev3 신규 — Discovery Loop 단서 6종 (DFIR-IRIS IOC + NIST 800-61r2 표 3-2)
+export type ClueType =
+  | 'IP_ADDRESS'
+  | 'ACCOUNT'
+  | 'HASH'
+  | 'DOMAIN'
+  | 'TIME_WINDOW'
+  | 'SERVICE';
 export type CSP = 'naver' | 'nhn' | 'all';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type EvidenceRole = 'REQUIRED' | 'CORROBORATING';
@@ -22,6 +36,10 @@ export interface CreateCaseReq {
   severity: Severity;
   occurred_at: string;
   system_config?: Record<string, unknown>;
+  // ── dev3 신규 (Step 1 케이스 메타) ──
+  title?: string;
+  tlp?: TLP;
+  observables?: Observable[];
 }
 
 // ── API 응답 ──
@@ -35,6 +53,12 @@ export interface CaseResponse {
   system_config: Record<string, unknown> | null;
   created_at: string;
   closed_at: string | null;
+  // ── dev3 신규 ──
+  title?: string;
+  tlp?: TLP;
+  observables?: Observable[];
+  secondary_incident_types?: IncidentType[]; // V-8 사후 검증으로 추가된 부 사고유형
+  triage_state?: TriageState | null;          // 결정 트리 진행 상태 영속화
 }
 
 // v1 CollectionTargetItem · GuideResponse 는 2026-05-18 회의 결정으로 제거.
@@ -350,4 +374,148 @@ export interface GuideV2Response {
   applied_modifiers: GuideV2AppliedModifier[];
   source_standards: string[];
   version: 'v2';
+}
+
+// ─────────────────────────────────────────────────────────
+// dev3 — Triage / Discovery Loop 타입
+// 청사진: docs/dev3/V1_재설계_청사진.md
+// 가중치: backend/data/triage/weights.json
+// ─────────────────────────────────────────────────────────
+
+// 단서 (Observable) — Step 2 단서 입력
+export interface Observable {
+  type: ClueType;
+  value: string;
+  added_at?: string;
+  note?: string;
+  // 가중치 키 (예: "IP_ADDRESS:non_korean") — 백엔드에서 매핑
+  weight_key?: string | null;
+}
+
+// 사고유형별 가설 점수
+export type HypothesisScores = Record<IncidentType, number>;
+
+// 결정 트리 노드 (decision_tree.json 의 단일 노드)
+export interface TriageTreeOption {
+  id: string;
+  label: string;
+  weight_key: string | null;
+  next?: string | null;
+}
+
+export interface TriageTreeNode {
+  id: string;
+  type: 'question' | 'terminal';
+  question?: string;
+  options?: TriageTreeOption[];
+  multi_select?: boolean;
+  action?: string;
+  message?: string;
+  fallback_incident_type?: IncidentType;
+  kisa_field?: string;
+}
+
+// 결정 트리 진행 상태 (DB triage_state JSON 칼럼)
+export interface TriageState {
+  current_node_id: string;
+  completed_path: Array<{
+    node_id: string;
+    selected_option_ids: string[];
+  }>;
+  hypothesis_scores: HypothesisScores;
+  is_terminal: boolean;
+  recommendation?: TriageRecommendation | null;
+}
+
+// 종합 판정 결과
+export interface TriageRecommendation {
+  outcome: 'auto_confirm' | 'propose_single' | 'propose_composite' | 'continue_or_skip';
+  primary?: { incident_type: IncidentType; score: number };
+  secondary?: { incident_type: IncidentType; score: number };
+  rationale: string[]; // "단서 비국내 IP → +25 CRED" 등 트레이스
+  message: string;
+}
+
+// 다음 단서 제안 (next_clue_graph.json)
+export interface NextClueSuggestion {
+  priority: number;
+  question: string;
+  action: string;
+  hint_clue_type?: ClueType | null;
+  hint_value?: string | null;
+  hypothesis_boost: Partial<Record<IncidentType, number>>;
+  source: string;
+}
+
+// AI 보조 패널 KB 검색 결과
+export interface TriageKbResult {
+  case_db: SherpaSource[];
+  attack: SherpaSource[];
+  playbook: SherpaSource[];
+  csp_doc: SherpaSource[];
+}
+
+// ─── API 요청 / 응답 ───
+
+// POST /api/triage/analyze — 단서 + 부분 로그 → 가설 갱신
+export interface TriageAnalyzeRequest {
+  caseId: string;
+  clue?: Observable;
+  // 부분 로그 분석은 multipart/form-data 로 별도 호출 가능
+  partial_log_filename?: string;
+}
+
+export interface TriageAnalyzeResponse {
+  caseId: string;
+  hypothesis_scores: HypothesisScores;
+  mapped_techniques: string[]; // 부분 분석 결과 ATT&CK 기법 ID
+  next_clues: NextClueSuggestion[];
+  kb_results: TriageKbResult;
+}
+
+// POST /api/triage/next — 결정 트리 다음 질문
+export interface TriageNextRequest {
+  caseId: string;
+  current_node_id: string;
+  answer_ids: string[]; // multi_select 지원
+}
+
+export interface TriageNextResponse {
+  next_node: TriageTreeNode | null;
+  hypothesis_scores: HypothesisScores;
+  tree_path: Array<{ node_id: string; selected_option_ids: string[] }>;
+  is_terminal: boolean;
+  recommendation?: TriageRecommendation | null;
+}
+
+// POST /api/triage/confirm — 사고유형 확정
+export interface TriageConfirmRequest {
+  caseId: string;
+  incident_type: IncidentType;
+  secondary_incident_types?: IncidentType[];
+}
+
+// GET /api/triage/tree?caseId= — 시각화용 트리 전체 + 진행 상태
+export interface TriageTreeResponse {
+  caseId: string;
+  nodes: TriageTreeNode[];
+  current_node_id: string;
+  completed_path: Array<{ node_id: string; selected_option_ids: string[] }>;
+  hypothesis_scores: HypothesisScores;
+}
+
+// ─── V-8 사후 검증 ───
+// GET /api/sherpa/validate-incident-type?caseId=
+export interface IncidentTypeValidation {
+  caseId: string;
+  status: 'CONSISTENT' | 'REVIEW_NEEDED';
+  current_incident_type: IncidentType;
+  current_secondary?: IncidentType[];
+  extra_techniques: string[]; // 매핑됐지만 현 사고유형으로 설명 안 되는 ATT&CK ID
+  candidate_types: Array<{
+    incident_type: IncidentType;
+    score: number;
+    reason: string;
+  }>;
+  message: string;
 }

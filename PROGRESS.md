@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (시연 체크리스트 5 흔한 버그 후보 3건 대응 — 상태 영속화 + dirty beforeunload)
+> 마지막 업데이트: 2026-05-18 · 브랜치: `dev3` (V-1 재설계 — Discovery Loop + 결정 트리 + Triage API 4종)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -22,14 +22,71 @@
 | 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6·V8 모두 실 API** (V8 출처 칩 표시) | ✅ **1차 깡통 동작** (5 엔드포인트, LLM/RAG 추상화) | ✅ KB 4종 청크화 |
 | **Phase 4 — 보고서** | | | | |
 | 4-1 보고서 | V7 보고서 편집기 | ✅ **V7 실 API 연결 완료** (편집·저장·최종화·DOCX) | ✅ 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 501) | — |
+| **Phase 5 — V-1 재설계 (dev3 분기)** | | | | |
+| 5-1 Triage 데이터 | `data/triage/{decision_tree,weights,next_clue_graph}.json` | — | — | ✅ 학술 가중치 매트릭스 + 결정 트리 골격 |
+| 5-2 프론트 V-1 Step 1 | `Step1_CaseMetadata` (빈 케이스 + UNCLASSIFIED) | ✅ TheHive·IRIS·NIST §3.2 정합 | — | — |
+| 5-3 프론트 V-1 Step 2 | `Step2_Discovery` 3-panel (단서·부분분석·결정트리·시각화) | ✅ 사전 안내 모달 + 트리 시각화 미니맵 + 다음 단서 패널 | — | — |
+| 5-4 프론트 스토어 | `useCaseStore` 확장 + `useTriageStore` 신규 | ✅ persist v1→v2 마이그레이션 + 트리 상태 영속화 | — | — |
+| 5-5 백엔드 Triage API | `/api/triage/{start,next,analyze,confirm}` | — | ✅ **B-1 완료** — 4 라우터 + 평가 엔진 + UNCLASSIFIED enum | ✅ 가중치 누적 시뮬레이션 통과 |
+| 5-6 백엔드 부분 로그 (B-2) | `/api/triage/analyze` multipart | — | ❌ 후속 — UploadFile + Layer 1·2 재사용 | — |
+| 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,triage_state}` | — | ❌ DB 담당자 합의 대기 | — |
+| 5-8 V-8 사후 검증 | `IncidentTypeReviewCard` (Layer 2 ↔ 확정 사고유형 정합) | ❌ 후속 | ❌ 후속 | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: **walking-skeleton 100% 종결**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
+**현재 상태**: **walking-skeleton 100% 종결** + **dev3 V-1 재설계 Discovery Loop e2e 통과**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. dev3 분기에서 V-1 Step 1 사고유형 강제 선택을 폐기하고 빈 케이스 + 결정 트리 + AI 보조 패널 + Layer 2 부분 분석을 결합한 Discovery Loop 가 작동. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
 
 ---
 
 ## 작업 내역
+
+### 2026-05-18 — dev3 분기: V-1 재설계 (Discovery Loop + 결정 트리 + Triage API)
+
+**배경**: V-1 Step 1 의 "사고유형 5종 강제 선택" 이 글로벌 표준 (AWS Detective, MS Sentinel, GCP SCC, TheHive, DFIR-IRIS, NIST 800-61r2) 8 개 모두와 정반대 흐름임이 벤치마킹 조사로 확인. 사고유형은 **단서 → 분석 → 추정** 의 후행 분류여야 함. dev2 보존을 위해 별도 `dev3` 분기에서 재설계 진행.
+
+**기획 단계** (커밋 `e958c7a`):
+- `docs/dev3/V1_재설계_청사진.md` (35KB) — Step 0~3 + V-8 사후 검증 + Discovery Loop + DB·API·파일 매트릭스 + 일정 54h + 표준 매핑 10 종
+- `docs/dev3/사용자_결정사항.md` — 8 항목 논의 트레이스
+- `docs/dev3/가중치_설계_근거.md` (18KB) — 학술 인용 + 5 시나리오 시뮬레이션 + 임계값 산정
+- `docs/벤치마크_클라우드_사고조사.md` (27KB) — 6 개 플랫폼 상세 비교
+- `backend/data/triage/decision_tree.json` — Q1~Q3 + T_evaluate
+- `backend/data/triage/weights.json` — 답변 25 + 단서 17 + ATT&CK 24 + env_modifier 13
+- `backend/data/triage/next_clue_graph.json` — 단서 6 종 × 다음 단서 2~4 개
+
+**프론트엔드 단계** (커밋 `83e4dd4` → `b74402f`):
+- `types/index.ts` — `UNCLASSIFIED`·`TLP`·`Observable`·`Triage*` 타입 14 종 추가
+- `useCaseStore` 확장 + persist v1→v2 마이그레이션
+- `useTriageStore` 신규 — 트리 진행 상태 + 가설 점수 + recommendation 영속화
+- `Step1_CaseMetadata` 신규 (Title · 시각 · Severity · TLP · UNCLASSIFIED 자동 안내)
+- `Step1_TypeCards` 폐기 (호환성 보존)
+- `Step2_Discovery` (550 줄) — 3-panel 레이아웃, 단서 입력(F-1), 부분 로그 분석(F-2), 다음 단서 패널(F-3), 트리 시각화 미니맵(F-4), 사전 안내 모달(F-5)
+- `api/triage.ts` — 자동 mock fallback 포함 백엔드 4 라우터 호출
+
+**백엔드 단계** (커밋 `aedf710`, B-1 완료):
+- `backend/api/triage.py` (192 줄) — `/api/triage/{start, next, analyze, confirm}` 4 라우터
+- `backend/core/intake/triage.py` (372 줄) — `Triage` 평가 엔진 + 정적 JSON 캐싱 + 점수 누적 + recommendation 평가
+- `backend/api/intake.py` — `IncidentType` Literal 에 `UNCLASSIFIED` 추가
+- `backend/main.py` — triage 라우터 등록
+- 검증: Q1 csp_alert → Q2A 비정상로그인+비국내IP → Q3 fail_then_success → CRED 95 → `auto_confirm` 자동 발동 (학술 가중치 매트릭스 의도대로 작동)
+
+**해결한 이슈**: 사용자 보고 "사고유형 선택 후 다음 레이어 못 감" — 옛 백엔드가 `UNCLASSIFIED` enum 거부(422) 로 `createCase` 실패. B-1 푸시 + 백엔드 재시작 후 자동 해소.
+
+**설계 원칙** (인계 시 보존):
+- 결정성 100% (정적 가중치만, 같은 입력 → 같은 출력)
+- AI 판단 X (점수 산출만, 결정은 트리 + 사용자)
+- stateless (클라이언트가 `hypothesis_scores`·`tree_path` 매 요청 전달)
+- 임계값 단일 소스 (`weights.json thresholds`)
+
+**남은 후속 작업**:
+- B-2: 부분 로그 멀티파트 업로드 (`UploadFile` + Layer 1·2 재사용)
+- B-3: `incident_cases` 신규 칼럼 (`title`, `tlp`, `observables`, `secondary_incident_types`, `triage_state`) — **CLAUDE.md 규칙상 DB 담당자 합의 필수**
+- V-8 사후 검증: `IncidentTypeReviewCard` (Layer 2 매핑 vs 확정 사고유형 정합성)
+- Step 3 UNCLASSIFIED 공통 가이드 분기
+
+**참조 문서**:
+- `docs/dev3/V1_재설계_청사진.md` — 전체 설계
+- `docs/dev3/B_백엔드_인계.md` — B-1 검증 절차 + B-2/B-3 후속 작업 가이드
+- `docs/dev3/가중치_설계_근거.md` — 학술 인용 + 시뮬레이션
 
 ### 2026-05-15 — 가이드 시스템 근거 보강 2-트랙 진행 (`dev` vs `dev2` 병행)
 

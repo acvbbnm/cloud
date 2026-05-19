@@ -306,7 +306,14 @@ export const nextTriage = async (
   currentPath: Array<{ node_id: string; selected_option_ids: string[] }>,
 ): Promise<TriageNextResponse> => {
   const realCall = async (): Promise<TriageNextResponse> => {
-    const res = await client.post('/api/triage/next', req);
+    // dev3 fix (2026-05-19): 백엔드 TriageNextRequest 가 hypothesis_scores +
+    // tree_path 를 필수 요구 (stateless 정책 — 청사진 §3). 프론트 타입은 호환을
+    // 위해 보존하고 페이로드 조합 시점에 두 필드를 합쳐 전송.
+    const res = await client.post('/api/triage/next', {
+      ...req,
+      hypothesis_scores: currentScores,
+      tree_path: currentPath,
+    });
     return res.data.data;
   };
   const mockCall = (): TriageNextResponse => {

@@ -11,13 +11,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.intake.incident_case import IncidentCase
+from core.intake.knowledge import IncidentTypeKnowledge
 from core.sherpa.ai_sherpa import AISherpa
 from core.sherpa.knowledge_base import stats as kb_stats
 from core.sherpa.llm_engine import LLMEngine
 from core.sherpa.rag_retriever import RAGRetriever
+from db.models import AttackEventModel, OCSFEventModel, RawEventModel
 from db.session import get_db
 
 router = APIRouter(prefix="/api/sherpa", tags=["sherpa"])
@@ -172,5 +175,155 @@ async def get_kb_stats() -> dict:
             **kb_stats(),
             "engine": LLMEngine.health(),
             "rag": RAGRetriever.backend_info(),
+        },
+    }
+
+
+# ── V-8 정합성 평가 — 청사진 §6.3 (2026-05-18) ──────────────────
+
+
+def _normalize_technique(technique_id: str) -> str:
+    """T1078.004 → T1078 (sub-technique 제거하여 매칭률 향상)."""
+    return technique_id.split(".")[0] if technique_id else technique_id
+
+
+def _score_incident_type(
+    expected: list[str],
+    observed_set: set[str],
+) -> tuple[int, int, list[str]]:
+    """주어진 expected 기법 목록 중 observed 에 포함된 갯수.
+
+    Returns: (matched_count, expected_count, missing_list).
+    sub-technique 일치도 정규화하여 비교.
+    """
+    if not expected:
+        return 0, 0, []
+    norm_expected = {_normalize_technique(t) for t in expected}
+    matched = norm_expected & {_normalize_technique(t) for t in observed_set}
+    missing = sorted(norm_expected - matched)
+    return len(matched), len(norm_expected), missing
+
+
+@router.get("/validate-incident-type")
+async def validate_incident_type(
+    caseId: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """V-3 매핑 결과 vs case.incident_type 정합성 평가.
+
+    동작:
+      1. case 의 attack_events 에서 고유 technique_id 집합 추출
+      2. 현재 incident_type 의 related_techniques 와 비교 → matched/expected/missing
+      3. 다른 모든 incident_type 도 동일 점수화하여 candidate_types 후보 목록 생성
+      4. UNCLASSIFIED 이거나, 더 높은 점수의 후보가 있으면 REVIEW_NEEDED
+
+    응답:
+      {
+        status: 'CONSISTENT' | 'REVIEW_NEEDED',
+        current_incident_type, current_match, current_expected, missing,
+        observed_techniques: [...],
+        extra_techniques: [...],   # 관측 됐지만 현재 type 에 없는 기법
+        candidate_types: [{type, matched, expected, score_ratio, reason}, ...],
+        message
+      }
+    """
+    case = IncidentCase.get_by_id(db, caseId)
+    if case is None:
+        raise _case_not_found()
+
+    # 1) 케이스의 관측 기법 집합 (attack_events join raw_events)
+    stmt = (
+        select(AttackEventModel.technique_id)
+        .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
+        .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+        .where(RawEventModel.case_id == caseId)
+    )
+    observed: list[str] = [row[0] for row in db.execute(stmt).all() if row[0]]
+    observed_set = set(observed)
+    observed_norm_set = {_normalize_technique(t) for t in observed_set}
+
+    # 2) 현재 type 점수
+    current_type = case.incident_type
+    current_knowledge = IncidentTypeKnowledge.lookup(current_type) or {}
+    current_expected = current_knowledge.get("related_techniques") or []
+    cur_matched, cur_total, cur_missing = _score_incident_type(
+        current_expected, observed_set
+    )
+    extra_techniques = sorted(
+        observed_norm_set - {_normalize_technique(t) for t in current_expected}
+    )
+
+    # 3) 모든 후보 점수화
+    candidates: list[dict] = []
+    for other_type, k in [
+        ("CREDENTIAL_THEFT", IncidentTypeKnowledge.lookup("CREDENTIAL_THEFT")),
+        ("PRIVILEGE_ESCALATION", IncidentTypeKnowledge.lookup("PRIVILEGE_ESCALATION")),
+        ("DATA_EXFILTRATION", IncidentTypeKnowledge.lookup("DATA_EXFILTRATION")),
+        ("AUDIT_LOG_TAMPERING", IncidentTypeKnowledge.lookup("AUDIT_LOG_TAMPERING")),
+        ("MULTI_CSP_LATERAL", IncidentTypeKnowledge.lookup("MULTI_CSP_LATERAL")),
+    ]:
+        if k is None:
+            continue
+        expected_list = k.get("related_techniques") or []
+        m, e, miss = _score_incident_type(expected_list, observed_set)
+        ratio = round(m / e, 4) if e else 0.0
+        reason_parts: list[str] = []
+        if m > 0:
+            reason_parts.append(f"{m}/{e} 기법 관측 (matched={m})")
+        if miss:
+            reason_parts.append(f"누락 {len(miss)}건: {', '.join(miss[:3])}{'…' if len(miss)>3 else ''}")
+        candidates.append({
+            "type": other_type,
+            "matched": m,
+            "expected": e,
+            "score_ratio": ratio,
+            "reason": " · ".join(reason_parts) or "관측 없음",
+        })
+    candidates.sort(key=lambda c: c["score_ratio"], reverse=True)
+
+    # 4) 정합성 판정
+    top = candidates[0] if candidates else None
+    status_val = "CONSISTENT"
+    message_parts: list[str] = []
+
+    if current_type == "UNCLASSIFIED":
+        status_val = "REVIEW_NEEDED"
+        message_parts.append("사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요.")
+    elif top and top["type"] != current_type and top["score_ratio"] > 0 and top["matched"] > cur_matched:
+        status_val = "REVIEW_NEEDED"
+        message_parts.append(
+            f"현재 {current_type} 매칭 {cur_matched}/{cur_total} 보다 "
+            f"{top['type']} 매칭 {top['matched']}/{top['expected']} 이 더 높습니다."
+        )
+    elif cur_total > 0 and cur_matched == 0 and observed:
+        status_val = "REVIEW_NEEDED"
+        message_parts.append(
+            f"현재 {current_type} 의 기대 기법이 하나도 관측되지 않았습니다."
+        )
+    else:
+        message_parts.append(
+            f"{current_type} 매칭 {cur_matched}/{cur_total} — 정합성 양호."
+        )
+
+    if extra_techniques:
+        message_parts.append(
+            f"추가 관측 기법: {', '.join(extra_techniques[:5])}"
+            + ("…" if len(extra_techniques) > 5 else "")
+        )
+
+    return {
+        "status": "ok",
+        "data": {
+            "caseId": caseId,
+            "status": status_val,
+            "current_incident_type": current_type,
+            "current_match": cur_matched,
+            "current_expected": cur_total,
+            "current_missing": cur_missing,
+            "observed_techniques": sorted(observed_set),
+            "observed_count": len(observed),
+            "extra_techniques": extra_techniques,
+            "candidate_types": candidates,
+            "message": " ".join(message_parts),
         },
     }

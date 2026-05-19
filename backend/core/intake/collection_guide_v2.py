@@ -205,7 +205,16 @@ def _lookup_phases(incident_type: str) -> list[str]:
 
     primary → secondary → applicable_categories 순으로 dedup. 원본 순서를 유지해
     Kill Chain UI 그룹 표시 시 'primary 단계 먼저' 시각화가 유지된다.
+
+    UNCLASSIFIED 처리 (2026-05-18 dev3):
+      사고유형 미확정 상태에서는 Initial Access · Credential Access · Discovery 의
+      세 phase 만 우선 노출 (KISA 2.4 사고 탐지 단계의 공통 점검표). 사용자가
+      트리아주 진행 후 확정하면 정상 5종 분기로 복귀.
     """
+    if incident_type == "UNCLASSIFIED":
+        # KISA 2.4 초기 대응 점검표 — 사고 유형 식별 전 공통 수집 항목
+        return ["Initial Access", "Credential Access", "Discovery"]
+
     pdata = _load_incident_phases().get("incident_types", {}).get(incident_type)
     if not pdata:
         return []

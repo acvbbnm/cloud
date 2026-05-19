@@ -31,20 +31,39 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
-# ── 테이블 1: 사고 케이스 (설계서 Table 43, 8컬럼) ──
+# ── 테이블 1: 사고 케이스 (설계서 Table 43 + dev3 §5.2 신규 5컬럼) ──
 class IncidentCaseModel(Base):
-    """사고 케이스 메타데이터."""
+    """사고 케이스 메타데이터.
+
+    dev3 (2026-05-19): V-1 재설계 청사진 §5.2 에 따라 5개 컬럼 추가.
+      · title                    — 사용자 입력 제목 (필수)
+      · tlp                      — TLP 분류 (RED/AMBER/GREEN/WHITE, 기본 AMBER)
+      · observables              — Step 2 Discovery 단서 배열 (JSON)
+      · secondary_incident_types — V-8 사후 검증 시 부가 사고유형 (JSON)
+      · triage_state             — 결정 트리 진행 상태 영속화 (JSON)
+    기존 row 호환: 마이그레이션은 `db/init_db.py::_migrate_dev3_columns()` 가 수행.
+    """
 
     __tablename__ = "incident_cases"
 
     case_id = Column(String(36), primary_key=True, default=_uuid)
-    incident_type = Column(String(32), nullable=False)  # 5종 enum (설계 비고 "6종" — 확정 필요)
+    # incident_type: 5종 + UNCLASSIFIED (dev3 dev3 청사진 §5.1)
+    incident_type = Column(String(32), nullable=False)
     csp = Column(String(16), nullable=False)  # naver/nhn/all
     severity = Column(String(8), nullable=False)  # critical/high/medium/low
     occurred_at = Column(DateTime, nullable=False)
     system_config = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     closed_at = Column(DateTime, nullable=True)
+
+    # ── dev3 §5.2 신규 5컬럼 ──
+    # nullable=True 로 유지 — 기존 row 호환성 + 마이그레이션 시 default 채움.
+    # 신규 row 는 API 레이어(`api/intake.py`)에서 default 보장.
+    title = Column(String(200), nullable=True)
+    tlp = Column(String(16), nullable=True, default="AMBER")
+    observables = Column(JSON, nullable=True, default=list)
+    secondary_incident_types = Column(JSON, nullable=True)
+    triage_state = Column(JSON, nullable=True)
 
 
 # ── 테이블 2: 수집 대상 카탈로그 (설계서 Table 44, 9컬럼) ──

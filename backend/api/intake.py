@@ -31,33 +31,64 @@ IncidentType = Literal[
 ]
 CSP = Literal["naver", "nhn", "all"]
 Severity = Literal["critical", "high", "medium", "low"]
+# dev3 §5.1 — TLP 분류 (Traffic Light Protocol, FIRST.org 표준)
+TLP = Literal["RED", "AMBER", "GREEN", "WHITE"]
 
 
 # ── 요청/응답 스키마 ──
 
 
 class CreateCaseRequest(BaseModel):
-    """POST /api/cases 요청 바디."""
+    """POST /api/cases 요청 바디.
+
+    dev3 (2026-05-19): title·tlp·observables 신규 필드. Step 2 Discovery 진입 전
+    Step 1 Case Metadata 에서 사용자가 입력.
+    """
 
     incident_type: IncidentType
     csp: CSP
     severity: Severity
     occurred_at: datetime
     system_config: Optional[dict] = None
+    # ── dev3 신규 ──
+    title: Optional[str] = Field(
+        default=None,
+        max_length=200,
+        description="사용자 입력 사고 제목 (Step 1)",
+    )
+    tlp: Optional[TLP] = Field(
+        default="AMBER",
+        description="TLP 분류 — 기본 AMBER",
+    )
+    observables: Optional[list[dict]] = Field(
+        default=None,
+        description="Step 2 Discovery 단서 배열",
+    )
 
 
 class UpdateCaseRequest(BaseModel):
-    """PATCH /api/cases/{case_id} 요청 바디 (부분 갱신)."""
+    """PATCH /api/cases/{case_id} 요청 바디 (부분 갱신).
+
+    dev3: incident_type·observables·secondary_incident_types·triage_state·tlp·title 갱신 가능.
+    Step 2 Discovery 종료 후 트리 평가 결과를 PATCH 로 확정한다.
+    """
 
     severity: Optional[Severity] = None
     system_config: Optional[dict] = None
+    # ── dev3 신규 ──
+    incident_type: Optional[IncidentType] = None
+    title: Optional[str] = Field(default=None, max_length=200)
+    tlp: Optional[TLP] = None
+    observables: Optional[list[dict]] = None
+    secondary_incident_types: Optional[list[str]] = None
+    triage_state: Optional[dict] = None
 
 
 # ── 직렬화 헬퍼 ──
 
 
 def _serialize_case(case: IncidentCaseModel) -> dict:
-    """IncidentCaseModel → API 응답 dict (계약서 형식)."""
+    """IncidentCaseModel → API 응답 dict (계약서 형식 + dev3 §5.2 신규 필드)."""
     return {
         "caseId": case.case_id,
         "incident_type": case.incident_type,
@@ -67,6 +98,12 @@ def _serialize_case(case: IncidentCaseModel) -> dict:
         "system_config": case.system_config,
         "created_at": case.created_at.isoformat() if case.created_at else None,
         "closed_at": case.closed_at.isoformat() if case.closed_at else None,
+        # ── dev3 신규 ──
+        "title": case.title,
+        "tlp": case.tlp,
+        "observables": case.observables or [],
+        "secondary_incident_types": case.secondary_incident_types,
+        "triage_state": case.triage_state,
     }
 
 
@@ -86,7 +123,11 @@ def _case_not_found() -> HTTPException:
 
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
 async def create_case(req: CreateCaseRequest, db: Session = Depends(get_db)) -> dict:
-    """사고 케이스를 신규 생성한다."""
+    """사고 케이스를 신규 생성한다.
+
+    dev3: title·tlp·observables 신규 필드 전달. UNCLASSIFIED 도 허용
+    (Step 2 Discovery 결과를 PATCH 로 확정하는 흐름).
+    """
     case = IncidentCase.create(
         db,
         incident_type=req.incident_type,
@@ -94,6 +135,9 @@ async def create_case(req: CreateCaseRequest, db: Session = Depends(get_db)) -> 
         severity=req.severity,
         occurred_at=req.occurred_at,
         system_config=req.system_config,
+        title=req.title,
+        tlp=req.tlp,
+        observables=req.observables,
     )
     return {"status": "ok", "data": _serialize_case(case)}
 
@@ -111,12 +155,22 @@ async def get_case(case_id: str, db: Session = Depends(get_db)) -> dict:
 async def update_case(
     case_id: str, req: UpdateCaseRequest, db: Session = Depends(get_db)
 ) -> dict:
-    """case의 severity·system_config를 부분 갱신한다."""
+    """case를 부분 갱신한다.
+
+    dev3: incident_type / observables / secondary_incident_types / triage_state /
+          tlp / title 갱신 가능. Step 2 Discovery 종료 후 트리 평가 결과 확정에 사용.
+    """
     case = IncidentCase.update_config(
         db,
         case_id=case_id,
         severity=req.severity,
         system_config=req.system_config,
+        incident_type=req.incident_type,
+        title=req.title,
+        tlp=req.tlp,
+        observables=req.observables,
+        secondary_incident_types=req.secondary_incident_types,
+        triage_state=req.triage_state,
     )
     if case is None:
         raise _case_not_found()

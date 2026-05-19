@@ -23,14 +23,23 @@ class IncidentCase:
         severity: str,
         occurred_at: datetime,
         system_config: Optional[dict] = None,
+        title: Optional[str] = None,
+        tlp: Optional[str] = "AMBER",
+        observables: Optional[list] = None,
     ) -> IncidentCaseModel:
-        """사고 케이스를 신규 생성하고 DB에 저장한다."""
+        """사고 케이스를 신규 생성하고 DB에 저장한다.
+
+        dev3: title·tlp·observables 추가. 미지정 시 None / AMBER / [] 기본.
+        """
         case = IncidentCaseModel(
             incident_type=incident_type,
             csp=csp,
             severity=severity,
             occurred_at=occurred_at,
             system_config=system_config,
+            title=title,
+            tlp=tlp or "AMBER",
+            observables=observables if observables is not None else [],
         )
         db.add(case)
         db.commit()
@@ -49,8 +58,20 @@ class IncidentCase:
         case_id: str,
         severity: Optional[str] = None,
         system_config: Optional[dict] = None,
+        incident_type: Optional[str] = None,
+        title: Optional[str] = None,
+        tlp: Optional[str] = None,
+        observables: Optional[list] = None,
+        secondary_incident_types: Optional[list] = None,
+        triage_state: Optional[dict] = None,
     ) -> Optional[IncidentCaseModel]:
-        """케이스의 severity·system_config를 부분 갱신한다."""
+        """케이스를 부분 갱신한다.
+
+        dev3 (2026-05-19): Step 2 Discovery 종료 후 trigger 확정용 필드 추가.
+        - `incident_type` — UNCLASSIFIED → 결정 트리 평가 결과로 갱신
+        - `triage_state` — 트리 진행 상태 영속화
+        - `secondary_incident_types` — V-8 사후 검증 부 사고유형
+        """
         case = cls.get_by_id(db, case_id)
         if case is None:
             return None
@@ -58,6 +79,19 @@ class IncidentCase:
             case.severity = severity
         if system_config is not None:
             case.system_config = system_config
+        # ── dev3 신규 ──
+        if incident_type is not None:
+            case.incident_type = incident_type
+        if title is not None:
+            case.title = title
+        if tlp is not None:
+            case.tlp = tlp
+        if observables is not None:
+            case.observables = observables
+        if secondary_incident_types is not None:
+            case.secondary_incident_types = secondary_incident_types
+        if triage_state is not None:
+            case.triage_state = triage_state
         db.commit()
         db.refresh(case)
         return case

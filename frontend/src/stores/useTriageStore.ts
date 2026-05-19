@@ -33,8 +33,9 @@ interface TriageStoreState {
 }
 
 /**
- * 사고유형별 가설 점수 초기값 — IncidentType 6종 모두 0.
+ * 사고유형별 가설 점수 초기값 — IncidentType 9종 + UNCLASSIFIED 모두 0.
  * 백엔드 /api/triage/analyze /next 응답으로 갱신됨.
+ * dev3 C-1 (2026-05-19): 9종 확장 (RANSOMWARE·MISCONFIG·PHISH·INSIDER 추가).
  */
 const initialScores = (): HypothesisScores => ({
   CREDENTIAL_THEFT: 0,
@@ -42,6 +43,10 @@ const initialScores = (): HypothesisScores => ({
   DATA_EXFILTRATION: 0,
   AUDIT_LOG_TAMPERING: 0,
   MULTI_CSP_LATERAL: 0,
+  RANSOMWARE: 0,
+  MISCONFIG_EXPOSURE: 0,
+  PHISH_INITIAL_ACCESS: 0,
+  INSIDER_THREAT: 0,
   UNCLASSIFIED: 0,
 });
 

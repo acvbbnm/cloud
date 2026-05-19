@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "MITRE ATT&CK Cloud Matrix v14 12 전술 × 핵심 기법 30 청크. 운영급 RAG 검색 대응. 각 청크는 한국어 요약 + 클라우드 환경 적용 + 탐지 단서 3~5문장.",
+  "_note": "MITRE ATT&CK Cloud Matrix v14 12 전술 × 핵심 기법 30 청크. 운영급 RAG 검색 대응. 각 청크는 한국어 요약 + 클라우드 환경 적용 + 탐지 단서 3~5문장. + dev3 C-1 신규 4종 × 2 기법 = +8 청크 (T1486·T1490·T1190·T1078.001·T1566·T1566.001·T1078 insider·T1098 insider)",
   "kb_id": "KB-1",
   "kb_name": "ATTACK",
   "chunks": [
@@ -264,6 +264,86 @@
       "text": "탈취한 합법 계정은 Initial Access 뿐 아니라 Defense Evasion·Privilege Escalation·Persistence 4 단계에서 동시에 사용된다. 정상 계정 활동으로 위장되어 탐지가 가장 어려운 기법. 탐지 단서: 자격증명 사용 시간·IP·UA 의 비정상 변화 행동 분석(UEBA).",
       "source": "MITRE ATT&CK v14",
       "url": "https://attack.mitre.org/techniques/T1078"
+    },
+    {
+      "chunk_id": "ATTACK-T1486-001",
+      "technique_id": "T1486",
+      "tactic": "Impact",
+      "title": "Data Encrypted for Impact (랜섬 암호화)",
+      "text": "공격자는 가용성을 차단하기 위해 데이터를 암호화한다. 클라우드 환경에서는 Object Storage 의 파일 또는 EBS 볼륨이 표적이 되며, 백업이 동일 계정에 있는 경우 함께 암호화된다. 탐지 시그널: 단일 계정의 대량 Put/Copy 호출, 비표준 확장자(.locked, .encrypted, .ryuk) 신규 생성, KMS 키 비정상 사용. 방어: Object Lock + Versioning + 별도 계정 백업.",
+      "source": "MITRE ATT&CK v14 — T1486",
+      "url": "https://attack.mitre.org/techniques/T1486/",
+      "incident_type": "RANSOMWARE"
+    },
+    {
+      "chunk_id": "ATTACK-T1490-001",
+      "technique_id": "T1490",
+      "tactic": "Impact",
+      "title": "Inhibit System Recovery (시스템 복구 방해)",
+      "text": "공격자는 백업·스냅샷·Versioning 등 복구 메커니즘을 비활성화하거나 삭제하여 랜섬 후 복원을 차단한다. 클라우드 환경 대표 작업: DeleteSnapshot · DeleteBucket Versioning · DisableBackupPolicy. 종종 T1486 직전 또는 동시에 발생하므로 둘을 함께 모니터링해야 한다.",
+      "source": "MITRE ATT&CK v14 — T1490",
+      "url": "https://attack.mitre.org/techniques/T1490/",
+      "incident_type": "RANSOMWARE"
+    },
+    {
+      "chunk_id": "ATTACK-T1190-001",
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "title": "Exploit Public-Facing Application (외부 노출 자원 악용)",
+      "text": "공격자는 외부에 노출된 자원의 취약점·기본 설정·약한 인증을 악용해 초기 침투한다. 클라우드 환경 대표 시나리오: public 설정된 Object Storage 컨테이너, 0.0.0.0/0 ingress 규칙의 EC2/Compute, 기본 비밀번호 미변경 관리 페이지. CSA Pandemic Eleven 의 #3 Misconfiguration 과 직접 연결.",
+      "source": "MITRE ATT&CK v14 — T1190 + CSA Top Threats 2024 #3",
+      "url": "https://attack.mitre.org/techniques/T1190/",
+      "incident_type": "MISCONFIG_EXPOSURE"
+    },
+    {
+      "chunk_id": "ATTACK-T1078.001-001",
+      "technique_id": "T1078.001",
+      "tactic": "Initial Access",
+      "title": "Default Accounts (기본 계정 미변경)",
+      "text": "관리자가 변경하지 않은 기본 계정(admin/admin 등)이나 클라우드 콘솔 초기 계정을 공격자가 그대로 사용한다. NCP/NHN 의 일부 부가 서비스 초기 설정이나 K8s 대시보드의 기본 토큰 노출이 대표 사례. T1190 과 자주 결합되며 MISCONFIG_EXPOSURE 의 핵심 sub-technique.",
+      "source": "MITRE ATT&CK v14 — T1078.001",
+      "url": "https://attack.mitre.org/techniques/T1078/001/",
+      "incident_type": "MISCONFIG_EXPOSURE"
+    },
+    {
+      "chunk_id": "ATTACK-T1566-001",
+      "technique_id": "T1566",
+      "tactic": "Initial Access",
+      "title": "Phishing (피싱)",
+      "text": "공격자는 이메일·SMS·MS Teams·Slack 등을 통해 위장 메시지를 보내 자격증명 또는 멀웨어를 전달한다. 클라우드 환경에서는 (1) SSO 로그인 페이지 위장 URL, (2) OAuth consent 화면 위장, (3) AWS/Azure 로고 활용 자격증명 입력 유도가 가장 흔하다. typo-squatting 도메인 + 신규 등록 도메인 조합이 강한 시그널.",
+      "source": "MITRE ATT&CK v14 — T1566",
+      "url": "https://attack.mitre.org/techniques/T1566/",
+      "incident_type": "PHISH_INITIAL_ACCESS"
+    },
+    {
+      "chunk_id": "ATTACK-T1566.001-001",
+      "technique_id": "T1566.001",
+      "tactic": "Initial Access",
+      "title": "Spearphishing Attachment (스피어피싱 첨부)",
+      "text": "특정 표적에게 맞춤형 첨부파일을 보내 자격증명 또는 멀웨어를 전달. 클라우드 환경에서는 (1) 회사 임원의 IAM 계정을 위장한 'AWS Bill' PDF, (2) MS 365 Excel 매크로, (3) ZIP+LNK 결합이 흔하다. 사용자가 첨부를 열면 토큰 탈취 → SSO 자동 로그인 → 클라우드 진입의 연쇄. 알려진 phishing kit 해시 매칭이 직접 증거.",
+      "source": "MITRE ATT&CK v14 — T1566.001 + Verizon DBIR 2024",
+      "url": "https://attack.mitre.org/techniques/T1566/001/",
+      "incident_type": "PHISH_INITIAL_ACCESS"
+    },
+    {
+      "chunk_id": "ATTACK-T1078-INSIDER-001",
+      "technique_id": "T1078",
+      "tactic": "Initial Access",
+      "title": "Valid Accounts — 내부자 정당 권한 악용",
+      "text": "내부자가 정당 권한을 비인가 목적으로 사용. 외부 침입이 아니라 정규 업무 시간 + 내부 IP + 권한 있는 계정이라는 정상 패턴 위에서 발생. 탐지가 가장 어려운 유형. 시그널: 비정상 시간 외 활동, 평소 안 쓰는 서비스 다수 접근, 데이터 다운로드 burst, 휴면 계정 재활성화. UEBA(User and Entity Behavior Analytics) 가 핵심 방어.",
+      "source": "MITRE ATT&CK v14 — T1078 + KISA §3.3 + Carnegie CERT Insider Threat Report",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "incident_type": "INSIDER_THREAT"
+    },
+    {
+      "chunk_id": "ATTACK-T1098-INSIDER-001",
+      "technique_id": "T1098",
+      "tactic": "Persistence",
+      "title": "Account Manipulation — 내부자 자기상승",
+      "text": "내부자가 본인 또는 동료 계정의 권한을 비인가 상승. 클라우드 환경에서는 IAM Policy attach · Role assume · Group 멤버 추가가 대표. 정규 IAM 관리 업무와 외형이 유사하므로 (1) 변경 행위자 vs 대상 일치 여부, (2) 변경 직후 사용 패턴, (3) 변경 사유 티켓 부재가 핵심 탐지 기준. 분기별 IAM 권한 감사 필수.",
+      "source": "MITRE ATT&CK v14 — T1098 + KISA §3.3 권한 도용 변형",
+      "url": "https://attack.mitre.org/techniques/T1098/",
+      "incident_type": "INSIDER_THREAT"
     }
   ]
 }

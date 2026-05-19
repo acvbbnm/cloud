@@ -22,12 +22,19 @@ router = APIRouter(prefix="/api", tags=["intake"])
 
 
 IncidentType = Literal[
+    # ── 5종 (dev3 이전 기존) ──
     "CREDENTIAL_THEFT",
     "PRIVILEGE_ESCALATION",
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
     "MULTI_CSP_LATERAL",
-    "UNCLASSIFIED",  # dev3: V-1 Step 1 빈 케이스 기본값 (Step 2 Discovery 에서 확정)
+    # ── dev3 C-1 신규 4종 (2026-05-19) ──
+    "RANSOMWARE",            # CSA #5 + Verizon DBIR 2024 24%
+    "MISCONFIG_EXPOSURE",    # CSA #3 + DBIR 24% (빈도 1위)
+    "PHISH_INITIAL_ACCESS",  # CSA #2 IAM + MITRE TA0001
+    "INSIDER_THREAT",        # KISA §3.3 "불법적 자원 사용" 변형 + MITRE T1078
+    # ── 미분류 (TheHive·IRIS·NIST 800-61r2 빈 케이스 시작) ──
+    "UNCLASSIFIED",
 ]
 CSP = Literal["naver", "nhn", "all"]
 Severity = Literal["critical", "high", "medium", "low"]

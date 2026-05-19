@@ -2,12 +2,21 @@
 
 // 백엔드 Pydantic Literal + types/index.ts 정책과 일치
 // dev3 (2026-05-18): UNCLASSIFIED 추가 — 빈 케이스 시작 패턴 (TheHive·IRIS·NIST 800-61r2)
+// dev3 C-1 (2026-05-19): 신규 4종 추가 — RANSOMWARE·MISCONFIG_EXPOSURE·PHISH_INITIAL_ACCESS·INSIDER_THREAT
+// (CSA Pandemic Eleven #1~7 + KISA §3.3 분류표 100% 커버)
 export type IncidentType =
+  // ── 5종 기존 ──
   | 'CREDENTIAL_THEFT'
   | 'PRIVILEGE_ESCALATION'
   | 'DATA_EXFILTRATION'
   | 'AUDIT_LOG_TAMPERING'
   | 'MULTI_CSP_LATERAL'
+  // ── dev3 C-1 신규 4종 ──
+  | 'RANSOMWARE'
+  | 'MISCONFIG_EXPOSURE'
+  | 'PHISH_INITIAL_ACCESS'
+  | 'INSIDER_THREAT'
+  // ── 미분류 (TheHive·IRIS·NIST 800-61r2 빈 케이스) ──
   | 'UNCLASSIFIED';
 
 // dev3 신규 — TheHive 5 차용 (정보 공유 등급)

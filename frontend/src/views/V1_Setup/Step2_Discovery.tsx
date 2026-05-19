@@ -93,6 +93,11 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
   MULTI_CSP_LATERAL: '멀티 CSP 횡이동',
+  // ── dev3 C-1 신규 4종 (2026-05-19) ──
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 오류 노출',
+  PHISH_INITIAL_ACCESS: '피싱 초기 침투',
+  INSIDER_THREAT: '내부자 위협',
   UNCLASSIFIED: '미분류',
 };
 

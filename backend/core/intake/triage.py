@@ -33,18 +33,27 @@ logger = logging.getLogger(__name__)
 
 _TRIAGE_DIR = settings.DATA_DIR / "triage"
 
-INCIDENT_TYPES_5 = [
+INCIDENT_TYPES_9 = [
+    # ── 5종 기존 ──
     "CREDENTIAL_THEFT",
     "PRIVILEGE_ESCALATION",
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
     "MULTI_CSP_LATERAL",
+    # ── dev3 C-1 신규 4종 (2026-05-19) ──
+    "RANSOMWARE",
+    "MISCONFIG_EXPOSURE",
+    "PHISH_INITIAL_ACCESS",
+    "INSIDER_THREAT",
 ]
+
+# 하위 호환 — 기존 코드에서 INCIDENT_TYPES_5 import 시 9종으로 그대로 동작
+INCIDENT_TYPES_5 = INCIDENT_TYPES_9
 
 
 def _initial_scores() -> dict[str, int]:
-    """5 사고유형 + UNCLASSIFIED 모두 0 인 점수 초기값."""
-    return {t: 0 for t in INCIDENT_TYPES_5} | {"UNCLASSIFIED": 0}
+    """9 사고유형 + UNCLASSIFIED 모두 0 인 점수 초기값 (dev3 C-1)."""
+    return {t: 0 for t in INCIDENT_TYPES_9} | {"UNCLASSIFIED": 0}
 
 
 _cache: dict[str, object] = {}

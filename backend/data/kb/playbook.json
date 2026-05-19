@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "20 청크. 5 사고유형 × 2 + NIST IR 5 + KISA·ISO·NIST·멀티CSP 절차 5. KISA 침해사고 분석절차 안내서 + NIST SP 800-61r2/86 + ISO/IEC 27037 기반.",
+  "_note": "20 청크. 5 사고유형 × 2 + NIST IR 5 + KISA·ISO·NIST·멀티CSP 절차 5. KISA 침해사고 분석절차 안내서 + NIST SP 800-61r2/86 + ISO/IEC 27037 기반. + dev3 C-1 신규 4종 × 2 (즉시 대응 + 증거 보존) = +8 청크",
   "kb_id": "KB-2",
   "kb_name": "PLAYBOOK",
   "chunks": [
@@ -219,6 +219,91 @@
         "Lateral Movement",
         "Detection",
         "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-RANSOMWARE-001",
+      "incident_type": "RANSOMWARE",
+      "title": "랜섬웨어 — 즉시 대응 절차",
+      "text": "1) 영향받은 인스턴스·볼륨 즉시 격리 (Security Group/ACG 차단)\n2) Object Storage Versioning 활성 여부 확인 — 활성 시 비암호화 버전 보존\n3) 백업 무결성 확인 — 비암호화 백업 별도 계정 존재 여부\n4) 암호화 시각 ±30분 IAM·KMS 활동 로그 추출 (T1486 + T1490 결합 탐지)\n5) 랜섬 노트 발견 시 협상 X — 법무·CISO 통보\n6) 복호화 가능성 점검 (No More Ransom · Bitdefender 등 공개 도구)\n7) 사후 — MFA 강제 · 최소 권한 재검토 · Object Lock 활성화",
+      "source": "CSA Top Threats 2024 #5 + KISA 침해사고 대응 가이드 §4 + No More Ransom Project",
+      "tactics_addressed": [
+        "Initial Access",
+        "Impact"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-RANSOMWARE-002",
+      "incident_type": "RANSOMWARE",
+      "title": "랜섬웨어 — 증거 보존 절차",
+      "text": "1) 암호화 시각 ±1h 의 모든 audit log SHA-256 봉인\n2) 랜섬 노트 파일 원본 별도 저장소 격리 (해시 + 메타)\n3) 암호화 객체 샘플 5-10 개 별도 보존 (복호화 도구 개발 가능성)\n4) KMS 사용 이력 + 새로 생성된 키 ID 추적\n5) 외부 C2 통신 흔적 — VPC Flow Log 에서 비표준 outbound 추출\n6) chain of custody 문서화 (ISO/IEC 27037 §6)",
+      "source": "ISO/IEC 27037 §6.5 + NIST SP 800-86 §3",
+      "tactics_addressed": [
+        "Impact",
+        "Defense Evasion"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-MISCONFIG-001",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "title": "설정 오류 노출 — 즉시 대응 절차",
+      "text": "1) 노출된 자원 즉시 비공개 전환 (PublicAccessBlock · 0.0.0.0/0 제거)\n2) 노출 기간 동안의 GetObject·DescribeInstance 로그 추출 (외부 IP 식별)\n3) 데이터 다운로드 흔적 시간순 정렬 → 영향 범위 산정\n4) 동일 패턴 자원 전수 점검 (다른 버킷·인스턴스에도 노출 있는지)\n5) 보안 정책 자동 검증 도구 활성 (Prowler · Steampipe · Cloud Custodian)\n6) 외부 보안 연구자 신고일 경우 — 신고자 회신·취약점 공개 절차 합의",
+      "source": "CSA Top Threats 2024 #3 + Prowler / Cloud Custodian 가이드",
+      "tactics_addressed": [
+        "Initial Access",
+        "Discovery"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-MISCONFIG-002",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "title": "설정 오류 노출 — 증거 보존 + 신고 절차",
+      "text": "1) 잘못된 설정의 변경 이력 추출 (Activity Tracer/CloudTrail) — 누가·언제·왜\n2) 노출 기간 동안의 외부 접근 로그 SHA-256 봉인\n3) 영향받은 데이터 분류 — 개인정보·민감정보 포함 시 신고 의무 발동\n4) 개인정보 유출 시 — 72h 내 정보주체 통지 (개보법 §34) + 5일 내 KISA 신고\n5) 사후 — 동일 사고 재발 방지 통제 도입 (IaC 보안 검증·승인 워크플로·자동 감사)",
+      "source": "개인정보보호법 §34 + KISA 침해사고 신고 절차 + NIST SP 800-61r2 §3.5",
+      "tactics_addressed": [
+        "Initial Access"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-PHISH-001",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "title": "피싱 초기 침투 — 즉시 대응 절차",
+      "text": "1) 피해 사용자 식별 + 모든 활성 세션 강제 만료 (SSO 토큰 회수)\n2) 비밀번호 즉시 변경 + MFA 활성/재발급\n3) AccessKey 회전 — 신규 발급 후 구 키 폐기\n4) 피해 계정의 최근 72h 활동 전수 감사 — 이상 활동 시 확장 대응\n5) 피싱 URL/이메일 신고 — 회사 보안팀 + KISA boho.or.kr 신고 양식\n6) 전사 공지 — 같은 피싱 캠페인이 다른 사용자에게도 갔을 가능성\n7) 이메일 게이트웨이 룰 강화 (해당 발신·도메인 차단)",
+      "source": "CSA Top Threats 2024 #2 + KISA 피싱 대응 가이드 + APWG Report",
+      "tactics_addressed": [
+        "Initial Access",
+        "Credential Access"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-PHISH-002",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "title": "피싱 초기 침투 — 증거 보존 절차",
+      "text": "1) 피싱 메일 원본 (EML 형식) 보존 — 헤더·SPF/DKIM/DMARC 결과 포함\n2) 피싱 URL 스크린샷 + WHOIS 정보 (등록일·등록자)\n3) 첨부파일 해시(SHA-256) — VirusTotal 결과 동시 보존\n4) 피해 계정 IAM 활동 timeline — 자격증명 입력 시점부터 \n5) 외부 IP 위치 정보 + Tor exit node 매칭\n6) chain of custody 문서화 — 향후 법적 대응 자료",
+      "source": "ISO/IEC 27037 §6 + APWG Phishing Trend Reports + 디지털 포렌식 표준 절차",
+      "tactics_addressed": [
+        "Initial Access"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-INSIDER-001",
+      "incident_type": "INSIDER_THREAT",
+      "title": "내부자 위협 — 즉시 대응 절차",
+      "text": "1) 의심 사용자의 IAM 활동 즉시 stop (AccessKey Disable, 콘솔 세션 만료)\n2) 동시에 본인에게 알리지 말 것 — 증거 인멸 위험\n3) HR·법무·CISO 3자 협의 — 내부자 대응은 인사·법적 절차 동반\n4) 데이터 다운로드·반출 흔적 추출 — 외장 매체·이메일·외부 클라우드 업로드\n5) 동료 계정에도 같은 패턴 있는지 확인 (공모 가능성)\n6) 권한 변경 이력 롤백 (T1098 흔적)\n7) 사후 — 분기별 IAM 감사 + UEBA 도입 검토",
+      "source": "Carnegie CERT Insider Threat Center + KISA §3.3 + ISO/IEC 27001 §A.6.5",
+      "tactics_addressed": [
+        "Credential Access",
+        "Collection"
+      ]
+    },
+    {
+      "chunk_id": "PLAYBOOK-INSIDER-002",
+      "incident_type": "INSIDER_THREAT",
+      "title": "내부자 위협 — 증거 보존 + 법적 절차",
+      "text": "1) 디지털 증거 → 법적 효력 위해 ISO/IEC 27037 정확 준수\n2) chain of custody 문서 — 수집자·시점·방법·해시 명시\n3) 의심 사용자 통보 시점 결정 — 너무 빠르면 인멸, 너무 늦으면 인사·법 절차 지연\n4) 노트북·외부 매체 압수 시 — 법적 권한 확인 (회사 자산 vs 개인 자산)\n5) 내부 IAM 권한 변경 이력 + 데이터 접근 로그 봉인 (SHA-256)\n6) 인사 조치 권고서 작성 — 법무 검토 후",
+      "source": "ISO/IEC 27037 + Carnegie CERT + 노동법·개보법 검토 필수",
+      "tactics_addressed": [
+        "Defense Evasion"
       ]
     }
   ]

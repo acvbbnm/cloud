@@ -33,16 +33,17 @@ interface TriageStoreState {
 }
 
 /**
- * 사고유형별 가설 점수 초기값 — IncidentType 9종 + UNCLASSIFIED 모두 0.
+ * 사고유형별 가설 점수 초기값 — IncidentType 8종 + UNCLASSIFIED 모두 0.
  * 백엔드 /api/triage/analyze /next 응답으로 갱신됨.
+ *
  * dev3 C-1 (2026-05-19): 9종 확장 (RANSOMWARE·MISCONFIG·PHISH·INSIDER 추가).
+ * 2026-05-19 (재결정): MULTI_CSP_LATERAL 제거 → 최종 8종 + UNCLASSIFIED.
  */
 const initialScores = (): HypothesisScores => ({
   CREDENTIAL_THEFT: 0,
   PRIVILEGE_ESCALATION: 0,
   DATA_EXFILTRATION: 0,
   AUDIT_LOG_TAMPERING: 0,
-  MULTI_CSP_LATERAL: 0,
   RANSOMWARE: 0,
   MISCONFIG_EXPOSURE: 0,
   PHISH_INITIAL_ACCESS: 0,
@@ -115,10 +116,10 @@ export const useTriageStore = create<TriageStoreState>()(
     }),
     {
       name: 'ai-sherpa-triage',
-      // dev3 C-1 (2026-05-19): version 1 → 2. 9종 확장으로 hypothesisScores 키 변경 →
-      // 구버전 5종 + UNCLASSIFIED 키만 있는 localStorage 데이터가 hydration 되면
-      // 화면에 5개 막대만 표시되는 버그 발생. version bump 로 자동 폐기 후 새 initial.
-      version: 2,
+      // dev3 C-1 (2026-05-19): version 1 → 2. 9종 확장으로 hypothesisScores 키 변경.
+      // 2026-05-19 (재결정): MULTI_CSP_LATERAL 제거 → version 2 → 3.
+      // migrate 함수가 어느 버전이든 (5종 / 9종) initialScores 8종으로 정리.
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       // 액션 제외, 데이터만 영속화
       partialize: (s) => ({

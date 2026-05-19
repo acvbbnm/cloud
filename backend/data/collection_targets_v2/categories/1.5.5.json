@@ -1,143 +1,142 @@
 {
- "category_id": "1.5.5",
- "category_name": "클라우드 인증 - 서비스 API 액세스 기록",
- "kb_source": {
- "primary": {
- "standard": "Google Cloud Threat Intel",
- "section": "1.5.5",
- "title": "인증된 사용자에 대한 모든 클라우드 서비스에 대한 로그 액세스 기록",
- "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
- "note": "인증 자체(1.5.1) 와는 별개로, 인증 후 어떤 서비스를 사용했는지 추적. 사고 영향 범위·횡적 이동 식별."
- },
- "secondary": [
- {
- "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
- "section": "2.6 시스템 활동 정보 수집",
- "note": "권한 침해 후 실제 자원 사용 흔적 — 사고 영향 범위 산정 핵심"
- },
- {
- "standard": "MITRE ATT&CK Cloud Matrix v14",
- "techniques": [
- "T1021 (Remote Services) — Lateral Movement",
- "T1552 (Unsecured Credentials) — Credential Access",
- "T1580 (Cloud Infrastructure Discovery) — Discovery"
- ],
- "note": "단일 기법으로 한정되지 않음. API 호출 종류에 따라 여러 ATT&CK 전술에 매핑"
- },
- {
- "standard": "NIST SP 800-86",
- "section": "3.1 휘발성 계층 - Application logs",
- "note": "API 액세스 로그는 CSP 영구 보존 (Activity Tracer/Cloud Trail)"
- }
- ]
- },
- "applicable_incident_types": [
- "CREDENTIAL_THEFT",
- "PRIVILEGE_ESCALATION",
- "DATA_EXFILTRATION",
- "MULTI_CSP_LATERAL"
- ],
- "kill_chain_phases": [
- "Discovery",
- "Lateral Movement",
- "Credential Access"
- ],
- "evidence_role": "REQUIRED",
- "volatility_priority": 7,
- "volatility_basis": "NIST SP 800-86 3.1 (Application logs — 비휘발성). 인증 자체(1.5.1, P10)보다 우선순위 낮지만 사고 영향 범위 산정에 필수. CSP 90일 보존 한계 내 수집.",
- "rationale": "공격자가 자격증명 탈취 후 실제 무엇을 했는지의 직접 증거. Server Console 접근(NCP), Object Storage 다운로드, IAM 정책 조회, VPC 정찰 등이 모두 포함되는 광범위 카테고리. 각 사고유형마다 우선순위 다르게 평가:\n- CREDENTIAL_THEFT: 영향 범위 산정 → P7\n- PRIVILEGE_ESCALATION: 신규 권한 사용 흔적 → P8\n- DATA_EXFILTRATION: 데이터 접근 직접 증거 → P9\n- MULTI_CSP_LATERAL: 횡적 이동 식별 → P9",
- "use_cases": [
- "Server Console 접근 + root password decrypt 연쇄 (T1552 → T1021)",
- "Sub Account/IAM 권한 정책 조회 (정찰 — T1580)",
- "VPC/Security Group 정보 조회 (네트워크 정찰)",
- "Object Storage 버킷 목록 조회 → 대용량 다운로드 (T1537 사전 단계)",
- "동일 자격증명으로 다른 CSP 콘솔 접근 (MULTI_CSP_LATERAL 신호)",
- "비표준 시각 (새벽) 다수 서비스 호출"
- ],
- "csp_mapping": {
- "naver": {
- "log_source": "Cloud Activity Tracer (전체 action 통합 로그)",
- "action_patterns": [
- "Access Server Connect Console",
- "Decrypt root password",
- "Encrypt root password",
- "Create Login Key",
- "Start Server Instance",
- "Shutdown Server Instance",
- "Get*",
- "List*",
- "Describe*"
- ],
- "field_locations": {
- "actor": "content.actionUserName",
- "ip": "content.sourceIp",
- "service": "productName",
- "action": "action"
- },
- "example_raw": {
- "action": "Access Server Connect Console",
- "eventTime": "2026-04-05 06:30:45 UTC",
- "actionResultType": "SUCCESS",
- "productName": "Server",
- "content": {
- "actionUserName": "attack-sim",
- "sourceIp": "10.218.70.139"
- }
- },
- "note": "NCP는 단일 통합 로그라 productName으로 서비스 분류 필요",
- "collection_steps": [
- "콘솔 > 관리·통계 > Cloud Activity Tracer (전체 통합 로그)",
- "필터: 침해 의심 actionUserName + sourceIp 로 좁히기",
- "기간: 사고 발생 시각 이후 ~ 현재 (영향 범위 식별)",
- "분류: productName 기준으로 Server / IAM / Object Storage / VPC 단계별 그룹화"
- ],
- "cli_hint": "통합 로그이므로 productName 별로 다중 export 후 OCSF 정규화 권장"
- },
- "nhn": {
- "log_source": "Cloud Trail",
- "event_id_patterns": [
- "event_id.iaas.instance_action.*",
- "event_id.iaas.identity.*",
- "event_id.iaas.s3credential.*",
- "event_id.iaas.keypair.*",
- "event_id.iaas.volume.*",
- "event_id.iaas.port.*",
- "event_id.org.selected",
- "event_id.project.selected",
- "event_id.iam.org.selected",
- "event_id.iam.project.selected"
- ],
- "field_locations": {
- "actor": "userName",
- "ip": "userIp",
- "service": "eventId (prefix 분석)",
- "details": "request, response"
- },
- "example_raw": {
- "eventId": "event_id.iaas.instance_action.stop",
- "eventTime": "2026-04-05T09:07:38.272+0000",
- "result": "SUCCESS",
- "userName": "attack",
- "userIp": "115.91.214.5"
- },
- "note": "NHN은 event_id namespace로 서비스 자동 분류 가능",
- "collection_steps": [
- "콘솔 > 관리 > Cloud Trail",
- "필터: userName=침해 계정 · userIp=침해 IP",
- "기간: 사고 발생 시각 이후 ~ 현재",
- "분류: eventId prefix 별 (iaas.* / object_storage.* / iam.* / org.*)"
- ],
- "cli_hint": "nhncloud cloudtrail events --user-name <actor> --user-ip <ip>"
- }
- },
- "retention_days_default": 90,
- "applicable_environments": {
- "auditEnabled_required": true,
- "services_dependent": true,
- "modifier_hints": [
- "services에 'Server'/'IAM' 포함 시 priority +1",
- "services에 'Object Storage' 포함 시 priority +1 (DATA_EXFILTRATION 가설 강화)",
- "csp='all' (멀티 CSP 환경) 시 priority +1 (Lateral Movement 가설)"
- ]
- }
+  "category_id": "1.5.5",
+  "category_name": "클라우드 인증 - 서비스 API 액세스 기록",
+  "kb_source": {
+    "primary": {
+      "standard": "Google Cloud Threat Intel",
+      "section": "1.5.5",
+      "title": "인증된 사용자에 대한 모든 클라우드 서비스에 대한 로그 액세스 기록",
+      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations",
+      "note": "인증 자체(1.5.1) 와는 별개로, 인증 후 어떤 서비스를 사용했는지 추적. 사고 영향 범위·횡적 이동 식별."
+    },
+    "secondary": [
+      {
+        "standard": "KISA 침해사고 분석절차 안내서 (제2010-8호)",
+        "section": "2.6 시스템 활동 정보 수집",
+        "note": "권한 침해 후 실제 자원 사용 흔적 — 사고 영향 범위 산정 핵심"
+      },
+      {
+        "standard": "MITRE ATT&CK Cloud Matrix v14",
+        "techniques": [
+          "T1021 (Remote Services) — Lateral Movement",
+          "T1552 (Unsecured Credentials) — Credential Access",
+          "T1580 (Cloud Infrastructure Discovery) — Discovery"
+        ],
+        "note": "단일 기법으로 한정되지 않음. API 호출 종류에 따라 여러 ATT&CK 전술에 매핑"
+      },
+      {
+        "standard": "NIST SP 800-86",
+        "section": "3.1 휘발성 계층 - Application logs",
+        "note": "API 액세스 로그는 CSP 영구 보존 (Activity Tracer/Cloud Trail)"
+      }
+    ]
+  },
+  "applicable_incident_types": [
+    "CREDENTIAL_THEFT",
+    "PRIVILEGE_ESCALATION",
+    "DATA_EXFILTRATION"
+  ],
+  "kill_chain_phases": [
+    "Discovery",
+    "Lateral Movement",
+    "Credential Access"
+  ],
+  "evidence_role": "REQUIRED",
+  "volatility_priority": 7,
+  "volatility_basis": "NIST SP 800-86 3.1 (Application logs — 비휘발성). 인증 자체(1.5.1, P10)보다 우선순위 낮지만 사고 영향 범위 산정에 필수. CSP 90일 보존 한계 내 수집.",
+  "rationale": "공격자가 자격증명 탈취 후 실제 무엇을 했는지의 직접 증거. Server Console 접근(NCP), Object Storage 다운로드, IAM 정책 조회, VPC 정찰 등이 모두 포함되는 광범위 카테고리. 각 사고유형마다 우선순위 다르게 평가:\n- CREDENTIAL_THEFT: 영향 범위 산정 → P7\n- PRIVILEGE_ESCALATION: 신규 권한 사용 흔적 → P8\n- DATA_EXFILTRATION: 데이터 접근 직접 증거 → P9\n- MULTI_CSP_LATERAL: 횡적 이동 식별 → P9",
+  "use_cases": [
+    "Server Console 접근 + root password decrypt 연쇄 (T1552 → T1021)",
+    "Sub Account/IAM 권한 정책 조회 (정찰 — T1580)",
+    "VPC/Security Group 정보 조회 (네트워크 정찰)",
+    "Object Storage 버킷 목록 조회 → 대용량 다운로드 (T1537 사전 단계)",
+    "동일 자격증명으로 다른 CSP 콘솔 접근 (MULTI_CSP_LATERAL 신호)",
+    "비표준 시각 (새벽) 다수 서비스 호출"
+  ],
+  "csp_mapping": {
+    "naver": {
+      "log_source": "Cloud Activity Tracer (전체 action 통합 로그)",
+      "action_patterns": [
+        "Access Server Connect Console",
+        "Decrypt root password",
+        "Encrypt root password",
+        "Create Login Key",
+        "Start Server Instance",
+        "Shutdown Server Instance",
+        "Get*",
+        "List*",
+        "Describe*"
+      ],
+      "field_locations": {
+        "actor": "content.actionUserName",
+        "ip": "content.sourceIp",
+        "service": "productName",
+        "action": "action"
+      },
+      "example_raw": {
+        "action": "Access Server Connect Console",
+        "eventTime": "2026-04-05 06:30:45 UTC",
+        "actionResultType": "SUCCESS",
+        "productName": "Server",
+        "content": {
+          "actionUserName": "attack-sim",
+          "sourceIp": "10.218.70.139"
+        }
+      },
+      "note": "NCP는 단일 통합 로그라 productName으로 서비스 분류 필요",
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer (전체 통합 로그)",
+        "필터: 침해 의심 actionUserName + sourceIp 로 좁히기",
+        "기간: 사고 발생 시각 이후 ~ 현재 (영향 범위 식별)",
+        "분류: productName 기준으로 Server / IAM / Object Storage / VPC 단계별 그룹화"
+      ],
+      "cli_hint": "통합 로그이므로 productName 별로 다중 export 후 OCSF 정규화 권장"
+    },
+    "nhn": {
+      "log_source": "Cloud Trail",
+      "event_id_patterns": [
+        "event_id.iaas.instance_action.*",
+        "event_id.iaas.identity.*",
+        "event_id.iaas.s3credential.*",
+        "event_id.iaas.keypair.*",
+        "event_id.iaas.volume.*",
+        "event_id.iaas.port.*",
+        "event_id.org.selected",
+        "event_id.project.selected",
+        "event_id.iam.org.selected",
+        "event_id.iam.project.selected"
+      ],
+      "field_locations": {
+        "actor": "userName",
+        "ip": "userIp",
+        "service": "eventId (prefix 분석)",
+        "details": "request, response"
+      },
+      "example_raw": {
+        "eventId": "event_id.iaas.instance_action.stop",
+        "eventTime": "2026-04-05T09:07:38.272+0000",
+        "result": "SUCCESS",
+        "userName": "attack",
+        "userIp": "115.91.214.5"
+      },
+      "note": "NHN은 event_id namespace로 서비스 자동 분류 가능",
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail",
+        "필터: userName=침해 계정 · userIp=침해 IP",
+        "기간: 사고 발생 시각 이후 ~ 현재",
+        "분류: eventId prefix 별 (iaas.* / object_storage.* / iam.* / org.*)"
+      ],
+      "cli_hint": "nhncloud cloudtrail events --user-name <actor> --user-ip <ip>"
+    }
+  },
+  "retention_days_default": 90,
+  "applicable_environments": {
+    "auditEnabled_required": true,
+    "services_dependent": true,
+    "modifier_hints": [
+      "services에 'Server'/'IAM' 포함 시 priority +1",
+      "services에 'Object Storage' 포함 시 priority +1 (DATA_EXFILTRATION 가설 강화)",
+      "csp='all' (멀티 CSP 환경) 시 priority +1 (Lateral Movement 가설)"
+    ]
+  }
 }

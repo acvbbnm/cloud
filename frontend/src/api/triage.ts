@@ -148,13 +148,15 @@ const MOCK_TREE: Record<string, TriageTreeNode> = {
 
 // weights.json 발췌 — 5/10/15/20/25/30/35/40 만 사용 (학술 변호)
 const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
+  // MULTI_CSP_LATERAL 키 2026-05-19 일괄 제거. Q2B:multi_csp_suspicious 옵션
+  // 자체는 weights.json 에서도 0 점 처리되어 화면에 표시되어도 영향 없음.
   'Q1_inception:csp_alert':        { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 5,  AUDIT_LOG_TAMPERING: 5 },
-  'Q1_inception:external_report':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 5,  DATA_EXFILTRATION: 30, AUDIT_LOG_TAMPERING: 20, MULTI_CSP_LATERAL: 5 },
-  'Q1_inception:audit':            { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10, AUDIT_LOG_TAMPERING: 25, MULTI_CSP_LATERAL: 5 },
-  'Q1_inception:service_anomaly':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 15, AUDIT_LOG_TAMPERING: 10, MULTI_CSP_LATERAL: 5 },
+  'Q1_inception:external_report':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 5,  DATA_EXFILTRATION: 30, AUDIT_LOG_TAMPERING: 20 },
+  'Q1_inception:audit':            { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10, AUDIT_LOG_TAMPERING: 25 },
+  'Q1_inception:service_anomaly':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 15, AUDIT_LOG_TAMPERING: 10 },
   'Q1_inception:unknown':          {},
   'Q2A:abnormal_login':            { CREDENTIAL_THEFT: 25, PRIVILEGE_ESCALATION: 5 },
-  'Q2A:non_korean_ip':             { CREDENTIAL_THEFT: 20, MULTI_CSP_LATERAL: 10 },
+  'Q2A:non_korean_ip':             { CREDENTIAL_THEFT: 20 },
   'Q2A:privilege_change':          { CREDENTIAL_THEFT: 10, PRIVILEGE_ESCALATION: 30 },
   'Q2A:object_storage_burst':      { DATA_EXFILTRATION: 30, CREDENTIAL_THEFT: 5 },
   'Q2A:audit_log_disabled':        { AUDIT_LOG_TAMPERING: 35, PRIVILEGE_ESCALATION: 10 },
@@ -163,7 +165,7 @@ const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
   'Q2B:data_exposed':              { DATA_EXFILTRATION: 35 },
   'Q2B:abnormal_billing':          { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 10 },
   'Q2B:identity_theft':            { CREDENTIAL_THEFT: 25 },
-  'Q2B:multi_csp_suspicious':      { MULTI_CSP_LATERAL: 30, CREDENTIAL_THEFT: 10 },
+  'Q2B:multi_csp_suspicious':      { CREDENTIAL_THEFT: 10 },
   'Q2C:iam_burst':                 { PRIVILEGE_ESCALATION: 25, CREDENTIAL_THEFT: 10 },
   'Q2C:permission_changes':        { PRIVILEGE_ESCALATION: 25, AUDIT_LOG_TAMPERING: 5 },
   'Q2C:log_gap':                   { AUDIT_LOG_TAMPERING: 30 },
@@ -173,7 +175,7 @@ const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
   'Q2D:resource_abuse':            { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 15 },
   'Q2D:response_delay':            { AUDIT_LOG_TAMPERING: 10 },
   'Q3:fail_then_success':          { CREDENTIAL_THEFT: 25 },
-  'Q3:multi_region_concurrent':    { CREDENTIAL_THEFT: 15, MULTI_CSP_LATERAL: 25 },
+  'Q3:multi_region_concurrent':    { CREDENTIAL_THEFT: 15 },
   'Q3:storage_policy_change':      { DATA_EXFILTRATION: 25 },
   'Q3:serverless_new':             { PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10 },
   'Q3:unknown_extra':              {},
@@ -259,7 +261,6 @@ const INITIAL_SCORES = (): HypothesisScores => ({
   PRIVILEGE_ESCALATION: 0,
   DATA_EXFILTRATION: 0,
   AUDIT_LOG_TAMPERING: 0,
-  MULTI_CSP_LATERAL: 0,
   // dev3 C-1 신규 4종 (2026-05-19)
   RANSOMWARE: 0,
   MISCONFIG_EXPOSURE: 0,

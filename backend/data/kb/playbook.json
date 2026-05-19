@@ -94,28 +94,6 @@
       ]
     },
     {
-      "chunk_id": "PLAYBOOK-MULTICSP-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "title": "멀티 CSP 횡적 이동 사고 — 즉시 대응 절차",
-      "text": "1) 침해 의심 외부 IP 양쪽 CSP에서 즉시 차단(NACL·Security Group). 2) 동일 사용자명·이메일이 양쪽 CSP에서 동시 활동 중인지 확인 → 자격증명 공유 가능성. 3) 두 CSP의 SSO/IdP 연동 점검 — 한 쪽 침해가 다른 쪽으로 자동 전파됐을 가능성. 4) 인스턴스 콘솔 접근·Pre-signed URL·외부 KMS 접근을 양쪽에서 동시 격리. 5) 두 CSP 모두에 동일 권한 변경 알림 규칙 활성화.",
-      "source": "CSA Top Threats 2024 #11 APT + KISA 3.3 확장",
-      "tactics_addressed": [
-        "Lateral Movement",
-        "Initial Access"
-      ]
-    },
-    {
-      "chunk_id": "PLAYBOOK-MULTICSP-002",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "title": "멀티 CSP 횡적 이동 사고 — 증거 보존 절차",
-      "text": "1) 양쪽 CSP의 감사 로그 동일 시점(±5분 윈도우)으로 동기화 봉인. 2) 동일 외부 IP에서 양쪽 CSP에 접근한 모든 API 호출 cross-CSP 매칭 테이블 생성. 3) 두 CSP의 OCSF 정규화 후 src_endpoint.ip 기준 join 결과 보존. 4) 동일 사용자명·이메일·키 지문(JWT iss/aud, MFA seed 등) 시계열 비교. 5) 두 CSP의 시간 동기 오차(NTP) 측정 — 분석 신뢰성 보강.",
-      "source": "ISO/IEC 27037 6.6 + 본 시스템 cross-CSP 검증",
-      "tactics_addressed": [
-        "Lateral Movement",
-        "Collection"
-      ]
-    },
-    {
       "chunk_id": "PLAYBOOK-NIST-IR-001",
       "incident_type": "ALL",
       "title": "NIST SP 800-61r2 — Phase 1: 준비 (Preparation)",
@@ -206,18 +184,6 @@
       "text": "디지털 증거 수집 우선순위 — 휘발성 높은 것부터: (P10) CPU 캐시·레지스터, (P9) Network connections·ARP cache, (P8) RAM·실행 중 프로세스, (P7) 디스크 임시 파일·스왑, (P6) 시스템 시간·라우팅 테이블, (P5) 영구 파일 시스템, (P4) 백업·아카이브, (P3) 원격 로그·오프사이트. 클라우드 환경에서는 P9(네트워크 연결) ≈ IAM 인증 세션·API 호출 흔적 (Activity Tracer/CloudTrail) → 즉시 수집 필수. 본 시스템 V-1 v2 가이드의 volatility_priority 가 이 계층을 그대로 사용.",
       "source": "NIST SP 800-86 §3.1",
       "tactics_addressed": [
-        "Collection"
-      ]
-    },
-    {
-      "chunk_id": "PLAYBOOK-MULTICSP-003",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "title": "멀티 CSP 환경 침해 대응 — Cross-CSP 상관관계 분석 절차",
-      "text": "양쪽 CSP(NCP+NHN) 동시 운영 환경의 침해 분석 7단계: (1) 두 CSP 감사 로그 동시 export → 시간 동기화 확인 (NTP 오차 측정), (2) OCSF 정규화 후 src_endpoint.ip 기준 join → 동일 IP 양쪽 활동 식별, (3) 동일 username·email 양쪽 동시 로그인 시각 차 측정 (5분 이내 = 강한 자격증명 공유 신호), (4) JWT iss/aud·MFA seed 등 토큰 지문 비교, (5) 한쪽 CSP 봉쇄 시 다른 쪽도 동시 봉쇄 — IdP 침해 가능성 대비, (6) 양쪽 보안 정책 동기화 (MFA·SSO 양쪽 동일 강제), (7) 신고 시 양쪽 활동 통합 보고서. 본 시스템 V-1 v2 가이드의 multi_cloud=='있음' modifier(m-010) 가 직접 트리거.",
-      "source": "본 시스템 합성 분석 + CSA Top Threats 2024 #11 APT",
-      "tactics_addressed": [
-        "Lateral Movement",
-        "Detection",
         "Collection"
       ]
     },

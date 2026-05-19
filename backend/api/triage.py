@@ -58,12 +58,11 @@ def _case_not_found() -> HTTPException:
 
 
 IncidentType = Literal[
-    # ── 5종 기존 ──
+    # ── 4종 기존 (MULTI_CSP_LATERAL 제거, 2026-05-19) ──
     "CREDENTIAL_THEFT",
     "PRIVILEGE_ESCALATION",
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
-    "MULTI_CSP_LATERAL",
     # ── dev3 C-1 신규 4종 ──
     "RANSOMWARE",
     "MISCONFIG_EXPOSURE",

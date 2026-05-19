@@ -11,8 +11,9 @@
     ],
     "version": "v1",
     "last_updated": "2026-05-15",
-    "incident_types_count": 9,
-    "dev3_c1_expansion": "2026-05-19 — 5종 → 9종 (RANSOMWARE·MISCONFIG·PHISH·INSIDER)"
+    "incident_types_count": 8,
+    "dev3_c1_expansion": "2026-05-19 — 5종 → 9종 (RANSOMWARE·MISCONFIG·PHISH·INSIDER)",
+    "multi_csp_lateral_removed": "2026-05-19 사용자 결정"
   },
   "incident_types": {
     "CREDENTIAL_THEFT": {
@@ -219,61 +220,6 @@
       "typical_kill_chain": [
         "(가설: 관리자 권한 보유) Privilege Escalation (1.5.2) → Stealth (1.7.4 로그 삭제) → Defense Impairment (1.7.3 로그 export 비활성화)"
       ]
-    },
-    "MULTI_CSP_LATERAL": {
-      "ko_label": "멀티 CSP 횡적 이동",
-      "description": "한 CSP의 자격증명·IP로 다른 CSP까지 침투",
-      "primary_phases": [
-        "Lateral Movement"
-      ],
-      "secondary_phases": [
-        "Initial Access",
-        "Discovery"
-      ],
-      "applicable_categories": [
-        {
-          "category_id": "1.5.1",
-          "role": "REQUIRED",
-          "phase": "Initial Access",
-          "scope": "both_csp"
-        },
-        {
-          "category_id": "1.5.5",
-          "role": "REQUIRED",
-          "phase": "Discovery",
-          "scope": "both_csp"
-        },
-        {
-          "category_id": "1.8",
-          "role": "REQUIRED",
-          "phase": "Lateral Movement"
-        },
-        {
-          "category_id": "1.4",
-          "role": "CORROBORATING",
-          "phase": "Exfiltration"
-        },
-        {
-          "category_id": "1.7",
-          "role": "REQUIRED",
-          "phase": "Stealth"
-        }
-      ],
-      "mitre_techniques": [
-        "T1021 (Remote Services)",
-        "T1078.004 (Valid Accounts: Cloud Accounts)"
-      ],
-      "kisa_classification": "불법적인 자원 사용 (확장) — 표 2-1",
-      "csa_threat_category": "#11 Advanced Persistent Threats (APT)",
-      "google_cloud_phase": "악성 활동 전파 + 인프라 생성",
-      "rationale": "단일 CSP 모니터링으로 보이지 않는 사고 유형. 외부 IP 기준 cross-CSP 상관관계 분석이 핵심. NCP attack-sim(11건) + NHN attack(36건)이 동일 IP 115.91.214.5 공유한 실 패턴.",
-      "typical_kill_chain": [
-        "(CSP A 침투 완료 가정) CSP A Discovery (1.5.5) → CSP B Initial Access (1.5.1) → 양쪽 동시 활동 (1.5.5 cross-csp) → 인프라 매핑 (1.8)"
-      ],
-      "special_requirements": {
-        "scope": "양쪽 CSP (naver + nhn) 모두 수집 필수",
-        "cross_correlation": "동일 외부 IP / 동일 사용자명·이메일 / 동일 시각 (±5분) 매칭"
-      }
     },
     "RANSOMWARE": {
       "ko_label": "랜섬웨어",

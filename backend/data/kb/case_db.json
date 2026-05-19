@@ -176,22 +176,6 @@
       "lessons_learned": "두 개의 외부 IP에서 같은 계정으로 동시 로그인(8.57:03 / 8.57:17, 14초 차) → 자격증명 공유/탈취 강한 신호. project.product.enable이 2회 모두 FAIL이지만 시도 자체가 권한 상승 의도 명시. 영속화 자격증명(s3credential)이 생성 22분 후 다시 삭제 → 흔적 제거 의도. 19시간 휴면 후 재침투는 자동화된 공격 도구의 특징."
     },
     {
-      "chunk_id": "CASE-MULTI-CSP-2026-04-05-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "멀티 CSP 연계 침투 의심 — 동일 외부 IP에서 NCP·NHN 동시 활동",
-      "actor": "NCP: attack-sim, NHN: attack",
-      "shared_external_ip": "115.91.214.5",
-      "time_window": "2026-04-05 06:12 ~ 04-06 05:24 UTC",
-      "evidence": [
-        "NCP attack-sim 최초 Login 시각: 2026-04-05 06:12:25 UTC",
-        "NHN attack 최초 Login 시각: 2026-04-05 08:57:17 UTC (NCP보다 약 2시간 45분 후)",
-        "두 계정 모두 동일 외부 IP 115.91.214.5 사용",
-        "두 사고 모두 자격증명 변경/생성 + Lateral 이동 + Impact의 동일 Kill Chain 패턴"
-      ],
-      "lessons_learned": "단일 CSP 모니터링으로는 두 사고가 독립 사건으로 보이나, 외부 IP 기준 상관관계 분석 시 동일 행위자 가능성. 멀티 CSP 환경에서는 raw 로그를 OCSF로 정규화한 뒤 src_endpoint.ip 기준 cross-CSP 조회가 필수."
-    },
-    {
       "chunk_id": "CASE-SYNTHETIC-NCP-2026-05-13-001",
       "incident_type": "CREDENTIAL_THEFT",
       "csp": "naver",
@@ -562,23 +546,6 @@
       "lessons_learned": "NHN의 외부 export는 정책 권한 확인이 강하여 변조 시도가 실패(05:15) — 변조 감지 알림이 발생. 그러나 기존 s3credential 일괄 삭제(05:20~05:24)로 감사 시스템 접근 자체를 봉쇄. CloudTrail은 비활성화는 어려우나 인증 봉쇄는 가능 → 'NHN 환경에서 s3credential.delete burst'를 별도 룰로 모니터링 필요."
     },
     {
-      "chunk_id": "CASE-MULTI-CSP-2026-05-01-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "동일 사용자명·이메일이 NCP·NHN 양쪽 동시 활동 — SSO 토큰 탈취 의심",
-      "actor": "user@corp.kr (NCP Sub Account + NHN IAM)",
-      "shared_external_ip": "203.249.18.77 → 양쪽 동일",
-      "time_window": "2026-05-01 09:00 ~ 09:45 UTC",
-      "evidence": [
-        "NCP attack-sim 로그인 09:00:12 / NHN attack 로그인 09:00:18 (6초 차)",
-        "양쪽 모두 동일 외부 IP 203.249.18.77",
-        "NCP에서 권한 변경 + AccessKey 발급 (09:02~09:08)",
-        "NHN에서 동일 시각 대역 Object Storage download (09:05~09:12)",
-        "두 사고 모두 동일 한국어 User-Agent 문자열"
-      ],
-      "lessons_learned": "외부 IdP/SSO 토큰 한 건 침해 시 두 CSP 동시 침투 가능. 동일 사용자명·이메일·UA 매칭이 cross-CSP 상관관계 분석의 핵심. 단일 CSP 모니터링은 6초 차 동시 로그인을 두 개 별건으로 처리 → 멀티 CSP 통합 SIEM(또는 본 시스템) 필수성 입증."
-    },
-    {
       "chunk_id": "CASE-PUBLIC-CAPITALONE-2019",
       "incident_type": "DATA_EXFILTRATION",
       "csp": "aws",
@@ -628,22 +595,6 @@
       ],
       "lessons_learned": "T1078·T1550 — SSO·IdP 토큰 탈취는 멀티 CSP·SaaS 전체 침투의 출발점. 본 시스템의 MULTI_CSP_LATERAL 사고유형과 직접 연결. IdP 침해 시 모든 연동 클라우드/SaaS 토큰 즉시 회수·재발급이 표준 대응. HAR 파일 등 진단 데이터에서 토큰 자동 마스킹 강제 필요.",
       "source": "Okta Security Notice 2023-10-19 / 1Password 2023-10-23 Incident Report"
-    },
-    {
-      "chunk_id": "CASE-PUBLIC-KAKAO-2022",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "공개 사례 — 카카오 판교 데이터센터 화재 2022-10: 멀티 IDC 의존성 노출",
-      "actor": "(외부 침입 아님 — IDC 화재로 인한 서비스 중단)",
-      "time_window": "2022-10-15 ~ 2022-10-20 (서비스 정상화)",
-      "evidence": [
-        "SK C&C 판교 IDC 화재로 카카오톡·다음·카카오페이 등 주요 서비스 중단",
-        "복구 시간 127시간 — 단일 IDC 의존 + 액티브-액티브 다중화 미흡 노출",
-        "감사 로그 자체 보존 위치도 같은 IDC에 있어 일부 손실 추정",
-        "T1485 (Data Destruction — 의도적 아닌 우발)에 해당 부분도 있음"
-      ],
-      "lessons_learned": "단일 CSP·단일 IDC 의존성은 가용성·로그 보존 양면에서 큰 리스크. 본 시스템의 MULTI_CSP_LATERAL 사고유형이 '횡적 침투' 외에 '다중 CSP 가용성 확보' 측면도 다뤄야 함을 시사. 핵심 시스템은 양쪽 CSP 백업 + 외부 Object Storage(다른 리전) export 의무화. 감사 로그 외부 사본 — NHN Cloud Trail 외부 변조 감지 기능과 같은 보장 메커니즘 필요.",
-      "source": "공개 보고서 (과기정통부 사고조사 결과 2022-12)"
     },
     {
       "chunk_id": "CASE-PUBLIC-LGUPLUS-2023",
@@ -711,24 +662,6 @@
       ],
       "lessons_learned": "본 시스템 5 사고유형 분류가 글로벌 침해 패턴 TOP 3 와 정합. CSA Top Threats 2024 의 #2 IAM(자격증명) + #7 Disclosure(설정) + #11 APT(공급망) 3 항목이 본 시스템 사고유형으로 100% 커버됨. 시스템 학술 변호의 핵심 근거 — 외부 통계 데이터로 사고유형 분류 정당성 입증.",
       "source": "CSA Top Threats 2024 + Mandiant M-Trends 2024 + Verizon DBIR 2024 + IBM Cost of Data Breach 2024"
-    },
-    {
-      "chunk_id": "CASE-PUBLIC-MS-STORM-0558",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "azure",
-      "title": "공개 사례 — Microsoft Storm-0558 (2023): Azure AD MSA 키 탈취",
-      "actor": "Storm-0558 (중국 후원 위협 그룹 추정)",
-      "external_ip": "(다수, 분산)",
-      "time_window": "2023-05 ~ 2023-07 (Microsoft 발견 및 무효화)",
-      "evidence": [
-        "MSA(consumer) 서명 키 탈취 → MSA + AAD 양쪽 토큰 위조 가능",
-        "이메일 등 약 25개 조직 표적 (미국 국무부 포함)",
-        "T1550 (Use Alternate Authentication Material) + T1078 (Valid Accounts)",
-        "키 자체가 production 시스템에 노출됐던 dump 에서 추출 추정",
-        "발견 시 약 2개월 잠복 — Microsoft 가 사후 조사로 발견"
-      ],
-      "lessons_learned": "키·인증서 자체의 탈취는 본 시스템의 1.5.5(API 액세스)·1.5.7(위험 기반 검색)·1.7(메타 로그) 카테고리 모두에 해당. SSO·IdP 의 마스터 키 = 본 시스템 PLAYBOOK-MULTICSP-001 의 최우선 봉쇄 대상. 발견 자체가 어려워 외부 위협 인텔리전스 + 정기 키 회전이 유일 방어.",
-      "source": "Microsoft Threat Intelligence 공식 발표 2023-07-11 + CISA Alert AA23-193A"
     },
     {
       "chunk_id": "CASE-PUBLIC-MOVEIT-2023",

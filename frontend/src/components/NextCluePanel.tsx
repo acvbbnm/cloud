@@ -21,8 +21,7 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  MULTI_CSP_LATERAL: '멀티 CSP 횡이동',
-  // dev3 C-1 신규 4종
+  // dev3 C-1 신규 4종 (MULTI_CSP_LATERAL 2026-05-19 제거)
   RANSOMWARE: '랜섬웨어',
   MISCONFIG_EXPOSURE: '설정 오류 노출',
   PHISH_INITIAL_ACCESS: '피싱 초기 침투',
@@ -82,18 +81,7 @@ const NEXT_CLUE_HEURISTIC: Partial<
       rationale: 'T1562.008 흔적 — Q2C:log_gap +30 보강',
     },
   ],
-  MULTI_CSP_LATERAL: [
-    {
-      question: '양쪽 CSP 모두에서 등장한 IP?',
-      hint_type: 'IP_ADDRESS',
-      rationale: 'Q3:multi_region_concurrent + Q2B:multi_csp_suspicious',
-    },
-    {
-      question: '양쪽 CSP 공유 사용자명·이메일?',
-      hint_type: 'ACCOUNT',
-      rationale: 'SSO 토큰 침해 신호',
-    },
-  ],
+  // MULTI_CSP_LATERAL 휴리스틱은 2026-05-19 제거. 환경 변수 multi_cloud 만 보존.
   // ── dev3 C-1 신규 4종 ──
   RANSOMWARE: [
     {

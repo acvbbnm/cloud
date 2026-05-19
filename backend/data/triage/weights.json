@@ -17,7 +17,8 @@
       "PHISH_INITIAL_ACCESS",
       "INSIDER_THREAT"
     ],
-    "updated": "2026-05-19"
+    "updated": "2026-05-19",
+    "dev3_c1_step3": "2026-05-19 — 분기 옵션 가중치 +10"
   },
   "thresholds": {
     "high_confidence": 70,
@@ -373,6 +374,123 @@
       "MISCONFIG_EXPOSURE": 0,
       "PHISH_INITIAL_ACCESS": 0,
       "INSIDER_THREAT": 0
+    },
+    "Q2A:ransomware_pattern": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 35,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 10,
+      "source": "MITRE ATT&CK v14 — T1486 Data Encrypted for Impact + Verizon DBIR 2024 (랜섬 24%)",
+      "UNCLASSIFIED": 0
+    },
+    "Q2A:misconfig_alert": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 15,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 35,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "CSA Top Threats 2024 #3 Misconfiguration + Prowler·Cloud Custodian 룰",
+      "UNCLASSIFIED": 0
+    },
+    "Q2A:phishing_kit_detect": {
+      "CREDENTIAL_THEFT": 15,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 30,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE ATT&CK v14 — T1566 Phishing + APWG Phishing Trend Report",
+      "UNCLASSIFIED": 0
+    },
+    "Q2B:ransom_note_visible": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 25,
+      "AUDIT_LOG_TAMPERING": 5,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 35,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 5,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE ATT&CK v14 — T1486 + Double Extortion 트렌드 (Mandiant 2024)",
+      "UNCLASSIFIED": 0
+    },
+    "Q2B:phishing_report": {
+      "CREDENTIAL_THEFT": 15,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 35,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE ATT&CK v14 — T1566.001 + KISA 피싱 신고 통계 2024",
+      "UNCLASSIFIED": 0
+    },
+    "Q2B:insider_complaint": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 10,
+      "DATA_EXFILTRATION": 15,
+      "AUDIT_LOG_TAMPERING": 5,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 30,
+      "source": "Carnegie CERT Insider Threat Center + KISA §3.3 변형",
+      "UNCLASSIFIED": 0
+    },
+    "Q2C:insider_anomaly": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 20,
+      "AUDIT_LOG_TAMPERING": 5,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 35,
+      "source": "MITRE ATT&CK v14 — T1078 Valid Accounts + UEBA 표준 행위 분석",
+      "UNCLASSIFIED": 0
+    },
+    "Q2C:default_account_used": {
+      "CREDENTIAL_THEFT": 10,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 30,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE ATT&CK v14 — T1078.001 Default Accounts + CSA #3",
+      "UNCLASSIFIED": 0
+    },
+    "Q2D:mass_encryption": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "MULTI_CSP_LATERAL": 0,
+      "RANSOMWARE": 40,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "MITRE ATT&CK v14 — T1486 + T1490 결합 시그널 최대치",
+      "UNCLASSIFIED": 0
     }
   },
   "clue_types": {

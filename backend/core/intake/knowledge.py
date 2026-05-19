@@ -40,14 +40,8 @@ _KNOWLEDGE: dict[str, dict] = {
             "nhn": ["Cloud Trail"],
         },
     },
-    "MULTI_CSP_LATERAL": {
-        "related_techniques": ["T1021", "T1078.004"],
-        "tactics": ["Lateral Movement"],
-        "key_services": {
-            "naver": ["Sub Account", "Server"],
-            "nhn": ["IAM", "Instance"],
-        },
-    },
+    # MULTI_CSP_LATERAL 항목은 2026-05-19 사용자 결정으로 제거.
+    # 환경 변수 multi_cloud (m-010) 만 보조 boost 로 유지.
 }
 
 

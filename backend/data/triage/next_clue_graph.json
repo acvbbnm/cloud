@@ -18,7 +18,9 @@
           "question": "이 IP 가 다른 시각에도 등장하는가?",
           "action": "raw_events 에서 src_ip 전체 검색",
           "hint_clue_type": "TIME_WINDOW",
-          "hypothesis_boost": { "CREDENTIAL_THEFT": 15 },
+          "hypothesis_boost": {
+            "CREDENTIAL_THEFT": 15
+          },
           "source": "MITRE T1078.004 + AWS Detective IP profile"
         },
         {
@@ -27,7 +29,7 @@
           "action": "raw_events 에서 csp 별 src_ip 검색",
           "hint_clue_type": "SERVICE",
           "hint_value": "multi_csp",
-          "hypothesis_boost": { "MULTI_CSP_LATERAL": 30 },
+          "hypothesis_boost": {},
           "source": "실 raw 분석 115.91.214.5 사례"
         },
         {
@@ -35,7 +37,9 @@
           "question": "이 IP 에서 접근한 계정의 권한 변경 이력?",
           "action": "ocsf_events 에서 actor_user + activity=IAM_MODIFY",
           "hint_clue_type": "ACCOUNT",
-          "hypothesis_boost": { "PRIVILEGE_ESCALATION": 20 },
+          "hypothesis_boost": {
+            "PRIVILEGE_ESCALATION": 20
+          },
           "source": "MITRE T1098"
         },
         {
@@ -43,7 +47,9 @@
           "question": "MFA 우회 흔적 (실패→성공 패턴)?",
           "action": "ocsf_events 에서 1분 내 실패+성공 같은 계정",
           "hint_clue_type": null,
-          "hypothesis_boost": { "CREDENTIAL_THEFT": 25 },
+          "hypothesis_boost": {
+            "CREDENTIAL_THEFT": 25
+          },
           "source": "MITRE T1110 + T1556"
         }
       ]
@@ -56,7 +62,9 @@
           "priority": 1,
           "question": "이 계정의 권한 변경 이력?",
           "action": "ocsf_events 에서 actor_user + activity=IAM_MODIFY",
-          "hypothesis_boost": { "PRIVILEGE_ESCALATION": 25 },
+          "hypothesis_boost": {
+            "PRIVILEGE_ESCALATION": 25
+          },
           "source": "MITRE T1098"
         },
         {
@@ -65,7 +73,9 @@
           "action": "ocsf_events 에서 actor_user + service=ObjectStorage",
           "hint_clue_type": "SERVICE",
           "hint_value": "object_storage",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 25 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 25
+          },
           "source": "MITRE T1530"
         },
         {
@@ -73,14 +83,18 @@
           "question": "이 계정의 로그인 IP 들이 모두 동일 지역?",
           "action": "ocsf_events 에서 actor_user + src_endpoint_ip 분포 분석",
           "hint_clue_type": "IP_ADDRESS",
-          "hypothesis_boost": { "CREDENTIAL_THEFT": 15 },
+          "hypothesis_boost": {
+            "CREDENTIAL_THEFT": 15
+          },
           "source": "MITRE T1078.004"
         },
         {
           "priority": 4,
           "question": "이 계정의 MFA 적용 상태?",
           "action": "system_config.mfa_status 확인 + IAM 정책 점검",
-          "hypothesis_boost": { "CREDENTIAL_THEFT": 30 },
+          "hypothesis_boost": {
+            "CREDENTIAL_THEFT": 30
+          },
           "source": "CSA #2 IAM + environment_modifier m-004"
         }
       ]
@@ -93,7 +107,10 @@
           "priority": 1,
           "question": "이 해시가 EDR·VirusTotal 매칭되는가?",
           "action": "external_lookup (오프라인 환경에서는 KB 사례 매칭)",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 10, "AUDIT_LOG_TAMPERING": 5 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 10,
+            "AUDIT_LOG_TAMPERING": 5
+          },
           "source": "VirusTotal API (오프라인 시 비활성)"
         },
         {
@@ -101,7 +118,9 @@
           "question": "이 해시가 Object Storage 에 업로드된 시각·계정?",
           "action": "raw_events 에서 file_hash 검색",
           "hint_clue_type": "ACCOUNT",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 20 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 20
+          },
           "source": "MITRE T1567"
         }
       ]
@@ -115,14 +134,18 @@
           "question": "이 도메인으로 통신한 내부 IP·계정?",
           "action": "vpc_flow_logs + dns_logs 에서 domain 검색",
           "hint_clue_type": "IP_ADDRESS",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 20 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 20
+          },
           "source": "MITRE T1071"
         },
         {
           "priority": 2,
           "question": "이 도메인이 C2 도메인 또는 DGA 도메인?",
           "action": "threat_intel_lookup (오프라인 시 KB 사례)",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 25, "MULTI_CSP_LATERAL": 10 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 25
+          },
           "source": "MITRE T1568.002"
         }
       ]
@@ -136,14 +159,18 @@
           "question": "이 시각에 활성화된 비국내 IP 또는 의심 계정?",
           "action": "ocsf_events 에서 time 범위 + non_korean_ip OR new_account",
           "hint_clue_type": "IP_ADDRESS",
-          "hypothesis_boost": { "CREDENTIAL_THEFT": 15 },
+          "hypothesis_boost": {
+            "CREDENTIAL_THEFT": 15
+          },
           "source": "KISA §2.4 ⑤ 시각 패턴"
         },
         {
           "priority": 2,
           "question": "이 시각에 권한 변경 또는 IAM 작업이 있었는가?",
           "action": "ocsf_events 에서 time 범위 + activity=IAM_MODIFY",
-          "hypothesis_boost": { "PRIVILEGE_ESCALATION": 25 },
+          "hypothesis_boost": {
+            "PRIVILEGE_ESCALATION": 25
+          },
           "source": "MITRE T1098"
         },
         {
@@ -152,14 +179,18 @@
           "action": "ocsf_events 에서 time 범위 + service=ObjectStorage + count > threshold",
           "hint_clue_type": "SERVICE",
           "hint_value": "object_storage",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 25 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 25
+          },
           "source": "MITRE T1530"
         },
         {
           "priority": 4,
           "question": "이 시각에 감사 로그 활성 상태 변경이 있었는가?",
           "action": "audit_log_events 에서 time 범위 + audit_status_change",
-          "hypothesis_boost": { "AUDIT_LOG_TAMPERING": 30 },
+          "hypothesis_boost": {
+            "AUDIT_LOG_TAMPERING": 30
+          },
           "source": "MITRE T1562.008"
         }
       ]
@@ -173,21 +204,27 @@
           "question": "이 서비스에 접근한 계정 목록은?",
           "action": "ocsf_events 에서 service + actor_user 그룹화",
           "hint_clue_type": "ACCOUNT",
-          "hypothesis_boost": { "DATA_EXFILTRATION": 15 },
+          "hypothesis_boost": {
+            "DATA_EXFILTRATION": 15
+          },
           "source": "AWS Detective service profile"
         },
         {
           "priority": 2,
           "question": "이 서비스에서 발생한 권한 변경 이력은?",
           "action": "ocsf_events 에서 service + activity=POLICY_MODIFY",
-          "hypothesis_boost": { "PRIVILEGE_ESCALATION": 20 },
+          "hypothesis_boost": {
+            "PRIVILEGE_ESCALATION": 20
+          },
           "source": "MITRE T1484"
         },
         {
           "priority": 3,
           "question": "이 서비스의 로그가 비활성 상태인가?",
           "action": "system_config.auditEnabled + service-specific log status",
-          "hypothesis_boost": { "AUDIT_LOG_TAMPERING": 25 },
+          "hypothesis_boost": {
+            "AUDIT_LOG_TAMPERING": 25
+          },
           "source": "MITRE T1562.008 + environment_modifier m-001"
         }
       ]

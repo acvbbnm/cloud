@@ -111,6 +111,12 @@ class TriageConfirmRequest(BaseModel):
     incident_type: IncidentType
     hypothesis_scores: dict[str, int]
     secondary_incident_types: Optional[list[IncidentType]] = None
+    # ── dev3 B-3 (2026-05-19): 트리 진행 상태 영속화 ──
+    # 클라이언트가 마지막으로 들고 있던 트리 상태 — useTriageStore 와 1:1
+    # {current_node_id, completed_path, hypothesis_scores, recommendation, is_terminal, mapped_techniques}
+    triage_state: Optional[dict] = None
+    # 단서 영속화 — V-1 Step 2 의 Observable 배열 (clue input 결과)
+    observables: Optional[list[dict]] = None
 
 
 # ── 라우터 ───────────────────────────────────────────────
@@ -176,14 +182,27 @@ async def post_analyze(req: TriageAnalyzeRequest, db: Session = Depends(get_db))
 
 @router.post("/confirm")
 async def post_confirm(req: TriageConfirmRequest, db: Session = Depends(get_db)) -> dict:
-    """확정 사고유형을 incident_cases.incident_type 에 반영.
+    """확정 사고유형 + 부 사고유형 + 트리 상태 + 단서를 incident_cases 에 영속화.
 
     UNCLASSIFIED 도 유효 — 사용자가 '건너뛰기' 선택 시 그대로 저장.
-    secondary_incident_types 는 B-3 (DB 칼럼 추가) 전까지 응답에 echo 만 함.
+
+    dev3 B-3 (2026-05-19):
+      - secondary_incident_types: JSON 칼럼에 list 영속화 (V-8 사후 검증 결과)
+      - triage_state: 트리 진행 상태 (current_node_id, completed_path, hypothesis_scores,
+        recommendation, is_terminal, mapped_techniques) 통째로 저장
+      - observables: 단서 배열 영속화
     """
     case = _ensure_case(db, req.caseId)
     prev_type = case.incident_type
+
     case.incident_type = req.incident_type
+    if req.secondary_incident_types is not None:
+        case.secondary_incident_types = req.secondary_incident_types
+    if req.triage_state is not None:
+        case.triage_state = req.triage_state
+    if req.observables is not None:
+        case.observables = req.observables
+
     db.commit()
     db.refresh(case)
     return {
@@ -193,11 +212,9 @@ async def post_confirm(req: TriageConfirmRequest, db: Session = Depends(get_db))
             "incident_type": case.incident_type,
             "previous_incident_type": prev_type,
             "hypothesis_scores": req.hypothesis_scores,
-            "secondary_incident_types": req.secondary_incident_types or [],
-            "_note": (
-                "secondary_incident_types · triage_state 영속화는 B-3 DB 칼럼 추가 후 활성. "
-                "현재는 incident_type 만 갱신."
-            ),
+            "secondary_incident_types": case.secondary_incident_types or [],
+            "triage_state_saved": case.triage_state is not None,
+            "observables_count": len(case.observables or []),
         },
     }
 

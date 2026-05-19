@@ -31,6 +31,7 @@ IncidentType = Literal[
 ]
 CSP = Literal["naver", "nhn", "all"]
 Severity = Literal["critical", "high", "medium", "low"]
+TLP = Literal["RED", "AMBER", "GREEN", "WHITE"]  # dev3 — TheHive 5 정보 공유 등급
 
 
 # ── 요청/응답 스키마 ──
@@ -44,20 +45,39 @@ class CreateCaseRequest(BaseModel):
     severity: Severity
     occurred_at: datetime
     system_config: Optional[dict] = None
+    # ── dev3 B-3 (Step 1 케이스 메타) ──
+    title: Optional[str] = Field(default=None, max_length=200)
+    tlp: TLP = "AMBER"
+    observables: Optional[list[dict]] = None  # [{type, value, weight_key?, note?, added_at?}]
 
 
 class UpdateCaseRequest(BaseModel):
-    """PATCH /api/cases/{case_id} 요청 바디 (부분 갱신)."""
+    """PATCH /api/cases/{case_id} 요청 바디 (부분 갱신).
+
+    dev3: incident_type / title / tlp / observables / secondary_incident_types /
+    triage_state 도 부분 갱신 가능. V-8 사후 검증에서 부 사고유형 추가 등에 사용.
+    """
 
     severity: Optional[Severity] = None
     system_config: Optional[dict] = None
+    # ── dev3 B-3 ──
+    incident_type: Optional[IncidentType] = None
+    title: Optional[str] = Field(default=None, max_length=200)
+    tlp: Optional[TLP] = None
+    observables: Optional[list[dict]] = None
+    secondary_incident_types: Optional[list[IncidentType]] = None
+    triage_state: Optional[dict] = None
 
 
 # ── 직렬화 헬퍼 ──
 
 
 def _serialize_case(case: IncidentCaseModel) -> dict:
-    """IncidentCaseModel → API 응답 dict (계약서 형식)."""
+    """IncidentCaseModel → API 응답 dict (계약서 형식).
+
+    dev3 B-3: title·tlp·observables·secondary_incident_types·triage_state 5종 추가.
+    구버전 row (마이그레이션 직후) 호환 — 기본값으로 fallback.
+    """
     return {
         "caseId": case.case_id,
         "incident_type": case.incident_type,
@@ -67,6 +87,12 @@ def _serialize_case(case: IncidentCaseModel) -> dict:
         "system_config": case.system_config,
         "created_at": case.created_at.isoformat() if case.created_at else None,
         "closed_at": case.closed_at.isoformat() if case.closed_at else None,
+        # ── dev3 B-3 ──
+        "title": case.title,
+        "tlp": case.tlp or "AMBER",
+        "observables": case.observables or [],
+        "secondary_incident_types": case.secondary_incident_types,
+        "triage_state": case.triage_state,
     }
 
 
@@ -86,7 +112,10 @@ def _case_not_found() -> HTTPException:
 
 @router.post("/cases", status_code=status.HTTP_201_CREATED)
 async def create_case(req: CreateCaseRequest, db: Session = Depends(get_db)) -> dict:
-    """사고 케이스를 신규 생성한다."""
+    """사고 케이스를 신규 생성한다.
+
+    dev3: V-1 Step 1 케이스 메타 (title·tlp·observables) 수용. UNCLASSIFIED 도 허용.
+    """
     case = IncidentCase.create(
         db,
         incident_type=req.incident_type,
@@ -94,6 +123,9 @@ async def create_case(req: CreateCaseRequest, db: Session = Depends(get_db)) -> 
         severity=req.severity,
         occurred_at=req.occurred_at,
         system_config=req.system_config,
+        title=req.title,
+        tlp=req.tlp,
+        observables=req.observables,
     )
     return {"status": "ok", "data": _serialize_case(case)}
 
@@ -111,12 +143,22 @@ async def get_case(case_id: str, db: Session = Depends(get_db)) -> dict:
 async def update_case(
     case_id: str, req: UpdateCaseRequest, db: Session = Depends(get_db)
 ) -> dict:
-    """case의 severity·system_config를 부분 갱신한다."""
+    """case의 메타·시스템 구성·트리아주 상태를 부분 갱신한다.
+
+    dev3: incident_type 변경 (V-8 사후 검증 후) + observables / secondary_incident_types /
+    triage_state 영속화 지원.
+    """
     case = IncidentCase.update_config(
         db,
         case_id=case_id,
         severity=req.severity,
         system_config=req.system_config,
+        title=req.title,
+        tlp=req.tlp,
+        observables=req.observables,
+        secondary_incident_types=req.secondary_incident_types,
+        triage_state=req.triage_state,
+        incident_type=req.incident_type,
     )
     if case is None:
         raise _case_not_found()

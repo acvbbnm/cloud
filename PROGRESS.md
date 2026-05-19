@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-18 · 브랜치: `dev3` (V-1 재설계 — Discovery Loop + 결정 트리 + Triage API 4종)
+> 마지막 업데이트: 2026-05-19 · 브랜치: `dev3` (V-1 재설계 — B-3 DB 칼럼 확장 + B-2/V-8 백엔드 머지 완료)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -28,9 +28,10 @@
 | 5-3 프론트 V-1 Step 2 | `Step2_Discovery` 3-panel (단서·부분분석·결정트리·시각화) | ✅ 사전 안내 모달 + 트리 시각화 미니맵 + 다음 단서 패널 | — | — |
 | 5-4 프론트 스토어 | `useCaseStore` 확장 + `useTriageStore` 신규 | ✅ persist v1→v2 마이그레이션 + 트리 상태 영속화 | — | — |
 | 5-5 백엔드 Triage API | `/api/triage/{start,next,analyze,confirm}` | — | ✅ **B-1 완료** — 4 라우터 + 평가 엔진 + UNCLASSIFIED enum | ✅ 가중치 누적 시뮬레이션 통과 |
-| 5-6 백엔드 부분 로그 (B-2) | `/api/triage/analyze` multipart | — | ❌ 후속 — UploadFile + Layer 1·2 재사용 | — |
-| 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,triage_state}` | — | ❌ DB 담당자 합의 대기 | — |
-| 5-8 V-8 사후 검증 | `IncidentTypeReviewCard` (Layer 2 ↔ 확정 사고유형 정합) | ❌ 후속 | ❌ 후속 | — |
+| 5-6 백엔드 부분 로그 (B-2) | `/api/triage/analyze-logs` + `/api/triage/tree` | — | ✅ **B-2 완료** (jingyu 머지) — UploadFile + Layer 1·2 재사용 + 트리 시각화 직렬화 | — |
+| 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,secondary_incident_types,triage_state}` | — | ✅ **B-3 완료** — 5 칼럼 추가 + idempotent 마이그레이션 + intake/triage 영속화 + E2E 통과 | — |
+| 5-8 V-8 사후 검증 | `GET /api/sherpa/validate-incident-type` + `IncidentTypeReviewCard` | ❌ 프론트 ReviewCard 후속 | ✅ **백엔드 완료** (jingyu 머지) — 관측 ATT&CK ↔ IncidentTypeKnowledge 정합성 점수화 | — |
+| 5-9 Step 3 UNCLASSIFIED 분기 | `GET /api/guide/v2` UNCLASSIFIED 처리 | (재로드 동작) | ✅ **완료** (jingyu 머지) — Initial Access + Credential Access + Discovery phase fallback | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
@@ -39,6 +40,46 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-19 — dev3 B-3: incident_cases 칼럼 5종 확장 + jingyu 머지
+
+**진규 브랜치 머지** (`ccf7de3` Merge `e706012`):
+- B-2 완료: `POST /api/triage/analyze-logs` (multipart) — Layer 1·2 파이프라인 재사용, clue_time ±5분 윈도우 attack_events 필터
+- 트리 시각화: `GET /api/triage/tree` + `Triage.tree_visualization()`
+- Step 3 fallback: `GET /api/guide/v2` UNCLASSIFIED 분기 (Initial Access + Credential Access + Discovery phase)
+- V-8 사후 검증: `GET /api/sherpa/validate-incident-type` — 관측 ATT&CK ↔ `IncidentTypeKnowledge.related_techniques` 점수화 → CONSISTENT / REVIEW_NEEDED + candidate_types
+
+**B-3 DB 칼럼 확장** (이 커밋):
+`incident_cases` 테이블에 V-1 재설계 칼럼 5종 추가:
+- `title` VARCHAR(200) NULL — 사건 제목 (기존 row 호환 위해 nullable)
+- `tlp` VARCHAR(16) NOT NULL DEFAULT 'AMBER' — TheHive 5 정보 공유 등급
+- `observables` JSON NOT NULL DEFAULT '[]' — Observable 배열
+- `secondary_incident_types` JSON NULL — V-8 사후 검증으로 추가될 부 사고유형
+- `triage_state` JSON NULL — 결정 트리 진행 상태 전체 영속화
+
+작업 단위:
+1. `db/models.py` — `IncidentCaseModel` 5 칼럼 추가
+2. `db/migrate_b3.py` — idempotent ALTER TABLE 마이그레이션 스크립트 (`PRAGMA table_info` 로 기존 칼럼 체크 후 skip)
+3. `core/intake/incident_case.py` — `create()` / `update_config()` 신규 필드 수용 (incident_type 변경, observables 갱신, triage_state 통째 교체)
+4. `api/intake.py` — `POST /api/cases` + `PATCH /api/cases/{caseId}` + `_serialize_case` 신규 5 필드 수용·응답
+5. `api/triage.py` — `POST /api/triage/confirm` 의 `secondary_incident_types` · `triage_state` · `observables` 실 영속화 (이전 echo only → DB 반영)
+
+검증 (TestClient E2E 4 단계):
+- CREATE: UNCLASSIFIED + title + tlp + observables → 201 + 신규 필드 응답
+- GET: 신규 5 필드 모두 노출
+- PATCH: incident_type CREDENTIAL_THEFT 변경 + secondary + triage_state 갱신
+- CONFIRM: incident_type DATA_EXFILTRATION 확정 + 4 필드 동시 영속화
+→ **모든 단계 PASS**
+
+마이그레이션 사용법:
+```bash
+python -m db.migrate_b3   # 기존 DB 사용자
+# 신규 DB 는 init_db.py create_all() 가 자동 처리 (마이그 스크립트는 SKIP 만)
+```
+
+**dev3 청사진 잔여 작업** (백엔드는 100% 완료):
+- ❌ V-8 IncidentTypeReviewCard 프론트 — `validate-incident-type` 호출 + 추가 사고유형 등록 UI
+- (선택) E2E 시연 시나리오 + 보고서 갱신
 
 ### 2026-05-18 — dev3 분기: V-1 재설계 (Discovery Loop + 결정 트리 + Triage API)
 

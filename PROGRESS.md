@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-19 · 브랜치: `dev3` (V-1 재설계 — B-3 DB 칼럼 확장 + B-2/V-8 백엔드 머지 완료)
+> 마지막 업데이트: 2026-05-19 (밤) · 브랜치: `dev3` (시연 회귀 다수 핀포인트 + 8종 enum 마무리)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,6 +41,46 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-19 (밤2) — 시연 회귀 다수 핀포인트 + 8종 enum 마무리 + mock fallback 토스트
+
+C-1 사고유형 확장 / MULTI_CSP_LATERAL 제거 작업 후 시연 시 발견된 런타임 회귀들을 자동 대조 도구로 일괄 잡고 수정. 백엔드는 모두 PASS 였지만 프론트-백엔드 페이로드·mock 잔존 영역에 회귀 다수.
+
+**자동 대조 도구 신설** (이번 디버깅에서 새로 만든 점검 패턴):
+- **백엔드 OpenAPI ↔ 프론트 TypeScript 인터페이스 정합 대조** — required 필드 비교로 회귀 자동 탐지. nextTriage 류 페이로드 누락 3건 발견.
+- **mock 잔존 탐지** — USE_MOCK / MOCK_ / mockCall 패턴 grep + 백엔드 실 엔드포인트 33개 대조.
+
+**수정 커밋 (5개)**:
+1. `c394751` fix(triage): nextTriage 페이로드에 hypothesis_scores + tree_path 합쳐 전송
+   - 증상: 결정 트리 답변 후 "다음" 누르면 토스트 "트리아주 진행 실패" (422).
+   - 원인: 백엔드 stateless 정책 (청사진 §3) 의 필수 필드를 프론트가 누락.
+2. `ee29101` fix(types): Triage* Request 인터페이스 백엔드 Pydantic 정합 보강
+   - TriageNextRequest / TriageAnalyzeRequest / TriageConfirmRequest 의 hypothesis_scores 필드 추가.
+   - 향후 함수 추가 시 자동 보호.
+3. `46fb94e` feat(v1): 부분 로그 분석 mock 제거 + 백엔드 /api/triage/analyze-logs 실 호출
+   - PartialLogAnalysis.tsx 의 mockAnalyze (파일명 패턴) 전면 삭제.
+   - analyzeLogs() multipart 함수 신설, 응답의 hypothesis_scores 그대로 적용.
+   - Step2_Discovery.tsx 의 TECH_WEIGHTS 클라이언트 mock 가중치 전면 삭제 (학술 변호: 정적 weights.json 단일 소스).
+4. (본 커밋) feat(triage): mock fallback 진입 시 토스트 알림
+   - 백엔드 404·network error 시 자동 mock fallback 작동 → 사용자가 mock vs 실 응답 구분 못 했던 문제.
+   - useToastStore.getState() 로 비-React 컨텍스트 직접 호출, 동일 라벨 5초 중복 억제.
+
+**자동 점검 결과 — 잔존 mock 0건**:
+- api/intake.ts USE_MOCK: 환경변수 기반 (정상 dev 패턴, 기본 false)
+- analysis.ts / board.ts / sherpa.ts / logs.ts: mock 0건
+- triage.ts fallback: 404·network 만, 토스트 알림 추가됨
+
+**다른 회귀 영역 (확인 완료)**:
+- 모든 8 사고유형 (UNCLASSIFIED 포함 9 케이스) /api/cases + /api/guide/v2 + validate-incident-type 21/21 PASS
+- 결정 트리 점수 누적 시뮬레이션 (Q1 service_anomaly → Q2D data_destruction → Q3) RANSOMWARE 점수 정상 부여
+- /api/triage/analyze-logs multipart TestClient 200 OK
+- OpenAPI ↔ TypeScript 6 매칭 쌍 모두 정합 (불일치 0)
+
+**시연 가능 상태**:
+- V-1 Step 0 → 1 → 2 → 3 전 흐름 작동
+- 결정 트리 8종 사고유형 점수 누적·추천 정상
+- V-2 ~ V-7 dev2 흐름 무변경, 영향 없음
+- V-8 사후 검증 카드 + IncidentTypeReviewCard 신규 4종 후보 정상
 
 ### 2026-05-19 (밤) — C-1 사고유형 9종 확장 — 작업 지시서 등록 (다른 팀원 인계)
 

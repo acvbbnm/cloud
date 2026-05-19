@@ -14,6 +14,7 @@
 import axios from 'axios';
 
 import client from './client';
+import { useToastStore } from '@/stores/useToastStore';
 
 import type {
   HypothesisScores,
@@ -25,6 +26,26 @@ import type {
 } from '@/types';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+/**
+ * dev3 (2026-05-19): mock fallback 진입 시 사용자에게 토스트로 명시.
+ * 같은 호출 사이클에서 토스트가 폭주하지 않도록 함수당 최대 1회만 발화 (모듈 레벨 flag).
+ */
+const _mockToastFired: Record<string, number> = {};
+const notifyMockFallback = (label: string): void => {
+  const now = Date.now();
+  const last = _mockToastFired[label] ?? 0;
+  // 동일 라벨 5초 내 중복 발화 억제
+  if (now - last < 5000) return;
+  _mockToastFired[label] = now;
+  try {
+    useToastStore.getState().show(`⚠ 백엔드 미응답 — ${label} mock 모드 진행`, 3000);
+  } catch {
+    // 토스트 미초기화 등 비상 — console.warn 만
+  }
+  // eslint-disable-next-line no-console
+  console.warn(`[triage] ${label} backend unavailable → fallback to mock`);
+};
 
 // ─────────────────────────────────────────────────────────────
 // Mock 데이터 — backend/data/triage/decision_tree.json 발췌 정합
@@ -286,8 +307,8 @@ export const startTriage = async (
     return res.data.data;
   } catch (e) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || !e.response)) {
-      // 백엔드 미구현 — mock fallback
-      console.warn('[triage] backend /api/triage/start not available, fallback to mock');
+      // 백엔드 미구현·미응답 — mock fallback (사용자 알림 + console.warn)
+      notifyMockFallback('triage/start');
       return {
         next_node: MOCK_TREE[ROOT_NODE_ID],
         hypothesis_scores: INITIAL_SCORES(),
@@ -361,7 +382,7 @@ export const nextTriage = async (
     return await realCall();
   } catch (e) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || !e.response)) {
-      console.warn('[triage] backend /api/triage/next not available, fallback to mock');
+      notifyMockFallback('triage/next');
       return mockCall();
     }
     throw e;

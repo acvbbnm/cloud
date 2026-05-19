@@ -6,7 +6,8 @@ interface Step0Props {
   onNext: () => void;
 }
 
-const cspOrder = ['naver', 'nhn', 'all'];
+// dev3 (2026-05-19): 멀티 CSP('all') 옵션 제거 — MULTI_CSP_LATERAL 사고유형 삭제와 함께
+const cspOrder = ['naver', 'nhn'];
 
 const Step0_CSPCards = ({ selected, onSelect, onNext }: Step0Props) => {
   const meta = CSP_META[selected ?? 'naver'] ?? CSP_META.naver;
@@ -20,7 +21,7 @@ const Step0_CSPCards = ({ selected, onSelect, onNext }: Step0Props) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {cspOrder.map((id) => {
           const c = CSP_META[id];
           const sel = selected === id;
@@ -87,7 +88,7 @@ const Step0_CSPCards = ({ selected, onSelect, onNext }: Step0Props) => {
 
       <div className="flex justify-end">
         <button onClick={onNext} disabled={!selected} className="btn-primary disabled:opacity-50">
-          다음: 사고 유형 선택 →
+          다음: 케이스 메타 입력 →
         </button>
       </div>
     </div>

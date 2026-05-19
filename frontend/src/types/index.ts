@@ -30,7 +30,8 @@ export type ClueType =
   | 'DOMAIN'
   | 'TIME_WINDOW'
   | 'SERVICE';
-export type CSP = 'naver' | 'nhn' | 'all';
+// dev3 (2026-05-19): 'all' 제거 — MULTI_CSP_LATERAL 삭제와 함께. naver/nhn 만.
+export type CSP = 'naver' | 'nhn';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type EvidenceRole = 'REQUIRED' | 'CORROBORATING';
 export type GapType = 'NONE' | 'COLLECTION' | 'EVIDENCE' | 'INTERPRETATION';

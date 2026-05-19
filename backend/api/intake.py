@@ -37,7 +37,7 @@ IncidentType = Literal[
     # ── MULTI_CSP_LATERAL 제거 (2026-05-19): 사용자 명시 결정. 학술 변호는
     #    KB·문서 인용으로 대체. 환경 변수 multi_cloud (m-010) 는 보조 boost 로 유지.
 ]
-CSP = Literal["naver", "nhn", "all"]
+CSP = Literal["naver", "nhn"]  # dev3 2026-05-19: 'all' 제거 (MULTI_CSP_LATERAL 삭제와 함께)
 Severity = Literal["critical", "high", "medium", "low"]
 TLP = Literal["RED", "AMBER", "GREEN", "WHITE"]  # dev3 — TheHive 5 정보 공유 등급
 

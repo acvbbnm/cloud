@@ -42,6 +42,40 @@ _KNOWLEDGE: dict[str, dict] = {
     },
     # MULTI_CSP_LATERAL 항목은 2026-05-19 사용자 결정으로 제거.
     # 환경 변수 multi_cloud (m-010) 만 보조 boost 로 유지.
+
+    # ── dev3 C-1 신규 4종 (2026-05-19) ──
+    "RANSOMWARE": {
+        "related_techniques": ["T1486", "T1490", "T1078", "T1567"],
+        "tactics": ["Initial Access", "Execution", "Impact", "Exfiltration"],
+        "key_services": {
+            "naver": ["Object Storage", "Server", "KMS"],
+            "nhn": ["Object Storage", "Instance", "Secure Key Manager"],
+        },
+    },
+    "MISCONFIG_EXPOSURE": {
+        "related_techniques": ["T1190", "T1078.001", "T1530", "T1580"],
+        "tactics": ["Initial Access", "Discovery"],
+        "key_services": {
+            "naver": ["Object Storage", "VPC", "ACG"],
+            "nhn": ["Object Storage", "VPC", "Security Group"],
+        },
+    },
+    "PHISH_INITIAL_ACCESS": {
+        "related_techniques": ["T1566", "T1566.001", "T1078.004", "T1556"],
+        "tactics": ["Initial Access", "Credential Access"],
+        "key_services": {
+            "naver": ["Sub Account", "Cloud Activity Tracer"],
+            "nhn": ["IAM", "Cloud Trail"],
+        },
+    },
+    "INSIDER_THREAT": {
+        "related_techniques": ["T1078", "T1098", "T1530", "T1562.008"],
+        "tactics": ["Initial Access", "Persistence", "Collection", "Defense Evasion"],
+        "key_services": {
+            "naver": ["Sub Account", "Object Storage", "Cloud Activity Tracer"],
+            "nhn": ["IAM", "Object Storage", "Cloud Trail"],
+        },
+    },
 }
 
 

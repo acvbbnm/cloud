@@ -253,14 +253,17 @@ async def validate_incident_type(
         observed_norm_set - {_normalize_technique(t) for t in current_expected}
     )
 
-    # 3) 모든 후보 점수화
+    # 3) 모든 후보 점수화 (dev3 C-1: MULTI_CSP_LATERAL 제거, 4종 신규 추가 — 총 8 후보)
     candidates: list[dict] = []
     for other_type, k in [
         ("CREDENTIAL_THEFT", IncidentTypeKnowledge.lookup("CREDENTIAL_THEFT")),
         ("PRIVILEGE_ESCALATION", IncidentTypeKnowledge.lookup("PRIVILEGE_ESCALATION")),
         ("DATA_EXFILTRATION", IncidentTypeKnowledge.lookup("DATA_EXFILTRATION")),
         ("AUDIT_LOG_TAMPERING", IncidentTypeKnowledge.lookup("AUDIT_LOG_TAMPERING")),
-        ("MULTI_CSP_LATERAL", IncidentTypeKnowledge.lookup("MULTI_CSP_LATERAL")),
+        ("RANSOMWARE", IncidentTypeKnowledge.lookup("RANSOMWARE")),
+        ("MISCONFIG_EXPOSURE", IncidentTypeKnowledge.lookup("MISCONFIG_EXPOSURE")),
+        ("PHISH_INITIAL_ACCESS", IncidentTypeKnowledge.lookup("PHISH_INITIAL_ACCESS")),
+        ("INSIDER_THREAT", IncidentTypeKnowledge.lookup("INSIDER_THREAT")),
     ]:
         if k is None:
             continue

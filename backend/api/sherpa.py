@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from core.intake.incident_case import IncidentCase
 from core.sherpa.ai_sherpa import AISherpa
+from core.sherpa.incident_inference import infer_from_attacks
 from core.sherpa.knowledge_base import stats as kb_stats
 from core.sherpa.llm_engine import LLMEngine
 from core.sherpa.rag_retriever import RAGRetriever
@@ -66,6 +67,16 @@ class SuggestRequest(BaseModel):
 class PlaybookRequest(BaseModel):
     caseId: Optional[str] = None
     chain: list[str]
+
+
+class VerifyIncidentTypesRequest(BaseModel):
+    """POST /api/sherpa/verify-incident-types — V-8 사후 검증.
+
+    confirmed incident_type 과 Layer 2 매핑 결과를 비교해 추가 사고유형 제안.
+    수사관이 결과를 받아 PATCH /api/cases (secondary_incident_types) 로 확정.
+    """
+
+    caseId: str
 
 
 # ── 엔드포인트 ────────────────────────────────────────────
@@ -174,3 +185,27 @@ async def get_kb_stats() -> dict:
             "rag": RAGRetriever.backend_info(),
         },
     }
+
+
+@router.post("/verify-incident-types")
+async def post_verify_incident_types(
+    req: VerifyIncidentTypesRequest, db: Session = Depends(get_db)
+) -> dict:
+    """V-8 사후 검증 — Layer 2 매핑 결과로 사고유형 보완 제안.
+
+    동작:
+      1. case 의 attack_events 전체 조회
+      2. (technique_id, tactic) → incident_type 정적 매핑으로 점수 집계
+      3. confirmed 와 다른 사고유형 중 임계값 통과한 것을 secondary 로 제안
+      4. 대표 증거(samples)를 함께 반환
+
+    결정성 100% — 같은 attack_events → 같은 결과 (AI 호출 없음, 정적 규칙).
+    수사관이 결과를 보고 채택하려면 PATCH /api/cases (secondary_incident_types) 호출.
+
+    case 미존재 시 HTTP 404.
+    """
+    case = IncidentCase.get_by_id(db, req.caseId)
+    if case is None:
+        raise _case_not_found()
+    data = infer_from_attacks(db, req.caseId)
+    return {"status": "ok", "data": data}

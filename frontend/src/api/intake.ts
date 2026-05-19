@@ -32,6 +32,30 @@ export const getCase = async (caseId: string): Promise<CaseResponse> => {
   return res.data.data;
 };
 
+/** PATCH /api/cases/{caseId} — 케이스 부분 갱신 (dev3 B-3).
+ *  V-8 사후 검증에서 채택한 secondary_incident_types 영속화 등에 사용.
+ *  허용 필드: severity, system_config, incident_type, title, tlp,
+ *            observables, secondary_incident_types, triage_state */
+export interface PatchCaseReq {
+  severity?: string;
+  system_config?: Record<string, unknown>;
+  incident_type?: string;
+  title?: string;
+  tlp?: string;
+  observables?: Array<Record<string, unknown>>;
+  secondary_incident_types?: string[];
+  triage_state?: Record<string, unknown>;
+}
+
+export const patchCase = async (
+  caseId: string,
+  patch: PatchCaseReq,
+): Promise<CaseResponse> => {
+  if (USE_MOCK) return MOCK_CASE;
+  const res = await client.patch(`/api/cases/${caseId}`, patch);
+  return res.data.data;
+};
+
 /** GET /api/guide/v2 — 외부 표준 6종 기반 Kill Chain 매트릭스 가이드 (dev2 채택).
  *  v1 getGuide() 는 2026-05-18 회의 결정에 따라 폐기됨. */
 export const getGuideV2 = async (caseId: string): Promise<GuideV2Response> => {

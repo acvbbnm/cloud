@@ -12,6 +12,8 @@ import { getKbStats, streamChat } from '@/api/sherpa';
 
 import type { SherpaSource } from '@/types';
 
+import PostHocVerificationCard from './PostHocVerificationCard';
+
 const KB_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
   ATTACK: 'purple',
   PLAYBOOK: 'teal',
@@ -268,8 +270,11 @@ const V8Sherpa = () => {
           </div>
         </div>
 
-        {/* 우측: KB 인덱스 + 안내 */}
+        {/* 우측: 사후 검증 + KB 인덱스 + 안내 */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
+          {/* dev3 §원칙 5 V-8 사후 검증 — caseId 있을 때만 표시 */}
+          {caseId && <PostHocVerificationCard caseId={caseId} />}
+
           <Card title={<>📚 KB 인덱스 (RAG 입력)</>}>
             {kbQuery.isLoading ? (
               <div className="text-[12px] text-ink-400 py-2">로딩 중…</div>

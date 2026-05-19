@@ -124,3 +124,33 @@ export const getKbStats = async (): Promise<KbStatsResponse> => {
   const res = await client.get('/api/sherpa/kb');
   return res.data.data;
 };
+
+// ── V-8 사후 검증 (dev3 청사진 §원칙 5) ──
+
+/** 사후 검증 결과 — confirmed 외 추가 사고유형 제안. */
+export interface VerifyIncidentTypesResponse {
+  confirmed: string;
+  total_attacks: number;
+  threshold: number;
+  scores: Record<string, number>;
+  evidence_count: Record<string, number>;
+  suggested_secondary: string[];
+  samples: Array<{
+    attack_id: string;
+    technique_id: string;
+    tactic: string;
+    rule_id: string;
+    weight: number;
+    incident_type: string;
+  }>;
+}
+
+/** POST /api/sherpa/verify-incident-types — V-8 사후 검증.
+ *  Layer 2 ATT&CK 매핑 결과를 분석해 추가 사고유형 제안.
+ *  결정성 100% (정적 규칙). 채택은 PATCH /api/cases (secondary_incident_types). */
+export const postVerifyIncidentTypes = async (
+  caseId: string,
+): Promise<VerifyIncidentTypesResponse> => {
+  const res = await client.post('/api/sherpa/verify-incident-types', { caseId });
+  return res.data.data;
+};

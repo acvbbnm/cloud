@@ -37,42 +37,15 @@ import { nextTriage, startTriage } from '@/api/triage';
 import Step2_SystemConfig from './Step2_SystemConfig';
 
 import type {
-  HypothesisScores,
   IncidentType,
   TriageRecommendation,
   TriageTreeNode,
 } from '@/types';
 
-// 기법 ID 별 사고유형 가중치 — backend/data/triage/weights.json 의 technique_weights 발췌
-// 백엔드 /api/triage/analyze 가 구현되면 그것을 사용. mock fallback 용.
-const TECH_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
-  'T1078': { CREDENTIAL_THEFT: 15 },
-  'T1078.004': { CREDENTIAL_THEFT: 20 },
-  'T1098': { PRIVILEGE_ESCALATION: 20 },
-  'T1098.001': { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 15 },
-  'T1110': { CREDENTIAL_THEFT: 20 },
-  'T1530': { DATA_EXFILTRATION: 25 },
-  'T1531': { AUDIT_LOG_TAMPERING: 20 },
-  'T1562': { AUDIT_LOG_TAMPERING: 25 },
-  'T1562.008': { AUDIT_LOG_TAMPERING: 30 },
-  'T1567': { DATA_EXFILTRATION: 20 },
-  'T1485': { AUDIT_LOG_TAMPERING: 15, DATA_EXFILTRATION: 10 },
-};
-
-const applyTechniqueWeights = (
-  base: HypothesisScores,
-  techniques: string[],
-): HypothesisScores => {
-  const next: HypothesisScores = { ...base };
-  for (const t of techniques) {
-    const w = TECH_WEIGHTS[t];
-    if (!w) continue;
-    (Object.keys(w) as IncidentType[]).forEach((k) => {
-      next[k] = (next[k] ?? 0) + (w[k] ?? 0);
-    });
-  }
-  return next;
-};
+// dev3 B-2 (2026-05-19): 클라이언트 측 TECH_WEIGHTS·applyTechniqueWeights 제거.
+// 점수 산출은 백엔드 /api/triage/analyze-logs 응답으로만 — 결정성 100% 보장
+// (청사진 §3 — 정적 weights.json 단일 소스). 학술 변호: 클라이언트 mock 가중치
+// 잔존은 weights.json 과 어긋날 위험이 있어 일괄 제거.
 
 interface Step2DiscoveryProps {
   csp: string | null;
@@ -321,15 +294,15 @@ const Step2_Discovery = ({
             subtitle="AWS Detective scope time + Microsoft Sentinel entity 표준 흐름"
           >
             <PartialLogAnalysis
+              caseId={caseId}
+              currentScores={hypothesisScores}
               mappedTechniques={mappedTechniques}
-              onAnalyzed={(techIds) => {
+              onAnalyzed={(techIds, _filenames, newScores) => {
+                // dev3 B-2: 백엔드 /api/triage/analyze-logs 가 권위 있는 점수 산출
+                // — 클라이언트 응답을 그대로 적용 (학술 변호: 결정성 100%).
                 addMappedTechniques(techIds);
-                // mock 가중치 — 백엔드 /api/triage/analyze 응답이 있으면 그것을 우선
-                const next = applyTechniqueWeights(hypothesisScores, techIds);
-                setHypothesisScores(next);
-                showToast(
-                  `${techIds.length}개 기법 매핑 → 가설 점수 갱신 (mock)`,
-                );
+                setHypothesisScores(newScores);
+                showToast(`${techIds.length}개 기법 매핑 → 가설 점수 갱신`);
               }}
               disabled={loading}
             />

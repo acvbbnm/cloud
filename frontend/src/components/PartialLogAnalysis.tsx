@@ -1,13 +1,13 @@
 /**
  * 부분 로그 분석 — V-1 Step 2 Discovery Loop ② 부분 로그 분석 (사용자 결정 #2).
  *
- * 단서 시각 ±5분 로그 파일을 업로드해서 OCSF + ATT&CK 기법 매핑 결과를 받음.
- * 백엔드 /api/triage/analyze (multipart) 미구현 시 mock — 파일명 패턴으로
- * 기법 매핑을 시뮬레이션.
+ * dev3 B-2 (2026-05-19): 백엔드 /api/triage/analyze-logs (multipart) 실 호출.
+ *   - LogIngestor.ingest → OCSFNormalizer.normalize_case → AttackMapper.map_case
+ *   - clue_time ±window_minutes 윈도우 내 attack_events 필터 → technique_ids 누적
+ *   - 응답: hypothesis_scores (갱신본) + mapped_events
  *
- * useTriageStore:
- *   - mappedTechniques 누적
- *   - 백엔드 응답 시 hypothesisScores 도 갱신
+ * 부모(Step2_Discovery)가 응답의 hypothesis_scores 로 useTriageStore.setHypothesisScores
+ * 호출 + addMappedTechniques 로 기법 누적.
  *
  * 학술 근거: AWS Detective scope time + Microsoft Sentinel entity + KISA §2.6
  *           휘발성 정보 수집 (시각 윈도우 좁히기).
@@ -17,11 +17,29 @@ import { useState } from 'react';
 import Badge from '@/components/Badge';
 import DropZone from '@/views/V2_Logs/DropZone';
 
+import { analyzeLogs } from '@/api/triage';
+import { useToastStore } from '@/stores/useToastStore';
+
+import type { HypothesisScores } from '@/types';
+
 interface PartialLogAnalysisProps {
-  /** 분석 완료된 기법 ID 목록 (누적). */
+  /** 케이스 ID — 백엔드 호출 필수. */
+  caseId: string | null;
+  /** 현재 누적 가설 점수 — 백엔드 stateless 정책으로 매 호출 전달. */
+  currentScores: HypothesisScores;
+  /** 분석 완료된 기법 ID 목록 (누적, 표시용). */
   mappedTechniques: string[];
-  /** 분석 후 호출 — 부모가 useTriageStore.addMappedTechniques 등 처리. */
-  onAnalyzed: (techniqueIds: string[], filenames: string[]) => void;
+  /** 단서 시각 ISO8601 (선택) — ±window_minutes 윈도우 필터. */
+  clueTime?: string | null;
+  /**
+   * 분석 후 호출 — 부모가 useTriageStore.setHypothesisScores +
+   * addMappedTechniques 등 처리.
+   */
+  onAnalyzed: (
+    techniqueIds: string[],
+    filenames: string[],
+    newScores: HypothesisScores,
+  ) => void;
   disabled?: boolean;
 }
 
@@ -32,61 +50,51 @@ interface AnalyzedFile {
   analyzed_at: string;
 }
 
-// Mock — 파일명 패턴으로 기법 매핑 시뮬레이션 (백엔드 미구현 시)
-const mockAnalyze = (file: File): string[] => {
-  const name = file.name.toLowerCase();
-  const techniques: string[] = [];
-  // attack-sim 합성 raw 패턴
-  if (name.includes('ncp') && (name.includes('attack') || name.includes('none') || name.includes('collection'))) {
-    techniques.push('T1078.004', 'T1098.001');
-  }
-  if (name.includes('nhn') && (name.includes('attack') || name.includes('none') || name.includes('collection'))) {
-    techniques.push('T1078.004', 'T1530', 'T1531');
-  }
-  if (name.includes('brute') || name.includes('login')) {
-    techniques.push('T1110');
-  }
-  if (name.includes('storage') || name.includes('object')) {
-    techniques.push('T1530', 'T1567');
-  }
-  // 최소 보장
-  if (techniques.length === 0) {
-    techniques.push('T1078');
-  }
-  return [...new Set(techniques)];
-};
-
 const PartialLogAnalysis = ({
+  caseId,
+  currentScores,
   mappedTechniques,
+  clueTime,
   onAnalyzed,
   disabled,
 }: PartialLogAnalysisProps) => {
+  const showToast = useToastStore((s) => s.show);
   const [files, setFiles] = useState<AnalyzedFile[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   const handleUpload = async (uploaded: File[]) => {
     if (uploaded.length === 0 || disabled) return;
+    if (!caseId) {
+      showToast('caseId 누락 — Step 1 으로 돌아가 케이스를 생성하세요.');
+      return;
+    }
     setAnalyzing(true);
     try {
-      // Mock 처리 — 백엔드 /api/triage/analyze 가 구현되면 그것을 호출
-      // multipart/form-data 로 file + caseId + clue 전송, mapped_techniques 응답
-      // 현재는 클라이언트 mockAnalyze 로 대체
+      let scores: HypothesisScores = currentScores;
       const allTechniques: string[] = [];
       const fileMetas: AnalyzedFile[] = [];
       for (const file of uploaded) {
-        const techniques = mockAnalyze(file);
-        allTechniques.push(...techniques);
+        // 백엔드 /api/triage/analyze-logs (multipart) 실 호출 — 순차 처리하여
+        // 가설 점수가 파일 누적순으로 갱신되게.
+        const res = await analyzeLogs(caseId, file, scores, clueTime, 5);
+        // mapped_events 에서 distinct technique_id 추출
+        const tids = [
+          ...new Set((res.mapped_events ?? []).map((e) => e.technique_id).filter(Boolean)),
+        ];
+        scores = res.hypothesis_scores;
+        allTechniques.push(...tids);
         fileMetas.push({
           name: file.name,
           size: file.size,
-          techniques,
+          techniques: tids,
           analyzed_at: new Date().toISOString(),
         });
-        // 약간의 지연 (시각적 피드백)
-        await new Promise((r) => setTimeout(r, 200));
       }
       setFiles((prev) => [...prev, ...fileMetas]);
-      onAnalyzed(allTechniques, fileMetas.map((f) => f.name));
+      onAnalyzed(allTechniques, fileMetas.map((f) => f.name), scores);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showToast(`부분 로그 분석 실패: ${msg}`);
     } finally {
       setAnalyzing(false);
     }
@@ -119,7 +127,6 @@ const PartialLogAnalysis = ({
 
       <p className="text-[10.5px] text-ink-500 mb-2 leading-5">
         단서 시각 ±5분 로그를 업로드하면 OCSF + ATT&CK 매핑이 우측 가설 점수에 반영됩니다.
-        ※ 백엔드 /api/triage/analyze 미구현 시 파일명 패턴으로 mock 동작.
       </p>
 
       <DropZone onUpload={handleUpload} />

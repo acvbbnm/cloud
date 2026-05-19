@@ -367,3 +367,55 @@ export const nextTriage = async (
     throw e;
   }
 };
+
+// ─────────────────────────────────────────────────────────────
+// 부분 로그 분석 — POST /api/triage/analyze-logs (multipart)
+// dev3 B-2 (jingyu 머지) — Step 2 Discovery Loop ② 부분 로그 분석.
+// ─────────────────────────────────────────────────────────────
+
+export interface AnalyzeLogsResponse {
+  caseId: string;
+  hypothesis_scores: HypothesisScores;
+  mapped_events: Array<{
+    attack_id: string;
+    ocsf_id: string;
+    technique_id: string;
+    technique_name: string | null;
+    tactic: string;
+    rule_id: string;
+    time: string | null;
+    actor_user_name: string | null;
+    src_endpoint_ip: string | null;
+    activity_name: string | null;
+  }>;
+  ingestion?: Record<string, unknown>;
+  normalization?: Record<string, unknown>;
+  mapping?: Record<string, unknown>;
+}
+
+/**
+ * POST /api/triage/analyze-logs (multipart) — 부분 로그 → ATT&CK 매핑 + 가설 점수 갱신.
+ *
+ * 백엔드 흐름:
+ *   UploadFile → LogIngestor.ingest → OCSFNormalizer.normalize_case
+ *   → AttackMapper.map_case → clue_time ±window_minutes 윈도우 필터
+ *   → Triage.analyze 로 점수 누적
+ */
+export const analyzeLogs = async (
+  caseId: string,
+  file: File,
+  currentScores: HypothesisScores,
+  clueTime?: string | null,
+  windowMinutes: number = 5,
+): Promise<AnalyzeLogsResponse> => {
+  const fd = new FormData();
+  fd.append('caseId', caseId);
+  fd.append('hypothesis_scores', JSON.stringify(currentScores));
+  if (clueTime) fd.append('clue_time', clueTime);
+  fd.append('window_minutes', String(windowMinutes));
+  fd.append('file', file);
+  const res = await client.post('/api/triage/analyze-logs', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
+};

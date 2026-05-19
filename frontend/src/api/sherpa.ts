@@ -3,6 +3,7 @@ import type {
   BriefingResponse,
   ChatRequest,
   ChatResponse,
+  IncidentTypeValidation,
   KbStatsResponse,
   PlaybookRequest,
   PlaybookResponse,
@@ -122,5 +123,24 @@ export const postPlaybook = async (req: PlaybookRequest): Promise<PlaybookRespon
 /** GET /api/sherpa/kb — KB 인덱스 통계 + LLM 엔진 상태 (V8 우측 패널). */
 export const getKbStats = async (): Promise<KbStatsResponse> => {
   const res = await client.get('/api/sherpa/kb');
+  return res.data.data;
+};
+
+/**
+ * GET /api/sherpa/validate-incident-type — V-8 사후 검증.
+ *
+ * dev3 (2026-05-19): V-1 Step 2 에서 확정한 사고유형이 Layer 2 전체 매핑 결과와
+ * 정합하는지 평가. REVIEW_NEEDED 응답 시 V-8 화면 상단에 카드 자동 노출.
+ *
+ * 응답 status:
+ *   CONSISTENT      — 추가 검토 불필요 (카드 숨김)
+ *   REVIEW_NEEDED   — 다른 사고유형 시그널 발견, candidate_types 제시
+ */
+export const getIncidentTypeValidation = async (
+  caseId: string,
+): Promise<IncidentTypeValidation> => {
+  const res = await client.get('/api/sherpa/validate-incident-type', {
+    params: { caseId },
+  });
   return res.data.data;
 };

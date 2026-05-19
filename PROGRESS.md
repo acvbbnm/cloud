@@ -30,16 +30,55 @@
 | 5-5 백엔드 Triage API | `/api/triage/{start,next,analyze,confirm}` | — | ✅ **B-1 완료** — 4 라우터 + 평가 엔진 + UNCLASSIFIED enum | ✅ 가중치 누적 시뮬레이션 통과 |
 | 5-6 백엔드 부분 로그 (B-2) | `/api/triage/analyze-logs` + `/api/triage/tree` | — | ✅ **B-2 완료** (jingyu 머지) — UploadFile + Layer 1·2 재사용 + 트리 시각화 직렬화 | — |
 | 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,secondary_incident_types,triage_state}` | — | ✅ **B-3 완료** — 5 칼럼 추가 + idempotent 마이그레이션 + intake/triage 영속화 + E2E 통과 | — |
-| 5-8 V-8 사후 검증 | `GET /api/sherpa/validate-incident-type` + `IncidentTypeReviewCard` | ❌ 프론트 ReviewCard 후속 | ✅ **백엔드 완료** (jingyu 머지) — 관측 ATT&CK ↔ IncidentTypeKnowledge 정합성 점수화 | — |
+| 5-8 V-8 사후 검증 | `GET /api/sherpa/validate-incident-type` + `IncidentTypeReviewCard` | ✅ **완료** — ReviewCard 자동 노출 + 부 사고유형 등록·메인 격상 UI | ✅ **백엔드 완료** (jingyu 머지) — 관측 ATT&CK ↔ IncidentTypeKnowledge 정합성 점수화 | — |
 | 5-9 Step 3 UNCLASSIFIED 분기 | `GET /api/guide/v2` UNCLASSIFIED 처리 | (재로드 동작) | ✅ **완료** (jingyu 머지) — Initial Access + Credential Access + Discovery phase fallback | — |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: **walking-skeleton 100% 종결** + **dev3 V-1 재설계 Discovery Loop e2e 통과**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. dev3 분기에서 V-1 Step 1 사고유형 강제 선택을 폐기하고 빈 케이스 + 결정 트리 + AI 보조 패널 + Layer 2 부분 분석을 결합한 Discovery Loop 가 작동. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
+**현재 상태**: **walking-skeleton 100% 종결** + **dev3 V-1 재설계 청사진 100% 완료**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. dev3 분기에서 V-1 Step 1 사고유형 강제 선택을 폐기하고 빈 케이스 + 결정 트리 + AI 보조 패널 + Layer 2 부분 분석을 결합한 Discovery Loop 가 작동. V-8 사후 검증 카드(IncidentTypeReviewCard)가 Layer 2 매핑 결과로 사고유형 정합성을 자동 평가·보완 제안. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
 
 ---
 
 ## 작업 내역
+
+### 2026-05-19 (저녁) — dev3 청사진 100% 완료: V-8 IncidentTypeReviewCard
+
+**dev3 V-1 재설계 마지막 작업** — V-8 사후 검증 프론트 카드.
+
+흐름:
+1. V-8 진입 시 `caseId` 있으면 자동으로 `GET /api/sherpa/validate-incident-type` 호출
+2. `status === 'CONSISTENT'` → 카드 숨김 (노이즈 X)
+3. `status === 'REVIEW_NEEDED'` → 화면 상단에 amber 알림 카드 자동 노출
+   - 현재 메인·부 사고유형 배지 표시
+   - Layer 2 추가 매핑 기법 (extra_techniques) 코드 칩 8개+
+   - candidate_types 리스트 — 각 항목에 [+ 부 사고유형] / [메인으로 격상] 버튼
+4. 버튼 클릭 → `PATCH /api/cases/{caseId}` 로 영속화 → `useCaseStore` 동기화 → validation 재호출
+
+특징:
+- AI 제안만 (결정은 수사관) — CLAUDE.md SNF 원칙 정합
+- "메인 격상" 시 기존 메인은 secondary 로 강등 (다중 사고유형 우아한 전환)
+- 카드 우상단 ✕ 로 세션 dismiss 가능 (피로 최소화)
+- staleTime 30초 — V-2 분석 직후 빈번 재호출 방지
+
+학술 근거: AWS GuardDuty AttackSequence finding + Microsoft Defender XDR attack story.
+
+신규/수정:
+- `frontend/src/api/sherpa.ts` — getIncidentTypeValidation 추가
+- `frontend/src/api/intake.ts` — updateCase + UpdateCaseReq 추가 (PATCH 호출 래퍼)
+- `frontend/src/views/V8_Sherpa/IncidentTypeReviewCard.tsx` — 신규 (224줄)
+- `frontend/src/views/V8_Sherpa/index.tsx` — caseId 있을 때 카드 자동 렌더
+
+검증: `tsc --noEmit` 통과.
+
+**🎉 dev3 청사진 100% 완료** — V-1 재설계의 9개 항목 (5-1 ~ 5-9) 전부 완성.
+- 데이터 (decision_tree·weights·next_clue_graph)
+- 프론트 (Step1 메타 + Step2 Discovery 3-panel + 트리 시각화 + 사전 안내)
+- 백엔드 (Triage API 4 + B-2 멀티파트 + B-3 DB 칼럼 5종 + V-8 사후 검증)
+- UI (UNCLASSIFIED Step3 fallback + V-8 ReviewCard)
+
+남은 후속 (선택):
+- E2E 시연 시나리오 갱신
+- 캡스톤 발표 자료에 청사진 흐름 반영
 
 ### 2026-05-19 — dev3 B-3: incident_cases 칼럼 5종 확장 + jingyu 머지
 

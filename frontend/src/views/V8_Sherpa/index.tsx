@@ -10,6 +10,8 @@ import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { getKbStats, streamChat } from '@/api/sherpa';
 
+import IncidentTypeReviewCard from './IncidentTypeReviewCard';
+
 import type { SherpaSource } from '@/types';
 
 const KB_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
@@ -135,6 +137,9 @@ const V8Sherpa = () => {
           </div>
         }
       />
+
+      {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
+      {caseId && <IncidentTypeReviewCard caseId={caseId} />}
 
       {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">

@@ -32,6 +32,7 @@
 | 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,secondary_incident_types,triage_state}` | — | ✅ **B-3 완료** — 5 칼럼 추가 + idempotent 마이그레이션 + intake/triage 영속화 + E2E 통과 | — |
 | 5-8 V-8 사후 검증 | `GET /api/sherpa/validate-incident-type` + `IncidentTypeReviewCard` | ✅ **완료** — ReviewCard 자동 노출 + 부 사고유형 등록·메인 격상 UI | ✅ **백엔드 완료** (jingyu 머지) — 관측 ATT&CK ↔ IncidentTypeKnowledge 정합성 점수화 | — |
 | 5-9 Step 3 UNCLASSIFIED 분기 | `GET /api/guide/v2` UNCLASSIFIED 처리 | (재로드 동작) | ✅ **완료** (jingyu 머지) — Initial Access + Credential Access + Discovery phase fallback | — |
+| 5-10 사고유형 9종 확장 (C-1) | 5종 → 9종 (RANSOMWARE·MISCONFIG·PHISH·INSIDER) | ⏳ 인계 대기 (`docs/dev3/C_사고유형_9종_확장.md`) | ⏳ 인계 대기 — weights·KB·Literal 갱신 | ⏳ KB 청크 24-28개 신규 |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
@@ -40,6 +41,31 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-19 (밤) — C-1 사고유형 9종 확장 — 작업 지시서 등록 (다른 팀원 인계)
+
+**배경**: 시연 중 가설 점수 패널에 5종만 표시 — KISA §3.3 (6-7종) / CSA Pandemic Eleven (11종) 대비 약함. 캡스톤 평가 변호력 강화 위해 9종으로 확장.
+
+**확장 사고유형 (4종 신규)**:
+- `RANSOMWARE` — CSA #5 + Verizon DBIR 24% + MITRE T1486
+- `MISCONFIG_EXPOSURE` — CSA #3 + DBIR 빈도 1위 + MITRE T1190+T1530
+- `PHISH_INITIAL_ACCESS` — CSA #2 + MITRE T1566
+- `INSIDER_THREAT` — KISA §3.3 "불법적 자원 사용" + MITRE T1078
+
+→ 9종 + UNCLASSIFIED = 총 10종 → **KISA §3.3 분류표 100% 정합 + CSA Pandemic Eleven 의 #1·2·3·5·7·11 커버**.
+
+**작업 지시서**: `docs/dev3/C_사고유형_9종_확장.md`
+- 변경 파일 매트릭스 (백엔드 + 프론트 + KB + 문서)
+- 단계별 가이드 (데이터 → 코드 → 임베딩 → 프론트 → 시뮬레이션 → 문서)
+- 가중치 자동 갱신 스크립트 가이드 (`backend/scripts/expand_weights_to_9.py`)
+- KB 청크 작성 표준 + 예시 (RANSOMWARE 대표 청크 attack/playbook/case_db 3종)
+- 시뮬레이션 검증 시나리오 S6~S9 (RANSOMWARE / MISCONFIG / PHISH / INSIDER)
+- PR 가이드 + 4 커밋 분할 권고 + 체크리스트
+- 위험·미해결 항목 5종
+
+**예상 공수**: 1명 7-8h / 2명 분담 시 4-5h
+
+**다음 담당자**: 팀원 1-2명 분담 가능. KB 청크 24-28개 작성이 가장 큰 부담 (3-4h).
 
 ### 2026-05-19 (저녁) — dev3 청사진 100% 완료: V-8 IncidentTypeReviewCard
 

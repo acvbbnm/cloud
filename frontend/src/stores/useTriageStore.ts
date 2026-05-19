@@ -115,7 +115,10 @@ export const useTriageStore = create<TriageStoreState>()(
     }),
     {
       name: 'ai-sherpa-triage',
-      version: 1,
+      // dev3 C-1 (2026-05-19): version 1 → 2. 9종 확장으로 hypothesisScores 키 변경 →
+      // 구버전 5종 + UNCLASSIFIED 키만 있는 localStorage 데이터가 hydration 되면
+      // 화면에 5개 막대만 표시되는 버그 발생. version bump 로 자동 폐기 후 새 initial.
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       // 액션 제외, 데이터만 영속화
       partialize: (s) => ({
@@ -126,6 +129,30 @@ export const useTriageStore = create<TriageStoreState>()(
         recommendation: s.recommendation,
         isTerminal: s.isTerminal,
       }),
+      // 구버전 → 신버전 마이그레이션: 5종 scores 를 9종으로 확장 (점수 보존 + 누락 키 0)
+      migrate: (persistedState: unknown, fromVersion: number) => {
+        const s = (persistedState ?? {}) as Partial<TriageStoreState>;
+        const newScores = initialScores();
+        if (s.hypothesisScores) {
+          // 기존 키의 점수는 보존, 신규 4종은 0으로
+          for (const [k, v] of Object.entries(s.hypothesisScores)) {
+            if (k in newScores && typeof v === 'number') {
+              (newScores as Record<string, number>)[k] = v;
+            }
+          }
+        }
+        console.info(
+          `[useTriageStore] migrate v${fromVersion} → v2 — hypothesisScores 9종으로 확장`,
+        );
+        return {
+          currentNodeId: s.currentNodeId ?? null,
+          completedPath: s.completedPath ?? [],
+          hypothesisScores: newScores,
+          mappedTechniques: s.mappedTechniques ?? [],
+          recommendation: s.recommendation ?? null,
+          isTerminal: s.isTerminal ?? false,
+        } as Partial<TriageStoreState>;
+      },
     },
   ),
 );

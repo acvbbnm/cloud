@@ -53,7 +53,7 @@
       "type": "question",
       "question": "CSP 알람 내용은? (다중 선택 가능)",
       "multi_select": true,
-      "google_field": "Google Cloud Threat Intel §9.x",
+      "google_field": "Google Threat Horizons Report (H1 2024) — Cloud Threat Scenarios",
       "options": [
         {
           "id": "abnormal_login",

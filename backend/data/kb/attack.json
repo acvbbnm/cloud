@@ -16,7 +16,7 @@
     {
       "chunk_id": "ATTACK-T1110-001",
       "technique_id": "T1110",
-      "tactic": "Initial Access",
+      "tactic": "Credential Access",
       "title": "Brute Force (무차별 대입)",
       "text": "공격자는 자동화된 도구로 다수의 비밀번호 조합을 시도하여 클라우드 계정에 침입한다. Credential Stuffing·Password Spraying·Dictionary Attack 4종 하위 기법이 있다. 탐지 단서: 동일 IP·UA 에서 짧은 시간 다수 로그인 실패, 같은 비밀번호로 여러 계정 시도, 새벽·해외 IP 패턴.",
       "source": "MITRE ATT&CK v14",
@@ -61,7 +61,7 @@
     {
       "chunk_id": "ATTACK-T1556-001",
       "technique_id": "T1556",
-      "tactic": "Persistence",
+      "tactic": "Credential Access",
       "title": "Modify Authentication Process (인증 절차 변조)",
       "text": "공격자는 MFA·SSO·인증 정책을 변조해 향후 침투를 쉽게 만든다. MFA 비활성화, 인증 로그 비활성화, IdP 설정 변경 등이 대표 동작. 탐지 단서: 보안 설정 변경 직후 외부 IP 로그인, 관리자 권한 없는 사용자의 인증 정책 수정 시도.",
       "source": "MITRE ATT&CK v14",

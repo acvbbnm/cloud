@@ -5,8 +5,8 @@
     "primary_standard": "MITRE ATT&CK Cloud Matrix v14",
     "primary_url": "https://attack.mitre.org/matrices/enterprise/cloud/",
     "secondary_standards": [
-      "Google Cloud Threat Intel — Cloud Log Configurations (9 침해 단계)",
-      "KISA 침해사고 분석절차 안내서 (제2010-8호) - 표 2-1 사고 유형에 따른 대응 전략",
+      "Google Threat Horizons Report (Cloud incident scenarios)",
+      "KrCERT/CC 정보통신분야 침해사고 대응 안내서 (2025-08 개정본) 제3장 사고유형별 대응 [구 KISA 제2010-8호 표 2-1 계승]",
       "CSA Top Threats to Cloud Computing 2024 - 11 위협 카테고리"
     ],
     "version": "v1",
@@ -269,7 +269,7 @@
       "kisa_classification": "데이터 손상·변조 + 정보 누설 (Double Extortion) — KISA §3.3",
       "csa_threat_category": "#5 Insecure Software Dev (Pandemic Eleven 2024)",
       "google_cloud_phase": "데이터 파괴·서비스 중단 (Impact)",
-      "rationale": "Verizon DBIR 2024 의 24% 비중. 클라우드 환경에서는 Object Storage 의 파일 또는 EBS 볼륨이 표적. 백업이 동일 계정에 있으면 함께 암호화. 대량 Put/Copy + 비표준 확장자(.locked) 신규 생성이 핵심 시그널.",
+      "rationale": "Verizon DBIR 2024 Ransomware/Extortion 패턴 — 전체 침해의 약 32% (확장 정의 시 ~43%). 클라우드 환경에서는 Object Storage 의 파일 또는 EBS 볼륨이 표적. 백업이 동일 계정에 있으면 함께 암호화. 대량 Put/Copy + 비표준 확장자(.locked) 신규 생성이 핵심 시그널.",
       "typical_kill_chain": [
         "Initial Access (T1078) → Execution (T1059) → Discovery (T1518) → Impact (T1486 + T1490)"
       ]

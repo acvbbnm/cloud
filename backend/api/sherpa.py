@@ -249,6 +249,9 @@ async def validate_incident_type(
     cur_matched, cur_total, cur_missing = _score_incident_type(
         current_expected, observed_set
     )
+    # dev3 (2026-05-20): current 의 score_ratio 도 계산 — REVIEW_NEEDED 판정에서
+    # 후보의 ratio 와 비교하기 위해 (matched 동률 시 ratio 더 좋은 후보가 더 적합).
+    current_ratio = round(cur_matched / cur_total, 4) if cur_total else 0.0
     extra_techniques = sorted(
         observed_norm_set - {_normalize_technique(t) for t in current_expected}
     )
@@ -292,11 +295,23 @@ async def validate_incident_type(
     if current_type == "UNCLASSIFIED":
         status_val = "REVIEW_NEEDED"
         message_parts.append("사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요.")
-    elif top and top["type"] != current_type and top["score_ratio"] > 0 and top["matched"] > cur_matched:
+    elif (
+        top
+        and top["type"] != current_type
+        and top["score_ratio"] > 0
+        and (
+            top["matched"] > cur_matched
+            # dev3 (2026-05-20): matched 동률이라도 ratio 가 더 좋으면 REVIEW_NEEDED.
+            # 기존 조건 `top["matched"] > cur_matched` 단독은 1=1 동률 시 CONSISTENT
+            # 잘못 반환 (E2E 시나리오 5 회귀). 학술 정합 — 후보가 더 적은 expected
+            # 기법 중 같은 수를 매치하면 비율로는 더 적합.
+            or (top["matched"] == cur_matched and top["score_ratio"] > current_ratio)
+        )
+    ):
         status_val = "REVIEW_NEEDED"
         message_parts.append(
-            f"현재 {current_type} 매칭 {cur_matched}/{cur_total} 보다 "
-            f"{top['type']} 매칭 {top['matched']}/{top['expected']} 이 더 높습니다."
+            f"현재 {current_type} 매칭 {cur_matched}/{cur_total} ({current_ratio:.0%}) 보다 "
+            f"{top['type']} 매칭 {top['matched']}/{top['expected']} ({top['score_ratio']:.0%}) 이 더 적합합니다."
         )
     elif cur_total > 0 and cur_matched == 0 and observed:
         status_val = "REVIEW_NEEDED"

@@ -159,7 +159,7 @@
     {
       "chunk_id": "PLAYBOOK-KISA-002",
       "incident_type": "ALL",
-      "title": "KISA §2.4 — 초기 대응 점검표 6항목 (클라우드 환경 매핑)",
+      "title": "KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) — 초기 대응 점검표 6항목 (클라우드 환경 매핑)",
       "text": "KISA 안내서의 초기 대응 점검표 6항목 — 클라우드 환경에 매핑: (1) 사건 일시 → V-1 Step2 의 사고 인지 일시 + 케이스 occurred_at, (2) 사건 유형 → V-1 Step1 사고유형 5종, (3) 영향 시스템 → V-1 Step2 의 services·vpc_id·scope, (4) 영향 데이터 → V-1 Step2 의 data_sensitivity, (5) 네트워크 연결 지점 → V-1 1.5.1(인증 기록)·1.8(네트워크) 카테고리 자동 적용, (6) 외부 IP·계정 → V-2 로그 업로드 후 1.5.1·1.5.4 자동 식별. 본 시스템 V-1 입력 자체가 KISA 점검표를 정확히 충족.",
       "source": "KISA 침해사고 분석절차 안내서 §2.4",
       "tactics_addressed": [
@@ -256,7 +256,7 @@
       "incident_type": "INSIDER_THREAT",
       "title": "내부자 위협 — 즉시 대응 절차",
       "text": "1) 의심 사용자의 IAM 활동 즉시 stop (AccessKey Disable, 콘솔 세션 만료)\n2) 동시에 본인에게 알리지 말 것 — 증거 인멸 위험\n3) HR·법무·CISO 3자 협의 — 내부자 대응은 인사·법적 절차 동반\n4) 데이터 다운로드·반출 흔적 추출 — 외장 매체·이메일·외부 클라우드 업로드\n5) 동료 계정에도 같은 패턴 있는지 확인 (공모 가능성)\n6) 권한 변경 이력 롤백 (T1098 흔적)\n7) 사후 — 분기별 IAM 감사 + UEBA 도입 검토",
-      "source": "Carnegie CERT Insider Threat Center + KISA §3.3 + ISO/IEC 27001 §A.6.5",
+      "source": "Carnegie CERT Insider Threat Center + KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) + ISO/IEC 27001 §A.6.5",
       "tactics_addressed": [
         "Credential Access",
         "Collection"

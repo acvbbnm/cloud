@@ -62,8 +62,9 @@
       "chunk_id": "ATTACK-T1556-001",
       "technique_id": "T1556",
       "tactic": "Credential Access",
+      "tactics": ["Credential Access", "Defense Evasion", "Persistence"],
       "title": "Modify Authentication Process (인증 절차 변조)",
-      "text": "공격자는 MFA·SSO·인증 정책을 변조해 향후 침투를 쉽게 만든다. MFA 비활성화, 인증 로그 비활성화, IdP 설정 변경 등이 대표 동작. 탐지 단서: 보안 설정 변경 직후 외부 IP 로그인, 관리자 권한 없는 사용자의 인증 정책 수정 시도.",
+      "text": "공격자는 MFA·SSO·인증 정책을 변조해 향후 침투를 쉽게 만든다. MFA 비활성화, 인증 로그 비활성화, IdP 설정 변경 등이 대표 동작. MITRE 공식 3개 tactic 에 동시 속함 — Credential Access(인증 변조), Defense Evasion(탐지 회피), Persistence(향후 재침입). 탐지 단서: 보안 설정 변경 직후 외부 IP 로그인, 관리자 권한 없는 사용자의 인증 정책 수정 시도.",
       "source": "MITRE ATT&CK v14",
       "url": "https://attack.mitre.org/techniques/T1556"
     },
@@ -71,8 +72,9 @@
       "chunk_id": "ATTACK-T1098-001",
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
+      "tactics": ["Persistence", "Privilege Escalation"],
       "title": "Account Manipulation (권한 부여·정책 변경)",
-      "text": "공격자는 자신 또는 새 계정에 더 강한 권한·정책을 부여해 권한을 확대한다. AttachPolicy, AssignRole, AddSubAccountToGroup 같은 API 가 대표. 탐지 단서: 신규 계정에 즉시 관리자 권한 부여, 단시간 다수 정책 변경, 정책 변경 후 민감 리소스 접근.",
+      "text": "공격자는 자신 또는 새 계정에 더 강한 권한·정책을 부여해 권한을 확대한다. AttachPolicy, AssignRole, AddSubAccountToGroup 같은 API 가 대표. MITRE 공식 2개 tactic — Persistence(향후 접근 유지) + Privilege Escalation(권한 상승). 탐지 단서: 신규 계정에 즉시 관리자 권한 부여, 단시간 다수 정책 변경, 정책 변경 후 민감 리소스 접근.",
       "source": "MITRE ATT&CK v14",
       "url": "https://attack.mitre.org/techniques/T1098"
     },
@@ -331,7 +333,7 @@
       "tactic": "Initial Access",
       "title": "Valid Accounts — 내부자 정당 권한 악용",
       "text": "내부자가 정당 권한을 비인가 목적으로 사용. 외부 침입이 아니라 정규 업무 시간 + 내부 IP + 권한 있는 계정이라는 정상 패턴 위에서 발생. 탐지가 가장 어려운 유형. 시그널: 비정상 시간 외 활동, 평소 안 쓰는 서비스 다수 접근, 데이터 다운로드 burst, 휴면 계정 재활성화. UEBA(User and Entity Behavior Analytics) 가 핵심 방어.",
-      "source": "MITRE ATT&CK v14 — T1078 + KISA §3.3 + Carnegie CERT Insider Threat Report",
+      "source": "MITRE ATT&CK v14 — T1078 + KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) + Carnegie CERT Insider Threat Report",
       "url": "https://attack.mitre.org/techniques/T1078/",
       "incident_type": "INSIDER_THREAT"
     },
@@ -341,7 +343,7 @@
       "tactic": "Persistence",
       "title": "Account Manipulation — 내부자 자기상승",
       "text": "내부자가 본인 또는 동료 계정의 권한을 비인가 상승. 클라우드 환경에서는 IAM Policy attach · Role assume · Group 멤버 추가가 대표. 정규 IAM 관리 업무와 외형이 유사하므로 (1) 변경 행위자 vs 대상 일치 여부, (2) 변경 직후 사용 패턴, (3) 변경 사유 티켓 부재가 핵심 탐지 기준. 분기별 IAM 권한 감사 필수.",
-      "source": "MITRE ATT&CK v14 — T1098 + KISA §3.3 권한 도용 변형",
+      "source": "MITRE ATT&CK v14 — T1098 + KrCERT/CC 2025-08 제3장 — 권한 도용 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) 변형",
       "url": "https://attack.mitre.org/techniques/T1098/",
       "incident_type": "INSIDER_THREAT"
     }

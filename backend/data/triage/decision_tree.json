@@ -235,7 +235,7 @@
     "Q2E_minimal_checklist": {
       "type": "terminal",
       "action": "skip_to_kisa_6_checklist",
-      "message": "사고 인지 단서가 부족합니다. KISA §2.4 6항목 점검표 모드로 진입합니다. 사고유형은 UNCLASSIFIED 로 시작하고 Layer 2 분석 후 V-8 Sherpa 가 추론합니다.",
+      "message": "사고 인지 단서가 부족합니다. KrCERT/CC 2025-08 제2장 초기 대응 점검표 6항목 (구 KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) 계승) 모드로 진입합니다. 사고유형은 UNCLASSIFIED 로 시작하고 Layer 2 분석 후 V-8 Sherpa 가 추론합니다.",
       "fallback_incident_type": "UNCLASSIFIED"
     },
     "Q3_additional_context": {

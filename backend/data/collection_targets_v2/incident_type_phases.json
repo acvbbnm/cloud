@@ -266,7 +266,7 @@
         "T1078 (Valid Accounts)",
         "T1567 (Exfiltration Over Web Service)"
       ],
-      "kisa_classification": "데이터 손상·변조 + 정보 누설 (Double Extortion) — KISA §3.3",
+      "kisa_classification": "데이터 손상·변조 + 정보 누설 (Double Extortion) — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승)",
       "csa_threat_category": "#5 Insecure Software Dev (Pandemic Eleven 2024)",
       "google_cloud_phase": "데이터 파괴·서비스 중단 (Impact)",
       "rationale": "Verizon DBIR 2024 Ransomware/Extortion 패턴 — 전체 침해의 약 32% (확장 정의 시 ~43%). 클라우드 환경에서는 Object Storage 의 파일 또는 EBS 볼륨이 표적. 백업이 동일 계정에 있으면 함께 암호화. 대량 Put/Copy + 비표준 확장자(.locked) 신규 생성이 핵심 시그널.",
@@ -318,7 +318,7 @@
         "T1530 (Data from Cloud Storage Object)",
         "T1580 (Cloud Infrastructure Discovery)"
       ],
-      "kisa_classification": "정보 누설 — KISA §3.3 + 설정 미흡",
+      "kisa_classification": "정보 누설 — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) + 설정 미흡",
       "csa_threat_category": "#3 Misconfiguration (Pandemic Eleven — 빈도 1위)",
       "google_cloud_phase": "외부 진입점 노출 (Initial Access)",
       "rationale": "DBIR 2024 의 빈도 1위. 외부 보안 연구자 신고가 가장 흔한 발견 경로. public ACL · 0.0.0.0/0 ingress · 만료된 인증서 · 기본 계정 미변경 등이 대표 단서. 자체 침해 시도 없이도 데이터 유출로 이어짐.",
@@ -369,7 +369,7 @@
         "T1078.004 (Valid Accounts: Cloud)",
         "T1556 (Modify Authentication Process)"
       ],
-      "kisa_classification": "계정 도용 (피싱 출처) — KISA §3.3",
+      "kisa_classification": "계정 도용 (피싱 출처) — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승)",
       "csa_threat_category": "#2 IAM (Pandemic Eleven)",
       "google_cloud_phase": "외부 자격증명 탈취 → 클라우드 진입 (Initial Access)",
       "rationale": "CREDENTIAL_THEFT 의 상위 유형으로, 침투 vector 가 피싱으로 명확한 경우. 비국내 IP + 비정상 로그인 + DGA 도메인 조합이 강한 시그널. MFA 미적용 또는 SSO 환경에서 피해 확대.",
@@ -422,7 +422,7 @@
         "T1530 (Data from Cloud Storage Object)",
         "T1562.008 (Disable Cloud Logs — 흔적 제거)"
       ],
-      "kisa_classification": "불법적 자원 사용 (내부자) — KISA §3.3 변형",
+      "kisa_classification": "불법적 자원 사용 (내부자) — KrCERT/CC 2025-08 제3장 변형 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승)",
       "csa_threat_category": "#11 APT (위장 내부자) + 자체 위협",
       "google_cloud_phase": "정당 계정 비인가 사용 (Authorized Access)",
       "rationale": "외부 침입이 아니라 정당 권한 내부자의 비정상 활동. 정규 업무 시간 + 내부 IP + 권한 있는 계정이라는 정상 패턴 위에서 발생하므로 탐지가 가장 어려움. 데이터 다운로드 burst · 휴면 계정 재활성화 · 로그 비활성화 시도가 핵심 시그널. UEBA 강화 + 분기별 IAM 감사 필수.",

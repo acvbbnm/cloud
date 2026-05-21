@@ -5,12 +5,15 @@
     "primary_standard": "MITRE ATT&CK Cloud Matrix v14",
     "primary_url": "https://attack.mitre.org/matrices/enterprise/cloud/",
     "secondary_standards": [
-      "Google Cloud Threat Intel — Cloud Log Configurations (9 침해 단계)",
-      "KISA 침해사고 분석절차 안내서 (제2010-8호) - 표 2-1 사고 유형에 따른 대응 전략",
+      "Google Threat Horizons Report (Cloud incident scenarios)",
+      "KrCERT/CC 정보통신분야 침해사고 대응 안내서 (2025-08 개정본) 제3장 사고유형별 대응 [구 KISA 제2010-8호 표 2-1 계승]",
       "CSA Top Threats to Cloud Computing 2024 - 11 위협 카테고리"
     ],
     "version": "v1",
-    "last_updated": "2026-05-15"
+    "last_updated": "2026-05-15",
+    "incident_types_count": 8,
+    "dev3_c1_expansion": "2026-05-19 — 5종 → 9종 (RANSOMWARE·MISCONFIG·PHISH·INSIDER)",
+    "multi_csp_lateral_removed": "2026-05-19 사용자 결정"
   },
   "incident_types": {
     "CREDENTIAL_THEFT": {
@@ -24,13 +27,41 @@
         "Persistence"
       ],
       "applicable_categories": [
-        {"category_id": "1.5.1", "role": "REQUIRED", "phase": "Initial Access"},
-        {"category_id": "1.5.4", "role": "REQUIRED", "phase": "Credential Access"},
-        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Persistence"},
-        {"category_id": "1.5.3", "role": "REQUIRED", "phase": "Persistence"},
-        {"category_id": "1.5.5", "role": "CORROBORATING", "phase": "Discovery"},
-        {"category_id": "1.5.7", "role": "CORROBORATING", "phase": "Initial Access"},
-        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+        {
+          "category_id": "1.5.1",
+          "role": "REQUIRED",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.5.4",
+          "role": "REQUIRED",
+          "phase": "Credential Access"
+        },
+        {
+          "category_id": "1.5.2",
+          "role": "REQUIRED",
+          "phase": "Persistence"
+        },
+        {
+          "category_id": "1.5.3",
+          "role": "REQUIRED",
+          "phase": "Persistence"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "CORROBORATING",
+          "phase": "Discovery"
+        },
+        {
+          "category_id": "1.5.7",
+          "role": "CORROBORATING",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Stealth"
+        }
       ],
       "mitre_techniques": [
         "T1078.004 (Valid Accounts: Cloud Accounts)",
@@ -57,11 +88,31 @@
         "Initial Access"
       ],
       "applicable_categories": [
-        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Privilege Escalation"},
-        {"category_id": "1.5.3", "role": "REQUIRED", "phase": "Persistence"},
-        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery"},
-        {"category_id": "1.5.1", "role": "CORROBORATING", "phase": "Initial Access"},
-        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+        {
+          "category_id": "1.5.2",
+          "role": "REQUIRED",
+          "phase": "Privilege Escalation"
+        },
+        {
+          "category_id": "1.5.3",
+          "role": "REQUIRED",
+          "phase": "Persistence"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "REQUIRED",
+          "phase": "Discovery"
+        },
+        {
+          "category_id": "1.5.1",
+          "role": "CORROBORATING",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Stealth"
+        }
       ],
       "mitre_techniques": [
         "T1098 (Account Manipulation)",
@@ -88,11 +139,31 @@
         "Initial Access"
       ],
       "applicable_categories": [
-        {"category_id": "1.4", "role": "REQUIRED", "phase": "Exfiltration"},
-        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery"},
-        {"category_id": "1.8", "role": "CORROBORATING", "phase": "Lateral Movement"},
-        {"category_id": "1.5.1", "role": "CORROBORATING", "phase": "Initial Access"},
-        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+        {
+          "category_id": "1.4",
+          "role": "REQUIRED",
+          "phase": "Exfiltration"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "REQUIRED",
+          "phase": "Discovery"
+        },
+        {
+          "category_id": "1.8",
+          "role": "CORROBORATING",
+          "phase": "Lateral Movement"
+        },
+        {
+          "category_id": "1.5.1",
+          "role": "CORROBORATING",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Stealth"
+        }
       ],
       "mitre_techniques": [
         "T1537 (Transfer Data to Cloud Account)",
@@ -121,9 +192,21 @@
         "Impact"
       ],
       "applicable_categories": [
-        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"},
-        {"category_id": "1.5.2", "role": "REQUIRED", "phase": "Privilege Escalation"},
-        {"category_id": "1.5.5", "role": "CORROBORATING", "phase": "Discovery"}
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Stealth"
+        },
+        {
+          "category_id": "1.5.2",
+          "role": "REQUIRED",
+          "phase": "Privilege Escalation"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "CORROBORATING",
+          "phase": "Discovery"
+        }
       ],
       "mitre_techniques": [
         "T1562.008 (Disable or Modify Cloud Logs)",
@@ -138,38 +221,214 @@
         "(가설: 관리자 권한 보유) Privilege Escalation (1.5.2) → Stealth (1.7.4 로그 삭제) → Defense Impairment (1.7.3 로그 export 비활성화)"
       ]
     },
-    "MULTI_CSP_LATERAL": {
-      "ko_label": "멀티 CSP 횡적 이동",
-      "description": "한 CSP의 자격증명·IP로 다른 CSP까지 침투",
+    "RANSOMWARE": {
+      "ko_label": "랜섬웨어",
+      "description": "데이터 암호화·서비스 중단·복호화 협박. Double Extortion 시 데이터 유출 동반.",
       "primary_phases": [
-        "Lateral Movement"
+        "Initial Access",
+        "Execution",
+        "Impact"
       ],
       "secondary_phases": [
+        "Defense Evasion",
+        "Exfiltration"
+      ],
+      "applicable_categories": [
+        {
+          "category_id": "1.4",
+          "role": "REQUIRED",
+          "phase": "Impact"
+        },
+        {
+          "category_id": "1.5.1",
+          "role": "REQUIRED",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "REQUIRED",
+          "phase": "Execution"
+        },
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Defense Evasion"
+        },
+        {
+          "category_id": "1.8",
+          "role": "CORROBORATING",
+          "phase": "Initial Access"
+        }
+      ],
+      "mitre_techniques": [
+        "T1486 (Data Encrypted for Impact)",
+        "T1490 (Inhibit System Recovery)",
+        "T1078 (Valid Accounts)",
+        "T1567 (Exfiltration Over Web Service)"
+      ],
+      "kisa_classification": "데이터 손상·변조 + 정보 누설 (Double Extortion) — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승)",
+      "csa_threat_category": "#5 Insecure Software Dev (Pandemic Eleven 2024)",
+      "google_cloud_phase": "데이터 파괴·서비스 중단 (Impact)",
+      "rationale": "Verizon DBIR 2024 Ransomware/Extortion 패턴 — 전체 침해의 약 32% (확장 정의 시 ~43%). 클라우드 환경에서는 Object Storage 의 파일 또는 EBS 볼륨이 표적. 백업이 동일 계정에 있으면 함께 암호화. 대량 Put/Copy + 비표준 확장자(.locked) 신규 생성이 핵심 시그널.",
+      "typical_kill_chain": [
+        "Initial Access (T1078) → Execution (T1059) → Discovery (T1518) → Impact (T1486 + T1490)"
+      ]
+    },
+    "MISCONFIG_EXPOSURE": {
+      "ko_label": "설정 오류 노출",
+      "description": "public bucket·과도 권한·미패치 자원 등 잘못된 설정으로 외부 노출.",
+      "primary_phases": [
         "Initial Access",
         "Discovery"
       ],
+      "secondary_phases": [
+        "Collection",
+        "Exfiltration"
+      ],
       "applicable_categories": [
-        {"category_id": "1.5.1", "role": "REQUIRED", "phase": "Initial Access", "scope": "both_csp"},
-        {"category_id": "1.5.5", "role": "REQUIRED", "phase": "Discovery", "scope": "both_csp"},
-        {"category_id": "1.8", "role": "REQUIRED", "phase": "Lateral Movement"},
-        {"category_id": "1.4", "role": "CORROBORATING", "phase": "Exfiltration"},
-        {"category_id": "1.7", "role": "REQUIRED", "phase": "Stealth"}
+        {
+          "category_id": "1.4",
+          "role": "REQUIRED",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "REQUIRED",
+          "phase": "Discovery"
+        },
+        {
+          "category_id": "1.8",
+          "role": "REQUIRED",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.5.1",
+          "role": "CORROBORATING",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.7",
+          "role": "CORROBORATING",
+          "phase": "Defense Evasion"
+        }
       ],
       "mitre_techniques": [
-        "T1021 (Remote Services)",
-        "T1078.004 (Valid Accounts: Cloud Accounts)"
+        "T1190 (Exploit Public-Facing Application)",
+        "T1078.001 (Default Accounts)",
+        "T1530 (Data from Cloud Storage Object)",
+        "T1580 (Cloud Infrastructure Discovery)"
       ],
-      "kisa_classification": "불법적인 자원 사용 (확장) — 표 2-1",
-      "csa_threat_category": "#11 Advanced Persistent Threats (APT)",
-      "google_cloud_phase": "악성 활동 전파 + 인프라 생성",
-      "rationale": "단일 CSP 모니터링으로 보이지 않는 사고 유형. 외부 IP 기준 cross-CSP 상관관계 분석이 핵심. NCP attack-sim(11건) + NHN attack(36건)이 동일 IP 115.91.214.5 공유한 실 패턴.",
+      "kisa_classification": "정보 누설 — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) + 설정 미흡",
+      "csa_threat_category": "#3 Misconfiguration (Pandemic Eleven — 빈도 1위)",
+      "google_cloud_phase": "외부 진입점 노출 (Initial Access)",
+      "rationale": "DBIR 2024 의 빈도 1위. 외부 보안 연구자 신고가 가장 흔한 발견 경로. public ACL · 0.0.0.0/0 ingress · 만료된 인증서 · 기본 계정 미변경 등이 대표 단서. 자체 침해 시도 없이도 데이터 유출로 이어짐.",
       "typical_kill_chain": [
-        "(CSP A 침투 완료 가정) CSP A Discovery (1.5.5) → CSP B Initial Access (1.5.1) → 양쪽 동시 활동 (1.5.5 cross-csp) → 인프라 매핑 (1.8)"
+        "Initial Access (T1190 or T1078.001) → Discovery (T1580) → Collection (T1530) → Exfiltration"
+      ]
+    },
+    "PHISH_INITIAL_ACCESS": {
+      "ko_label": "피싱 초기 침투",
+      "description": "이메일·SMS·MS 365 피싱으로 자격증명 수집 후 클라우드 침투.",
+      "primary_phases": [
+        "Initial Access",
+        "Credential Access"
       ],
-      "special_requirements": {
-        "scope": "양쪽 CSP (naver + nhn) 모두 수집 필수",
-        "cross_correlation": "동일 외부 IP / 동일 사용자명·이메일 / 동일 시각 (±5분) 매칭"
-      }
+      "secondary_phases": [
+        "Persistence"
+      ],
+      "applicable_categories": [
+        {
+          "category_id": "1.5.1",
+          "role": "REQUIRED",
+          "phase": "Initial Access"
+        },
+        {
+          "category_id": "1.5.4",
+          "role": "REQUIRED",
+          "phase": "Credential Access"
+        },
+        {
+          "category_id": "1.5.7",
+          "role": "REQUIRED",
+          "phase": "Credential Access"
+        },
+        {
+          "category_id": "1.5.2",
+          "role": "CORROBORATING",
+          "phase": "Persistence"
+        },
+        {
+          "category_id": "1.7",
+          "role": "CORROBORATING",
+          "phase": "Defense Evasion"
+        }
+      ],
+      "mitre_techniques": [
+        "T1566 (Phishing)",
+        "T1566.001 (Spearphishing Attachment)",
+        "T1078.004 (Valid Accounts: Cloud)",
+        "T1556 (Modify Authentication Process)"
+      ],
+      "kisa_classification": "계정 도용 (피싱 출처) — KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승)",
+      "csa_threat_category": "#2 IAM (Pandemic Eleven)",
+      "google_cloud_phase": "외부 자격증명 탈취 → 클라우드 진입 (Initial Access)",
+      "rationale": "CREDENTIAL_THEFT 의 상위 유형으로, 침투 vector 가 피싱으로 명확한 경우. 비국내 IP + 비정상 로그인 + DGA 도메인 조합이 강한 시그널. MFA 미적용 또는 SSO 환경에서 피해 확대.",
+      "typical_kill_chain": [
+        "Phishing (T1566) → Valid Accounts (T1078.004) → Credential Access → Persistence"
+      ]
+    },
+    "INSIDER_THREAT": {
+      "ko_label": "내부자 위협",
+      "description": "정당 권한 보유 내부자의 비인가 데이터 접근·반출·파괴.",
+      "primary_phases": [
+        "Credential Access",
+        "Collection",
+        "Exfiltration"
+      ],
+      "secondary_phases": [
+        "Defense Evasion",
+        "Impact"
+      ],
+      "applicable_categories": [
+        {
+          "category_id": "1.4",
+          "role": "REQUIRED",
+          "phase": "Collection"
+        },
+        {
+          "category_id": "1.5.2",
+          "role": "REQUIRED",
+          "phase": "Credential Access"
+        },
+        {
+          "category_id": "1.5.5",
+          "role": "REQUIRED",
+          "phase": "Collection"
+        },
+        {
+          "category_id": "1.7",
+          "role": "REQUIRED",
+          "phase": "Defense Evasion"
+        },
+        {
+          "category_id": "1.5.1",
+          "role": "CORROBORATING",
+          "phase": "Credential Access"
+        }
+      ],
+      "mitre_techniques": [
+        "T1078 (Valid Accounts — 정당 권한)",
+        "T1098 (Account Manipulation — 자기상승)",
+        "T1530 (Data from Cloud Storage Object)",
+        "T1562.008 (Disable Cloud Logs — 흔적 제거)"
+      ],
+      "kisa_classification": "불법적 자원 사용 (내부자) — KrCERT/CC 2025-08 제3장 변형 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승)",
+      "csa_threat_category": "#11 APT (위장 내부자) + 자체 위협",
+      "google_cloud_phase": "정당 계정 비인가 사용 (Authorized Access)",
+      "rationale": "외부 침입이 아니라 정당 권한 내부자의 비정상 활동. 정규 업무 시간 + 내부 IP + 권한 있는 계정이라는 정상 패턴 위에서 발생하므로 탐지가 가장 어려움. 데이터 다운로드 burst · 휴면 계정 재활성화 · 로그 비활성화 시도가 핵심 시그널. UEBA 강화 + 분기별 IAM 감사 필수.",
+      "typical_kill_chain": [
+        "Account Manipulation (T1098) → Data Collection (T1530) → Exfiltration → Log Tampering (T1562.008)"
+      ]
     }
   }
 }

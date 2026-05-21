@@ -9,9 +9,9 @@
  "applied_modifiers 응답 필드에 트리거된 modifier 의 reason 을 누적하여 UI 에서 '왜 우선순위가 바뀌었나' 즉시 확인 가능."
  ],
  "source_standards": [
- "KISA 침해사고 분석절차 안내서 (제2010-8호) 2.4 초기 대응 점검표",
+ "KrCERT/CC 정보통신분야 침해사고 대응 안내서 (2025-08 개정본) 2.4 초기 대응 점검표",
  "NIST SP 800-86 3 (휘발성 계층 + 환경 인자에 따른 수집 우선순위 조정)",
- "Google Cloud Threat Intel — 9.x 침해 시나리오별 권장 로그",
+ "Google Threat Horizons Report (H1 2024) — Cloud Threat Scenarios + Recommended Logs",
  "CSA Top Threats to Cloud Computing 2024 (#2 IAM, #7 Disclosure)"
  ],
  "step2_field_mapping": [
@@ -42,7 +42,7 @@
  "rationale": "감사 로그가 꺼져 있으면 사후 분석 자체가 불가. 사건 발생 인지 직후 활성화부터 권장. KISA 2.4 초기 대응 점검표 ⑥ '네트워크 연결 지점' 기록 불가 상태."
  },
  "reason": "감사 로그 미수집 상태 — 사후 분석에 큰 제약. 우선 활성화 권장.",
- "source": "KISA 2.4 + Google 1.7"
+ "source": "KISA 2.4 + Google Threat Horizons Report (H1 2024)"
  },
  {
  "id": "m-002",
@@ -53,7 +53,7 @@
  "category_id": "1.4",
  "boost": 2,
  "reason": "Object Storage 사용 환경 — 데이터 유출(Exfiltration) 단계 로그 우선순위 ↑",
- "source": "Google 1.4 + MITRE T1537"
+ "source": "Google Threat Horizons Report (H1 2024) + MITRE T1537"
  },
  {
  "id": "m-003",
@@ -111,7 +111,7 @@
  }
  ],
  "reason": "IAM 계정 50명 이상 — 권한 변경·신규 계정 생성 이벤트가 많아 탐지 난이도 ↑. 권한·계정 로그 부스팅.",
- "source": "Google 1.5.2~3 + KISA 3.3 (불법적인 자원 사용)"
+ "source": "Google Threat Horizons Report (H1 2024) + KISA 3.3 (불법적인 자원 사용)"
  },
  {
  "id": "m-007",
@@ -157,7 +157,7 @@
  "kill_chain_phase": "Collection",
  "boost": 1,
  "reason": "관계형 DB 서비스 사용 — 데이터 수집(Collection) 단계 로그 우선순위 ↑",
- "source": "Google 9.4 데이터 탈취 시나리오 + MITRE TA0009"
+ "source": "Google Threat Horizons Report (H1 2024) 데이터 탈취 시나리오 + MITRE TA0009"
  },
  {
  "id": "m-010",
@@ -193,7 +193,7 @@
  }
  ],
  "reason": "SSO 사용 — IdP 측 침해가 클라우드 IAM 까지 영향. API 액세스(IdP 토큰 사용 흔적) + 위험 기반 검색(IdP 이상 알림) 모두 부스팅.",
- "source": "CSA #2 IAM + Google 1.5.5·1.5.7"
+ "source": "CSA #2 IAM + Google Threat Horizons Report (H1 2024)"
  },
  {
  "id": "m-012",
@@ -204,7 +204,7 @@
  "category_id": "1.8",
  "boost": 1,
  "reason": "공인 IP 노출 환경 — 네트워크 정책 변경·플로우 로그 동시에 중요.",
- "source": "Google 1.8 + KISA 3.3 (네트워크 기반 증거)"
+ "source": "Google Threat Horizons Report (H1 2024) + KISA 3.3 (네트워크 기반 증거)"
  },
  {
  "id": "m-013",
@@ -215,7 +215,7 @@
  "category_id": "1.8",
  "boost": 1,
  "reason": "외부 연결 서비스(VPN 등) 사용 — 네트워크 구성 변경 + IP 관리 작업 로그 우선순위 ↑",
- "source": "Google 1.8.3 IP 관리 + CSA #11"
+ "source": "Google Threat Horizons Report (H1 2024) IP 관리 + CSA #11"
  }
  ],
  "fallback_modifiers": [

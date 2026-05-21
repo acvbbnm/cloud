@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-14 · 브랜치: `geunhyung` (시연 체크리스트 5 흔한 버그 후보 3건 대응 — 상태 영속화 + dirty beforeunload)
+> 마지막 업데이트: 2026-05-19 (밤) · 브랜치: `dev3` (시연 회귀 다수 핀포인트 + 8종 enum 마무리)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -22,14 +22,217 @@
 | 3-2 Layer 3 AI 셰르파 | V8 챗 · V6 ATT&CK 히트맵 | ✅ **V6·V8 모두 실 API** (V8 출처 칩 표시) | ✅ **1차 깡통 동작** (5 엔드포인트, LLM/RAG 추상화) | ✅ KB 4종 청크화 |
 | **Phase 4 — 보고서** | | | | |
 | 4-1 보고서 | V7 보고서 편집기 | ✅ **V7 실 API 연결 완료** (편집·저장·최종화·DOCX) | ✅ 백엔드 1차 (4개 엔드포인트, DOCX export 동작, PDF 501) | — |
+| **Phase 5 — V-1 재설계 (dev3 분기)** | | | | |
+| 5-1 Triage 데이터 | `data/triage/{decision_tree,weights,next_clue_graph}.json` | — | — | ✅ 학술 가중치 매트릭스 + 결정 트리 골격 |
+| 5-2 프론트 V-1 Step 1 | `Step1_CaseMetadata` (빈 케이스 + UNCLASSIFIED) | ✅ TheHive·IRIS·NIST §3.2 정합 | — | — |
+| 5-3 프론트 V-1 Step 2 | `Step2_Discovery` 3-panel (단서·부분분석·결정트리·시각화) | ✅ 사전 안내 모달 + 트리 시각화 미니맵 + 다음 단서 패널 | — | — |
+| 5-4 프론트 스토어 | `useCaseStore` 확장 + `useTriageStore` 신규 | ✅ persist v1→v2 마이그레이션 + 트리 상태 영속화 | — | — |
+| 5-5 백엔드 Triage API | `/api/triage/{start,next,analyze,confirm}` | — | ✅ **B-1 완료** — 4 라우터 + 평가 엔진 + UNCLASSIFIED enum | ✅ 가중치 누적 시뮬레이션 통과 |
+| 5-6 백엔드 부분 로그 (B-2) | `/api/triage/analyze-logs` + `/api/triage/tree` | — | ✅ **B-2 완료** (jingyu 머지) — UploadFile + Layer 1·2 재사용 + 트리 시각화 직렬화 | — |
+| 5-7 백엔드 DB 칼럼 (B-3) | `incident_cases.{title,tlp,observables,secondary_incident_types,triage_state}` | — | ✅ **B-3 완료** — 5 칼럼 추가 + idempotent 마이그레이션 + intake/triage 영속화 + E2E 통과 | — |
+| 5-8 V-8 사후 검증 | `GET /api/sherpa/validate-incident-type` + `IncidentTypeReviewCard` | ✅ **완료** — ReviewCard 자동 노출 + 부 사고유형 등록·메인 격상 UI | ✅ **백엔드 완료** (jingyu 머지) — 관측 ATT&CK ↔ IncidentTypeKnowledge 정합성 점수화 | — |
+| 5-9 Step 3 UNCLASSIFIED 분기 | `GET /api/guide/v2` UNCLASSIFIED 처리 | (재로드 동작) | ✅ **완료** (jingyu 머지) — Initial Access + Credential Access + Discovery phase fallback | — |
+| 5-10 사고유형 9종 확장 (C-1) | 5종 → 9종 (RANSOMWARE·MISCONFIG·PHISH·INSIDER) | ⏳ 인계 대기 (`docs/dev3/C_사고유형_9종_확장.md`) | ⏳ 인계 대기 — weights·KB·Literal 갱신 | ⏳ KB 청크 24-28개 신규 |
 
 범례: ✅ 완료 · ⏳ 대기 · ❌ 미구현 · 🎭 mock 데이터 · 🟢 시드 OK
 
-**현재 상태**: **walking-skeleton 100% 종결**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
+**현재 상태**: **walking-skeleton 100% 종결** + **dev3 V-1 재설계 청사진 100% 완료**. V-1~V-8 **8/8 화면이 mock 없이 실 API와 통신**. dev3 분기에서 V-1 Step 1 사고유형 강제 선택을 폐기하고 빈 케이스 + 결정 트리 + AI 보조 패널 + Layer 2 부분 분석을 결합한 Discovery Loop 가 작동. V-8 사후 검증 카드(IncidentTypeReviewCard)가 Layer 2 매핑 결과로 사고유형 정합성을 자동 평가·보완 제안. Layer 3는 깡통 LLM/RAG(키워드+점수화+템플릿)로 동작 중이며, 인터페이스 보존하며 Ollama·ChromaDB로 후속 교체 예정.
 
 ---
 
 ## 작업 내역
+
+### 2026-05-19 (밤2) — 시연 회귀 다수 핀포인트 + 8종 enum 마무리 + mock fallback 토스트
+
+C-1 사고유형 확장 / MULTI_CSP_LATERAL 제거 작업 후 시연 시 발견된 런타임 회귀들을 자동 대조 도구로 일괄 잡고 수정. 백엔드는 모두 PASS 였지만 프론트-백엔드 페이로드·mock 잔존 영역에 회귀 다수.
+
+**자동 대조 도구 신설** (이번 디버깅에서 새로 만든 점검 패턴):
+- **백엔드 OpenAPI ↔ 프론트 TypeScript 인터페이스 정합 대조** — required 필드 비교로 회귀 자동 탐지. nextTriage 류 페이로드 누락 3건 발견.
+- **mock 잔존 탐지** — USE_MOCK / MOCK_ / mockCall 패턴 grep + 백엔드 실 엔드포인트 33개 대조.
+
+**수정 커밋 (5개)**:
+1. `c394751` fix(triage): nextTriage 페이로드에 hypothesis_scores + tree_path 합쳐 전송
+   - 증상: 결정 트리 답변 후 "다음" 누르면 토스트 "트리아주 진행 실패" (422).
+   - 원인: 백엔드 stateless 정책 (청사진 §3) 의 필수 필드를 프론트가 누락.
+2. `ee29101` fix(types): Triage* Request 인터페이스 백엔드 Pydantic 정합 보강
+   - TriageNextRequest / TriageAnalyzeRequest / TriageConfirmRequest 의 hypothesis_scores 필드 추가.
+   - 향후 함수 추가 시 자동 보호.
+3. `46fb94e` feat(v1): 부분 로그 분석 mock 제거 + 백엔드 /api/triage/analyze-logs 실 호출
+   - PartialLogAnalysis.tsx 의 mockAnalyze (파일명 패턴) 전면 삭제.
+   - analyzeLogs() multipart 함수 신설, 응답의 hypothesis_scores 그대로 적용.
+   - Step2_Discovery.tsx 의 TECH_WEIGHTS 클라이언트 mock 가중치 전면 삭제 (학술 변호: 정적 weights.json 단일 소스).
+4. (본 커밋) feat(triage): mock fallback 진입 시 토스트 알림
+   - 백엔드 404·network error 시 자동 mock fallback 작동 → 사용자가 mock vs 실 응답 구분 못 했던 문제.
+   - useToastStore.getState() 로 비-React 컨텍스트 직접 호출, 동일 라벨 5초 중복 억제.
+
+**자동 점검 결과 — 잔존 mock 0건**:
+- api/intake.ts USE_MOCK: 환경변수 기반 (정상 dev 패턴, 기본 false)
+- analysis.ts / board.ts / sherpa.ts / logs.ts: mock 0건
+- triage.ts fallback: 404·network 만, 토스트 알림 추가됨
+
+**다른 회귀 영역 (확인 완료)**:
+- 모든 8 사고유형 (UNCLASSIFIED 포함 9 케이스) /api/cases + /api/guide/v2 + validate-incident-type 21/21 PASS
+- 결정 트리 점수 누적 시뮬레이션 (Q1 service_anomaly → Q2D data_destruction → Q3) RANSOMWARE 점수 정상 부여
+- /api/triage/analyze-logs multipart TestClient 200 OK
+- OpenAPI ↔ TypeScript 6 매칭 쌍 모두 정합 (불일치 0)
+
+**시연 가능 상태**:
+- V-1 Step 0 → 1 → 2 → 3 전 흐름 작동
+- 결정 트리 8종 사고유형 점수 누적·추천 정상
+- V-2 ~ V-7 dev2 흐름 무변경, 영향 없음
+- V-8 사후 검증 카드 + IncidentTypeReviewCard 신규 4종 후보 정상
+
+### 2026-05-19 (밤) — C-1 사고유형 9종 확장 — 작업 지시서 등록 (다른 팀원 인계)
+
+**배경**: 시연 중 가설 점수 패널에 5종만 표시 — KISA §3.3 (6-7종) / CSA Pandemic Eleven (11종) 대비 약함. 캡스톤 평가 변호력 강화 위해 9종으로 확장.
+
+**확장 사고유형 (4종 신규)**:
+- `RANSOMWARE` — CSA #5 + Verizon DBIR 24% + MITRE T1486
+- `MISCONFIG_EXPOSURE` — CSA #3 + DBIR 빈도 1위 + MITRE T1190+T1530
+- `PHISH_INITIAL_ACCESS` — CSA #2 + MITRE T1566
+- `INSIDER_THREAT` — KISA §3.3 "불법적 자원 사용" + MITRE T1078
+
+→ 9종 + UNCLASSIFIED = 총 10종 → **KISA §3.3 분류표 100% 정합 + CSA Pandemic Eleven 의 #1·2·3·5·7·11 커버**.
+
+**작업 지시서**: `docs/dev3/C_사고유형_9종_확장.md`
+- 변경 파일 매트릭스 (백엔드 + 프론트 + KB + 문서)
+- 단계별 가이드 (데이터 → 코드 → 임베딩 → 프론트 → 시뮬레이션 → 문서)
+- 가중치 자동 갱신 스크립트 가이드 (`backend/scripts/expand_weights_to_9.py`)
+- KB 청크 작성 표준 + 예시 (RANSOMWARE 대표 청크 attack/playbook/case_db 3종)
+- 시뮬레이션 검증 시나리오 S6~S9 (RANSOMWARE / MISCONFIG / PHISH / INSIDER)
+- PR 가이드 + 4 커밋 분할 권고 + 체크리스트
+- 위험·미해결 항목 5종
+
+**예상 공수**: 1명 7-8h / 2명 분담 시 4-5h
+
+**다음 담당자**: 팀원 1-2명 분담 가능. KB 청크 24-28개 작성이 가장 큰 부담 (3-4h).
+
+### 2026-05-19 (저녁) — dev3 청사진 100% 완료: V-8 IncidentTypeReviewCard
+
+**dev3 V-1 재설계 마지막 작업** — V-8 사후 검증 프론트 카드.
+
+흐름:
+1. V-8 진입 시 `caseId` 있으면 자동으로 `GET /api/sherpa/validate-incident-type` 호출
+2. `status === 'CONSISTENT'` → 카드 숨김 (노이즈 X)
+3. `status === 'REVIEW_NEEDED'` → 화면 상단에 amber 알림 카드 자동 노출
+   - 현재 메인·부 사고유형 배지 표시
+   - Layer 2 추가 매핑 기법 (extra_techniques) 코드 칩 8개+
+   - candidate_types 리스트 — 각 항목에 [+ 부 사고유형] / [메인으로 격상] 버튼
+4. 버튼 클릭 → `PATCH /api/cases/{caseId}` 로 영속화 → `useCaseStore` 동기화 → validation 재호출
+
+특징:
+- AI 제안만 (결정은 수사관) — CLAUDE.md SNF 원칙 정합
+- "메인 격상" 시 기존 메인은 secondary 로 강등 (다중 사고유형 우아한 전환)
+- 카드 우상단 ✕ 로 세션 dismiss 가능 (피로 최소화)
+- staleTime 30초 — V-2 분석 직후 빈번 재호출 방지
+
+학술 근거: AWS GuardDuty AttackSequence finding + Microsoft Defender XDR attack story.
+
+신규/수정:
+- `frontend/src/api/sherpa.ts` — getIncidentTypeValidation 추가
+- `frontend/src/api/intake.ts` — updateCase + UpdateCaseReq 추가 (PATCH 호출 래퍼)
+- `frontend/src/views/V8_Sherpa/IncidentTypeReviewCard.tsx` — 신규 (224줄)
+- `frontend/src/views/V8_Sherpa/index.tsx` — caseId 있을 때 카드 자동 렌더
+
+검증: `tsc --noEmit` 통과.
+
+**🎉 dev3 청사진 100% 완료** — V-1 재설계의 9개 항목 (5-1 ~ 5-9) 전부 완성.
+- 데이터 (decision_tree·weights·next_clue_graph)
+- 프론트 (Step1 메타 + Step2 Discovery 3-panel + 트리 시각화 + 사전 안내)
+- 백엔드 (Triage API 4 + B-2 멀티파트 + B-3 DB 칼럼 5종 + V-8 사후 검증)
+- UI (UNCLASSIFIED Step3 fallback + V-8 ReviewCard)
+
+남은 후속 (선택):
+- E2E 시연 시나리오 갱신
+- 캡스톤 발표 자료에 청사진 흐름 반영
+
+### 2026-05-19 — dev3 B-3: incident_cases 칼럼 5종 확장 + jingyu 머지
+
+**진규 브랜치 머지** (`ccf7de3` Merge `e706012`):
+- B-2 완료: `POST /api/triage/analyze-logs` (multipart) — Layer 1·2 파이프라인 재사용, clue_time ±5분 윈도우 attack_events 필터
+- 트리 시각화: `GET /api/triage/tree` + `Triage.tree_visualization()`
+- Step 3 fallback: `GET /api/guide/v2` UNCLASSIFIED 분기 (Initial Access + Credential Access + Discovery phase)
+- V-8 사후 검증: `GET /api/sherpa/validate-incident-type` — 관측 ATT&CK ↔ `IncidentTypeKnowledge.related_techniques` 점수화 → CONSISTENT / REVIEW_NEEDED + candidate_types
+
+**B-3 DB 칼럼 확장** (이 커밋):
+`incident_cases` 테이블에 V-1 재설계 칼럼 5종 추가:
+- `title` VARCHAR(200) NULL — 사건 제목 (기존 row 호환 위해 nullable)
+- `tlp` VARCHAR(16) NOT NULL DEFAULT 'AMBER' — TheHive 5 정보 공유 등급
+- `observables` JSON NOT NULL DEFAULT '[]' — Observable 배열
+- `secondary_incident_types` JSON NULL — V-8 사후 검증으로 추가될 부 사고유형
+- `triage_state` JSON NULL — 결정 트리 진행 상태 전체 영속화
+
+작업 단위:
+1. `db/models.py` — `IncidentCaseModel` 5 칼럼 추가
+2. `db/migrate_b3.py` — idempotent ALTER TABLE 마이그레이션 스크립트 (`PRAGMA table_info` 로 기존 칼럼 체크 후 skip)
+3. `core/intake/incident_case.py` — `create()` / `update_config()` 신규 필드 수용 (incident_type 변경, observables 갱신, triage_state 통째 교체)
+4. `api/intake.py` — `POST /api/cases` + `PATCH /api/cases/{caseId}` + `_serialize_case` 신규 5 필드 수용·응답
+5. `api/triage.py` — `POST /api/triage/confirm` 의 `secondary_incident_types` · `triage_state` · `observables` 실 영속화 (이전 echo only → DB 반영)
+
+검증 (TestClient E2E 4 단계):
+- CREATE: UNCLASSIFIED + title + tlp + observables → 201 + 신규 필드 응답
+- GET: 신규 5 필드 모두 노출
+- PATCH: incident_type CREDENTIAL_THEFT 변경 + secondary + triage_state 갱신
+- CONFIRM: incident_type DATA_EXFILTRATION 확정 + 4 필드 동시 영속화
+→ **모든 단계 PASS**
+
+마이그레이션 사용법:
+```bash
+python -m db.migrate_b3   # 기존 DB 사용자
+# 신규 DB 는 init_db.py create_all() 가 자동 처리 (마이그 스크립트는 SKIP 만)
+```
+
+**dev3 청사진 잔여 작업** (백엔드는 100% 완료):
+- ❌ V-8 IncidentTypeReviewCard 프론트 — `validate-incident-type` 호출 + 추가 사고유형 등록 UI
+- (선택) E2E 시연 시나리오 + 보고서 갱신
+
+### 2026-05-18 — dev3 분기: V-1 재설계 (Discovery Loop + 결정 트리 + Triage API)
+
+**배경**: V-1 Step 1 의 "사고유형 5종 강제 선택" 이 글로벌 표준 (AWS Detective, MS Sentinel, GCP SCC, TheHive, DFIR-IRIS, NIST 800-61r2) 8 개 모두와 정반대 흐름임이 벤치마킹 조사로 확인. 사고유형은 **단서 → 분석 → 추정** 의 후행 분류여야 함. dev2 보존을 위해 별도 `dev3` 분기에서 재설계 진행.
+
+**기획 단계** (커밋 `e958c7a`):
+- `docs/dev3/V1_재설계_청사진.md` (35KB) — Step 0~3 + V-8 사후 검증 + Discovery Loop + DB·API·파일 매트릭스 + 일정 54h + 표준 매핑 10 종
+- `docs/dev3/사용자_결정사항.md` — 8 항목 논의 트레이스
+- `docs/dev3/가중치_설계_근거.md` (18KB) — 학술 인용 + 5 시나리오 시뮬레이션 + 임계값 산정
+- `docs/벤치마크_클라우드_사고조사.md` (27KB) — 6 개 플랫폼 상세 비교
+- `backend/data/triage/decision_tree.json` — Q1~Q3 + T_evaluate
+- `backend/data/triage/weights.json` — 답변 25 + 단서 17 + ATT&CK 24 + env_modifier 13
+- `backend/data/triage/next_clue_graph.json` — 단서 6 종 × 다음 단서 2~4 개
+
+**프론트엔드 단계** (커밋 `83e4dd4` → `b74402f`):
+- `types/index.ts` — `UNCLASSIFIED`·`TLP`·`Observable`·`Triage*` 타입 14 종 추가
+- `useCaseStore` 확장 + persist v1→v2 마이그레이션
+- `useTriageStore` 신규 — 트리 진행 상태 + 가설 점수 + recommendation 영속화
+- `Step1_CaseMetadata` 신규 (Title · 시각 · Severity · TLP · UNCLASSIFIED 자동 안내)
+- `Step1_TypeCards` 폐기 (호환성 보존)
+- `Step2_Discovery` (550 줄) — 3-panel 레이아웃, 단서 입력(F-1), 부분 로그 분석(F-2), 다음 단서 패널(F-3), 트리 시각화 미니맵(F-4), 사전 안내 모달(F-5)
+- `api/triage.ts` — 자동 mock fallback 포함 백엔드 4 라우터 호출
+
+**백엔드 단계** (커밋 `aedf710`, B-1 완료):
+- `backend/api/triage.py` (192 줄) — `/api/triage/{start, next, analyze, confirm}` 4 라우터
+- `backend/core/intake/triage.py` (372 줄) — `Triage` 평가 엔진 + 정적 JSON 캐싱 + 점수 누적 + recommendation 평가
+- `backend/api/intake.py` — `IncidentType` Literal 에 `UNCLASSIFIED` 추가
+- `backend/main.py` — triage 라우터 등록
+- 검증: Q1 csp_alert → Q2A 비정상로그인+비국내IP → Q3 fail_then_success → CRED 95 → `auto_confirm` 자동 발동 (학술 가중치 매트릭스 의도대로 작동)
+
+**해결한 이슈**: 사용자 보고 "사고유형 선택 후 다음 레이어 못 감" — 옛 백엔드가 `UNCLASSIFIED` enum 거부(422) 로 `createCase` 실패. B-1 푸시 + 백엔드 재시작 후 자동 해소.
+
+**설계 원칙** (인계 시 보존):
+- 결정성 100% (정적 가중치만, 같은 입력 → 같은 출력)
+- AI 판단 X (점수 산출만, 결정은 트리 + 사용자)
+- stateless (클라이언트가 `hypothesis_scores`·`tree_path` 매 요청 전달)
+- 임계값 단일 소스 (`weights.json thresholds`)
+
+**남은 후속 작업**:
+- B-2: 부분 로그 멀티파트 업로드 (`UploadFile` + Layer 1·2 재사용)
+- B-3: `incident_cases` 신규 칼럼 (`title`, `tlp`, `observables`, `secondary_incident_types`, `triage_state`) — **CLAUDE.md 규칙상 DB 담당자 합의 필수**
+- V-8 사후 검증: `IncidentTypeReviewCard` (Layer 2 매핑 vs 확정 사고유형 정합성)
+- Step 3 UNCLASSIFIED 공통 가이드 분기
+
+**참조 문서**:
+- `docs/dev3/V1_재설계_청사진.md` — 전체 설계
+- `docs/dev3/B_백엔드_인계.md` — B-1 검증 절차 + B-2/B-3 후속 작업 가이드
+- `docs/dev3/가중치_설계_근거.md` — 학술 인용 + 시뮬레이션
 
 ### 2026-05-15 — 가이드 시스템 근거 보강 2-트랙 진행 (`dev` vs `dev2` 병행)
 

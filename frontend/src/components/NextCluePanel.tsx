@@ -21,7 +21,11 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  MULTI_CSP_LATERAL: '멀티 CSP 횡이동',
+  // dev3 C-1 신규 4종 (MULTI_CSP_LATERAL 2026-05-19 제거)
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 오류 노출',
+  PHISH_INITIAL_ACCESS: '피싱 초기 침투',
+  INSIDER_THREAT: '내부자 위협',
   UNCLASSIFIED: '미분류',
 };
 
@@ -77,16 +81,54 @@ const NEXT_CLUE_HEURISTIC: Partial<
       rationale: 'T1562.008 흔적 — Q2C:log_gap +30 보강',
     },
   ],
-  MULTI_CSP_LATERAL: [
+  // MULTI_CSP_LATERAL 휴리스틱은 2026-05-19 제거. 환경 변수 multi_cloud 만 보존.
+  // ── dev3 C-1 신규 4종 ──
+  RANSOMWARE: [
     {
-      question: '양쪽 CSP 모두에서 등장한 IP?',
-      hint_type: 'IP_ADDRESS',
-      rationale: 'Q3:multi_region_concurrent + Q2B:multi_csp_suspicious',
+      question: '랜섬 노트 또는 비표준 확장자(.locked/.encrypted) 발견된 객체?',
+      hint_type: 'HASH',
+      rationale: 'MITRE T1486 Data Encrypted for Impact 직접 증거',
     },
     {
-      question: '양쪽 CSP 공유 사용자명·이메일?',
+      question: '대량 PutObject 발생 시각?',
+      hint_type: 'TIME_WINDOW',
+      rationale: 'T1486 + T1490 (Inhibit System Recovery) 결합 시그널',
+    },
+  ],
+  MISCONFIG_EXPOSURE: [
+    {
+      question: '외부 공개로 설정된 Object Storage 컨테이너?',
+      hint_type: 'SERVICE',
+      rationale: 'CSA #3 Misconfiguration — public bucket 탐지',
+    },
+    {
+      question: '외부 노출 자원의 공인 IP?',
+      hint_type: 'IP_ADDRESS',
+      rationale: 'T1190 Exploit Public-Facing Application 단서',
+    },
+  ],
+  PHISH_INITIAL_ACCESS: [
+    {
+      question: '피싱 메일 URL 또는 첨부 해시?',
+      hint_type: 'HASH',
+      rationale: 'T1566 Phishing 직접 증거 — phishing kit 매칭',
+    },
+    {
+      question: '의심 도메인 또는 신규 등록 도메인?',
+      hint_type: 'DOMAIN',
+      rationale: 'typo-squatting · DGA 패턴 — T1566.001 보강',
+    },
+  ],
+  INSIDER_THREAT: [
+    {
+      question: '권한 변경 또는 휴면 계정 활성화한 내부 사용자?',
       hint_type: 'ACCOUNT',
-      rationale: 'SSO 토큰 침해 신호',
+      rationale: 'KISA §3.3 불법적 자원 사용 + MITRE T1078 직접 증거',
+    },
+    {
+      question: '비정상 시각 또는 정상 업무 시간 내부 IP 접근?',
+      hint_type: 'IP_ADDRESS',
+      rationale: '내부자 위협의 가장 강한 시그널 — 정상 시간대 활동',
     },
   ],
 };

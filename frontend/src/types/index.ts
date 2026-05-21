@@ -2,12 +2,21 @@
 
 // 백엔드 Pydantic Literal + types/index.ts 정책과 일치
 // dev3 (2026-05-18): UNCLASSIFIED 추가 — 빈 케이스 시작 패턴 (TheHive·IRIS·NIST 800-61r2)
+// dev3 C-1 (2026-05-19): 신규 4종 추가 — RANSOMWARE·MISCONFIG_EXPOSURE·PHISH_INITIAL_ACCESS·INSIDER_THREAT
+// 2026-05-19 (재결정): MULTI_CSP_LATERAL 제거 — 사용자 명시. 환경 변수 multi_cloud 만 보존.
+// 최종 8종 + UNCLASSIFIED (CSA Pandemic Eleven #1~7 + KISA §3.3 분류표 정합)
 export type IncidentType =
+  // ── 4종 기존 ──
   | 'CREDENTIAL_THEFT'
   | 'PRIVILEGE_ESCALATION'
   | 'DATA_EXFILTRATION'
   | 'AUDIT_LOG_TAMPERING'
-  | 'MULTI_CSP_LATERAL'
+  // ── dev3 C-1 신규 4종 ──
+  | 'RANSOMWARE'
+  | 'MISCONFIG_EXPOSURE'
+  | 'PHISH_INITIAL_ACCESS'
+  | 'INSIDER_THREAT'
+  // ── 미분류 ──
   | 'UNCLASSIFIED';
 
 // dev3 신규 — TheHive 5 차용 (정보 공유 등급)
@@ -21,7 +30,8 @@ export type ClueType =
   | 'DOMAIN'
   | 'TIME_WINDOW'
   | 'SERVICE';
-export type CSP = 'naver' | 'nhn' | 'all';
+// dev3 (2026-05-19): 'all' 제거 — MULTI_CSP_LATERAL 삭제와 함께. naver/nhn 만.
+export type CSP = 'naver' | 'nhn';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type EvidenceRole = 'REQUIRED' | 'CORROBORATING';
 export type GapType = 'NONE' | 'COLLECTION' | 'EVIDENCE' | 'INTERPRETATION';
@@ -458,10 +468,12 @@ export interface TriageKbResult {
 // ─── API 요청 / 응답 ───
 
 // POST /api/triage/analyze — 단서 + 부분 로그 → 가설 갱신
+// dev3 (2026-05-19): stateless 정책 (청사진 §3) — 클라이언트가 hypothesis_scores 매 요청 전달
 export interface TriageAnalyzeRequest {
   caseId: string;
+  hypothesis_scores: HypothesisScores; // 백엔드 필수
   clue?: Observable;
-  // 부분 로그 분석은 multipart/form-data 로 별도 호출 가능
+  technique_ids?: string[]; // 백엔드 partial_analysis_techniques 가중치 키
   partial_log_filename?: string;
 }
 
@@ -474,10 +486,15 @@ export interface TriageAnalyzeResponse {
 }
 
 // POST /api/triage/next — 결정 트리 다음 질문
+// dev3 (2026-05-19): 백엔드 stateless 정책 — hypothesis_scores·tree_path 필수.
+// nextTriage 함수가 호출 시점에 별도 인자(currentScores, currentPath)로 받아
+// 페이로드에 합쳐 전송하므로, 본 인터페이스에서는 옵셔널 (?: ) 로 둠.
 export interface TriageNextRequest {
   caseId: string;
   current_node_id: string;
   answer_ids: string[]; // multi_select 지원
+  hypothesis_scores?: HypothesisScores;
+  tree_path?: Array<{ node_id: string; selected_option_ids: string[] }>;
 }
 
 export interface TriageNextResponse {
@@ -489,10 +506,16 @@ export interface TriageNextResponse {
 }
 
 // POST /api/triage/confirm — 사고유형 확정
+// dev3 (2026-05-19): 백엔드 stateless 정책 — hypothesis_scores 필수 (청사진 §3)
+// 현재 시연 흐름은 V1Setup index.tsx 의 updateCase (PATCH /api/cases) 로 우회.
+// 본 타입은 향후 직접 호출 함수 도입 시 정합 보호.
 export interface TriageConfirmRequest {
   caseId: string;
   incident_type: IncidentType;
+  hypothesis_scores: HypothesisScores; // 백엔드 필수
   secondary_incident_types?: IncidentType[];
+  triage_state?: TriageState | null;
+  observables?: Observable[];
 }
 
 // GET /api/triage/tree?caseId= — 시각화용 트리 전체 + 진행 상태

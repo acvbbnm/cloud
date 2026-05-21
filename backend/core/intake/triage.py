@@ -33,18 +33,27 @@ logger = logging.getLogger(__name__)
 
 _TRIAGE_DIR = settings.DATA_DIR / "triage"
 
-INCIDENT_TYPES_5 = [
+INCIDENT_TYPES_8 = [
+    # ── 4종 기존 (MULTI_CSP_LATERAL 제거, 2026-05-19) ──
     "CREDENTIAL_THEFT",
     "PRIVILEGE_ESCALATION",
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
-    "MULTI_CSP_LATERAL",
+    # ── dev3 C-1 신규 4종 ──
+    "RANSOMWARE",
+    "MISCONFIG_EXPOSURE",
+    "PHISH_INITIAL_ACCESS",
+    "INSIDER_THREAT",
 ]
+
+# 하위 호환 — 기존 코드에서 INCIDENT_TYPES_5 / _9 import 시 8종으로 그대로 동작
+INCIDENT_TYPES_5 = INCIDENT_TYPES_8
+INCIDENT_TYPES_9 = INCIDENT_TYPES_8
 
 
 def _initial_scores() -> dict[str, int]:
-    """5 사고유형 + UNCLASSIFIED 모두 0 인 점수 초기값."""
-    return {t: 0 for t in INCIDENT_TYPES_5} | {"UNCLASSIFIED": 0}
+    """8 사고유형 + UNCLASSIFIED 모두 0 인 점수 초기값 (2026-05-19)."""
+    return {t: 0 for t in INCIDENT_TYPES_8} | {"UNCLASSIFIED": 0}
 
 
 _cache: dict[str, object] = {}
@@ -369,3 +378,69 @@ class Triage:
     def evaluate(cls, scores: dict[str, int]) -> dict:
         """현재 점수만으로 추천 결과 산출 (강제 평가)."""
         return evaluate_recommendation(scores)
+
+    @classmethod
+    def tree_visualization(cls, current_node_id: Optional[str] = None) -> dict:
+        """결정 트리 전체 노드·엣지 응답 (V-1 Step 2 시각화·미니맵용).
+
+        Returns:
+            {
+              root: str,
+              current_node: str | None,
+              nodes: [{id, type, label, multi_select}, ...],
+              edges: [{from, to, label, option_id?}, ...]
+            }
+        """
+        tree = _decision_tree()
+        nodes_raw = tree.get("nodes") or {}
+        root_id = tree.get("root", "Q1_inception")
+
+        nodes: list[dict] = []
+        edges: list[dict] = []
+        for nid, node in nodes_raw.items():
+            label = (
+                node.get("question")
+                or node.get("message")
+                or node.get("action")
+                or nid
+            )
+            nodes.append(
+                {
+                    "id": nid,
+                    "type": node.get("type", "question"),
+                    "label": label,
+                    "multi_select": bool(node.get("multi_select", False)),
+                    "fallback_incident_type": node.get("fallback_incident_type"),
+                }
+            )
+
+            options = node.get("options") or []
+            for opt in options:
+                nxt = opt.get("next")
+                if nxt:
+                    edges.append(
+                        {
+                            "from": nid,
+                            "to": nxt,
+                            "label": opt.get("text") or opt.get("id") or "",
+                            "option_id": opt.get("id"),
+                        }
+                    )
+            # 노드 레벨 next (multi_select 합류형) — 옵션에 next 가 하나도 없을 때만
+            node_next = node.get("next")
+            if node_next and not any(o.get("next") for o in options):
+                edges.append(
+                    {
+                        "from": nid,
+                        "to": node_next,
+                        "label": "",
+                        "option_id": None,
+                    }
+                )
+
+        return {
+            "root": root_id,
+            "current_node": current_node_id,
+            "nodes": nodes,
+            "edges": edges,
+        }

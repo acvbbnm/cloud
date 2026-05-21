@@ -6,7 +6,8 @@
     "purpose": "Step 2 Discovery Loop 의 결정 트리. 가중치는 weights.json 분리.",
     "primary_standard": "KISA 침해사고 분석절차 안내서 §2.4 + NIST SP 800-61r2 §3.2",
     "design_principle": "정적 JSON — 결정성 100%. 같은 입력 → 같은 다음 질문.",
-    "weights_reference": "docs/dev3/가중치_설계_근거.md"
+    "weights_reference": "docs/dev3/가중치_설계_근거.md",
+    "dev3_c1_step3": "2026-05-19 — 9종 확장 분기 옵션 +10"
   },
   "root": "Q1_inception",
   "max_depth": 6,
@@ -52,15 +53,58 @@
       "type": "question",
       "question": "CSP 알람 내용은? (다중 선택 가능)",
       "multi_select": true,
-      "google_field": "Google Cloud Threat Intel §9.x",
+      "google_field": "Google Threat Horizons Report (H1 2024) — Cloud Threat Scenarios",
       "options": [
-        { "id": "abnormal_login", "label": "비정상 로그인", "weight_key": "Q2A:abnormal_login" },
-        { "id": "non_korean_ip", "label": "비국내 IP 접근", "weight_key": "Q2A:non_korean_ip" },
-        { "id": "privilege_change", "label": "권한 변경 알람", "weight_key": "Q2A:privilege_change" },
-        { "id": "object_storage_burst", "label": "Object Storage 대량 활동", "weight_key": "Q2A:object_storage_burst" },
-        { "id": "audit_log_disabled", "label": "감사 로그 비활성", "weight_key": "Q2A:audit_log_disabled" },
-        { "id": "api_burst", "label": "API 호출 burst", "weight_key": "Q2A:api_burst" },
-        { "id": "off_hours", "label": "비표준 시각 작업", "weight_key": "Q2A:off_hours" }
+        {
+          "id": "abnormal_login",
+          "label": "비정상 로그인",
+          "weight_key": "Q2A:abnormal_login"
+        },
+        {
+          "id": "non_korean_ip",
+          "label": "비국내 IP 접근",
+          "weight_key": "Q2A:non_korean_ip"
+        },
+        {
+          "id": "privilege_change",
+          "label": "권한 변경 알람",
+          "weight_key": "Q2A:privilege_change"
+        },
+        {
+          "id": "object_storage_burst",
+          "label": "Object Storage 대량 활동",
+          "weight_key": "Q2A:object_storage_burst"
+        },
+        {
+          "id": "audit_log_disabled",
+          "label": "감사 로그 비활성",
+          "weight_key": "Q2A:audit_log_disabled"
+        },
+        {
+          "id": "api_burst",
+          "label": "API 호출 burst",
+          "weight_key": "Q2A:api_burst"
+        },
+        {
+          "id": "off_hours",
+          "label": "비표준 시각 작업",
+          "weight_key": "Q2A:off_hours"
+        },
+        {
+          "id": "ransomware_pattern",
+          "label": "대량 PutObject + 비표준 확장자(.locked/.encrypted) 신규 생성",
+          "weight_key": "Q2A:ransomware_pattern"
+        },
+        {
+          "id": "misconfig_alert",
+          "label": "public 노출 또는 0.0.0.0/0 자동 탐지 알람",
+          "weight_key": "Q2A:misconfig_alert"
+        },
+        {
+          "id": "phishing_kit_detect",
+          "label": "외부 위협 인텔 — 알려진 phishing kit 도메인·해시 매칭",
+          "weight_key": "Q2A:phishing_kit_detect"
+        }
       ],
       "next": "Q3_additional_context"
     },
@@ -68,10 +112,48 @@
       "type": "question",
       "question": "외부 신고 내용은?",
       "options": [
-        { "id": "data_exposed", "label": "데이터 외부 노출 확인", "weight_key": "Q2B:data_exposed", "next": "Q3_additional_context" },
-        { "id": "abnormal_billing", "label": "비정상 결제·자원 사용", "weight_key": "Q2B:abnormal_billing", "next": "Q3_additional_context" },
-        { "id": "identity_theft", "label": "신원도용 의심", "weight_key": "Q2B:identity_theft", "next": "Q3_additional_context" },
-        { "id": "multi_csp_suspicious", "label": "멀티 CSP 의심 활동", "weight_key": "Q2B:multi_csp_suspicious", "next": "Q3_additional_context" }
+        {
+          "id": "data_exposed",
+          "label": "데이터 외부 노출 확인",
+          "weight_key": "Q2B:data_exposed",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "abnormal_billing",
+          "label": "비정상 결제·자원 사용",
+          "weight_key": "Q2B:abnormal_billing",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "identity_theft",
+          "label": "신원도용 의심",
+          "weight_key": "Q2B:identity_theft",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "multi_csp_suspicious",
+          "label": "멀티 CSP 의심 활동",
+          "weight_key": "Q2B:multi_csp_suspicious",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "ransom_note_visible",
+          "label": "외부에서 랜섬 노트 또는 다크웹 데이터 게시 발견",
+          "weight_key": "Q2B:ransom_note_visible",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "phishing_report",
+          "label": "직원·사용자가 받은 피싱 메일·URL 제보",
+          "weight_key": "Q2B:phishing_report",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "insider_complaint",
+          "label": "내부자 의심 익명 제보 — 동료의 비정상 활동",
+          "weight_key": "Q2B:insider_complaint",
+          "next": "Q3_additional_context"
+        }
       ]
     },
     "Q2C_audit_pattern": {
@@ -79,26 +161,81 @@
       "question": "정기 감사 비정상 패턴은?",
       "kisa_field": "§2.4 ③ 영향받은 시스템·서비스",
       "options": [
-        { "id": "iam_burst", "label": "신규 IAM 계정 비정상 생성", "weight_key": "Q2C:iam_burst", "next": "Q3_additional_context" },
-        { "id": "permission_changes", "label": "권한 변경 이력 다수", "weight_key": "Q2C:permission_changes", "next": "Q3_additional_context" },
-        { "id": "log_gap", "label": "감사 로그 누락·삭제", "weight_key": "Q2C:log_gap", "next": "Q3_additional_context" },
-        { "id": "data_access", "label": "비정상 데이터 액세스", "weight_key": "Q2C:data_access", "next": "Q3_additional_context" }
+        {
+          "id": "iam_burst",
+          "label": "신규 IAM 계정 비정상 생성",
+          "weight_key": "Q2C:iam_burst",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "permission_changes",
+          "label": "권한 변경 이력 다수",
+          "weight_key": "Q2C:permission_changes",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "log_gap",
+          "label": "감사 로그 누락·삭제",
+          "weight_key": "Q2C:log_gap",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "data_access",
+          "label": "비정상 데이터 액세스",
+          "weight_key": "Q2C:data_access",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "insider_anomaly",
+          "label": "정상 시간 + 내부 IP + 권한 있는 사용자의 다량 데이터 다운로드",
+          "weight_key": "Q2C:insider_anomaly"
+        },
+        {
+          "id": "default_account_used",
+          "label": "기본 계정(admin/admin 등) 또는 미변경 초기 자격증명 사용",
+          "weight_key": "Q2C:default_account_used"
+        }
       ]
     },
     "Q2D_anomaly_form": {
       "type": "question",
       "question": "서비스 이상 형태는?",
       "options": [
-        { "id": "data_destruction", "label": "데이터 변조·파괴", "weight_key": "Q2D:data_destruction", "next": "Q3_additional_context" },
-        { "id": "ddos", "label": "서비스 장애·DDoS", "weight_key": "Q2D:ddos", "next": "Q3_additional_context" },
-        { "id": "resource_abuse", "label": "자원 비정상 소비 (Cryptocurrency mining 등)", "weight_key": "Q2D:resource_abuse", "next": "Q3_additional_context" },
-        { "id": "response_delay", "label": "응답 지연", "weight_key": "Q2D:response_delay", "next": "Q3_additional_context" }
+        {
+          "id": "data_destruction",
+          "label": "데이터 변조·파괴",
+          "weight_key": "Q2D:data_destruction",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "ddos",
+          "label": "서비스 장애·DDoS",
+          "weight_key": "Q2D:ddos",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "resource_abuse",
+          "label": "자원 비정상 소비 (Cryptocurrency mining 등)",
+          "weight_key": "Q2D:resource_abuse",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "response_delay",
+          "label": "응답 지연",
+          "weight_key": "Q2D:response_delay",
+          "next": "Q3_additional_context"
+        },
+        {
+          "id": "mass_encryption",
+          "label": "대량 객체 암호화 또는 .locked 확장자 신규 생성 시각 화면 노출",
+          "weight_key": "Q2D:mass_encryption"
+        }
       ]
     },
     "Q2E_minimal_checklist": {
       "type": "terminal",
       "action": "skip_to_kisa_6_checklist",
-      "message": "사고 인지 단서가 부족합니다. KISA §2.4 6항목 점검표 모드로 진입합니다. 사고유형은 UNCLASSIFIED 로 시작하고 Layer 2 분석 후 V-8 Sherpa 가 추론합니다.",
+      "message": "사고 인지 단서가 부족합니다. KrCERT/CC 2025-08 제2장 초기 대응 점검표 6항목 (구 KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) 계승) 모드로 진입합니다. 사고유형은 UNCLASSIFIED 로 시작하고 Layer 2 분석 후 V-8 Sherpa 가 추론합니다.",
       "fallback_incident_type": "UNCLASSIFIED"
     },
     "Q3_additional_context": {
@@ -106,11 +243,36 @@
       "question": "추가 정황은?",
       "kisa_field": "§2.4 ⑥ 네트워크 연결 지점",
       "options": [
-        { "id": "fail_then_success", "label": "실패→성공 인증 패턴", "weight_key": "Q3:fail_then_success", "next": "T_evaluate" },
-        { "id": "multi_region_concurrent", "label": "동일 계정 동시 다지역 로그인", "weight_key": "Q3:multi_region_concurrent", "next": "T_evaluate" },
-        { "id": "storage_policy_change", "label": "Object Storage 정책 변경", "weight_key": "Q3:storage_policy_change", "next": "T_evaluate" },
-        { "id": "serverless_new", "label": "Cloud Function·Lambda 신규 생성", "weight_key": "Q3:serverless_new", "next": "T_evaluate" },
-        { "id": "unknown_extra", "label": "알 수 없음", "weight_key": "Q3:unknown_extra", "next": "T_evaluate" }
+        {
+          "id": "fail_then_success",
+          "label": "실패→성공 인증 패턴",
+          "weight_key": "Q3:fail_then_success",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "multi_region_concurrent",
+          "label": "동일 계정 동시 다지역 로그인",
+          "weight_key": "Q3:multi_region_concurrent",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "storage_policy_change",
+          "label": "Object Storage 정책 변경",
+          "weight_key": "Q3:storage_policy_change",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "serverless_new",
+          "label": "Cloud Function·Lambda 신규 생성",
+          "weight_key": "Q3:serverless_new",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "unknown_extra",
+          "label": "알 수 없음",
+          "weight_key": "Q3:unknown_extra",
+          "next": "T_evaluate"
+        }
       ]
     },
     "T_evaluate": {

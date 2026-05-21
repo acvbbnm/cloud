@@ -7,8 +7,8 @@ import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
-import { createCase } from '@/api/intake';
-import type { CSP, Severity } from '@/types';
+import { createCase, updateCase } from '@/api/intake';
+import type { CSP, IncidentType, Severity } from '@/types';
 
 import Step0_CSPCards from './Step0_CSPCards';
 import Step1_CaseMetadata from './Step1_CaseMetadata';
@@ -27,24 +27,56 @@ const stepLabels = [
 
 const V1Setup = () => {
   const navigate = useNavigate();
-  const { csp, incidentType, setCsp, setSeverity, setCaseId } = useCaseStore();
+  const {
+    csp,
+    incidentType,
+    caseId,
+    title,
+    tlp,
+    severity,
+    setCsp,
+    setSeverity,
+    setCaseId,
+    setIncidentType,
+  } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
   const [step, setStep] = useState(0);
-  // dev3: Step 1 에서 발생 시각 입력 → Step 2 createCase 까지 전달용
-  const [occurredAtFromStep1, setOccurredAtFromStep1] = useState<string | null>(null);
+  // dev3: occurred_at 은 Step 1 종료 시점에 createCase 로 곧장 전송 — 임시 보관 불필요.
 
   const current = stepLabels[step];
 
-  const createCaseMutation = useMutation({
+  // dev3 (2026-05-19): Step 1 종료 시점에 UNCLASSIFIED 빈 케이스 생성 → caseId 부여
+  // → Step 2 Discovery Loop 가 caseId 기반으로 startTriage / 트리 진행 가능
+  const initCaseMutation = useMutation({
     mutationFn: createCase,
     onSuccess: (data) => {
       setCaseId(data.caseId);
-      setStep(3);
-      showToast(`사고 케이스 생성: ${data.caseId.slice(0, 8)}…`);
+      setStep(2);
+      showToast(`케이스 생성: ${data.caseId.slice(0, 8)}… (Discovery Loop 진입)`);
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`케이스 생성 실패: ${msg}`);
+      showToast(`케이스 생성 실패: ${msg} (백엔드 실행 확인)`);
+    },
+  });
+
+  // dev3: Step 2 종료 시점 — system_config·incident_type 갱신 후 Step 3 진입
+  const finalizeCaseMutation = useMutation({
+    mutationFn: ({
+      caseId: id,
+      data,
+    }: {
+      caseId: string;
+      data: Parameters<typeof updateCase>[1];
+    }) => updateCase(id, data),
+    onSuccess: (data) => {
+      if (data.incident_type) setIncidentType(data.incident_type);
+      setStep(3);
+      showToast(`사고유형 확정: ${data.incident_type}`);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`사고유형 갱신 실패: ${msg}`);
     },
   });
 
@@ -121,8 +153,25 @@ const V1Setup = () => {
           <Step1_CaseMetadata
             onPrev={() => setStep(0)}
             onNext={(occurredAt) => {
-              setOccurredAtFromStep1(occurredAt);
-              setStep(2);
+              if (!csp) {
+                showToast('CSP 누락. Step 0 으로 돌아가세요.');
+                return;
+              }
+              // dev3 (2026-05-19): Step 1 종료 → UNCLASSIFIED 빈 케이스 즉시 생성
+              // → caseId 확보 → Step 2 Discovery Loop 의 startTriage 가 작동
+              const occurredIso = (() => {
+                const d = new Date(occurredAt);
+                return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+              })();
+              initCaseMutation.mutate({
+                incident_type: 'UNCLASSIFIED',
+                csp: csp as CSP,
+                severity: (severity as Severity) ?? 'high',
+                occurred_at: occurredIso,
+                title: title ?? undefined,
+                tlp: tlp ?? 'AMBER',
+                observables: [],
+              });
             }}
           />
         )}
@@ -132,42 +181,37 @@ const V1Setup = () => {
             incidentType={incidentType}
             onPrev={() => setStep(1)}
             onSubmit={(config, confirmedIncidentType) => {
-              if (!csp) {
-                showToast('CSP 누락. Step 0 으로 돌아가세요.');
+              if (!caseId) {
+                showToast('caseId 누락. Step 1 으로 돌아가 케이스를 생성하세요.');
                 return;
               }
               setSeverity(config.severity);
-              // dev3: occurred_at 우선순위 — Step 1 입력 > Step 2 폼 입력 > 현재 시각
-              const occurredIso = (() => {
-                const raw = occurredAtFromStep1 ?? config.occurred_at;
-                const d = new Date(raw);
-                return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-              })();
-              // dev3: 사고유형 = Discovery Loop 결과 (UNCLASSIFIED 가능)
-              createCaseMutation.mutate({
-                incident_type: confirmedIncidentType,
-                csp: csp as CSP,
-                severity: config.severity as Severity,
-                occurred_at: occurredIso,
-                system_config: {
-                  vpc_id: config.vpc_id,
-                  region: config.region,
-                  services: config.services,
-                  network: config.network,
-                  publicIp: config.publicIp,
-                  auditEnabled: config.auditEnabled,
-                  scope: config.scope,
-                  // dev2 v2 가이드 — environment_modifiers.json 트리거 필드
-                  mfa_status: config.mfa_status,
-                  iam_account_count: config.iam_account_count,
-                  audit_log_retention_days: config.audit_log_retention_days,
-                  data_sensitivity: config.data_sensitivity,
-                  sso_enabled: config.sso_enabled,
-                  multi_cloud: config.multi_cloud,
+              // dev3: PATCH /api/cases/{caseId} — Discovery Loop 결과 통합 갱신
+              // incident_type 은 Step 2 결정 트리에서 확정된 값 (UNCLASSIFIED 가능)
+              finalizeCaseMutation.mutate({
+                caseId,
+                data: {
+                  incident_type: confirmedIncidentType as IncidentType,
+                  severity: config.severity,
+                  system_config: {
+                    vpc_id: config.vpc_id,
+                    region: config.region,
+                    services: config.services,
+                    network: config.network,
+                    publicIp: config.publicIp,
+                    auditEnabled: config.auditEnabled,
+                    scope: config.scope,
+                    mfa_status: config.mfa_status,
+                    iam_account_count: config.iam_account_count,
+                    audit_log_retention_days: config.audit_log_retention_days,
+                    data_sensitivity: config.data_sensitivity,
+                    sso_enabled: config.sso_enabled,
+                    multi_cloud: config.multi_cloud,
+                  },
                 },
               });
             }}
-            isSubmitting={createCaseMutation.isPending}
+            isSubmitting={finalizeCaseMutation.isPending}
           />
         )}
         {step === 3 && (

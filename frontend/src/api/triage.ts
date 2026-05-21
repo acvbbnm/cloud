@@ -14,6 +14,7 @@
 import axios from 'axios';
 
 import client from './client';
+import { useToastStore } from '@/stores/useToastStore';
 
 import type {
   HypothesisScores,
@@ -25,6 +26,26 @@ import type {
 } from '@/types';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+/**
+ * dev3 (2026-05-19): mock fallback 진입 시 사용자에게 토스트로 명시.
+ * 같은 호출 사이클에서 토스트가 폭주하지 않도록 함수당 최대 1회만 발화 (모듈 레벨 flag).
+ */
+const _mockToastFired: Record<string, number> = {};
+const notifyMockFallback = (label: string): void => {
+  const now = Date.now();
+  const last = _mockToastFired[label] ?? 0;
+  // 동일 라벨 5초 내 중복 발화 억제
+  if (now - last < 5000) return;
+  _mockToastFired[label] = now;
+  try {
+    useToastStore.getState().show(`⚠ 백엔드 미응답 — ${label} mock 모드 진행`, 3000);
+  } catch {
+    // 토스트 미초기화 등 비상 — console.warn 만
+  }
+  // eslint-disable-next-line no-console
+  console.warn(`[triage] ${label} backend unavailable → fallback to mock`);
+};
 
 // ─────────────────────────────────────────────────────────────
 // Mock 데이터 — backend/data/triage/decision_tree.json 발췌 정합
@@ -148,13 +169,15 @@ const MOCK_TREE: Record<string, TriageTreeNode> = {
 
 // weights.json 발췌 — 5/10/15/20/25/30/35/40 만 사용 (학술 변호)
 const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
+  // MULTI_CSP_LATERAL 키 2026-05-19 일괄 제거. Q2B:multi_csp_suspicious 옵션
+  // 자체는 weights.json 에서도 0 점 처리되어 화면에 표시되어도 영향 없음.
   'Q1_inception:csp_alert':        { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 5,  AUDIT_LOG_TAMPERING: 5 },
-  'Q1_inception:external_report':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 5,  DATA_EXFILTRATION: 30, AUDIT_LOG_TAMPERING: 20, MULTI_CSP_LATERAL: 5 },
-  'Q1_inception:audit':            { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10, AUDIT_LOG_TAMPERING: 25, MULTI_CSP_LATERAL: 5 },
-  'Q1_inception:service_anomaly':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 15, AUDIT_LOG_TAMPERING: 10, MULTI_CSP_LATERAL: 5 },
+  'Q1_inception:external_report':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 5,  DATA_EXFILTRATION: 30, AUDIT_LOG_TAMPERING: 20 },
+  'Q1_inception:audit':            { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10, AUDIT_LOG_TAMPERING: 25 },
+  'Q1_inception:service_anomaly':  { CREDENTIAL_THEFT: 5,  PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 15, AUDIT_LOG_TAMPERING: 10 },
   'Q1_inception:unknown':          {},
   'Q2A:abnormal_login':            { CREDENTIAL_THEFT: 25, PRIVILEGE_ESCALATION: 5 },
-  'Q2A:non_korean_ip':             { CREDENTIAL_THEFT: 20, MULTI_CSP_LATERAL: 10 },
+  'Q2A:non_korean_ip':             { CREDENTIAL_THEFT: 20 },
   'Q2A:privilege_change':          { CREDENTIAL_THEFT: 10, PRIVILEGE_ESCALATION: 30 },
   'Q2A:object_storage_burst':      { DATA_EXFILTRATION: 30, CREDENTIAL_THEFT: 5 },
   'Q2A:audit_log_disabled':        { AUDIT_LOG_TAMPERING: 35, PRIVILEGE_ESCALATION: 10 },
@@ -163,7 +186,7 @@ const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
   'Q2B:data_exposed':              { DATA_EXFILTRATION: 35 },
   'Q2B:abnormal_billing':          { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 10 },
   'Q2B:identity_theft':            { CREDENTIAL_THEFT: 25 },
-  'Q2B:multi_csp_suspicious':      { MULTI_CSP_LATERAL: 30, CREDENTIAL_THEFT: 10 },
+  'Q2B:multi_csp_suspicious':      { CREDENTIAL_THEFT: 10 },
   'Q2C:iam_burst':                 { PRIVILEGE_ESCALATION: 25, CREDENTIAL_THEFT: 10 },
   'Q2C:permission_changes':        { PRIVILEGE_ESCALATION: 25, AUDIT_LOG_TAMPERING: 5 },
   'Q2C:log_gap':                   { AUDIT_LOG_TAMPERING: 30 },
@@ -173,7 +196,7 @@ const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
   'Q2D:resource_abuse':            { CREDENTIAL_THEFT: 15, PRIVILEGE_ESCALATION: 15 },
   'Q2D:response_delay':            { AUDIT_LOG_TAMPERING: 10 },
   'Q3:fail_then_success':          { CREDENTIAL_THEFT: 25 },
-  'Q3:multi_region_concurrent':    { CREDENTIAL_THEFT: 15, MULTI_CSP_LATERAL: 25 },
+  'Q3:multi_region_concurrent':    { CREDENTIAL_THEFT: 15 },
   'Q3:storage_policy_change':      { DATA_EXFILTRATION: 25 },
   'Q3:serverless_new':             { PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10 },
   'Q3:unknown_extra':              {},
@@ -259,7 +282,11 @@ const INITIAL_SCORES = (): HypothesisScores => ({
   PRIVILEGE_ESCALATION: 0,
   DATA_EXFILTRATION: 0,
   AUDIT_LOG_TAMPERING: 0,
-  MULTI_CSP_LATERAL: 0,
+  // dev3 C-1 신규 4종 (2026-05-19)
+  RANSOMWARE: 0,
+  MISCONFIG_EXPOSURE: 0,
+  PHISH_INITIAL_ACCESS: 0,
+  INSIDER_THREAT: 0,
   UNCLASSIFIED: 0,
 });
 
@@ -280,8 +307,8 @@ export const startTriage = async (
     return res.data.data;
   } catch (e) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || !e.response)) {
-      // 백엔드 미구현 — mock fallback
-      console.warn('[triage] backend /api/triage/start not available, fallback to mock');
+      // 백엔드 미구현·미응답 — mock fallback (사용자 알림 + console.warn)
+      notifyMockFallback('triage/start');
       return {
         next_node: MOCK_TREE[ROOT_NODE_ID],
         hypothesis_scores: INITIAL_SCORES(),
@@ -300,7 +327,14 @@ export const nextTriage = async (
   currentPath: Array<{ node_id: string; selected_option_ids: string[] }>,
 ): Promise<TriageNextResponse> => {
   const realCall = async (): Promise<TriageNextResponse> => {
-    const res = await client.post('/api/triage/next', req);
+    // dev3 fix (2026-05-19): 백엔드 TriageNextRequest 가 hypothesis_scores +
+    // tree_path 를 필수 요구 (stateless 정책 — 청사진 §3). 프론트 타입은 호환을
+    // 위해 보존하고 페이로드 조합 시점에 두 필드를 합쳐 전송.
+    const res = await client.post('/api/triage/next', {
+      ...req,
+      hypothesis_scores: currentScores,
+      tree_path: currentPath,
+    });
     return res.data.data;
   };
   const mockCall = (): TriageNextResponse => {
@@ -348,9 +382,61 @@ export const nextTriage = async (
     return await realCall();
   } catch (e) {
     if (axios.isAxiosError(e) && (e.response?.status === 404 || !e.response)) {
-      console.warn('[triage] backend /api/triage/next not available, fallback to mock');
+      notifyMockFallback('triage/next');
       return mockCall();
     }
     throw e;
   }
+};
+
+// ─────────────────────────────────────────────────────────────
+// 부분 로그 분석 — POST /api/triage/analyze-logs (multipart)
+// dev3 B-2 (jingyu 머지) — Step 2 Discovery Loop ② 부분 로그 분석.
+// ─────────────────────────────────────────────────────────────
+
+export interface AnalyzeLogsResponse {
+  caseId: string;
+  hypothesis_scores: HypothesisScores;
+  mapped_events: Array<{
+    attack_id: string;
+    ocsf_id: string;
+    technique_id: string;
+    technique_name: string | null;
+    tactic: string;
+    rule_id: string;
+    time: string | null;
+    actor_user_name: string | null;
+    src_endpoint_ip: string | null;
+    activity_name: string | null;
+  }>;
+  ingestion?: Record<string, unknown>;
+  normalization?: Record<string, unknown>;
+  mapping?: Record<string, unknown>;
+}
+
+/**
+ * POST /api/triage/analyze-logs (multipart) — 부분 로그 → ATT&CK 매핑 + 가설 점수 갱신.
+ *
+ * 백엔드 흐름:
+ *   UploadFile → LogIngestor.ingest → OCSFNormalizer.normalize_case
+ *   → AttackMapper.map_case → clue_time ±window_minutes 윈도우 필터
+ *   → Triage.analyze 로 점수 누적
+ */
+export const analyzeLogs = async (
+  caseId: string,
+  file: File,
+  currentScores: HypothesisScores,
+  clueTime?: string | null,
+  windowMinutes: number = 5,
+): Promise<AnalyzeLogsResponse> => {
+  const fd = new FormData();
+  fd.append('caseId', caseId);
+  fd.append('hypothesis_scores', JSON.stringify(currentScores));
+  if (clueTime) fd.append('clue_time', clueTime);
+  fd.append('window_minutes', String(windowMinutes));
+  fd.append('file', file);
+  const res = await client.post('/api/triage/analyze-logs', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
 };

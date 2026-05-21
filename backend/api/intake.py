@@ -22,65 +22,58 @@ router = APIRouter(prefix="/api", tags=["intake"])
 
 
 IncidentType = Literal[
+    # ── 4종 (dev3 이전 기존, MULTI_CSP_LATERAL 제거) ──
     "CREDENTIAL_THEFT",
     "PRIVILEGE_ESCALATION",
     "DATA_EXFILTRATION",
     "AUDIT_LOG_TAMPERING",
-    "MULTI_CSP_LATERAL",
-    "UNCLASSIFIED",  # dev3: V-1 Step 1 빈 케이스 기본값 (Step 2 Discovery 에서 확정)
+    # ── dev3 C-1 신규 4종 (2026-05-19) ──
+    "RANSOMWARE",            # CSA #5 + Verizon DBIR 2024 24%
+    "MISCONFIG_EXPOSURE",    # CSA #3 + DBIR 24% (빈도 1위)
+    "PHISH_INITIAL_ACCESS",  # CSA #2 IAM + MITRE TA0001
+    "INSIDER_THREAT",        # KISA §3.3 "불법적 자원 사용" 변형 + MITRE T1078
+    # ── 미분류 (TheHive·IRIS·NIST 800-61r2 빈 케이스 시작) ──
+    "UNCLASSIFIED",
+    # ── MULTI_CSP_LATERAL 제거 (2026-05-19): 사용자 명시 결정. 학술 변호는
+    #    KB·문서 인용으로 대체. 환경 변수 multi_cloud (m-010) 는 보조 boost 로 유지.
 ]
-CSP = Literal["naver", "nhn", "all"]
+CSP = Literal["naver", "nhn"]  # dev3 2026-05-19: 'all' 제거 (MULTI_CSP_LATERAL 삭제와 함께)
 Severity = Literal["critical", "high", "medium", "low"]
-# dev3 §5.1 — TLP 분류 (Traffic Light Protocol, FIRST.org 표준)
-TLP = Literal["RED", "AMBER", "GREEN", "WHITE"]
+TLP = Literal["RED", "AMBER", "GREEN", "WHITE"]  # dev3 — TheHive 5 정보 공유 등급
 
 
 # ── 요청/응답 스키마 ──
 
 
 class CreateCaseRequest(BaseModel):
-    """POST /api/cases 요청 바디.
-
-    dev3 (2026-05-19): title·tlp·observables 신규 필드. Step 2 Discovery 진입 전
-    Step 1 Case Metadata 에서 사용자가 입력.
-    """
+    """POST /api/cases 요청 바디."""
 
     incident_type: IncidentType
     csp: CSP
     severity: Severity
     occurred_at: datetime
     system_config: Optional[dict] = None
-    # ── dev3 신규 ──
-    title: Optional[str] = Field(
-        default=None,
-        max_length=200,
-        description="사용자 입력 사고 제목 (Step 1)",
-    )
-    tlp: Optional[TLP] = Field(
-        default="AMBER",
-        description="TLP 분류 — 기본 AMBER",
-    )
-    observables: Optional[list[dict]] = Field(
-        default=None,
-        description="Step 2 Discovery 단서 배열",
-    )
+    # ── dev3 B-3 (Step 1 케이스 메타) ──
+    title: Optional[str] = Field(default=None, max_length=200)
+    tlp: TLP = "AMBER"
+    observables: Optional[list[dict]] = None  # [{type, value, weight_key?, note?, added_at?}]
 
 
 class UpdateCaseRequest(BaseModel):
     """PATCH /api/cases/{case_id} 요청 바디 (부분 갱신).
 
-    dev3: incident_type·observables·secondary_incident_types·triage_state·tlp·title 갱신 가능.
-    Step 2 Discovery 종료 후 트리 평가 결과를 PATCH 로 확정한다.
+    dev3: incident_type / title / tlp / observables / secondary_incident_types /
+    triage_state 도 부분 갱신 가능. V-8 사후 검증에서 부 사고유형 추가 등에 사용.
     """
 
     severity: Optional[Severity] = None
     system_config: Optional[dict] = None
-    # ── dev3 신규 ──
+    # ── dev3 B-3 ──
     incident_type: Optional[IncidentType] = None
     title: Optional[str] = Field(default=None, max_length=200)
     tlp: Optional[TLP] = None
     observables: Optional[list[dict]] = None
-    secondary_incident_types: Optional[list[str]] = None
+    secondary_incident_types: Optional[list[IncidentType]] = None
     triage_state: Optional[dict] = None
 
 
@@ -88,7 +81,11 @@ class UpdateCaseRequest(BaseModel):
 
 
 def _serialize_case(case: IncidentCaseModel) -> dict:
-    """IncidentCaseModel → API 응답 dict (계약서 형식 + dev3 §5.2 신규 필드)."""
+    """IncidentCaseModel → API 응답 dict (계약서 형식).
+
+    dev3 B-3: title·tlp·observables·secondary_incident_types·triage_state 5종 추가.
+    구버전 row (마이그레이션 직후) 호환 — 기본값으로 fallback.
+    """
     return {
         "caseId": case.case_id,
         "incident_type": case.incident_type,
@@ -98,9 +95,9 @@ def _serialize_case(case: IncidentCaseModel) -> dict:
         "system_config": case.system_config,
         "created_at": case.created_at.isoformat() if case.created_at else None,
         "closed_at": case.closed_at.isoformat() if case.closed_at else None,
-        # ── dev3 신규 ──
+        # ── dev3 B-3 ──
         "title": case.title,
-        "tlp": case.tlp,
+        "tlp": case.tlp or "AMBER",
         "observables": case.observables or [],
         "secondary_incident_types": case.secondary_incident_types,
         "triage_state": case.triage_state,
@@ -125,8 +122,7 @@ def _case_not_found() -> HTTPException:
 async def create_case(req: CreateCaseRequest, db: Session = Depends(get_db)) -> dict:
     """사고 케이스를 신규 생성한다.
 
-    dev3: title·tlp·observables 신규 필드 전달. UNCLASSIFIED 도 허용
-    (Step 2 Discovery 결과를 PATCH 로 확정하는 흐름).
+    dev3: V-1 Step 1 케이스 메타 (title·tlp·observables) 수용. UNCLASSIFIED 도 허용.
     """
     case = IncidentCase.create(
         db,
@@ -155,22 +151,22 @@ async def get_case(case_id: str, db: Session = Depends(get_db)) -> dict:
 async def update_case(
     case_id: str, req: UpdateCaseRequest, db: Session = Depends(get_db)
 ) -> dict:
-    """case를 부분 갱신한다.
+    """case의 메타·시스템 구성·트리아주 상태를 부분 갱신한다.
 
-    dev3: incident_type / observables / secondary_incident_types / triage_state /
-          tlp / title 갱신 가능. Step 2 Discovery 종료 후 트리 평가 결과 확정에 사용.
+    dev3: incident_type 변경 (V-8 사후 검증 후) + observables / secondary_incident_types /
+    triage_state 영속화 지원.
     """
     case = IncidentCase.update_config(
         db,
         case_id=case_id,
         severity=req.severity,
         system_config=req.system_config,
-        incident_type=req.incident_type,
         title=req.title,
         tlp=req.tlp,
         observables=req.observables,
         secondary_incident_types=req.secondary_incident_types,
         triage_state=req.triage_state,
+        incident_type=req.incident_type,
     )
     if case is None:
         raise _case_not_found()

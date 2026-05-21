@@ -1,6 +1,6 @@
 {
   "_status": "operational_v1",
-  "_note": "25 청크. 내부 시뮬레이션 7 + 합성 2 + 사고유형별 6 + 공개 침해 10건 (국제 6 + 국내 4 + 종합 1). CSA Top Threats + Mandiant + KISA·금융보안원 인용.",
+  "_note": "25 청크. 내부 시뮬레이션 7 + 합성 2 + 사고유형별 6 + 공개 침해 10건 (국제 6 + 국내 4 + 종합 1). CSA Top Threats + Mandiant + KISA·금융보안원 인용. + dev3 C-1 신규 4종 × 2 (가설 + 공개 사례) = +8 청크",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json",
     "raw: C:/Users/sasum/nhn_activity_logs.json",
@@ -174,22 +174,6 @@
         }
       ],
       "lessons_learned": "두 개의 외부 IP에서 같은 계정으로 동시 로그인(8.57:03 / 8.57:17, 14초 차) → 자격증명 공유/탈취 강한 신호. project.product.enable이 2회 모두 FAIL이지만 시도 자체가 권한 상승 의도 명시. 영속화 자격증명(s3credential)이 생성 22분 후 다시 삭제 → 흔적 제거 의도. 19시간 휴면 후 재침투는 자동화된 공격 도구의 특징."
-    },
-    {
-      "chunk_id": "CASE-MULTI-CSP-2026-04-05-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "멀티 CSP 연계 침투 의심 — 동일 외부 IP에서 NCP·NHN 동시 활동",
-      "actor": "NCP: attack-sim, NHN: attack",
-      "shared_external_ip": "115.91.214.5",
-      "time_window": "2026-04-05 06:12 ~ 04-06 05:24 UTC",
-      "evidence": [
-        "NCP attack-sim 최초 Login 시각: 2026-04-05 06:12:25 UTC",
-        "NHN attack 최초 Login 시각: 2026-04-05 08:57:17 UTC (NCP보다 약 2시간 45분 후)",
-        "두 계정 모두 동일 외부 IP 115.91.214.5 사용",
-        "두 사고 모두 자격증명 변경/생성 + Lateral 이동 + Impact의 동일 Kill Chain 패턴"
-      ],
-      "lessons_learned": "단일 CSP 모니터링으로는 두 사고가 독립 사건으로 보이나, 외부 IP 기준 상관관계 분석 시 동일 행위자 가능성. 멀티 CSP 환경에서는 raw 로그를 OCSF로 정규화한 뒤 src_endpoint.ip 기준 cross-CSP 조회가 필수."
     },
     {
       "chunk_id": "CASE-SYNTHETIC-NCP-2026-05-13-001",
@@ -562,23 +546,6 @@
       "lessons_learned": "NHN의 외부 export는 정책 권한 확인이 강하여 변조 시도가 실패(05:15) — 변조 감지 알림이 발생. 그러나 기존 s3credential 일괄 삭제(05:20~05:24)로 감사 시스템 접근 자체를 봉쇄. CloudTrail은 비활성화는 어려우나 인증 봉쇄는 가능 → 'NHN 환경에서 s3credential.delete burst'를 별도 룰로 모니터링 필요."
     },
     {
-      "chunk_id": "CASE-MULTI-CSP-2026-05-01-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "동일 사용자명·이메일이 NCP·NHN 양쪽 동시 활동 — SSO 토큰 탈취 의심",
-      "actor": "user@corp.kr (NCP Sub Account + NHN IAM)",
-      "shared_external_ip": "203.249.18.77 → 양쪽 동일",
-      "time_window": "2026-05-01 09:00 ~ 09:45 UTC",
-      "evidence": [
-        "NCP attack-sim 로그인 09:00:12 / NHN attack 로그인 09:00:18 (6초 차)",
-        "양쪽 모두 동일 외부 IP 203.249.18.77",
-        "NCP에서 권한 변경 + AccessKey 발급 (09:02~09:08)",
-        "NHN에서 동일 시각 대역 Object Storage download (09:05~09:12)",
-        "두 사고 모두 동일 한국어 User-Agent 문자열"
-      ],
-      "lessons_learned": "외부 IdP/SSO 토큰 한 건 침해 시 두 CSP 동시 침투 가능. 동일 사용자명·이메일·UA 매칭이 cross-CSP 상관관계 분석의 핵심. 단일 CSP 모니터링은 6초 차 동시 로그인을 두 개 별건으로 처리 → 멀티 CSP 통합 SIEM(또는 본 시스템) 필수성 입증."
-    },
-    {
       "chunk_id": "CASE-PUBLIC-CAPITALONE-2019",
       "incident_type": "DATA_EXFILTRATION",
       "csp": "aws",
@@ -628,22 +595,6 @@
       ],
       "lessons_learned": "T1078·T1550 — SSO·IdP 토큰 탈취는 멀티 CSP·SaaS 전체 침투의 출발점. 본 시스템의 MULTI_CSP_LATERAL 사고유형과 직접 연결. IdP 침해 시 모든 연동 클라우드/SaaS 토큰 즉시 회수·재발급이 표준 대응. HAR 파일 등 진단 데이터에서 토큰 자동 마스킹 강제 필요.",
       "source": "Okta Security Notice 2023-10-19 / 1Password 2023-10-23 Incident Report"
-    },
-    {
-      "chunk_id": "CASE-PUBLIC-KAKAO-2022",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "공개 사례 — 카카오 판교 데이터센터 화재 2022-10: 멀티 IDC 의존성 노출",
-      "actor": "(외부 침입 아님 — IDC 화재로 인한 서비스 중단)",
-      "time_window": "2022-10-15 ~ 2022-10-20 (서비스 정상화)",
-      "evidence": [
-        "SK C&C 판교 IDC 화재로 카카오톡·다음·카카오페이 등 주요 서비스 중단",
-        "복구 시간 127시간 — 단일 IDC 의존 + 액티브-액티브 다중화 미흡 노출",
-        "감사 로그 자체 보존 위치도 같은 IDC에 있어 일부 손실 추정",
-        "T1485 (Data Destruction — 의도적 아닌 우발)에 해당 부분도 있음"
-      ],
-      "lessons_learned": "단일 CSP·단일 IDC 의존성은 가용성·로그 보존 양면에서 큰 리스크. 본 시스템의 MULTI_CSP_LATERAL 사고유형이 '횡적 침투' 외에 '다중 CSP 가용성 확보' 측면도 다뤄야 함을 시사. 핵심 시스템은 양쪽 CSP 백업 + 외부 Object Storage(다른 리전) export 의무화. 감사 로그 외부 사본 — NHN Cloud Trail 외부 변조 감지 기능과 같은 보장 메커니즘 필요.",
-      "source": "공개 보고서 (과기정통부 사고조사 결과 2022-12)"
     },
     {
       "chunk_id": "CASE-PUBLIC-LGUPLUS-2023",
@@ -713,24 +664,6 @@
       "source": "CSA Top Threats 2024 + Mandiant M-Trends 2024 + Verizon DBIR 2024 + IBM Cost of Data Breach 2024"
     },
     {
-      "chunk_id": "CASE-PUBLIC-MS-STORM-0558",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "azure",
-      "title": "공개 사례 — Microsoft Storm-0558 (2023): Azure AD MSA 키 탈취",
-      "actor": "Storm-0558 (중국 후원 위협 그룹 추정)",
-      "external_ip": "(다수, 분산)",
-      "time_window": "2023-05 ~ 2023-07 (Microsoft 발견 및 무효화)",
-      "evidence": [
-        "MSA(consumer) 서명 키 탈취 → MSA + AAD 양쪽 토큰 위조 가능",
-        "이메일 등 약 25개 조직 표적 (미국 국무부 포함)",
-        "T1550 (Use Alternate Authentication Material) + T1078 (Valid Accounts)",
-        "키 자체가 production 시스템에 노출됐던 dump 에서 추출 추정",
-        "발견 시 약 2개월 잠복 — Microsoft 가 사후 조사로 발견"
-      ],
-      "lessons_learned": "키·인증서 자체의 탈취는 본 시스템의 1.5.5(API 액세스)·1.5.7(위험 기반 검색)·1.7(메타 로그) 카테고리 모두에 해당. SSO·IdP 의 마스터 키 = 본 시스템 PLAYBOOK-MULTICSP-001 의 최우선 봉쇄 대상. 발견 자체가 어려워 외부 위협 인텔리전스 + 정기 키 회전이 유일 방어.",
-      "source": "Microsoft Threat Intelligence 공식 발표 2023-07-11 + CISA Alert AA23-193A"
-    },
-    {
       "chunk_id": "CASE-PUBLIC-MOVEIT-2023",
       "incident_type": "DATA_EXFILTRATION",
       "csp": "(파일 전송 SaaS)",
@@ -797,6 +730,243 @@
       ],
       "lessons_learned": "공공기관은 G-Cloud 중심이라 본 시스템 NCP/NHN 매핑이 100% 적용되진 않음. 단 G-Cloud 자체도 OCSF 호환 가능하므로 향후 확장 시 매핑 룰만 추가하면 됨. 학술 변호 측면: 국가기관 통계로 본 시스템 5 사고유형 분류 정당성 추가 입증.",
       "source": "행정안전부·KISA 2023 사이버 침해 연간 보고서"
+    },
+    {
+      "chunk_id": "CASE-NCP-RANSOMWARE-001",
+      "incident_type": "RANSOMWARE",
+      "csp": "naver",
+      "title": "NCP Object Storage 랜섬 (가설 모델)",
+      "actor": "외부 공격자",
+      "external_ip": "203.0.113.50",
+      "time_window": "2026-03-15 02:00 ~ 03:30",
+      "event_count": 8,
+      "timeline": [
+        {
+          "time": "02:00:12",
+          "action": "Login (MFA 미적용 계정)",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Initial Access (T1078)"
+        },
+        {
+          "time": "02:15:33",
+          "action": "GetObject 대량 (240GB 다운로드)",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "02:42:08",
+          "action": "PutObject .locked 확장자 대량",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact (T1486)"
+        },
+        {
+          "time": "03:15:00",
+          "action": "Delete Versioning + Old versions",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact (T1490)"
+        },
+        {
+          "time": "03:30:00",
+          "action": "Create file ransom_note.txt",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact"
+        }
+      ],
+      "lessons_learned": "MFA 강제 + Object Storage Versioning 별도 계정 + Object Lock 활성. 본 사고는 Versioning 이 같은 계정 내 활성이라 함께 삭제됨 — 별도 계정 백업의 중요성. 240GB 다운로드 + .locked 확장자 신규 생성이 Double Extortion 신호."
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-COLONIAL-2021",
+      "incident_type": "RANSOMWARE",
+      "csp": "(국제 인프라)",
+      "title": "공개 사례 — Colonial Pipeline (2021): 동부 미국 송유관 마비",
+      "actor": "DarkSide 랜섬웨어 그룹",
+      "time_window": "2021-05-06 ~ 2021-05-12 (정상화)",
+      "evidence": [
+        "VPN 계정 자격증명 다크웹 노출 → MFA 미적용 계정 침투 (T1078)",
+        "내부 시스템 침투 후 100GB 데이터 탈취 (Double Extortion)",
+        "랜섬웨어 배포 → IT 시스템 마비 → 송유관 운영 중단",
+        "약 440만 달러 비트코인 지불 (일부 회수)",
+        "T1078 + T1486 + T1490 + T1567 (Exfiltration)"
+      ],
+      "lessons_learned": "MFA 미적용 + VPN 계정 노출이 Double Extortion 랜섬의 표준 경로. 본 시스템의 V-1 v2 가이드 1.5.1 인증 기록 P12 + PLAYBOOK-RANSOMWARE-001 즉시 격리 절차가 직접 매핑. 미국 행정부 사이버보안 행정명령(EO 14028) 발동 계기.",
+      "source": "FBI 공식 발표 2021-05 + DarkSide 분석 보고서 (Mandiant 2021)"
+    },
+    {
+      "chunk_id": "CASE-NCP-MISCONFIG-001",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "naver",
+      "title": "NCP Object Storage Public 노출 (가설 모델)",
+      "actor": "외부 보안 연구자 (책임 공개)",
+      "external_ip": "(다수)",
+      "time_window": "2026-04-01 (노출 시작) ~ 2026-04-15 (연구자 신고)",
+      "event_count": 0,
+      "timeline": [
+        {
+          "time": "04-01 09:00",
+          "action": "PutBucketPolicy (public-read 변경)",
+          "result": "SUCCESS",
+          "ip": "내부 IP (관리자)",
+          "tactic": "Misconfiguration"
+        },
+        {
+          "time": "04-05~04-14",
+          "action": "외부 GetObject (분산 IP)",
+          "result": "SUCCESS",
+          "ip": "다수",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "04-15 14:00",
+          "action": "외부 보안 연구자 이메일 신고",
+          "result": "—",
+          "ip": "—",
+          "tactic": "Discovery (외부)"
+        }
+      ],
+      "lessons_learned": "관리자가 임시 테스트 후 정책 원복 안 한 사례. 14일간 노출. 약 5만 명 개인정보 다운로드 확인. 본 시스템의 PLAYBOOK-MISCONFIG-002 신고 절차 (개보법 72h) 가 직접 매핑. 자동 정책 검증 도구(Prowler) 미설치가 핵심 원인."
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-CAPITAL_ONE-2019",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "aws",
+      "title": "공개 사례 — Capital One (2019): 1억 명 고객 정보 유출",
+      "actor": "Paige Thompson (전 AWS 직원)",
+      "time_window": "2019-03 ~ 2019-07",
+      "evidence": [
+        "WAF 잘못된 설정으로 EC2 메타데이터 서비스(IMDSv1) 접근 가능 (T1190)",
+        "EC2 인스턴스 프로필 권한으로 S3 버킷 700+ 접근 (T1530)",
+        "1억 명 이상 신용카드 신청자 정보 유출 (~5.8 GB)",
+        "AWS GuardDuty 알람 발생했으나 1주일간 대응 지연",
+        "SSRF 취약점 + 과도한 IAM Role 권한 결합"
+      ],
+      "lessons_learned": "T1190 + T1078.001 결합 시그널. 본 시스템의 1.4 파일 스토리지 + 1.5.5 API 액세스 + PLAYBOOK-MISCONFIG-001 노출 자원 즉시 차단이 직접 매핑. IMDSv2 강제 + IAM Role 최소권한 + 자동 보안 정책 검증이 표준 방어. 본 시스템에서 1.5.7(위험 기반 검색) 알림과 1.5.5 교차로 유사 사고 1주일 단축 가능.",
+      "source": "Capital One Public Incident Report 2019 + AWS Re:Invent 2019"
+    },
+    {
+      "chunk_id": "CASE-PHISH-EXEC-001",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "(국내 SSO)",
+      "title": "임원 대상 스피어피싱 → SSO 토큰 탈취 (가설 모델)",
+      "actor": "외부 위협 그룹 (북한 추정)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-02-10 08:30 ~ 09:45 (75분)",
+      "event_count": 9,
+      "timeline": [
+        {
+          "time": "08:30:00",
+          "action": "스피어피싱 메일 수신 (위장 'AWS 비용 청구서')",
+          "tactic": "Initial Access (T1566.001)"
+        },
+        {
+          "time": "08:35:12",
+          "action": "사용자 첨부 PDF 클릭 + 위장 SSO 로그인 페이지 접속",
+          "tactic": "Credential Access"
+        },
+        {
+          "time": "08:36:08",
+          "action": "자격증명 입력 (가짜 페이지)",
+          "tactic": "Credential Access (T1556)"
+        },
+        {
+          "time": "08:42:33",
+          "action": "공격자 IP 에서 SSO 정상 로그인 (탈취 자격증명)",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "08:48:00",
+          "action": "AccessKey 신규 발급",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "09:15:00",
+          "action": "IAM Role 정책 변경 (관리자 권한 부여)",
+          "tactic": "Privilege Escalation"
+        },
+        {
+          "time": "09:45:00",
+          "action": "Object Storage 다수 GetObject",
+          "tactic": "Collection (T1530)"
+        }
+      ],
+      "lessons_learned": "75분 만에 피싱 → 권한 상승 → 데이터 수집 풀 Kill Chain. MFA 미적용 임원 계정이 가장 큰 위험. 본 시스템 1.5.1(인증) P13 + DOMAIN:typo_squatting 단서 + PHISH 사고유형 추정. 본 케이스 시연: V-2 로그 업로드 → V-6 ATT&CK 매핑 → V-1 트리아주 PHISH 92점 자동 확정."
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-TWITTER-2020",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "(SaaS)",
+      "title": "공개 사례 — Twitter (2020): 직원 비싱 + 130개 유명 계정 탈취",
+      "actor": "17세 미국 청소년 등 3명",
+      "time_window": "2020-07-15",
+      "evidence": [
+        "Twitter 직원 대상 비싱(전화 피싱, Vishing) (T1566)",
+        "직원 자격증명 + MFA 우회 → 내부 관리 도구 접근",
+        "Obama·Musk·Apple 등 130개 유명 계정 탈취 → 비트코인 사기 트윗",
+        "약 12만 달러 비트코인 사기 수익",
+        "T1566 + T1078 + Internal Tool Abuse"
+      ],
+      "lessons_learned": "이메일 피싱 외 전화 피싱(Vishing) 도 클라우드/SaaS 침해의 핵심 vector. 본 시스템에서 PHISH_INITIAL_ACCESS 사고유형 + IDENTITY:multi_account 단서 매핑. 내부 관리 도구 접근 권한 분리 + 다단계 승인이 표준 방어.",
+      "source": "Twitter 공식 발표 2020-07 + Mandiant 분석 + DOJ 기소장"
+    },
+    {
+      "chunk_id": "CASE-INSIDER-DEV-001",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "naver",
+      "title": "퇴사 예정 개발자의 고객 DB 반출 (가설 모델)",
+      "actor": "내부 개발자 (퇴사 통보 1주 후)",
+      "external_ip": "(내부 IP)",
+      "time_window": "2026-03-20 11:00 ~ 14:30 (정상 업무 시간)",
+      "event_count": 11,
+      "timeline": [
+        {
+          "time": "11:00:00",
+          "action": "정상 콘솔 로그인 (내부 IP, MFA 통과)",
+          "tactic": "Initial Access (T1078)"
+        },
+        {
+          "time": "11:30:00",
+          "action": "Object Storage 'customers' 버킷 ListObjects",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "12:00 ~ 13:30",
+          "action": "GetObject 1500건 (전체 고객 DB 다운로드)",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "14:00:00",
+          "action": "Activity Tracer 검색 — 자기 활동 조회",
+          "tactic": "Defense Evasion"
+        },
+        {
+          "time": "14:30:00",
+          "action": "정상 로그아웃",
+          "tactic": "—"
+        }
+      ],
+      "lessons_learned": "정규 업무 시간 + 내부 IP + 권한 있는 정당 계정 = 외형상 정상. 다만 (1) ListObjects + GetObject burst 3.5시간 (평소 3-5건/일 대비 1500건), (2) 자기 활동 로그 조회 행위 자체가 강한 시그널. UEBA 도입 시 자동 탐지 가능. 분기별 IAM 감사 + 퇴사 예정자 권한 즉시 회수 정책이 표준 방어."
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LIVESQUARE-2014",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "(국내 금융)",
+      "title": "공개 사례 — 국내 카드사 정보 유출 (2014): 외주 직원 USB 반출",
+      "actor": "외주 개발 직원 (코리아크레딧뷰로 외부 작업)",
+      "time_window": "2012-12 ~ 2013-12 (1년간)",
+      "evidence": [
+        "정당 권한으로 KB·NH·롯데 카드사 고객 DB 접근",
+        "1년간 약 1억 400만 건 개인정보 USB 반출",
+        "외부 매체 사용 통제 부재 + DLP 미설치",
+        "외주 직원 권한 분리 미흡",
+        "본 시스템 매핑: INSIDER_THREAT + DATA_EXFILTRATION 복합"
+      ],
+      "lessons_learned": "국내 최대 규모 내부자 정보 유출 사례. 본 시스템의 INSIDER_THREAT 사고유형 정당성 입증. PLAYBOOK-INSIDER-002 의 법적 절차 (외주 권한 분리·NDA·정기 감사) 가 직접 매핑. 사건 후 개인정보보호법 강화 (2014-08) + 금융위 외주 보안 가이드라인 제정 계기.",
+      "source": "금융위·검찰 수사 결과 발표 2014-01 + KISA 사고 분석"
     }
   ]
 }

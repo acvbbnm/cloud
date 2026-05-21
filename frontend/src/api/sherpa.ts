@@ -3,6 +3,7 @@ import type {
   BriefingResponse,
   ChatRequest,
   ChatResponse,
+  IncidentTypeValidation,
   KbStatsResponse,
   PlaybookRequest,
   PlaybookResponse,
@@ -125,32 +126,21 @@ export const getKbStats = async (): Promise<KbStatsResponse> => {
   return res.data.data;
 };
 
-// ── V-8 사후 검증 (dev3 청사진 §원칙 5) ──
-
-/** 사후 검증 결과 — confirmed 외 추가 사고유형 제안. */
-export interface VerifyIncidentTypesResponse {
-  confirmed: string;
-  total_attacks: number;
-  threshold: number;
-  scores: Record<string, number>;
-  evidence_count: Record<string, number>;
-  suggested_secondary: string[];
-  samples: Array<{
-    attack_id: string;
-    technique_id: string;
-    tactic: string;
-    rule_id: string;
-    weight: number;
-    incident_type: string;
-  }>;
-}
-
-/** POST /api/sherpa/verify-incident-types — V-8 사후 검증.
- *  Layer 2 ATT&CK 매핑 결과를 분석해 추가 사고유형 제안.
- *  결정성 100% (정적 규칙). 채택은 PATCH /api/cases (secondary_incident_types). */
-export const postVerifyIncidentTypes = async (
+/**
+ * GET /api/sherpa/validate-incident-type — V-8 사후 검증.
+ *
+ * dev3 (2026-05-19): V-1 Step 2 에서 확정한 사고유형이 Layer 2 전체 매핑 결과와
+ * 정합하는지 평가. REVIEW_NEEDED 응답 시 V-8 화면 상단에 카드 자동 노출.
+ *
+ * 응답 status:
+ *   CONSISTENT      — 추가 검토 불필요 (카드 숨김)
+ *   REVIEW_NEEDED   — 다른 사고유형 시그널 발견, candidate_types 제시
+ */
+export const getIncidentTypeValidation = async (
   caseId: string,
-): Promise<VerifyIncidentTypesResponse> => {
-  const res = await client.post('/api/sherpa/verify-incident-types', { caseId });
+): Promise<IncidentTypeValidation> => {
+  const res = await client.get('/api/sherpa/validate-incident-type', {
+    params: { caseId },
+  });
   return res.data.data;
 };

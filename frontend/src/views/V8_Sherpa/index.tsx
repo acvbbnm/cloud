@@ -10,9 +10,9 @@ import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { getKbStats, streamChat } from '@/api/sherpa';
 
-import type { SherpaSource } from '@/types';
+import IncidentTypeReviewCard from './IncidentTypeReviewCard';
 
-import PostHocVerificationCard from './PostHocVerificationCard';
+import type { SherpaSource } from '@/types';
 
 const KB_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
   ATTACK: 'purple',
@@ -137,6 +137,9 @@ const V8Sherpa = () => {
           </div>
         }
       />
+
+      {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
+      {caseId && <IncidentTypeReviewCard caseId={caseId} />}
 
       {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">
@@ -270,11 +273,8 @@ const V8Sherpa = () => {
           </div>
         </div>
 
-        {/* 우측: 사후 검증 + KB 인덱스 + 안내 */}
+        {/* 우측: KB 인덱스 + 안내 (V-8 사후 검증 카드는 본 영역 상단에 IncidentTypeReviewCard 로 별도 배치됨) */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-          {/* dev3 §원칙 5 V-8 사후 검증 — caseId 있을 때만 표시 */}
-          {caseId && <PostHocVerificationCard caseId={caseId} />}
-
           <Card title={<>📚 KB 인덱스 (RAG 입력)</>}>
             {kbQuery.isLoading ? (
               <div className="text-[12px] text-ink-400 py-2">로딩 중…</div>

@@ -440,3 +440,40 @@ export const analyzeLogs = async (
   });
   return res.data.data;
 };
+
+// ─────────────────────────────────────────────────────────────
+// 단서 입력 시 가설 점수 보강 — POST /api/triage/analyze (Q2, 2026-05-21)
+// ─────────────────────────────────────────────────────────────
+
+export interface AnalyzeClueResponse {
+  caseId: string;
+  hypothesis_scores: HypothesisScores;
+  mapped_techniques: string[];
+  next_clues: unknown[];
+}
+
+/**
+ * POST /api/triage/analyze (JSON) — 단서 입력 → 가설 점수 보강.
+ *
+ * Q2 (2026-05-21): CluesInput 이 weight_key 부착한 Observable 을 보내면 백엔드가
+ * weights.clue_types 에서 직접 조회. weight_key 없으면 백엔드가 자동 fallback
+ * (Q1: f"{type}:generic" 조회 → 5점 가중치 부여).
+ */
+export const analyzeClue = async (
+  caseId: string,
+  currentScores: HypothesisScores,
+  clue: {
+    type: string;
+    value: string;
+    weight_key?: string | null;
+    note?: string;
+    added_at?: string;
+  },
+): Promise<AnalyzeClueResponse> => {
+  const res = await client.post('/api/triage/analyze', {
+    caseId,
+    hypothesis_scores: currentScores,
+    clue,
+  });
+  return res.data.data;
+};

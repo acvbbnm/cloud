@@ -283,6 +283,29 @@ const Step2_Discovery = ({
                 addObservable(o);
                 setPreferredClueType(null); // 권장 단서 추가 후 힌트 제거
               }}
+              onAfterAdd={async (o) => {
+                // Q2 (2026-05-21): 단서 추가 시 즉시 백엔드 /api/triage/analyze 호출 →
+                // weight_key 가 있으면 그 가중치, 없으면 generic fallback (Q1) 적용.
+                if (!caseId) return;
+                try {
+                  const { analyzeClue } = await import('@/api/triage');
+                  const res = await analyzeClue(caseId, hypothesisScores, {
+                    type: o.type,
+                    value: o.value,
+                    weight_key: o.weight_key,
+                    note: o.note,
+                    added_at: o.added_at,
+                  });
+                  setHypothesisScores(res.hypothesis_scores);
+                  // 토스트는 첫 단서만 (스팸 방지 — variant 명시는 더 강한 가중치라 알림 가치 큼)
+                  if (o.weight_key) {
+                    showToast(`단서 가중치 적용 (${o.weight_key})`);
+                  }
+                } catch (e) {
+                  // 분석 실패해도 단서는 누적 — 백엔드 미응답 시 store 만 유지
+                  console.warn('[triage/analyze] 단서 분석 실패:', e);
+                }
+              }}
               onRemove={removeObservable}
               disabled={loading}
             />

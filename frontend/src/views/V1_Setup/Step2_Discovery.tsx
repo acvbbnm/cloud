@@ -115,6 +115,8 @@ const Step2_Discovery = ({
   const [introOpen, setIntroOpen] = useState(false);
   /** NextCluePanel 권장 단서 클릭 시 CluesInput 의 selectedType 동기화 (mount 시점 키) */
   const [preferredClueType, setPreferredClueType] = useState<ClueType | null>(null);
+  // Q4 (2026-05-21): 트리 답변에서 자동 추출된 variant — CluesInput 토글 자동 선택
+  const [preferredVariant, setPreferredVariant] = useState<string | null>(null);
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -154,6 +156,35 @@ const Step2_Discovery = ({
   // currentNodeId 변경 시 currentNode 데이터 동기화 (mock 응답에서 채워짐)
   // — 실제로는 startTriage / nextTriage 응답에서 next_node 를 직접 받음
 
+  // Q4 (2026-05-21): 트리 답변 → 단서 힌트 매핑 — 답변 선택 시 CluesInput 의 type
+  // + variant 자동 선택. 사용자가 단서를 직접 추가하면 가중치까지 함께 부여됨.
+  // 학술 근거: 결정 트리·단서·가중치 3 자산의 단일 trace 형성 (재현성·일관성 보장).
+  const ANSWER_TO_CLUE_HINT: Record<
+    string,
+    { clueType: ClueType; variant?: string; reason: string }
+  > = {
+    // Q2A 옵션
+    non_korean_ip: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: 'CSP 알람의 비국내 IP — IP 단서 추가' },
+    object_storage_burst: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 대량 활동 — 서비스 단서' },
+    privilege_change: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 알람 — 해당 계정 단서' },
+    audit_log_disabled: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '감사 로그 비활성 — Cloud Trail 단서' },
+    off_hours: { clueType: 'TIME_WINDOW', variant: 'off_hours', reason: '비표준 시각 — 시각 윈도우 단서' },
+    // Q2B 옵션
+    identity_theft: { clueType: 'ACCOUNT', variant: 'inactive_to_active', reason: '신원 도용 — 해당 계정 단서' },
+    multi_csp_suspicious: { clueType: 'IP_ADDRESS', variant: 'multi_csp_observed', reason: '멀티 CSP — IP 단서' },
+    data_exposed: { clueType: 'SERVICE', variant: 'object_storage', reason: '데이터 노출 — 서비스 단서' },
+    // Q2C 옵션
+    iam_burst: { clueType: 'ACCOUNT', variant: 'newly_created', reason: '신규 IAM 다수 — 계정 단서' },
+    permission_changes: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 다수 — 계정 단서' },
+    log_gap: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '감사 로그 누락 — Cloud Trail 단서' },
+    data_access: { clueType: 'SERVICE', variant: 'object_storage', reason: '비정상 데이터 액세스 — 서비스 단서' },
+    // Q3 옵션
+    fail_then_success: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: '실패→성공 패턴 — MFA 미적용 계정 단서' },
+    multi_region_concurrent: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '동시 다지역 — IP 단서' },
+    storage_policy_change: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 정책 변경 — 서비스 단서' },
+    serverless_new: { clueType: 'SERVICE', variant: 'iam', reason: 'Serverless 신규 — IAM 단서' },
+  };
+
   const handleSubmitAnswer = async (answerIds: string[]) => {
     if (!caseId || !currentNodeId) return;
     setLoading(true);
@@ -177,6 +208,16 @@ const Step2_Discovery = ({
       } else {
         setCurrentNode(null);
         setCurrentNodeData(null);
+      }
+      // Q4: 답변 중 단서 힌트가 있는 것 — 첫 번째만 적용 (CluesInput 자동 선택)
+      for (const ansId of answerIds) {
+        const hint = ANSWER_TO_CLUE_HINT[ansId];
+        if (hint) {
+          setPreferredClueType(hint.clueType);
+          setPreferredVariant(hint.variant ?? null);
+          showToast(`💡 ${hint.reason}`, 2800);
+          break;
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -277,11 +318,14 @@ const Step2_Discovery = ({
             }
           >
             <CluesInput
-              key={preferredClueType ?? 'default'}
+              key={`${preferredClueType ?? 'default'}-${preferredVariant ?? 'none'}`}
               observables={observables}
+              preferredType={preferredClueType}
+              preferredVariant={preferredVariant}
               onAdd={(o) => {
                 addObservable(o);
                 setPreferredClueType(null); // 권장 단서 추가 후 힌트 제거
+                setPreferredVariant(null);
               }}
               onAfterAdd={async (o) => {
                 // Q2 (2026-05-21): 단서 추가 시 즉시 백엔드 /api/triage/analyze 호출 →

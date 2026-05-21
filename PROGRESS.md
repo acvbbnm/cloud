@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-19 (밤) · 브랜치: `dev3` (시연 회귀 다수 핀포인트 + 8종 enum 마무리)
+> 마지막 업데이트: 2026-05-21 · 브랜치: `byungwoo` (= dev3 + Plan-Q1·Q2·Q3·Q4 단서 가중치 시스템 완성)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,6 +41,65 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-21 — Plan-Q1·Q2·Q3·Q4 — 단서 가중치 시스템 완성 (byungwoo 브랜치)
+
+dev3 의 단서 입력 약점 (variant 없으면 점수 0) 을 4 단계로 해소.
+
+**Q1** (`771ff85`) — weights.json clue_types 에 6 ClueType × generic fallback 키 추가
+  - IP_ADDRESS:generic +5 (CRED·PHISH·INSIDER), ACCOUNT:generic +5 (4종) 등
+  - 단서 입력만으로도 최소 5점 부여
+  - 학술: NIST 800-61r2 §3.2 표 3-2 precursor
+
+**Q2** (`2079cdf`) — CluesInput variant 토글 UI + analyzeClue API
+  - CLUE_TYPES 각 항목에 variants 배열 (IP_ADDRESS:non_korean·tor_vpn·multi_account·multi_csp_observed 등 18 variant)
+  - 사용자가 variant 선택 시 weight_key = "{TYPE}:{variant}" 부착 → 백엔드 +15~35
+  - api/triage.ts analyzeClue 함수 신규 (POST /api/triage/analyze JSON)
+  - Step2_Discovery onAfterAdd 콜백에서 즉시 백엔드 호출 + 점수 갱신
+  - 누적 단서 리스트에 variant chip 표시
+
+**Q3** (`6dacb47`) — 백엔드 단서 자동 분류 (clue_classifier.py 신규)
+  - 사용자가 variant 토글 안 해도 백엔드가 value 자동 분석 → variant 추정
+  - 폐쇄망 호환 — 외부 IP DB·VT API 호출 0건, 정적 룰만
+  - IP: Tor·VPN known prefix / 사설 IP 거부 / GeoIP 의존 항목 제외
+  - ACCOUNT: 'root', 'admin', 'administrator' 키워드 + 단어 경계 매칭
+  - DOMAIN: SLD 길이 12+ + 모음 비율 < 30% → DGA 휴리스틱
+  - TIME_WINDOW: 22:00-07:00 hour → off_hours
+  - SERVICE: 'object storage', 'cloud trail', 'iam' 등 키워드 매칭
+  - Triage.analyze 진입 직전 enrich_clue 호출 — 사용자 명시(Q2) 우선
+  - 검증: 자동 분류 정확도 13/13 PASS
+
+**Q4** (본 커밋) — 결정 트리 답변 → 단서 자동 추가 연결
+  - ANSWER_TO_CLUE_HINT 매핑 (16 답변 → 단서 type + variant)
+    예: Q2A non_korean_ip → IP_ADDRESS:non_korean
+    예: Q3 fail_then_success → ACCOUNT:mfa_disabled
+  - 트리 답변 시 setPreferredClueType + setPreferredVariant 자동 설정
+  - CluesInput 에 preferredType / preferredVariant props 추가
+  - key 가 `${type}-${variant}` 조합 → 변경 시 자동 재마운트 + 토글 자동 선택
+  - 토스트 "💡 {reason}" 안내 노출
+
+결과 — 결정 트리·단서·자동 분류·가중치 4 자산이 단일 trace 형성:
+  사용자가 Q2A "비국내 IP" 선택
+  → 토스트 "비국내 IP — IP 단서 추가"
+  → CluesInput 자동 IP_ADDRESS + non_korean 토글 선택
+  → 사용자가 IP 값만 입력 + [+ 추가]
+  → 백엔드 analyzeClue → weights.clue_types[IP_ADDRESS:non_korean] → CRED +25
+  → 가설 점수 즉시 갱신
+
+학술 변호:
+  - 결정성 100% — 정적 가중치 + 정적 자동 분류 룰
+  - 사용자 의도 우선 (Q2 토글) — AI 자동 분류는 fallback
+  - 폐쇄망 호환 — 외부 API 0건
+
+검증:
+  - Triage.analyze 단서별 점수 변화 시뮬레이션 6 케이스 통과
+  - 자동 분류 13/13 PASS
+  - tsc --noEmit 통과 (Q2·Q4 단계 각각)
+
+후속 (선택):
+  - GeoIP 오프라인 DB 통합 (Q3 의 non_korean 자동 분류 활성)
+  - VirusTotal 인텔 정적 dump 통합 (HASH known_malicious)
+  - C-1 사고유형 9종 KB 청크 확장 (별도 인계서)
 
 ### 2026-05-19 (밤2) — 시연 회귀 다수 핀포인트 + 8종 enum 마무리 + mock fallback 토스트
 

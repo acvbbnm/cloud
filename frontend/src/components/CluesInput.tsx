@@ -123,6 +123,13 @@ interface CluesInputProps {
   onRemove: (index: number) => void;
   /** 단서 추가 직후 백엔드 /api/triage/analyze 호출 (옵션 — 부모가 처리) */
   onAfterAdd?: (observable: Observable) => void;
+  /**
+   * Q4 (2026-05-21): 트리 답변에서 자동 추출된 단서 타입 + 변종 — mount 시 또는
+   * 변경 시 selectedType / selectedVariant 자동 설정 (CluesInput 의 key 가
+   * preferredClueType + preferredVariant 조합으로 재마운트 트리거).
+   */
+  preferredType?: ClueType | null;
+  preferredVariant?: string | null;
   disabled?: boolean;
 }
 
@@ -131,13 +138,17 @@ const CluesInput = ({
   onAdd,
   onRemove,
   onAfterAdd,
+  preferredType,
+  preferredVariant,
   disabled,
 }: CluesInputProps) => {
-  const [selectedType, setSelectedType] = useState<ClueType>('IP_ADDRESS');
+  // Q4 (2026-05-21): 부모가 트리 답변에서 추출한 hint 가 있으면 초기값으로 사용
+  const [selectedType, setSelectedType] = useState<ClueType>(preferredType ?? 'IP_ADDRESS');
   const [value, setValue] = useState('');
   const [note, setNote] = useState('');
-  // Q2 (2026-05-21): variant 토글 — null 이면 generic fallback (Q1 5점)
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  // Q2: variant 토글 — null 이면 generic fallback (Q1 5점)
+  // Q4: 부모 preferredVariant 가 있으면 mount 시 자동 선택
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(preferredVariant ?? null);
 
   const handleAdd = () => {
     const trimmed = value.trim();

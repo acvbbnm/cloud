@@ -1,0 +1,135 @@
+{
+  "_status": "generated",
+  "_generator": "scripts/synthesize_remap_logs.py",
+  "_source": "backend/data/kb/case_db.json (CASE-REMAP-*)",
+  "files": [
+    {
+      "chunk_id": "CASE-REMAP-NCP-CRED-001",
+      "csp": "naver",
+      "event_count": 8,
+      "ncp_events": 8,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-CRED-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-CRED-001",
+      "csp": "nhn",
+      "event_count": 7,
+      "ncp_events": 0,
+      "nhn_events": 7,
+      "filename": "CASE-REMAP-NHN-CRED-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-PRIVESC-001",
+      "csp": "naver",
+      "event_count": 9,
+      "ncp_events": 9,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-PRIVESC-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-PRIVESC-001",
+      "csp": "nhn",
+      "event_count": 8,
+      "ncp_events": 0,
+      "nhn_events": 8,
+      "filename": "CASE-REMAP-NHN-PRIVESC-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-EXFIL-001",
+      "csp": "naver",
+      "event_count": 8,
+      "ncp_events": 8,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-EXFIL-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-EXFIL-001",
+      "csp": "nhn",
+      "event_count": 10,
+      "ncp_events": 0,
+      "nhn_events": 10,
+      "filename": "CASE-REMAP-NHN-EXFIL-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-AUDIT-001",
+      "csp": "naver",
+      "event_count": 8,
+      "ncp_events": 8,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-AUDIT-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-AUDIT-001",
+      "csp": "nhn",
+      "event_count": 8,
+      "ncp_events": 0,
+      "nhn_events": 8,
+      "filename": "CASE-REMAP-NHN-AUDIT-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-RANSOM-001",
+      "csp": "naver",
+      "event_count": 11,
+      "ncp_events": 11,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-RANSOM-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-RANSOM-001",
+      "csp": "nhn",
+      "event_count": 12,
+      "ncp_events": 0,
+      "nhn_events": 12,
+      "filename": "CASE-REMAP-NHN-RANSOM-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-MISCFG-001",
+      "csp": "naver",
+      "event_count": 7,
+      "ncp_events": 7,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-MISCFG-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-MISCFG-001",
+      "csp": "nhn",
+      "event_count": 9,
+      "ncp_events": 0,
+      "nhn_events": 9,
+      "filename": "CASE-REMAP-NHN-MISCFG-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-PHISH-001",
+      "csp": "naver",
+      "event_count": 7,
+      "ncp_events": 7,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-PHISH-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-PHISH-001",
+      "csp": "nhn",
+      "event_count": 8,
+      "ncp_events": 0,
+      "nhn_events": 8,
+      "filename": "CASE-REMAP-NHN-PHISH-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-INSIDER-001",
+      "csp": "naver",
+      "event_count": 9,
+      "ncp_events": 9,
+      "nhn_events": 0,
+      "filename": "CASE-REMAP-NCP-INSIDER-001.json"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-INSIDER-001",
+      "csp": "nhn",
+      "event_count": 10,
+      "ncp_events": 0,
+      "nhn_events": 10,
+      "filename": "CASE-REMAP-NHN-INSIDER-001.json"
+    }
+  ]
+}

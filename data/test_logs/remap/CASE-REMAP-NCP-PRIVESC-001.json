@@ -1,0 +1,182 @@
+[
+  {
+    "historyId": "h-9ab06213a910",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:02:11 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-2f8320635769",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Get Sub Account Policy List",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:03:48 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-00b0f28fee50",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:05:33 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-2f1622f04d11",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:06:09 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-11af3c2398f0",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:08:21 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-ba4a8432cd58",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:10:02 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-2a6c4d0d28db",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:12:30 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-881fe955f271",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000007",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:13:48 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e07cbdbedce4",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-user",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000008",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-15 14:14:55 UTC",
+    "content": {
+      "actionUserName": "dev-user",
+      "sourceIp": "180.182.45.12",
+      "productData": {}
+    }
+  }
+]

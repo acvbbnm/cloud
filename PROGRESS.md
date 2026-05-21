@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-21 (저녁) · 브랜치: `byungwoo` (Plan-Q + jingyu 머지 + HIGH 3건 + 결정트리 E4 인계)
+> 마지막 업데이트: 2026-05-21 (심야) · 브랜치: `byungwoo` (Plan-Q + jingyu 머지 + HIGH 3건 + **결정 트리 E4 구현 완료** A·B·C·E·F)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,6 +41,72 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-21 (심야) — 결정 트리 E4 구현 (A·B·C·E·F 5/7 완료, 3 커밋)
+
+**배경**: 같은 날 저녁 인계 문서 `docs/dev3/결정트리_업그레이드.md` 등록 후, 사용자 결정으로 직접 구현 진행.
+
+**완료된 작업 (5/7)**:
+
+**A — `decision_tree.json` 노드 확장** (커밋 `4a8b020`):
+- Q3 4종 variant 분리 — `Q3_CRED` (CSP 알람 → 자격증명), `Q3_DATA` (외부 신고 → 데이터), `Q3_INSIDER` (감사 → 내부자), `Q3_IMPACT` (서비스 이상 → 임팩트). 각 4-5 옵션.
+- Q4·Q5·Q6 12 신규 노드 — `Q4_CRED/RANSOM/MISCFG/INSIDER`, `Q5_CRED/RANSOM/MISCFG/INSIDER`, `Q6_CRED/RANSOM/MISCFG/INSIDER`. 각 3-4 옵션.
+- Q2A·Q2B·Q2C·Q2D `next` 라우팅 — 사고유형 흐름별 동적 분기.
+- `max_depth`: 3 → 6.
+- `Q3_additional_context` 는 backward compat 유지 (deprecated 표기).
+- 총 노드 수: 8 → 24.
+
+**B — `weights.json` 신규 52 키 + 학술 근거** (커밋 `4a8b020` 포함):
+- 신규 키 52개 (Q3 variants 13 + Q4·Q5·Q6 39).
+- 각 키에 ISO 27035-1:2023 Assess & Decide 태그 + MITRE T1490/T1556/T1562.008 등 학술 근거.
+- 단위 5 정책 유지 (`Q4-INSIDER:scope_within` 만 -5 감점 예외).
+- 임계값 상향 조정: `high_confidence` 70→90, `auto_skip_tree` 90→130, `gap_to_2nd` 20→30, `terminal_score` 120→180 (E4 6단계 누적 130-230 범위 정합).
+
+**5 시나리오 시뮬레이션 결과** (G 일부):
+| 시나리오 | 최종 점수 | outcome | 학술 정합 |
+|---|---|---|---|
+| S1 CRED+MFA | 140 | `auto_confirm` (gap 30) | ✅ |
+| S2 RANSOM | 230 | `auto_confirm` (gap 165) | ✅ |
+| S3 MISCFG | 160 | `auto_confirm` (gap 35) | ✅ |
+| S4 PHISH | 145 | `propose_composite` (PHISH+CRED gap 20) | ✅ (의도적 — 인과 연쇄) |
+| S5 INSIDER | 150 | `auto_confirm` (gap 80) | ✅ |
+
+S4 라우팅 정정 — `Q2B:identity_theft` / `phishing_report` 의 `next` 를 `Q3_DATA` → `Q3_CRED` 로 (PHISH 흐름 정합).
+
+**C + E — Step2_Discovery UX 강화** (커밋 `e35c621`):
+- `ConfidenceGauge` 신규 컴포넌트 — 1위 score / auto_skip(130) ratio 원형 게이지 (conic-gradient). 0-40% 회색 / 40-70% 파랑 / 70-90% 초록 / 90%+ 펄스. gap < 30 시 amber 복합 사고 의심 hint.
+- `TriageStepper` 신규 컴포넌트 — Q1~Q6 6 단계 timeline. 완료 노드 ✓ + 클릭으로 답변 수정 진입점. 현재 노드 ▷ 펄스 강조.
+- `HypothesisScoreBar` 임계값 기본값 70/90/120 → 90/130/180 (E4 정합).
+- `Step2_Discovery` ANSWER_TO_CLUE_HINT 에 Q3 variant·Q4·Q5·Q6 답변 30+ 신규 매핑 (CluesInput 자동 선택).
+- `handleSubmitAnswer` 에 격차 기반 진단 hint 토스트 4단계 (모호/형성/명확/조기확정).
+- 조기 종료 인라인 카드 — `outcome === 'auto_confirm'` 도달 시 "지금 확정 vs 계속 진행" 노출.
+- `types/index.ts`: `TriagePathEntry` 타입 분리 (TriageStepper 등 공유).
+
+**F — HypothesisBreakdownChart** (커밋 `6c429eb`):
+- 8 사고유형 leaderboard (점수 내림차순) + 사고유형별 색상 (CRED=blue, RANSOM=red, MISCFG=amber, PHISH=fuchsia, INSIDER=teal, ...).
+- 각 행 클릭 시 펼침 → 기여 출처 (트리 답변·단서·부분 분석) 카운트 표시.
+- 우측 패널 하단에 통합.
+- 학술 변호: 결정성 100% — "왜 이 가설인가" 추적성. 출처별 정확한 점수 분해는 추후 `/api/triage/breakdown` API 도입 시 보강 (현재 누적값 권위).
+
+**남은 작업 (2/7)**:
+- **D — TriageTreeMinimap 분기 시각화 강화** (선택적·시간 한계). 현재 미니맵은 노드 색 동일·경로 일직선. doc §4-7 의 사고유형별 색 + 가능 경로 점선 강화는 다음 사이클.
+- **G — 5 시나리오 e2e_tree_e4_test.py 자동화** (스모크는 인라인 수동 검증으로 5종 통과 확인). 자동화 스크립트는 다음 사이클.
+
+**TypeScript 검증**: `npx tsc --noEmit` 통과 (커밋마다 pre-commit 훅 확인).
+
+**커밋 3건**:
+- `4a8b020` — feat(data): E4 결정 트리 6단계 동적 분기 확장
+- `e35c621` — feat(ux): E4 ConfidenceGauge + TriageStepper + 격차 hint + Q4-Q6 ANSWER_TO_CLUE_HINT 확장
+- `6c429eb` — feat(ux): E4 HypothesisBreakdownChart 8종 비교 + 기여 요소 요약
+
+**학술 변호 정합 매핑** (`docs/dev3/결정트리_업그레이드.md` §6):
+- Q4 증거 무결성·시간축 ← NIST SP 800-86 §3 Volatility Hierarchy + 의료 "현재 상태"
+- Q5 영향 범위·행위자 ← ISO/IEC 27035-1:2023 Assess & Decide impact assessment + 의료 "전파 범위"
+- Q6 후속 시그널·의도 ← AWS Detective Profile-by-Profile pivot + 의료 "사후 변화"
+- 신뢰도 게이지 ← 의료 감별진단 "diagnostic confidence"
+- 답변 timeline stepper ← 의료 "diagnostic timeline"
+
+---
 
 ### 2026-05-21 (저녁) — 결정 트리 E4 + UX 강화 작업 지시서 등록 (다른 팀원 인계)
 

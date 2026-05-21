@@ -355,10 +355,14 @@ class Triage:
 
         # 단서 가중치
         if clue:
-            wk = clue.get("weight_key")
-            if not wk and clue.get("type"):
-                # 기본 weight_key — '{TYPE}:generic' 패턴. weights 에 없으면 무영향.
-                wk = f"{clue['type']}:generic"
+            # Q3 (2026-05-21): 자동 variant 분류 — weight_key 없으면 백엔드가 자동 추정.
+            # 폐쇄망 호환 (정적 룰만 — 외부 IP DB·VT API 호출 X).
+            # 자동 분류 실패 시 Q1 generic fallback (5점) 적용.
+            from core.intake.clue_classifier import enrich_clue
+            enriched = enrich_clue(clue)
+            wk = enriched.get("weight_key")
+            if not wk and enriched.get("type"):
+                wk = f"{enriched['type']}:generic"
             clue_table = _weights().get("clue_types") or {}
             new_scores = _accumulate_many(new_scores, [wk] if wk else [], clue_table)
 

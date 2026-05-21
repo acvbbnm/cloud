@@ -42,6 +42,50 @@
 
 ## 작업 내역
 
+### 2026-05-21 (오후) — jingyu 머지 + E2E 발견 HIGH 3건 즉시 수정
+
+**jingyu 머지** (`41ff8ed`):
+- 진규의 21bfec5 — AWS 공개 침해사례 16편 NCP/NHN 역매핑 + 합성 raw 로그 139 이벤트
+- KB-4 case_db: 29 → 45 청크 (+16 REMAP)
+- scripts/e2e_remap_test.py + synthesize_remap_logs.py + 시나리오·E2E 보고서 문서
+- 충돌: case_db.json 1건 (파일 끝 청크 추가 영역) — jingyu 측 채택
+
+**HIGH 3건 즉시 수정** (E2E 보고서 §4.1·§4.2·§4.5):
+
+1. **HIGH 1** — `knowledge.py` 8종 related_techniques 균형 재구성
+   - PRIVILEGE_ESCALATION 2개 → 5개 (score_ratio 공정성)
+   - 신규 4종 (RANSOM/MISCFG/PHISH/INSIDER) 의 raw 검출 가능 기법 우선
+   - DATA/AUDIT 도 4-5개로 확장 (T1530·T1213·T1119·T1070.004 등)
+
+2. **HIGH 2** — `attack_rules/rules.json` 신규 11 룰 추가 (22→33)
+   - NCP 5: R-NCP-012~016 (Delete Tracer / Delete Bucket / Shutdown Instance / Sub Account Discovery / Server Console)
+   - NHN 6: R-NHN-012~017 (object.download / s3credential.delete / instance.stop / container.metadata.update / iam.member.list / vpc.delete)
+   - 신규 매핑 기법: T1485·T1489·T1530·T1531·T1538·T1562.008·T1087.004·T1021
+
+3. **HIGH 3** — RAG 가 case_db 청크 검색
+   - `retrieve_by_technique(technique_id, incident_type?, csp?)` 시그니처 확장
+   - 매칭 우선순위: technique_id(1.0) → incident_type+csp(0.85) → incident_type(0.7) → 의미검색(0.5)
+   - `ai_sherpa.brief` 가 case.incident_type / case.csp 전달
+   - sherpa.py 응답에 `verdict` 필드 추가 (E2E 스크립트 호환)
+
+**E2E 재실행 결과** (4 시나리오):
+- 매핑률 대폭 향상:
+  · NCP RANSOM: 11/11 (100%) — T1485·T1489·T1531·T1098·T1078.004 매핑
+  · NHN MISCFG: 8/9 (88.89%) — T1530·T1538·T1087.004 매핑
+  · NCP PHISH: 7/7 (100%) — T1098·T1098.001·T1078.004·T1087.004·T1021 매핑
+  · NHN INSIDER: 8/10 (80%) — T1530·T1531·T1098·T1098.001·T1087.004 매핑
+- 단위 테스트: T1485+RANSOMWARE/naver 검색 → ATTACK + 2 CASE_DB (REMAP 포함!) + 2 PLAYBOOK 5건 반환
+- verdict 필드는 백엔드 재기동 후 활성
+
+학술 변호:
+  - 단위 5 정책 + raw 검출 가능 기법 우선 (knowledge.py)
+  - 정적 룰만 (attack_rules) — 폐쇄망 호환
+  - case_db / playbook 청크 검색 → V-8 셰르파 답변에 실 사례 인용 가능
+
+남은 회귀 (MEDIUM 2건):
+  - gap_detector 매핑률 임계값 비정합 (40% NONE / 11% INTERPRETATION)
+  - V-5 보드 자동 노드 생성 흐름 부재
+
 ### 2026-05-21 — Plan-Q1·Q2·Q3·Q4 — 단서 가중치 시스템 완성 (byungwoo 브랜치)
 
 dev3 의 단서 입력 약점 (variant 없으면 점수 0) 을 4 단계로 해소.

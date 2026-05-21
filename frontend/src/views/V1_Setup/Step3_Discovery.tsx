@@ -1,16 +1,13 @@
 /**
- * V-1 Step 2 — Discovery Loop (dev3 신규).
+ * V-1 Step 3 — Discovery Loop (M0-3, dev3).
  *
- * 3-panel:
- *   좌측: 시스템 구성 (기존 Step2_SystemConfig 의 보안 정책·CSP 특화 폼)
- *   중앙: 결정 트리 질문 (DecisionTreeQuestion) — 향후 단서 입력·부분 로그 분석 추가
- *   우측: 가설 점수 (HypothesisScoreBar) + 추천 결과
+ * 단서 루프 전용 화면. 시스템 구성(M0-2)은 별도 스텝으로 분리됨 (2026-05-22).
  *
- * 차후 확장 (다음 사이클):
- *   - 단서 입력 (CluesInput) — IP·계정·해시·도메인·시각·서비스명
- *   - 부분 로그 분석 (DropZone 재사용)
- *   - 다음 단서 제안 (next_clue_graph.json 시각화)
- *   - 결정 트리 시각화 (react-flow 미니 그래프)
+ * 좌측: ① 단서 입력 (CluesInput) · ② 부분 로그 분석 · ③ 결정 트리 6단계
+ * 우측: 신뢰도 게이지 + 가설 점수 + 트리 미니맵 + 다음 단서 + 비교 차트 + 추천
+ *
+ * 진입 시 가설 점수는 0 이 아니라 M0-2 시스템 구성의 environment_modifiers 가
+ * 시딩한 값에서 출발한다 (POST /api/triage/start 가 case.system_config 평가).
  *
  * 학술 근거: docs/dev3/V1_재설계_청사진.md §2 Step 2
  */
@@ -35,9 +32,7 @@ import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
-import { nextTriage, startTriage } from '@/api/triage';
-
-import Step2_SystemConfig from './Step2_SystemConfig';
+import { analyzeClue, nextTriage, startTriage } from '@/api/triage';
 
 import type {
   IncidentType,
@@ -50,16 +45,10 @@ import type {
 // (청사진 §3 — 정적 weights.json 단일 소스). 학술 변호: 클라이언트 mock 가중치
 // 잔존은 weights.json 과 어긋날 위험이 있어 일괄 제거.
 
-interface Step2DiscoveryProps {
-  csp: string | null;
-  incidentType: string | null;
+interface Step3DiscoveryProps {
   onPrev: () => void;
-  onSubmit: (
-    config: Parameters<
-      React.ComponentProps<typeof Step2_SystemConfig>['onSubmit']
-    >[0],
-    confirmedIncidentType: IncidentType,
-  ) => void;
+  /** 사고유형 확정 → M0-4 초동 수집 가이드로 진행. */
+  onConfirm: (confirmedIncidentType: IncidentType) => void;
   isSubmitting?: boolean;
 }
 
@@ -83,13 +72,11 @@ const OUTCOME_LABEL: Record<TriageRecommendation['outcome'], string> = {
   continue_or_skip: '➡ 추가 단서 또는 UNCLASSIFIED 진행',
 };
 
-const Step2_Discovery = ({
-  csp,
-  incidentType,
+const Step3_Discovery = ({
   onPrev,
-  onSubmit,
+  onConfirm,
   isSubmitting,
-}: Step2DiscoveryProps) => {
+}: Step3DiscoveryProps) => {
   const caseId = useCaseStore((s) => s.caseId);
   const observables = useCaseStore((s) => s.observables);
   const addObservable = useCaseStore((s) => s.addObservable);
@@ -128,7 +115,9 @@ const Step2_Discovery = ({
     }
   }, []);
 
-  // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때
+  // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때.
+  // POST /api/triage/start 가 case.system_config 의 environment_modifiers 를
+  // 평가하여 0 이 아닌 가설 점수를 시딩해 반환한다 (M0-2 → M0-3 연결).
   useEffect(() => {
     let cancelled = false;
     const initTree = async () => {
@@ -141,6 +130,10 @@ const Step2_Discovery = ({
           storeStart(res.next_node.id);
           setCurrentNodeData(res.next_node);
           setHypothesisScores(res.hypothesis_scores);
+          const seeded = Object.values(res.hypothesis_scores).some((v) => v > 0);
+          if (seeded) {
+            showToast('💡 시스템 구성 기반 환경 가중치가 가설 점수에 반영됐습니다', 3200);
+          }
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -155,8 +148,6 @@ const Step2_Discovery = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
-
-  // currentNode 데이터는 startTriage / nextTriage 응답의 next_node 를 직접 받아 채운다
 
   // Q4 (2026-05-21): 트리 답변 → 단서 힌트 매핑 — 답변 선택 시 CluesInput 의 type
   // + variant 자동 선택. 사용자가 단서를 직접 추가하면 가중치까지 함께 부여됨.
@@ -274,8 +265,7 @@ const Step2_Discovery = ({
       const gap = sorted[0] - (sorted[1] ?? 0);
       const primary = sorted[0];
       if (primary >= 130 && gap >= 30) {
-        // auto_skip 조건 만족 — 인라인 카드는 우측 패널 ConfidenceGauge 가 강조
-        showToast('🎯 명확 — 자동 확정 가능. 시스템 구성 제출 시 즉시 진행', 3500);
+        showToast('🎯 명확 — 자동 확정 가능. 우측 “확정” 버튼으로 진행', 3500);
       } else if (gap >= 20) {
         showToast(`🎯 명확해지는 중 (격차 ${gap}점)`, 2200);
       } else if (gap >= 10) {
@@ -311,34 +301,14 @@ const Step2_Discovery = ({
     }
   };
 
-  // 추천 결과에 따른 사고유형 확정 → 다음 단계로
-  const handleAccept = (sysConfig: Parameters<typeof onSubmit>[0]) => {
-    const chosen: IncidentType =
-      recommendation?.primary?.incident_type ?? 'UNCLASSIFIED';
-    onSubmit(sysConfig, chosen);
+  // 추천 결과의 주 사고유형으로 확정 → M0-4 진행
+  const handleConfirm = () => {
+    onConfirm(recommendation?.primary?.incident_type ?? 'UNCLASSIFIED');
   };
 
-  const handleSkip = (sysConfig: Parameters<typeof onSubmit>[0]) => {
-    onSubmit(sysConfig, 'UNCLASSIFIED');
-  };
-
-  // 시스템 구성 폼은 submit 시 좌측에서 호출. 우리는 Discovery 결과와 묶어서 처리.
-  // Step2_SystemConfig 는 form 의 onSubmit prop 으로 sysConfig 전달.
-  // 우리는 그 sysConfig 를 받아 사고유형과 함께 onSubmit 호출.
-  const [pendingConfig, setPendingConfig] = useState<
-    Parameters<typeof onSubmit>[0] | null
-  >(null);
-
-  // 시스템 구성 제출 → 추천 결과에 따라 자동 또는 사용자 선택
-  const handleSystemConfigSubmit = (
-    config: Parameters<typeof onSubmit>[0],
-  ) => {
-    setPendingConfig(config);
-    // 자동 확정이면 바로 진행
-    if (recommendation?.outcome === 'auto_confirm') {
-      handleAccept(config);
-    }
-    // 그 외에는 사용자 명시 클릭 대기 (handleAccept / handleSkip)
+  // 건너뛰기 — UNCLASSIFIED 로 진행 (Layer 2 분석 후 V-8 Sherpa 가 추론)
+  const handleSkip = () => {
+    onConfirm('UNCLASSIFIED');
   };
 
   return (
@@ -349,7 +319,7 @@ const Step2_Discovery = ({
       {/* 헤더 — 가벼운 안내 */}
       <div className="panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="eyebrow">Layer 0 · M0-2 · Discovery Loop</span>
+          <span className="eyebrow">Layer 0 · M0-3 · Discovery Loop</span>
           <Badge tone="purple" size="sm">
             UNCLASSIFIED
           </Badge>
@@ -375,9 +345,9 @@ const Step2_Discovery = ({
         isTerminal={isTerminal}
       />
 
-      {/* 3-panel 레이아웃 */}
+      {/* 2-panel 레이아웃 — 좌측 단서 루프 / 우측 가설 점수 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
-        {/* 좌측+중앙 묶음 (큰 영역) */}
+        {/* 좌측 — 단서·부분로그·결정트리 */}
         <div className="space-y-3 min-w-0">
           {/* ① 단서 입력 */}
           <Card
@@ -403,7 +373,6 @@ const Step2_Discovery = ({
                 // weight_key 가 있으면 그 가중치, 없으면 generic fallback (Q1) 적용.
                 if (!caseId) return;
                 try {
-                  const { analyzeClue } = await import('@/api/triage');
                   const res = await analyzeClue(caseId, hypothesisScores, {
                     type: o.type,
                     value: o.value,
@@ -478,20 +447,6 @@ const Step2_Discovery = ({
                 onReset={handleResetTree}
               />
             )}
-          </Card>
-
-          {/* 좌측 — 시스템 구성 (기존 폼 그대로) */}
-          <Card
-            title={<>⚙ 시스템 구성 (environment_modifiers)</>}
-            subtitle="입력한 구성·보안 정책이 Step 3 가이드 우선순위에 반영됩니다"
-          >
-            <Step2_SystemConfig
-              csp={csp}
-              incidentType={incidentType}
-              onPrev={onPrev}
-              onSubmit={handleSystemConfigSubmit}
-              isSubmitting={isSubmitting}
-            />
           </Card>
         </div>
 
@@ -600,14 +555,9 @@ const Step2_Discovery = ({
                   </div>
                   <div className="flex gap-1.5">
                     <button
-                      onClick={() => {
-                        if (pendingConfig) {
-                          handleAccept(pendingConfig);
-                        } else {
-                          showToast('좌측 시스템 구성을 먼저 제출해주세요');
-                        }
-                      }}
-                      className="btn-primary btn-xs flex-1"
+                      onClick={handleConfirm}
+                      disabled={isSubmitting}
+                      className="btn-primary btn-xs flex-1 disabled:opacity-50"
                     >
                       ✓ 지금 확정
                     </button>
@@ -677,36 +627,41 @@ const Step2_Discovery = ({
               </div>
             )}
 
-            {/* 액션 버튼 — 시스템 구성이 제출되고 추천이 있을 때만 활성 */}
-            {pendingConfig && recommendation && (
-              <div className="border-t border-ink-700/40 pt-3 space-y-1.5">
-                {recommendation.primary &&
-                  recommendation.outcome !== 'continue_or_skip' && (
-                    <button
-                      onClick={() => handleAccept(pendingConfig)}
-                      disabled={isSubmitting}
-                      className="btn-primary btn-sm w-full disabled:opacity-50"
-                    >
-                      {isSubmitting
-                        ? '진행 중…'
-                        : `✓ ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정`}
-                    </button>
-                  )}
-                <button
-                  onClick={() => handleSkip(pendingConfig)}
-                  disabled={isSubmitting}
-                  className="btn-ghost btn-sm w-full disabled:opacity-50"
-                >
-                  건너뛰기 — UNCLASSIFIED 진행
-                </button>
-              </div>
-            )}
-
-            {!pendingConfig && isTerminal && (
-              <p className="text-[10.5px] text-ink-500 leading-5 border-t border-ink-700/40 pt-2">
-                ⓘ 좌측 시스템 구성 폼을 제출하면 추천 사고유형으로 다음 단계 진행 가능.
-              </p>
-            )}
+            {/* 액션 — 추천이 나오면 확정 가능, 이전·건너뛰기는 항상 제공 */}
+            <div className="border-t border-ink-700/40 pt-3 space-y-1.5">
+              {recommendation?.primary &&
+                recommendation.outcome !== 'continue_or_skip' && (
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isSubmitting}
+                    className="btn-primary btn-sm w-full disabled:opacity-50"
+                  >
+                    {isSubmitting
+                      ? '진행 중…'
+                      : `✓ ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정 → 수집 가이드`}
+                  </button>
+                )}
+              <button
+                onClick={handleSkip}
+                disabled={isSubmitting}
+                className="btn-ghost btn-sm w-full disabled:opacity-50"
+              >
+                건너뛰기 — UNCLASSIFIED 로 진행
+              </button>
+              <button
+                onClick={onPrev}
+                disabled={isSubmitting}
+                className="btn-ghost btn-sm w-full text-ink-400 disabled:opacity-50"
+              >
+                ← 시스템 구성
+              </button>
+              {!recommendation && (
+                <p className="text-[10px] text-ink-500 leading-4 pt-1">
+                  ⓘ 결정 트리를 끝까지 진행하면 추천 사고유형이 산출됩니다.
+                  단서만으로 진행하려면 “건너뛰기”.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -714,4 +669,4 @@ const Step2_Discovery = ({
   );
 };
 
-export default Step2_Discovery;
+export default Step3_Discovery;

@@ -556,7 +556,7 @@ const Step2_Discovery = ({
                   )}
                 </ul>
                 <p className="text-[10px] text-ink-500 mt-1.5 leading-4">
-                  ※ 단서별 가설 점수 기여는 백엔드 /api/triage/analyze 가 구현되면 활성화됩니다.
+                  ※ 단서 추가 시 백엔드 /api/triage/analyze 가 가설 점수에 즉시 반영합니다.
                 </p>
               </div>
             )}

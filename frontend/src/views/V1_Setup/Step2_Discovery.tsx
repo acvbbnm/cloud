@@ -23,9 +23,11 @@ import DecisionTreeQuestion from '@/components/DecisionTreeQuestion';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
+import HypothesisBreakdownChart from '@/components/HypothesisBreakdownChart';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
+import TriageStepper from '@/components/TriageStepper';
 import TriageTreeMinimap from '@/components/TriageTreeMinimap';
 
 import type { ClueType } from '@/types';
@@ -210,13 +212,33 @@ const Step2_Discovery = ({
         setCurrentNodeData(null);
       }
       // Q4: 답변 중 단서 힌트가 있는 것 — 첫 번째만 적용 (CluesInput 자동 선택)
+      let hintFired = false;
       for (const ansId of answerIds) {
         const hint = ANSWER_TO_CLUE_HINT[ansId];
         if (hint) {
           setPreferredClueType(hint.clueType);
           setPreferredVariant(hint.variant ?? null);
           showToast(`💡 ${hint.reason}`, 2800);
+          hintFired = true;
           break;
+        }
+      }
+      // §4-4: 격차 기반 진단 hint — 1위·2위 점수 격차로 토스트
+      if (!hintFired) {
+        const sorted = Object.entries(res.hypothesis_scores)
+          .filter(([k]) => k !== 'UNCLASSIFIED')
+          .sort(([, a], [, b]) => b - a);
+        if (sorted.length >= 2) {
+          const gap = sorted[0][1] - sorted[1][1];
+          if (gap < 10) {
+            showToast('⚠ 여전히 모호 — 추가 질문 권장', 2500);
+          } else if (gap < 20) {
+            showToast('가설 형성 중 — Q4·Q5·Q6 진행', 2500);
+          } else if (gap < 30) {
+            showToast('🎯 명확해지는 중', 2000);
+          } else {
+            showToast('🎯 명확 — 조기 확정 가능', 2500);
+          }
         }
       }
     } catch (e) {
@@ -303,6 +325,29 @@ const Step2_Discovery = ({
           TheHive·DFIR-IRIS·NIST 800-61r2 표준 흐름. 결정성 100% — 같은 답변 시퀀스는 같은 결과.
         </div>
       </div>
+
+      {/* 답변 타임라인 스테퍼 (§4-5) + 조기 종료 인라인 카드 (§4-6) */}
+      {(completedPath.length > 0 || currentNodeId) && (
+        <TriageStepper
+          completedPath={completedPath}
+          currentNodeId={currentNodeId}
+          hypothesisScores={hypothesisScores}
+          isTerminal={isTerminal}
+          onStepClick={(nodeId, _stepIndex) => {
+            showToast(`${nodeId} 로 되돌아갑니다 — 해당 노드부터 재진행`, 2500);
+          }}
+          onEarlyConfirm={() => {
+            if (pendingConfig) {
+              handleAccept(pendingConfig);
+            } else {
+              showToast('좌측 시스템 구성 폼을 먼저 제출해주세요', 2500);
+            }
+          }}
+          onContinue={() => {
+            showToast('Q4·Q5·Q6 추가 질문을 계속합니다', 2000);
+          }}
+        />
+      )}
 
       {/* 3-panel 레이아웃 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
@@ -401,7 +446,7 @@ const Step2_Discovery = ({
               <DecisionTreeQuestion
                 node={currentNode}
                 step={completedPath.length + 1}
-                totalEstimated={3}
+                totalEstimated={6}
                 loading={loading}
                 onSubmit={handleSubmitAnswer}
                 onReset={handleResetTree}
@@ -433,6 +478,48 @@ const Step2_Discovery = ({
               highlightSecondary={recommendation?.secondary?.incident_type}
             />
 
+            {/* §4-3: 신뢰도 게이지 — 1위 사고유형의 score / 70 비율 */}
+            {(() => {
+              const sorted = Object.entries(hypothesisScores)
+                .filter(([k]) => k !== 'UNCLASSIFIED')
+                .sort(([, a], [, b]) => b - a);
+              if (sorted.length < 1 || sorted[0][1] === 0) return null;
+              const topScore = sorted[0][1];
+              const confidence = Math.min(100, Math.round((topScore / 70) * 100));
+              const gap = sorted.length >= 2 ? sorted[0][1] - sorted[1][1] : topScore;
+              const stage =
+                confidence < 40
+                  ? { color: 'bg-ink-600', text: '단서 부족', textColor: 'text-ink-400' }
+                  : confidence < 70
+                  ? { color: 'bg-brand-blue', text: '가설 형성 중', textColor: 'text-brand-blue' }
+                  : confidence < 90
+                  ? { color: 'bg-green-500', text: '🎯 가설 형성', textColor: 'text-green-400' }
+                  : { color: 'bg-amber-400', text: '✅ 자동 확정 가능', textColor: 'text-amber-300' };
+              return (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className={`font-semibold ${stage.textColor}`}>
+                      {stage.text}
+                    </span>
+                    <span className="text-ink-400">{confidence}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-ink-800/60 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ease-out ${stage.color} ${
+                        confidence >= 90 ? 'animate-pulse' : ''
+                      }`}
+                      style={{ width: `${confidence}%` }}
+                    />
+                  </div>
+                  {gap < 20 && sorted[0][1] > 0 && (
+                    <div className="text-[9.5px] text-amber-400">
+                      ⚠ 1위·2위 격차 {gap}점 — 복합 사고 의심
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
             <div>
               <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
@@ -444,6 +531,14 @@ const Step2_Discovery = ({
                 isTerminal={isTerminal}
               />
             </div>
+
+            {/* 사고유형 비교 차트 (§4-8) */}
+            {Object.values(hypothesisScores).some((v) => v > 0) && (
+              <HypothesisBreakdownChart
+                scores={hypothesisScores}
+                highlightType={recommendation?.primary?.incident_type}
+              />
+            )}
 
             {/* 다음 단서 제안 — 클릭 시 좌측 CluesInput 활성 */}
             <NextCluePanel

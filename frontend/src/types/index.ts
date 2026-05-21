@@ -423,6 +423,7 @@ export interface TriageTreeNode {
   message?: string;
   fallback_incident_type?: IncidentType;
   kisa_field?: string;
+  dynamic_next?: Record<string, string>;
 }
 
 // 결정 트리 진행 상태 (DB triage_state JSON 칼럼)

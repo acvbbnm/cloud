@@ -298,13 +298,47 @@ class Triage:
                 weight_keys.append(wk)
             if not next_node_id and opt.get("next"):
                 next_node_id = opt.get("next")
-        # 옵션 레벨 next 없으면 노드 레벨 next 사용 (Q2A·Q2B·Q2C·Q2D 다중/단일 합류형)
+        # 옵션 레벨 next 없으면 dynamic_next (E4 동적 분기) 시도
+        if not next_node_id:
+            dynamic_next = node.get("dynamic_next")
+            if dynamic_next:
+                # current_path 에서 Q2 노드 ID 를 찾아 분기 결정
+                q2_node_id = None
+                for p in current_path:
+                    pid = p.get("node_id", "")
+                    if pid.startswith("Q2"):
+                        q2_node_id = pid
+                        break
+                if q2_node_id and q2_node_id in dynamic_next:
+                    next_node_id = dynamic_next[q2_node_id]
+                else:
+                    next_node_id = dynamic_next.get("default")
+        # 그래도 없으면 노드 레벨 next 사용 (Q2A·Q2B·Q2C·Q2D 다중/단일 합류형)
         if not next_node_id:
             next_node_id = node.get("next")
 
         # 점수 누적 (decision_tree_answers 가중치)
         weight_table = _weights().get("decision_tree_answers") or {}
         new_scores = _accumulate_many(current_scores, weight_keys, weight_table)
+
+        # E4 조합 부스트 — 이전 답변과 현재 답변의 조합에 추가 점수
+        combo_table = _weights().get("combination_boosts") or {}
+        if combo_table:
+            all_answer_keys = set()
+            for p in current_path:
+                for oid in p.get("selected_option_ids", []):
+                    pid = p.get("node_id", "")
+                    node_def = (tree.get("nodes") or {}).get(pid, {})
+                    for opt in node_def.get("options") or []:
+                        if opt.get("id") == oid and opt.get("weight_key"):
+                            all_answer_keys.add(opt["weight_key"])
+            all_answer_keys.update(weight_keys)
+            for combo_key, combo_delta in combo_table.items():
+                if combo_key.startswith("_"):
+                    continue
+                parts = combo_key.split("+")
+                if len(parts) == 2 and all(p in all_answer_keys for p in parts):
+                    new_scores = _accumulate(new_scores, combo_delta)
 
         # 경로 갱신
         new_path = [p for p in current_path if p.get("node_id") != current_node_id]

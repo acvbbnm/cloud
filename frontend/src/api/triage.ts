@@ -151,12 +151,144 @@ const MOCK_TREE: Record<string, TriageTreeNode> = {
     type: 'question',
     question: '추가 정황은?',
     kisa_field: 'KISA §2.4 ⑥ 네트워크 연결 지점',
+    dynamic_next: {
+      Q2A_alert_type: 'Q4_CRED',
+      Q2B_report_content: 'Q4_MISCFG',
+      Q2C_audit_pattern: 'Q4_INSIDER',
+      Q2D_anomaly_form: 'Q4_RANSOM',
+      default: 'T_evaluate',
+    },
     options: [
-      { id: 'fail_then_success', label: '실패→성공 인증 패턴', weight_key: 'Q3:fail_then_success', next: 'T_evaluate' },
-      { id: 'multi_region_concurrent', label: '동일 계정 동시 다지역 로그인', weight_key: 'Q3:multi_region_concurrent', next: 'T_evaluate' },
-      { id: 'storage_policy_change', label: 'Object Storage 정책 변경', weight_key: 'Q3:storage_policy_change', next: 'T_evaluate' },
-      { id: 'serverless_new', label: 'Cloud Function·Lambda 신규 생성', weight_key: 'Q3:serverless_new', next: 'T_evaluate' },
+      { id: 'fail_then_success', label: '실패→성공 인증 패턴', weight_key: 'Q3:fail_then_success' },
+      { id: 'multi_region_concurrent', label: '동일 계정 동시 다지역 로그인', weight_key: 'Q3:multi_region_concurrent' },
+      { id: 'storage_policy_change', label: 'Object Storage 정책 변경', weight_key: 'Q3:storage_policy_change' },
+      { id: 'serverless_new', label: 'Cloud Function·Lambda 신규 생성', weight_key: 'Q3:serverless_new' },
       { id: 'unknown_extra', label: '알 수 없음', weight_key: 'Q3:unknown_extra', next: 'T_evaluate' },
+    ],
+  },
+  // ── E4 Q4 노드 (증거 무결성·시간축) ──
+  Q4_CRED: {
+    id: 'Q4_CRED',
+    type: 'question',
+    question: '증거 무결성 + MFA 상태를 확인해주세요.',
+    options: [
+      { id: 'mfa_token_reuse', label: 'MFA 토큰 재사용 (피싱/0ktapus 시그널)', weight_key: 'Q4_CRED:mfa_token_reuse', next: 'Q5_CRED' },
+      { id: 'mfa_register_change', label: 'MFA 등록 변경 (사용자 직접 우회)', weight_key: 'Q4_CRED:mfa_register_change', next: 'Q5_CRED' },
+      { id: 'mfa_not_applied', label: 'MFA 미적용', weight_key: 'Q4_CRED:mfa_not_applied', next: 'Q5_CRED' },
+      { id: 'audit_log_deleted', label: '감사 로그 비활성·삭제 흔적', weight_key: 'Q4_CRED:audit_log_deleted', next: 'Q5_CRED' },
+    ],
+  },
+  Q4_RANSOM: {
+    id: 'Q4_RANSOM',
+    type: 'question',
+    question: '백업 무결성을 확인해주세요.',
+    options: [
+      { id: 'backup_destroyed', label: '백업 삭제·암호화 (T1490)', weight_key: 'Q4_RANSOM:backup_destroyed', next: 'Q5_RANSOM' },
+      { id: 'backup_intact', label: '백업 정상', weight_key: 'Q4_RANSOM:backup_intact', next: 'Q5_RANSOM' },
+      { id: 'backup_none', label: '백업 없음', weight_key: 'Q4_RANSOM:backup_none', next: 'Q5_RANSOM' },
+    ],
+  },
+  Q4_MISCFG: {
+    id: 'Q4_MISCFG',
+    type: 'question',
+    question: '공개 변경 시점을 확인해주세요.',
+    options: [
+      { id: 'intentional_recent', label: '외부 신고 직전 (의도적)', weight_key: 'Q4_MISCFG:intentional_recent', next: 'Q5_MISCFG' },
+      { id: 'long_term_exposure', label: '사고 발견 이전 장기 노출 (실수)', weight_key: 'Q4_MISCFG:long_term_exposure', next: 'Q5_MISCFG' },
+      { id: 'unknown_timing', label: '미상', weight_key: 'Q4_MISCFG:unknown_timing', next: 'Q5_MISCFG' },
+    ],
+  },
+  Q4_INSIDER: {
+    id: 'Q4_INSIDER',
+    type: 'question',
+    question: '사용자 직무 범위를 확인해주세요.',
+    options: [
+      { id: 'scope_excess', label: '직무 범위 초과', weight_key: 'Q4_INSIDER:scope_excess', next: 'Q5_INSIDER' },
+      { id: 'scope_normal', label: '직무 범위 내 (정상)', weight_key: 'Q4_INSIDER:scope_normal', next: 'Q5_INSIDER' },
+      { id: 'vendor_account', label: '협력사 계정', weight_key: 'Q4_INSIDER:vendor_account', next: 'Q5_INSIDER' },
+    ],
+  },
+  // ── E4 Q5 노드 (영향 범위·행위자) ──
+  Q5_CRED: {
+    id: 'Q5_CRED',
+    type: 'question',
+    question: '행위자를 추정해주세요.',
+    options: [
+      { id: 'non_korean_ip', label: '비국내 IP (외부)', weight_key: 'Q5_CRED:non_korean_ip', next: 'Q6_CRED' },
+      { id: 'internal_ip', label: '내부 사내 IP', weight_key: 'Q5_CRED:internal_ip', next: 'Q6_CRED' },
+      { id: 'tor_vpn_exit', label: 'Tor·VPN exit', weight_key: 'Q5_CRED:tor_vpn_exit', next: 'Q6_CRED' },
+    ],
+  },
+  Q5_RANSOM: {
+    id: 'Q5_RANSOM',
+    type: 'question',
+    question: '영향 범위를 확인해주세요.',
+    options: [
+      { id: 'single_instance', label: '단일 인스턴스', weight_key: 'Q5_RANSOM:single_instance', next: 'Q6_RANSOM' },
+      { id: 'storage_wide', label: 'Object Storage 전체', weight_key: 'Q5_RANSOM:storage_wide', next: 'Q6_RANSOM' },
+      { id: 'multi_region_account', label: '멀티 리전·계정', weight_key: 'Q5_RANSOM:multi_region_account', next: 'Q6_RANSOM' },
+    ],
+  },
+  Q5_MISCFG: {
+    id: 'Q5_MISCFG',
+    type: 'question',
+    question: '변경 주체를 확인해주세요.',
+    options: [
+      { id: 'operator_error', label: '운영자 권한 (실수)', weight_key: 'Q5_MISCFG:operator_error', next: 'Q6_MISCFG' },
+      { id: 'suspicious_ip', label: '비정상 IP (침해)', weight_key: 'Q5_MISCFG:suspicious_ip', next: 'Q6_MISCFG' },
+      { id: 'automation_script', label: '자동화 스크립트', weight_key: 'Q5_MISCFG:automation_script', next: 'Q6_MISCFG' },
+    ],
+  },
+  Q5_INSIDER: {
+    id: 'Q5_INSIDER',
+    type: 'question',
+    question: '행위자 가시성을 확인해주세요.',
+    options: [
+      { id: 'internal_device', label: '사내 단말', weight_key: 'Q5_INSIDER:internal_device', next: 'Q6_INSIDER' },
+      { id: 'internal_vpn', label: '사내 IP + 외부 VPN', weight_key: 'Q5_INSIDER:internal_vpn', next: 'Q6_INSIDER' },
+      { id: 'trace_deletion', label: '자기 흔적 삭제 (s3credential.delete)', weight_key: 'Q5_INSIDER:trace_deletion', next: 'Q6_INSIDER' },
+    ],
+  },
+  // ── E4 Q6 노드 (후속 시그널·의도) ──
+  Q6_CRED: {
+    id: 'Q6_CRED',
+    type: 'question',
+    question: '후속 시그널을 확인해주세요.',
+    options: [
+      { id: 'priv_change', label: '즉시 권한 변경 → CRED + PRIV 복합', weight_key: 'Q6_CRED:priv_change', next: 'T_evaluate' },
+      { id: 'storage_download', label: 'Object Storage 다운로드 → CRED→DATA', weight_key: 'Q6_CRED:storage_download', next: 'T_evaluate' },
+      { id: 'cloud_function_new', label: 'Cloud Function 신규 → PERSIST', weight_key: 'Q6_CRED:cloud_function_new', next: 'T_evaluate' },
+      { id: 'no_followup', label: '후속 시그널 없음 (CRED 단독)', weight_key: 'Q6_CRED:no_followup', next: 'T_evaluate' },
+    ],
+  },
+  Q6_RANSOM: {
+    id: 'Q6_RANSOM',
+    type: 'question',
+    question: '랜섬 노트·협박 메시지를 확인해주세요.',
+    options: [
+      { id: 'ransom_note_found', label: '노트 발견 (확정 RANSOM)', weight_key: 'Q6_RANSOM:ransom_note_found', next: 'T_evaluate' },
+      { id: 'double_extortion', label: '데이터 유출 동반 (Double Extortion)', weight_key: 'Q6_RANSOM:double_extortion', next: 'T_evaluate' },
+      { id: 'simple_destruction', label: '노트 없음 (T1485 단순 파괴)', weight_key: 'Q6_RANSOM:simple_destruction', next: 'T_evaluate' },
+    ],
+  },
+  Q6_MISCFG: {
+    id: 'Q6_MISCFG',
+    type: 'question',
+    question: '데이터 민감도를 확인해주세요.',
+    options: [
+      { id: 'pii_data', label: '개인정보 (GDPR·개보법)', weight_key: 'Q6_MISCFG:pii_data', next: 'T_evaluate' },
+      { id: 'trade_secret', label: '영업비밀', weight_key: 'Q6_MISCFG:trade_secret', next: 'T_evaluate' },
+      { id: 'general_data', label: '일반 공개 데이터', weight_key: 'Q6_MISCFG:general_data', next: 'T_evaluate' },
+    ],
+  },
+  Q6_INSIDER: {
+    id: 'Q6_INSIDER',
+    type: 'question',
+    question: '사후 행동을 확인해주세요.',
+    options: [
+      { id: 'normal_exit', label: '정상 종료', weight_key: 'Q6_INSIDER:normal_exit', next: 'T_evaluate' },
+      { id: 'data_exfil', label: '데이터 외부 전송', weight_key: 'Q6_INSIDER:data_exfil', next: 'T_evaluate' },
+      { id: 'self_iam_deletion', label: '자기 IAM 삭제', weight_key: 'Q6_INSIDER:self_iam_deletion', next: 'T_evaluate' },
     ],
   },
   T_evaluate: {
@@ -200,6 +332,47 @@ const MOCK_WEIGHTS: Record<string, Partial<HypothesisScores>> = {
   'Q3:storage_policy_change':      { DATA_EXFILTRATION: 25 },
   'Q3:serverless_new':             { PRIVILEGE_ESCALATION: 15, DATA_EXFILTRATION: 10 },
   'Q3:unknown_extra':              {},
+  // ── E4 Q4 가중치 ──
+  'Q4_CRED:mfa_token_reuse':       { CREDENTIAL_THEFT: 10, PRIVILEGE_ESCALATION: 5, PHISH_INITIAL_ACCESS: 25 },
+  'Q4_CRED:mfa_register_change':   { CREDENTIAL_THEFT: 20, PRIVILEGE_ESCALATION: 5, PHISH_INITIAL_ACCESS: 5 },
+  'Q4_CRED:mfa_not_applied':       { CREDENTIAL_THEFT: 15, RANSOMWARE: 5, MISCONFIG_EXPOSURE: 10, PHISH_INITIAL_ACCESS: 10 },
+  'Q4_CRED:audit_log_deleted':     { CREDENTIAL_THEFT: 5, AUDIT_LOG_TAMPERING: 20, RANSOMWARE: 5, INSIDER_THREAT: 10 },
+  'Q4_RANSOM:backup_destroyed':    { RANSOMWARE: 30, DATA_EXFILTRATION: 5 },
+  'Q4_RANSOM:backup_intact':       { DATA_EXFILTRATION: 15, INSIDER_THREAT: 5 },
+  'Q4_RANSOM:backup_none':         { RANSOMWARE: 15, DATA_EXFILTRATION: 5, MISCONFIG_EXPOSURE: 5 },
+  'Q4_MISCFG:intentional_recent':  { MISCONFIG_EXPOSURE: 20, CREDENTIAL_THEFT: 5, DATA_EXFILTRATION: 10, INSIDER_THREAT: 5 },
+  'Q4_MISCFG:long_term_exposure':  { MISCONFIG_EXPOSURE: 35, DATA_EXFILTRATION: 10 },
+  'Q4_MISCFG:unknown_timing':      { MISCONFIG_EXPOSURE: 10, DATA_EXFILTRATION: 5 },
+  'Q4_INSIDER:scope_excess':       { INSIDER_THREAT: 30, PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 5 },
+  'Q4_INSIDER:scope_normal':       { INSIDER_THREAT: -5 },
+  'Q4_INSIDER:vendor_account':     { INSIDER_THREAT: 25, CREDENTIAL_THEFT: 5, PRIVILEGE_ESCALATION: 5, DATA_EXFILTRATION: 5 },
+  // ── E4 Q5 가중치 ──
+  'Q5_CRED:non_korean_ip':         { CREDENTIAL_THEFT: 25, PHISH_INITIAL_ACCESS: 10 },
+  'Q5_CRED:internal_ip':           { INSIDER_THREAT: 20, CREDENTIAL_THEFT: 5, PRIVILEGE_ESCALATION: 5 },
+  'Q5_CRED:tor_vpn_exit':          { CREDENTIAL_THEFT: 30, DATA_EXFILTRATION: 5, RANSOMWARE: 5, PHISH_INITIAL_ACCESS: 10 },
+  'Q5_RANSOM:single_instance':     { RANSOMWARE: 10, DATA_EXFILTRATION: 5 },
+  'Q5_RANSOM:storage_wide':        { RANSOMWARE: 25, PRIVILEGE_ESCALATION: 5, DATA_EXFILTRATION: 10 },
+  'Q5_RANSOM:multi_region_account': { RANSOMWARE: 35, PRIVILEGE_ESCALATION: 10, DATA_EXFILTRATION: 10 },
+  'Q5_MISCFG:operator_error':      { MISCONFIG_EXPOSURE: 25, DATA_EXFILTRATION: 5 },
+  'Q5_MISCFG:suspicious_ip':       { CREDENTIAL_THEFT: 20, MISCONFIG_EXPOSURE: 5, DATA_EXFILTRATION: 5, PHISH_INITIAL_ACCESS: 10 },
+  'Q5_MISCFG:automation_script':   { MISCONFIG_EXPOSURE: 15, DATA_EXFILTRATION: 5, INSIDER_THREAT: 5 },
+  'Q5_INSIDER:internal_device':    { INSIDER_THREAT: 25, PRIVILEGE_ESCALATION: 5, DATA_EXFILTRATION: 5 },
+  'Q5_INSIDER:internal_vpn':       { INSIDER_THREAT: 30, CREDENTIAL_THEFT: 5, PRIVILEGE_ESCALATION: 5, DATA_EXFILTRATION: 5 },
+  'Q5_INSIDER:trace_deletion':     { INSIDER_THREAT: 35, AUDIT_LOG_TAMPERING: 15 },
+  // ── E4 Q6 가중치 ──
+  'Q6_CRED:priv_change':           { PRIVILEGE_ESCALATION: 25, CREDENTIAL_THEFT: 10, INSIDER_THREAT: 5 },
+  'Q6_CRED:storage_download':      { DATA_EXFILTRATION: 20, CREDENTIAL_THEFT: 5 },
+  'Q6_CRED:cloud_function_new':    { PRIVILEGE_ESCALATION: 15, CREDENTIAL_THEFT: 5 },
+  'Q6_CRED:no_followup':           { CREDENTIAL_THEFT: 10 },
+  'Q6_RANSOM:ransom_note_found':   { RANSOMWARE: 35, DATA_EXFILTRATION: 5 },
+  'Q6_RANSOM:double_extortion':    { RANSOMWARE: 30, DATA_EXFILTRATION: 20 },
+  'Q6_RANSOM:simple_destruction':  { RANSOMWARE: 15, DATA_EXFILTRATION: 10, AUDIT_LOG_TAMPERING: 5, INSIDER_THREAT: 5 },
+  'Q6_MISCFG:pii_data':            { DATA_EXFILTRATION: 25, MISCONFIG_EXPOSURE: 10 },
+  'Q6_MISCFG:trade_secret':        { DATA_EXFILTRATION: 20, MISCONFIG_EXPOSURE: 10, INSIDER_THREAT: 5 },
+  'Q6_MISCFG:general_data':        { MISCONFIG_EXPOSURE: 5 },
+  'Q6_INSIDER:normal_exit':        { INSIDER_THREAT: 10 },
+  'Q6_INSIDER:data_exfil':         { DATA_EXFILTRATION: 20, INSIDER_THREAT: 15 },
+  'Q6_INSIDER:self_iam_deletion':  { AUDIT_LOG_TAMPERING: 20, INSIDER_THREAT: 15 },
 };
 
 const MOCK_THRESHOLDS = {
@@ -355,6 +528,16 @@ export const nextTriage = async (
       if (!opt) continue;
       nextScores = accumulateScores(nextScores, opt.weight_key);
       if (!nextNodeId && opt.next) nextNodeId = opt.next;
+    }
+    // E4 dynamic_next — Q2 경로에 따라 Q4 분기 결정
+    if (!nextNodeId && currentNode.dynamic_next) {
+      const dynNext = currentNode.dynamic_next;
+      const q2Entry = currentPath.find((p) => p.node_id.startsWith('Q2'));
+      if (q2Entry && dynNext[q2Entry.node_id]) {
+        nextNodeId = dynNext[q2Entry.node_id];
+      } else {
+        nextNodeId = dynNext.default ?? null;
+      }
     }
     const nextNode = nextNodeId ? MOCK_TREE[nextNodeId] : null;
     const isTerminal = !nextNode || nextNode.type === 'terminal';

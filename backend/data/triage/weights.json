@@ -458,6 +458,427 @@
       "INSIDER_THREAT": 5,
       "source": "MITRE ATT&CK v14 — T1486 + T1490 결합 시그널 최대치 [ISO 27035-1:2023 Assess & Decide]",
       "UNCLASSIFIED": 0
+    },
+
+    "Q4_CRED:mfa_token_reuse": {
+      "CREDENTIAL_THEFT": 10,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 25,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1556 + AWS Detective MFA bypass pattern + 0ktapus 사례 (Twilio 2022) [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_CRED:mfa_register_change": {
+      "CREDENTIAL_THEFT": 20,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 5,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1556.006 MFA 변경 + CSA #2 IAM [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_CRED:mfa_not_applied": {
+      "CREDENTIAL_THEFT": 15,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 10,
+      "PHISH_INITIAL_ACCESS": 10,
+      "INSIDER_THREAT": 0,
+      "source": "CSA #2 IAM MFA 미적용 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_CRED:audit_log_deleted": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 20,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 10,
+      "source": "MITRE T1562.008 Disable Cloud Logs + NIST SP 800-86 §3 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_RANSOM:backup_destroyed": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 30,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1490 Inhibit System Recovery + Verizon DBIR 2024 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_RANSOM:backup_intact": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 15,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "백업 정상 — DATA_EXFILTRATION 변별 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_RANSOM:backup_none": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 15,
+      "MISCONFIG_EXPOSURE": 5,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "백업 부재 — RANSOMWARE 피해 확대 요인 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_MISCFG:intentional_recent": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 20,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "CSA #3 Misconfiguration — 의도적 변경 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_MISCFG:long_term_exposure": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 35,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "CSA #7 Accidental Disclosure + 장기 노출 최대치 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_MISCFG:unknown_timing": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 10,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "시점 미상 — 약한 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_INSIDER:scope_excess": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 10,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 30,
+      "source": "Carnegie CERT Insider Threat Center — 직무 범위 초과 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_INSIDER:scope_normal": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": -5,
+      "source": "직무 범위 내 정상 — INSIDER 감점 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q4_INSIDER:vendor_account": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 25,
+      "source": "Carnegie CERT — 협력사 계정 위험 [ISO 27035-1:2023 Assess & Decide]"
+    },
+
+    "Q5_CRED:non_korean_ip": {
+      "CREDENTIAL_THEFT": 25,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 10,
+      "INSIDER_THREAT": 0,
+      "source": "Google Threat Horizons Report (H1 2024) + MITRE T1078.004 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_CRED:internal_ip": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 20,
+      "source": "내부 IP — INSIDER 변별 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_CRED:tor_vpn_exit": {
+      "CREDENTIAL_THEFT": 30,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 10,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1090.003 Proxy + Tor exit 노드 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_RANSOM:single_instance": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 10,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "단일 인스턴스 제한적 영향 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_RANSOM:storage_wide": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 25,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1486 + Object Storage 전체 영향 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_RANSOM:multi_region_account": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 10,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 35,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "멀티 리전·계정 — 광범위 RANSOMWARE 최대 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_MISCFG:operator_error": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 25,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "CSA #3 운영자 실수 — MISCONFIG 확정 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_MISCFG:suspicious_ip": {
+      "CREDENTIAL_THEFT": 20,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 5,
+      "PHISH_INITIAL_ACCESS": 10,
+      "INSIDER_THREAT": 0,
+      "source": "비정상 IP 변경 — CRED 침해 가능성 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_MISCFG:automation_script": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 15,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "IaC 자동화 실수 — MISCONFIG 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_INSIDER:internal_device": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 25,
+      "source": "사내 단말 — 내부자 위협 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_INSIDER:internal_vpn": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 30,
+      "source": "내부 IP + 외부 VPN — 은닉 시도 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q5_INSIDER:trace_deletion": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 15,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 35,
+      "source": "MITRE T1070 Indicator Removal + s3credential.delete [ISO 27035-1:2023 Assess & Decide]"
+    },
+
+    "Q6_CRED:priv_change": {
+      "CREDENTIAL_THEFT": 10,
+      "PRIVILEGE_ESCALATION": 25,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "MITRE T1098 즉시 권한 변경 — CRED+PRIV 복합 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_CRED:storage_download": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 20,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1530 Object Storage 다운로드 — CRED→DATA 전이 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_CRED:cloud_function_new": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 15,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1648 Serverless Execution — 지속성 확보 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_CRED:no_followup": {
+      "CREDENTIAL_THEFT": 10,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "후속 시그널 없음 — CRED 단독 확정 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_RANSOM:ransom_note_found": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 35,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "MITRE T1486 + Verizon DBIR 2024 Ransomware/Extortion ~32% (확장 ~43%) [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_RANSOM:double_extortion": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 20,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 30,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "Mandiant 2024 Double Extortion 트렌드 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_RANSOM:simple_destruction": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 10,
+      "AUDIT_LOG_TAMPERING": 5,
+      "RANSOMWARE": 15,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "MITRE T1485 Data Destruction 단순 파괴 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_MISCFG:pii_data": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 25,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 10,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "GDPR·개보법 — 개인정보 민감도 최대 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_MISCFG:trade_secret": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 20,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 10,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "영업비밀 보호법 — 민감도 높음 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_MISCFG:general_data": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 5,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "일반 데이터 — 낮은 영향 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_INSIDER:normal_exit": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 10,
+      "source": "정상 종료 — 약한 INSIDER 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_INSIDER:data_exfil": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 20,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 15,
+      "source": "MITRE T1537 데이터 외부 전송 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "Q6_INSIDER:self_iam_deletion": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 20,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 15,
+      "source": "MITRE T1070 + 자기 IAM 삭제 [ISO 27035-1:2023 Assess & Decide]"
     }
   },
   "clue_types": {
@@ -1207,32 +1628,82 @@
       "INSIDER_THREAT": 10
     }
   },
+  "combination_boosts": {
+    "_note": "E4 — 특정 답변 조합 시 추가 점수. 의료 감별진단 '의외성' 노출.",
+    "Q4_CRED:mfa_token_reuse+Q5_CRED:non_korean_ip": {
+      "PHISH_INITIAL_ACCESS": 15,
+      "source": "MFA 토큰 재사용 + 비국내 IP — 0ktapus 피싱 패턴 강화 [ISO 27035-1:2023]"
+    },
+    "Q4_CRED:mfa_token_reuse+Q5_CRED:tor_vpn_exit": {
+      "PHISH_INITIAL_ACCESS": 20,
+      "CREDENTIAL_THEFT": 10,
+      "source": "MFA 재사용 + Tor/VPN — APT 스타일 피싱+탈취 복합 [ISO 27035-1:2023]"
+    },
+    "Q4_RANSOM:backup_destroyed+Q5_RANSOM:multi_region_account": {
+      "RANSOMWARE": 15,
+      "source": "백업 파괴 + 멀티 리전 — 대규모 랜섬 확정 [ISO 27035-1:2023]"
+    },
+    "Q5_RANSOM:storage_wide+Q6_RANSOM:double_extortion": {
+      "RANSOMWARE": 10,
+      "DATA_EXFILTRATION": 15,
+      "source": "전체 스토리지 + Double Extortion — 최대 피해 [ISO 27035-1:2023]"
+    },
+    "Q4_INSIDER:scope_excess+Q5_INSIDER:trace_deletion": {
+      "INSIDER_THREAT": 15,
+      "AUDIT_LOG_TAMPERING": 10,
+      "source": "직무 초과 + 흔적 삭제 — 악의적 내부자 확정 [ISO 27035-1:2023]"
+    },
+    "Q4_MISCFG:long_term_exposure+Q6_MISCFG:pii_data": {
+      "MISCONFIG_EXPOSURE": 10,
+      "DATA_EXFILTRATION": 10,
+      "source": "장기 노출 + 개인정보 — 법적 책임 최대 [ISO 27035-1:2023]"
+    },
+    "Q5_CRED:internal_ip+Q6_CRED:priv_change": {
+      "INSIDER_THREAT": 15,
+      "PRIVILEGE_ESCALATION": 10,
+      "source": "내부 IP + 즉시 권한 변경 — INSIDER+PRIV 복합 [ISO 27035-1:2023]"
+    },
+    "Q4_CRED:audit_log_deleted+Q6_CRED:priv_change": {
+      "AUDIT_LOG_TAMPERING": 10,
+      "PRIVILEGE_ESCALATION": 10,
+      "source": "감사 삭제 + 권한 변경 — 증거 인멸 후 권한 상승 [ISO 27035-1:2023]"
+    }
+  },
   "simulation_scenarios": {
-    "_note": "가중치 조정 시 5개 시나리오로 검증. 상세 → docs/dev3/가중치_설계_근거.md §5",
-    "S1_credential_theft": {
+    "_note": "E4 6단계 흐름 시뮬레이션 5종. 각 시나리오 Q1~Q6 통과 후 의도 사고유형 1위 + 격차 ≥ 30 확인.",
+    "S1_cred_mfa_bypass": {
+      "description": "CRED + MFA 우회 (6단계 전체)",
+      "sequence": ["Q1:csp_alert", "Q2A:abnormal_login,non_korean_ip", "Q3:fail_then_success", "Q4_CRED:mfa_token_reuse", "Q5_CRED:tor_vpn_exit", "Q6_CRED:priv_change"],
       "expected_winner": "CREDENTIAL_THEFT",
       "expected_score_min": 130,
       "outcome": "auto_confirm"
     },
-    "S2_composite": {
-      "expected_winners": [
-        "CREDENTIAL_THEFT",
-        "PRIVILEGE_ESCALATION"
-      ],
-      "outcome": "propose_composite"
+    "S2_ransomware": {
+      "description": "RANSOM 시나리오 (6단계)",
+      "sequence": ["Q1:service_anomaly", "Q2D:data_destruction", "Q3:storage_policy_change", "Q4_RANSOM:backup_destroyed", "Q5_RANSOM:storage_wide", "Q6_RANSOM:ransom_note_found"],
+      "expected_winner": "RANSOMWARE",
+      "expected_score_min": 150,
+      "outcome": "auto_confirm"
     },
-    "S3_weak_signals": {
-      "expected_max_score_max": 40,
-      "outcome": "continue_or_skip"
-    },
-    "S4_audit_tampering": {
-      "expected_winner": "AUDIT_LOG_TAMPERING",
+    "S3_misconfig": {
+      "description": "MISCONFIG 시나리오 (6단계)",
+      "sequence": ["Q1:external_report", "Q2B:data_exposed", "Q3:storage_policy_change", "Q4_MISCFG:long_term_exposure", "Q5_MISCFG:operator_error", "Q6_MISCFG:pii_data"],
+      "expected_winner": "MISCONFIG_EXPOSURE",
       "expected_score_min": 130,
       "outcome": "auto_confirm"
     },
-    "S5_multi_csp": {
-      "expected_winner": "MULTI_CSP_LATERAL",
+    "S4_phish": {
+      "description": "PHISH 시나리오 (6단계)",
+      "sequence": ["Q1:external_report", "Q2B:identity_theft", "Q3:fail_then_success", "Q4_CRED:mfa_token_reuse", "Q5_CRED:non_korean_ip", "Q6_CRED:priv_change"],
+      "expected_winner": "PHISH_INITIAL_ACCESS",
       "expected_score_min": 100,
+      "outcome": "propose_composite"
+    },
+    "S5_insider": {
+      "description": "INSIDER 시나리오 (6단계)",
+      "sequence": ["Q1:audit", "Q2C:permission_changes", "Q3:serverless_new", "Q4_INSIDER:scope_excess", "Q5_INSIDER:trace_deletion", "Q6_INSIDER:self_iam_deletion"],
+      "expected_winner": "INSIDER_THREAT",
+      "expected_score_min": 130,
       "outcome": "auto_confirm"
     }
   }

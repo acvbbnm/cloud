@@ -22,7 +22,8 @@
     "updated": "2026-05-19",
     "dev3_c1_step3": "2026-05-19 — 분기 옵션 가중치 +10",
     "multi_csp_lateral_removed": "2026-05-19 사용자 결정",
-    "verizon_recalibration_2026_05_20": "Verizon DBIR 2024 검증 통계 (Ransomware/Extortion ~32%, 확장 ~43%; System Intrusion top pattern) 기반 신규 4종 가중치 미세 조정 — PHISH/MISCONFIG/RANSOMWARE 각 5~10점 강화. 단위 5 정책 유지."
+    "verizon_recalibration_2026_05_20": "Verizon DBIR 2024 검증 통계 (Ransomware/Extortion ~32%, 확장 ~43%; System Intrusion top pattern) 기반 신규 4종 가중치 미세 조정 — PHISH/MISCONFIG/RANSOMWARE 각 5~10점 강화. 단위 5 정책 유지.",
+    "q1_fallback_2026_05_21": "Q1 — 단서 입력 시 variant 미상이어도 약한 가중치 5점 부여. 6 ClueType × generic 키 추가."
   },
   "thresholds": {
     "high_confidence": 70,
@@ -657,6 +658,72 @@
       "MISCONFIG_EXPOSURE": 0,
       "PHISH_INITIAL_ACCESS": 5,
       "INSIDER_THREAT": 0
+    },
+    "IP_ADDRESS:generic": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 5,
+      "INSIDER_THREAT": 5,
+      "source": "Q1 fallback — IP 단서 일반 시그널 (variant 미상). 학술: NIST 800-61r2 §3.2 표 3-2 indicator [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "ACCOUNT:generic": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 5,
+      "INSIDER_THREAT": 5,
+      "source": "Q1 fallback — 계정 단서 일반 시그널 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "HASH:generic": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "Q1 fallback — 파일 해시 단서 (악성 미확정) [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "DOMAIN:generic": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 5,
+      "INSIDER_THREAT": 0,
+      "source": "Q1 fallback — 도메인 단서 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "TIME_WINDOW:generic": {
+      "CREDENTIAL_THEFT": 5,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5,
+      "source": "Q1 fallback — 시각 윈도우 단서 [ISO 27035-1:2023 Assess & Decide]"
+    },
+    "SERVICE:generic": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 5,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 5,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 0,
+      "source": "Q1 fallback — 서비스명 단서 [ISO 27035-1:2023 Assess & Decide]"
     }
   },
   "partial_analysis_techniques": {

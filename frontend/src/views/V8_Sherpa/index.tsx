@@ -273,7 +273,7 @@ const V8Sherpa = () => {
           </div>
         </div>
 
-        {/* 우측: KB 인덱스 + 안내 */}
+        {/* 우측: KB 인덱스 + 안내 (V-8 사후 검증 카드는 본 영역 상단에 IncidentTypeReviewCard 로 별도 배치됨) */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
           <Card title={<>📚 KB 인덱스 (RAG 입력)</>}>
             {kbQuery.isLoading ? (

@@ -10,10 +10,10 @@ import type { HypothesisScores, IncidentType } from '@/types';
 
 interface HypothesisScoreBarProps {
   scores: HypothesisScores;
-  /** 임계값 표시 — 기본 70/90 */
+  /** 임계값 표시 — 기본 90/130 (E4 6단계 누적 정합, 2026-05-21) */
   highConfidence?: number;
   autoSkip?: number;
-  /** 최대 막대 너비 기준 점수 (기본 120 — terminal_score) */
+  /** 최대 막대 너비 기준 점수 (기본 180 — terminal_score, E4 정합) */
   maxScale?: number;
   /** 추천 결과의 primary/secondary 강조 (있으면 표시) */
   highlightPrimary?: IncidentType;
@@ -35,9 +35,9 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
 
 const HypothesisScoreBar = ({
   scores,
-  highConfidence = 70,
-  autoSkip = 90,
-  maxScale = 120,
+  highConfidence = 90,
+  autoSkip = 130,
+  maxScale = 180,
   highlightPrimary,
   highlightSecondary,
 }: HypothesisScoreBarProps) => {
@@ -121,7 +121,7 @@ const HypothesisScoreBar = ({
         </div>
         <div>
           <span className="inline-block w-2 h-2 rounded-full bg-red-400/60 mr-1" />
-          auto_skip {autoSkip}점 + gap 20 — 자동 확정
+          auto_skip {autoSkip}점 + gap 30 — 자동 확정
         </div>
       </div>
     </div>

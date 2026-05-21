@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import CluesInput from '@/components/CluesInput';
+import ConfidenceGauge from '@/components/ConfidenceGauge';
 import DecisionTreeQuestion from '@/components/DecisionTreeQuestion';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
@@ -26,6 +27,7 @@ import DiscoveryIntroModal, {
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
+import TriageStepper from '@/components/TriageStepper';
 import TriageTreeMinimap from '@/components/TriageTreeMinimap';
 
 import type { ClueType } from '@/types';
@@ -178,11 +180,56 @@ const Step2_Discovery = ({
     permission_changes: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 다수 — 계정 단서' },
     log_gap: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '감사 로그 누락 — Cloud Trail 단서' },
     data_access: { clueType: 'SERVICE', variant: 'object_storage', reason: '비정상 데이터 액세스 — 서비스 단서' },
-    // Q3 옵션
+    // Q3 옵션 (Q3_additional_context — 호환 유지)
     fail_then_success: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: '실패→성공 패턴 — MFA 미적용 계정 단서' },
     multi_region_concurrent: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '동시 다지역 — IP 단서' },
     storage_policy_change: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 정책 변경 — 서비스 단서' },
     serverless_new: { clueType: 'SERVICE', variant: 'iam', reason: 'Serverless 신규 — IAM 단서' },
+    // E4 2026-05-21 — Q3 variants
+    non_korean_geographic: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '비국내 지리 — IP 단서' },
+    storage_policy_public: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage public 변경 — 서비스 단서' },
+    s3_credential_change: { clueType: 'SERVICE', variant: 'iam', reason: 'S3 credential 변경 — IAM 단서' },
+    multi_csp_pivot: { clueType: 'IP_ADDRESS', variant: 'multi_csp_observed', reason: '멀티 CSP 횡적이동 — IP 단서' },
+    billing_spike: { clueType: 'SERVICE', variant: 'iam', reason: '결제 spike — 자원 단서' },
+    off_hours_priv: { clueType: 'TIME_WINDOW', variant: 'off_hours', reason: '비표준 시각 권한 변경 — 시각 단서' },
+    multiple_iam_changes: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '다수 IAM 변경 — 계정 단서' },
+    gradual_priv_creep: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 점진 상승 — 계정 단서' },
+    self_audit_disable: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '본인 감사 비활성 — Cloud Trail 단서' },
+    mass_encrypt: { clueType: 'SERVICE', variant: 'object_storage', reason: '대량 암호화 — Object Storage 단서' },
+    backup_deletion: { clueType: 'SERVICE', variant: 'object_storage', reason: '백업 삭제 — Object Storage 단서' },
+    ransom_extension: { clueType: 'HASH', variant: 'unknown', reason: '비표준 확장자 — 해시 단서 (unknown)' },
+    storage_destruction: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 파괴 — 서비스 단서' },
+    // E4 — Q4 옵션
+    mfa_token_reuse: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 토큰 재사용 — 해당 계정 단서' },
+    mfa_registration_change: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 등록 변경 — 계정 단서' },
+    mfa_not_applied: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 미적용 — 계정 단서' },
+    audit_log_tampered: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '인증 감사 로그 변조 — Cloud Trail 단서' },
+    backup_destroyed: { clueType: 'SERVICE', variant: 'object_storage', reason: '백업 파괴 — Object Storage 단서' },
+    short_term_public: { clueType: 'TIME_WINDOW', reason: '단기 공개 — 시각 윈도우 단서' },
+    long_term_public: { clueType: 'TIME_WINDOW', reason: '장기 노출 — 시각 윈도우 단서' },
+    scope_excess: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '직무 초과 — 계정 단서' },
+    partner_account: { clueType: 'ACCOUNT', variant: 'newly_created', reason: '협력사 계정 — 계정 단서' },
+    // E4 — Q5 옵션
+    tor_vpn: { clueType: 'IP_ADDRESS', variant: 'tor_vpn', reason: 'Tor/VPN exit — IP 단서' },
+    internal_ip: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '사내 IP — IP 단서' },
+    internal_endpoint: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '사내 단말 — IP 단서' },
+    internal_vpn: { clueType: 'IP_ADDRESS', variant: 'multi_csp_observed', reason: '사내+VPN — IP 단서' },
+    trace_deletion: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '흔적 삭제 — Cloud Trail 단서' },
+    storage_wide: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Storage 광범위 — 서비스 단서' },
+    multi_region: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '멀티 리전 — IP 단서' },
+    operator: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '운영자 변경 — 계정 단서' },
+    abnormal_ip: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '비정상 IP — IP 단서' },
+    automation_script: { clueType: 'ACCOUNT', variant: 'newly_created', reason: '자동화 스크립트 — 계정 단서' },
+    // E4 — Q6 옵션
+    priv_change: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 — 계정 단서' },
+    storage_download: { clueType: 'SERVICE', variant: 'object_storage', reason: '대량 다운로드 — Object Storage 단서' },
+    function_persist: { clueType: 'SERVICE', variant: 'iam', reason: '신규 함수 지속성 — IAM 단서' },
+    note_found: { clueType: 'HASH', variant: 'known_malicious', reason: '랜섬 노트 — 해시 단서' },
+    double_extortion: { clueType: 'DOMAIN', variant: 'c2', reason: '이중 협박 도메인 — 도메인 단서' },
+    pii: { clueType: 'SERVICE', variant: 'object_storage', reason: 'PII 데이터 — Object Storage 단서' },
+    trade_secret: { clueType: 'SERVICE', variant: 'object_storage', reason: '영업비밀 — Object Storage 단서' },
+    data_external: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '데이터 외부 전송 — IP 단서' },
+    iam_self_delete: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: 'IAM 자기 삭제 — 계정 단서' },
   };
 
   const handleSubmitAnswer = async (answerIds: string[]) => {
@@ -218,6 +265,23 @@ const Step2_Discovery = ({
           showToast(`💡 ${hint.reason}`, 2800);
           break;
         }
+      }
+      // E4 §4-4 (2026-05-21): 격차 기반 진단 hint — 답변 직후 1·2위 격차 토스트
+      const sorted = (Object.keys(res.hypothesis_scores) as IncidentType[])
+        .filter((t) => t !== 'UNCLASSIFIED')
+        .map((t) => res.hypothesis_scores[t] ?? 0)
+        .sort((a, b) => b - a);
+      const gap = sorted[0] - (sorted[1] ?? 0);
+      const primary = sorted[0];
+      if (primary >= 130 && gap >= 30) {
+        // auto_skip 조건 만족 — 인라인 카드는 우측 패널 ConfidenceGauge 가 강조
+        showToast('🎯 명확 — 자동 확정 가능. 시스템 구성 제출 시 즉시 진행', 3500);
+      } else if (gap >= 20) {
+        showToast(`🎯 명확해지는 중 (격차 ${gap}점)`, 2200);
+      } else if (gap >= 10) {
+        showToast(`가설 형성 중 (격차 ${gap}점) — Q4·Q5 진행 권장`, 2200);
+      } else if (primary > 0) {
+        showToast(`⚠ 여전히 모호 (격차 ${gap}점) — 추가 단서 또는 답변 권장`, 2500);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -303,6 +367,13 @@ const Step2_Discovery = ({
           TheHive·DFIR-IRIS·NIST 800-61r2 표준 흐름. 결정성 100% — 같은 답변 시퀀스는 같은 결과.
         </div>
       </div>
+
+      {/* E4 (2026-05-21): 진단 타임라인 stepper — Q1~Q6 6단계 가시화 */}
+      <TriageStepper
+        completedPath={completedPath}
+        currentNodeId={currentNodeId}
+        isTerminal={isTerminal}
+      />
 
       {/* 3-panel 레이아웃 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
@@ -401,7 +472,7 @@ const Step2_Discovery = ({
               <DecisionTreeQuestion
                 node={currentNode}
                 step={completedPath.length + 1}
-                totalEstimated={3}
+                totalEstimated={6}
                 loading={loading}
                 onSubmit={handleSubmitAnswer}
                 onReset={handleResetTree}
@@ -427,6 +498,9 @@ const Step2_Discovery = ({
         {/* 우측 — 가설 점수 + 추천 + 액션 (sticky) */}
         <div className="min-w-0">
           <div className="panel p-4 lg:sticky lg:top-4 space-y-4">
+            {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
+            <ConfidenceGauge scores={hypothesisScores} />
+
             <HypothesisScoreBar
               scores={hypothesisScores}
               highlightPrimary={recommendation?.primary?.incident_type}
@@ -499,6 +573,47 @@ const Step2_Discovery = ({
                 </ul>
               </div>
             )}
+
+            {/* E4 §4-6 (2026-05-21): 조기 종료 인라인 카드 — auto_confirm 도달했으나
+                트리가 아직 진행 중일 때 노출 (Q4·Q5·Q6 계속 vs 즉시 확정) */}
+            {recommendation?.outcome === 'auto_confirm' &&
+              !isTerminal &&
+              currentNodeId && (
+                <div className="border-l-[3px] border-l-brand-teal bg-brand-teal/10 rounded-md p-3">
+                  <div className="text-[11px] text-brand-teal font-semibold mb-1">
+                    🎯 {recommendation.primary
+                      ? INCIDENT_TYPE_KO[recommendation.primary.incident_type]
+                      : '사고유형'}{' '}
+                    신뢰도 도달
+                  </div>
+                  <div className="text-[10.5px] text-ink-200 mb-2 leading-4">
+                    1위 점수 {recommendation.primary?.score}점 — auto_skip 임계 도달.
+                    Q4·Q5·Q6 진행 시 의외성(복합 사고) 추가 발견 가능.
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => {
+                        if (pendingConfig) {
+                          handleAccept(pendingConfig);
+                        } else {
+                          showToast('좌측 시스템 구성을 먼저 제출해주세요');
+                        }
+                      }}
+                      className="btn-primary btn-xs flex-1"
+                    >
+                      ✓ 지금 확정
+                    </button>
+                    <button
+                      onClick={() => {
+                        showToast('Q4·Q5·Q6 계속 진행 — 추가 시그널 확인');
+                      }}
+                      className="btn-ghost btn-xs flex-1"
+                    >
+                      계속 진행
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {/* 추천 결과 */}
             {recommendation && (

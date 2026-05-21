@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMutation } from '@tanstack/react-query';
@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query';
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
+import { useTriageStore } from '@/stores/useTriageStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { createCase, updateCase } from '@/api/intake';
 import type { CSP, IncidentType, Severity } from '@/types';
@@ -40,8 +41,19 @@ const V1Setup = () => {
     setIncidentType,
   } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
+  const resetCase = useCaseStore((s) => s.reset);
+  const resetTriage = useTriageStore((s) => s.reset);
   const [step, setStep] = useState(0);
   // dev3: occurred_at 은 Step 1 종료 시점에 createCase 로 곧장 전송 — 임시 보관 불필요.
+
+  // 2026-05-21: V-1 mount 시 store 자동 초기화 — 새로고침·새 탭마다 깨끗한 상태로 시작
+  // (사용자 결정: 이전 케이스 잔존이 시연·디버깅에 방해).
+  // 다른 화면(V-2~V-8)에서 caseId 사용 중이면 그 사이에는 store 유지 — V-1 재진입 시만 reset.
+  useEffect(() => {
+    resetCase();
+    resetTriage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const current = stepLabels[step];
 

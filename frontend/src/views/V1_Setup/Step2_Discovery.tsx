@@ -156,8 +156,7 @@ const Step2_Discovery = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 
-  // currentNodeId 변경 시 currentNode 데이터 동기화 (mock 응답에서 채워짐)
-  // — 실제로는 startTriage / nextTriage 응답에서 next_node 를 직접 받음
+  // currentNode 데이터는 startTriage / nextTriage 응답의 next_node 를 직접 받아 채운다
 
   // Q4 (2026-05-21): 트리 답변 → 단서 힌트 매핑 — 답변 선택 시 CluesInput 의 type
   // + variant 자동 선택. 사용자가 단서를 직접 추가하면 가중치까지 함께 부여됨.

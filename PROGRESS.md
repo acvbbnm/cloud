@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-21 (심야) · 브랜치: `byungwoo` (Plan-Q + jingyu 머지 + HIGH 3건 + **결정 트리 E4 구현 완료** A~G 7/7)
+> 마지막 업데이트: 2026-05-22 · 브랜치: `byungwoo` (E4 7/7 + **안정화 — 통합 진단 / V-1 5단계 분리 / 환경 시딩**)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,6 +41,37 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-22 — 안정화 단계 (통합 진단 + V-1 흐름 재구조화)
+
+기능 동결 후 안정화 — UI/UX 흐름 정정 + 백엔드·DB 완벽 동작 목표.
+
+**MOCK 일괄 제거** (커밋 `2f47a3d`·`d9f6730`):
+- `api/triage.ts` 구식 3단계 mock 트리·가중치·임계값 제거 (E4 6단계와 불일치, fallback 시 퇴행 위험).
+- `api/intake.ts` `MOCK_CASE`·`VITE_USE_MOCK` 제거. 프론트 8개 api 모듈 30개 함수 전부 실 `/api` 호출 — mock 분기 0건.
+- 백엔드 `stub`(LLM)·`깡통`(RAG) 은 mock 이 아닌 필수 오프라인 폴백 — 보존.
+
+**통합 진단** (커밋 `6d8cbe2` — `scripts/e2e_full_pipeline.py` 신규):
+- L0~L4 + 공통 29 엔드포인트 전수 호출 검증 — **29/29 PASS**.
+- Ollama 연결됨(llama3.1:8b)·ChromaDB 연결됨 확인.
+
+**버그 수정** (커밋 `63cf1c0`):
+- Header CSP 토글 `통합 뷰`(csp=all) 제거 — 제거된 데이터 모델 잔존, 클릭 시 케이스 생성 422.
+
+**V-1 흐름 5단계 분리** (커밋 `58d5ae9`):
+- 기존 4단계의 M0-2 "시스템 구성"이 실제로는 Discovery Loop 전체를 담던 문제 해소.
+- `M0-0 분석환경 · M0-1 케이스메타 · M0-2 시스템구성 · M0-3 단서루프 · M0-4 초동수집가이드`.
+- `Step2_Discovery`→`Step3_Discovery`(단서 루프 전용) / `Step3_GuideChecklist_V2`→`Step4_`.
+
+**환경 변경자 → 가설 점수 시딩** (커밋 `9f8f34c`):
+- 죽어있던 `weights.json.environment_modifiers_to_hypothesis`(13개) 실제 배선.
+- 신규 `core/intake/modifier_eval.py` — 트리거 평가 공용 모듈 (가이드·가설 공용, DRY).
+- `Triage.start(system_config)` + `POST /api/triage/start` 가 `case.system_config` 평가 →
+  M0-3 단서 루프가 0 이 아닌 환경 기반 가설 점수에서 출발.
+
+**회귀 검증**: 풀 파이프라인 29/29 · 트리 E4 5/5 PASS · 프론트 `tsc` 통과.
+
+**남은 안정화 항목**: ① KB 임베딩 갭 (KB 125 청크 vs ChromaDB 109) ② Sidebar 계층 라벨 (V5·V6 = Layer 4, V8 = Layer 3 정정).
 
 ### 2026-05-21 (심야) — 결정 트리 E4 구현 (A~G 7/7 완료)
 

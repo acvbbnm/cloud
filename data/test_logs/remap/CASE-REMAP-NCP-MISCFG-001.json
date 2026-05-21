@@ -1,0 +1,142 @@
+[
+  {
+    "historyId": "h-b2333fd94b2e",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:33:11 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-d8884ccf5284",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Get Sub Account Policy List",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:35:08 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-b7fccdd8d8ea",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "List Buckets",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:36:42 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-43971751c6fb",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:39:55 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-a8593b74c331",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:42:11 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "10.10.5.30",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-7fd128e4d660",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 06:48:33 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-68fa65199cbb",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/misconfig-victim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-09 07:15:50 UTC",
+    "content": {
+      "actionUserName": "misconfig-victim",
+      "sourceIp": "185.220.101.4",
+      "productData": {}
+    }
+  }
+]

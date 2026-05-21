@@ -1,6 +1,14 @@
 import client from './client';
 
-import type { CreateCaseReq, CaseResponse, GuideResponse } from '@/types';
+import type {
+  CaseResponse,
+  CreateCaseReq,
+  GuideV2Response,
+  IncidentType,
+  Observable,
+  TLP,
+  TriageState,
+} from '@/types';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -28,14 +36,30 @@ export const getCase = async (caseId: string): Promise<CaseResponse> => {
   return res.data.data;
 };
 
-export const getGuide = async (caseId: string): Promise<GuideResponse> => {
-  if (USE_MOCK) {
-    return {
-      caseId,
-      completionRate: 0,
-      targets: [],
-    };
-  }
-  const res = await client.get('/api/guide', { params: { caseId } });
+/** GET /api/guide/v2 — 외부 표준 6종 기반 Kill Chain 매트릭스 가이드 (dev2 채택).
+ *  v1 getGuide() 는 2026-05-18 회의 결정에 따라 폐기됨. */
+export const getGuideV2 = async (caseId: string): Promise<GuideV2Response> => {
+  const res = await client.get('/api/guide/v2', { params: { caseId } });
+  return res.data.data;
+};
+
+/** PATCH /api/cases/{caseId} — 케이스 부분 갱신 (dev3 B-3).
+ *  V-8 IncidentTypeReviewCard 가 secondary_incident_types 등록 시 호출. */
+export interface UpdateCaseReq {
+  severity?: string;
+  system_config?: Record<string, unknown>;
+  incident_type?: IncidentType;
+  title?: string;
+  tlp?: TLP;
+  observables?: Observable[];
+  secondary_incident_types?: IncidentType[];
+  triage_state?: TriageState | null;
+}
+
+export const updateCase = async (
+  caseId: string,
+  data: UpdateCaseReq,
+): Promise<CaseResponse> => {
+  const res = await client.patch(`/api/cases/${caseId}`, data);
   return res.data.data;
 };

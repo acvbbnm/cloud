@@ -4,6 +4,7 @@
 
 흐름:
   AISherpa.chat() → LLMEngine.generate(query, context) → Ollama /api/chat → 응답 텍스트
+  AISherpa.chat_stream() → LLMEngine.generate_stream() → 토큰 단위 yield (Phase 2.3)
 
 핵심 원칙 (CLAUDE.md / 설계서 5.1절 정합):
   - AI 는 판단·결정하지 않는다. 검색·요약·제안만 수행.
@@ -18,10 +19,14 @@
 GPT-OSS 호환:
   - 응답에 `<thinking>`, `<think>`, `analysis...assistantfinal` 같은 reasoning 토큰이
     섞일 수 있어 `_strip_reasoning()` 으로 후처리하여 최종 답변만 V-8 에 노출.
+  - 스트리밍 시: reasoning 영역 끝(`</think>` 또는 `assistantfinal`)을 만나기 전까지의
+    토큰은 클라이언트에 전송하지 않고 버퍼링. 끝 마커 이후 토큰만 yield.
 """
+import json
 import logging
+import os
 import re
-from typing import Optional
+from typing import Iterator, Optional
 
 import httpx
 
@@ -160,8 +165,9 @@ class LLMEngine:
                     "options": {
                         # 시연 안정성 — 응답이 매번 흔들리지 않도록 결정성 ↑
                         "temperature": 0.3,
-                        # 노트북 환경 기준 800 tokens ≈ 16~27초 (30s timeout 안 걸림)
-                        "num_predict": 800,
+                        # GPU 노트북 기준 800 tokens 약 20초, CPU 전용은 그 5~10배.
+                        # 환경변수 LLM_NUM_PREDICT 로 오버라이드 가능 (CPU 머신은 300 권장).
+                        "num_predict": int(os.getenv("LLM_NUM_PREDICT", "400")),
                         # system + 3청크(@500자) + 질의 ≈ 2k tokens → 4k 윈도우면 여유
                         "num_ctx": 4096,
                     },
@@ -192,6 +198,149 @@ class LLMEngine:
             return _FALLBACK_TIMEOUT
 
     @classmethod
+    def generate_stream(
+        cls,
+        prompt: str,
+        context: Optional[list[KBChunk]] = None,
+    ) -> Iterator[str]:
+        """스트리밍 응답 생성 — Ollama stream=True. 토큰 단위 yield (Phase 2.3).
+
+        UX 효과: 100초 체감 대기 → 첫 토큰까지 ~5초 + 점진 표시.
+
+        후처리:
+          - Reasoning 토큰(`<think>...</think>`, GPT-OSS analysis 블록) 안의 토큰은
+            yield 하지 않고 버퍼링. 끝 마커 이후부터만 클라이언트로 흘려보냄.
+          - 컨텍스트 없거나 오류 시 fallback 한 번에 반환 후 종료.
+
+        Yields:
+            응답 텍스트의 점진적 청크 (delta). 한 번의 호출이 종료되면 generator 끝.
+        """
+        if not context:
+            yield _FALLBACK_NO_CONTEXT
+            return
+
+        user_prompt = _build_user_prompt(prompt, context)
+        payload = {
+            "model": settings.LLM_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            "stream": True,
+            "options": {
+                "temperature": 0.3,
+                "num_predict": int(os.getenv("LLM_NUM_PREDICT", "400")),
+                "num_ctx": 4096,
+            },
+        }
+
+        try:
+            with httpx.stream(
+                "POST",
+                f"{settings.OLLAMA_BASE_URL}/api/chat",
+                json=payload,
+                timeout=settings.LLM_TIMEOUT,
+            ) as r:
+                if not r.is_success:
+                    logger.warning(
+                        "[LLMEngine.stream] Ollama HTTP %d (model=%s)",
+                        r.status_code,
+                        settings.LLM_MODEL,
+                    )
+                    yield _FALLBACK_TIMEOUT
+                    return
+
+                # 스트리밍 상태 머신
+                in_thinking = False       # <think> 또는 <thinking> 진입 여부
+                analysis_skipped = False  # GPT-OSS analysis 블록 통과 완료 여부
+                buffer = ""               # 마커 매칭 대비 사이드 버퍼
+                emitted_any = False       # 최소 1 토큰 emit 됐는지
+
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    msg = chunk.get("message") or {}
+                    delta = msg.get("content", "")
+                    if not delta:
+                        if chunk.get("done"):
+                            break
+                        continue
+
+                    buffer += delta
+
+                    # GPT-OSS analysis 블록 — 첫 'assistantfinal' 마커 전까지 skip
+                    if not analysis_skipped and "assistantfinal" in buffer.lower():
+                        idx = buffer.lower().rfind("assistantfinal")
+                        buffer = buffer[idx + len("assistantfinal"):]
+                        analysis_skipped = True
+
+                    # <think> 또는 <thinking> 오픈/클로즈 마커 처리
+                    while True:
+                        if not in_thinking:
+                            # 열림 마커 찾기
+                            low = buffer.lower()
+                            i_open = -1
+                            for tag in ("<thinking>", "<think>"):
+                                pos = low.find(tag)
+                                if pos != -1 and (i_open == -1 or pos < i_open):
+                                    i_open = pos
+                            if i_open == -1:
+                                break
+                            # 마커 전까지는 emit
+                            if i_open > 0:
+                                yield buffer[:i_open]
+                                emitted_any = True
+                            buffer = buffer[i_open:]
+                            in_thinking = True
+                        else:
+                            low = buffer.lower()
+                            i_close = max(low.find("</thinking>"), low.find("</think>"))
+                            if i_close == -1:
+                                # 아직 닫힘 마커 안 옴 — 추가 청크 대기
+                                buffer = ""
+                                break
+                            # 닫힘 마커 길이는 7 또는 10
+                            close_tag = "</thinking>" if "</thinking>" in low else "</think>"
+                            buffer = buffer[i_close + len(close_tag):]
+                            in_thinking = False
+
+                    # 안전 emit — 마커 매칭 후 남은 텍스트가 길어지면 보냄
+                    # (마지막 32자는 마커 분할 대비 유지)
+                    if not in_thinking and len(buffer) > 32:
+                        yield buffer[:-32]
+                        buffer = buffer[-32:]
+                        emitted_any = True
+
+                    if chunk.get("done"):
+                        break
+
+                # 잔여 버퍼 정리
+                if not in_thinking and buffer:
+                    yield buffer
+                    emitted_any = True
+
+                if not emitted_any:
+                    yield _FALLBACK_NO_CONTEXT
+
+        except httpx.TimeoutException:
+            logger.warning(
+                "[LLMEngine.stream] timeout (>%ds, model=%s)",
+                settings.LLM_TIMEOUT,
+                settings.LLM_MODEL,
+            )
+            yield _FALLBACK_TIMEOUT
+        except httpx.HTTPError as e:
+            logger.warning("[LLMEngine.stream] HTTP error: %s", e)
+            yield _FALLBACK_TIMEOUT
+        except Exception:
+            logger.exception("[LLMEngine.stream] unexpected error")
+            yield _FALLBACK_TIMEOUT
+
+    @classmethod
     def health(cls) -> dict:
         """Ollama 서버 상태 + 설정 모델 존재 여부 확인.
 
@@ -204,8 +353,11 @@ class LLMEngine:
             }
         """
         try:
-            r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=2.0)
-            if r.ok:
+            # 10초로 완화 — Ollama 가 추론 중일 때 /api/tags 응답이 큐잉되어 지연되는 케이스 대응.
+            # 너무 짧으면 모델이 RAM 에 로드된 상태에서도 health 가 'stub' 으로 표시되는 문제.
+            r = httpx.get(f"{settings.OLLAMA_BASE_URL}/api/tags", timeout=10.0)
+            # httpx 는 requests 와 달리 .ok 속성이 없음 — is_success 사용
+            if r.is_success:
                 models = [m.get("name") for m in r.json().get("models", [])]
                 connected = settings.LLM_MODEL in models
                 return {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
@@ -8,7 +8,9 @@ import Badge from '@/components/Badge';
 
 import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
-import { getKbStats, postChat } from '@/api/sherpa';
+import { getKbStats, streamChat } from '@/api/sherpa';
+
+import IncidentTypeReviewCard from './IncidentTypeReviewCard';
 
 import type { SherpaSource } from '@/types';
 
@@ -37,10 +39,14 @@ const V8Sherpa = () => {
 
   const messages = useSherpaStore((s) => s.messages);
   const push = useSherpaStore((s) => s.push);
+  const updateLast = useSherpaStore((s) => s.updateLast);
+  const appendDelta = useSherpaStore((s) => s.appendDelta);
   const sessionId = useSherpaStore((s) => s.sessionId);
   const setSessionId = useSherpaStore((s) => s.setSessionId);
 
   const [input, setInput] = useState('');
+  // Phase 2.3 — 스트리밍 응답 진행 중 여부 (UI disabled 토글)
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // KB 인덱스 + 엔진 상태 — caseId 무관, 서버 KB 카탈로그.
@@ -50,40 +56,52 @@ const V8Sherpa = () => {
     staleTime: 60_000,
   });
 
-  // 자연어 질의 — POST /api/sherpa/chat
-  const chatMutation = useMutation({
-    mutationFn: postChat,
-    onSuccess: (data) => {
-      if (!sessionId) setSessionId(data.sessionId);
-      push({
-        role: 'sherpa',
-        text: data.response,
-        sources: data.sources,
-        source: formatSourceSummary(data.sources),
-      });
-    },
-    onError: () => {
-      push({
-        role: 'sherpa',
-        text: '⚠ 셰르파 응답 실패. 백엔드(서버 /api/sherpa/chat) 연결 또는 KB 인덱스를 확인해 주세요.',
-      });
-    },
-  });
-
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (q?: string) => {
+  /**
+   * Phase 2.3 스트리밍 자연어 질의.
+   *   1. user 메시지 push
+   *   2. 빈 sherpa 메시지 push (스트리밍 누적용)
+   *   3. streamChat → onStart(sources)·onDelta(텍스트 누적)·onDone
+   *   4. 에러 시 마지막 sherpa 메시지를 fallback 텍스트로 갱신
+   */
+  const handleSend = async (q?: string) => {
     const text = (q ?? input).trim();
-    if (!text || chatMutation.isPending) return;
+    if (!text || isStreaming) return;
     push({ role: 'user', text });
+    push({ role: 'sherpa', text: '' }); // 빈 sherpa 메시지 — 토큰 누적용
     setInput('');
-    chatMutation.mutate({
-      caseId: caseId ?? null,
-      sessionId: sessionId ?? null,
-      query: text,
-    });
+    setIsStreaming(true);
+
+    await streamChat(
+      {
+        caseId: caseId ?? null,
+        sessionId: sessionId ?? null,
+        query: text,
+      },
+      {
+        onStart: (newSessionId, sources) => {
+          if (!sessionId) setSessionId(newSessionId);
+          updateLast({ sources, source: formatSourceSummary(sources) });
+        },
+        onDelta: (delta) => {
+          appendDelta(delta);
+        },
+        onDone: () => {
+          setIsStreaming(false);
+        },
+        onError: (err) => {
+          updateLast({
+            text:
+              '⚠ 셰르파 응답 실패. 백엔드(/api/sherpa/chat/stream) 또는 KB 인덱스 확인이 필요합니다.\n' +
+              `(상세: ${err.message})`,
+          });
+          setIsStreaming(false);
+        },
+      },
+    );
   };
 
   const engine = kbQuery.data?.engine;
@@ -119,6 +137,9 @@ const V8Sherpa = () => {
           </div>
         }
       />
+
+      {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
+      {caseId && <IncidentTypeReviewCard caseId={caseId} />}
 
       {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">
@@ -208,12 +229,15 @@ const V8Sherpa = () => {
                 </div>
               ),
             )}
-            {chatMutation.isPending && (
-              <div className="bg-ink-950 border border-ink-700/70 rounded-2xl p-4 text-[12px] text-ink-400 max-w-[60%] animate-pulse">
-                <b className="text-brand-purple text-[11px]">AI 셰르파</b>
-                <div className="mt-1">KB 검색 중…</div>
-              </div>
-            )}
+            {isStreaming &&
+              messages.length > 0 &&
+              messages[messages.length - 1].role === 'sherpa' &&
+              messages[messages.length - 1].text === '' && (
+                <div className="bg-ink-950 border border-ink-700/70 rounded-2xl p-4 text-[12px] text-ink-400 max-w-[60%] animate-pulse">
+                  <b className="text-brand-purple text-[11px]">AI 셰르파</b>
+                  <div className="mt-1">KB 검색 + 토큰 스트리밍 시작 중…</div>
+                </div>
+              )}
           </div>
 
           {/* 빠른 질의 칩 */}
@@ -222,7 +246,7 @@ const V8Sherpa = () => {
               <button
                 key={q}
                 onClick={() => handleSend(q)}
-                disabled={chatMutation.isPending}
+                disabled={isStreaming}
                 className="text-[10.5px] px-2.5 py-1 rounded-full bg-ink-900 border border-ink-700/70 text-ink-300 hover:border-brand-blue/40 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {q}
@@ -237,14 +261,14 @@ const V8Sherpa = () => {
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="질문 입력 (예: T1078.004 사례, NCP Activity Tracer 보존 기간 등)"
               className="input"
-              disabled={chatMutation.isPending}
+              disabled={isStreaming}
             />
             <button
               onClick={() => handleSend()}
-              disabled={chatMutation.isPending || !input.trim()}
+              disabled={isStreaming || !input.trim()}
               className="btn-primary disabled:opacity-50"
             >
-              {chatMutation.isPending ? '검색…' : '전송'}
+              {isStreaming ? '스트리밍…' : '전송'}
             </button>
           </div>
         </div>

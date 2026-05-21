@@ -120,57 +120,46 @@ http://localhost:8000
 
 ---
 
-### GET /api/guide?caseId={caseId} — 수집 체크리스트
+### GET /api/guide/v2?caseId={caseId} — 수집 가이드 (외부 표준 6종 기반)
 
-**Response (200):**
+> **v1 `/api/guide` 는 2026-05-18 회의 결정으로 폐기** — 본 v2 가 유일 가이드 API.
+
+**Response (200)** (구조 요약 — 풀 형식은 `docs/신규_수집가이드_설계.md` 참조):
 ```json
 {
   "status": "ok",
   "data": {
-    "caseId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "caseId": "...",
+    "incidentType": "CREDENTIAL_THEFT",
+    "csp": "naver",
     "completionRate": 0,
-    "targets": [
-      {
-        "target_id": "CT-NCP-IAM-001",
-        "log_type": "Cloud Activity Tracer - API 호출 로그",
-        "evidence_role": "REQUIRED",
-        "priority": 10,
-        "description": "IAM 관련 API 호출 기록 (CreateSubAccount, ChangePassword 등)",
-        "collected": false
-      },
-      {
-        "target_id": "CT-NCP-IAM-002",
-        "log_type": "Sub Account 접근 기록",
-        "evidence_role": "REQUIRED",
-        "priority": 9,
-        "description": "서브 계정 로그인 이력 및 권한 변경",
-        "collected": false
-      },
-      {
-        "target_id": "CT-NCP-IAM-003",
-        "log_type": "Console Login 로그",
-        "evidence_role": "REQUIRED",
-        "priority": 8,
-        "description": "콘솔 로그인 성공/실패 기록",
-        "collected": false
-      },
-      {
-        "target_id": "CT-NCP-IAM-004",
-        "log_type": "Resource Manager 변경 로그",
-        "evidence_role": "CORROBORATING",
-        "priority": 5,
-        "description": "리소스 그룹 및 정책 변경 이력",
-        "collected": false
-      },
-      {
-        "target_id": "CT-NCP-IAM-005",
-        "log_type": "Object Storage 접근 로그",
-        "evidence_role": "CORROBORATING",
-        "priority": 4,
-        "description": "오브젝트 스토리지 읽기/쓰기 로그",
-        "collected": false
+    "phases": {
+      "Initial Access": {
+        "phase_id": "TA0001",
+        "phase_name": "초기 침투",
+        "mitre_url": "https://attack.mitre.org/tactics/TA0001/",
+        "kisa_reference": "KISA 2.4 사고 탐지 - 비인가 접속",
+        "targets": [
+          {
+            "category_id": "1.5.1",
+            "category_name": "클라우드 인증 - 인증 기록",
+            "evidence_role": "REQUIRED",
+            "priority": 13,
+            "priority_basis": "NIST SP 800-86 3.1 + 환경 보정 +3",
+            "rationale": "공격자의 최초 접근 시점·IP·계정 확정...",
+            "use_cases": ["...", "..."],
+            "csp_specific": {"naver": "action: Login / Console Login", "nhn": "..."},
+            "collection_methods": {"naver": {"collection_steps": ["..."], "cli_hint": "..."}, "nhn": {}},
+            "sources": [{"std":"Google", "ref":"1.5.1", "url":"..."}, ...],
+            "collected": false
+          }
+        ]
       }
-    ]
+    },
+    "applied_modifiers": [...],
+    "environment_warnings": [...],
+    "source_standards": ["Google Cloud Threat Intel", "MITRE ATT&CK v14", "KISA 안내서", "NIST SP 800-86", "ISO/IEC 27037", "CSA Top Threats 2024"],
+    "version": "v2"
   }
 }
 ```

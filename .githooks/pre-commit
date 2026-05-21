@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# AI Sherpa pre-commit hook — 회귀 방지 (a8b9362 들여쓰기 회귀 사후 도입, 2026-05-18)
+#
+# 검사 항목:
+#   1. 스테이지된 .py 파일 SyntaxError (ast.parse)
+#   2. 스테이지된 .ts/.tsx 파일 TypeScript 컴파일 (tsc --noEmit)
+#   3. 스테이지된 .json 파일 JSON 유효성
+#
+# 활성화: git config core.hooksPath .githooks
+# (또는 scripts/setup-hooks.sh 실행)
+
+set -e
+
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+STAGED_JSON=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.json$' || true)
+
+errors=0
+
+# ── 1) Python SyntaxError 검사 ──
+if [ -n "$STAGED_PY" ]; then
+  echo "─── Python SyntaxError 검사 ($(echo "$STAGED_PY" | wc -l) 파일) ───"
+  # backend venv 우선, 없으면 시스템 python
+  PYTHON=python
+  if [ -x backend/.venv/Scripts/python.exe ]; then
+    PYTHON=backend/.venv/Scripts/python.exe
+  elif [ -x backend/.venv/bin/python ]; then
+    PYTHON=backend/.venv/bin/python
+  fi
+  for f in $STAGED_PY; do
+    if ! "$PYTHON" -c "import ast; ast.parse(open('$f', encoding='utf-8').read())" 2>/dev/null; then
+      echo "  ❌ SyntaxError: $f"
+      "$PYTHON" -c "import ast; ast.parse(open('$f', encoding='utf-8').read())" 2>&1 | head -3 | sed 's/^/      /'
+      errors=$((errors+1))
+    fi
+  done
+fi
+
+# ── 2) JSON 유효성 검사 ──
+if [ -n "$STAGED_JSON" ]; then
+  echo "─── JSON 유효성 검사 ($(echo "$STAGED_JSON" | wc -l) 파일) ───"
+  PYTHON=${PYTHON:-python}
+  for f in $STAGED_JSON; do
+    if ! "$PYTHON" -c "import json; json.load(open('$f', encoding='utf-8'))" 2>/dev/null; then
+      echo "  ❌ Invalid JSON: $f"
+      errors=$((errors+1))
+    fi
+  done
+fi
+
+# ── 3) TypeScript 컴파일 (변경 있을 때만, 전체 tsc 라 약간 시간 소요) ──
+if [ -n "$STAGED_TS" ]; then
+  echo "─── TypeScript 컴파일 검사 (frontend 전체) ───"
+  if [ -d frontend/node_modules ]; then
+    (cd frontend && npx --no-install tsc --noEmit -p tsconfig.json 2>&1 | head -10) || {
+      echo "  ❌ tsc 컴파일 오류 (위 메시지 참고)"
+      errors=$((errors+1))
+    }
+  else
+    echo "  ⚠ frontend/node_modules 없음 — tsc 검사 건너뜀"
+  fi
+fi
+
+if [ $errors -gt 0 ]; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ pre-commit 검사 실패 ($errors 건). 위 오류를 수정한 뒤 다시 커밋하세요."
+  echo "   긴급 우회: git commit --no-verify  (비권장 — 회귀 위험)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+
+echo "✅ pre-commit 통과"
+exit 0

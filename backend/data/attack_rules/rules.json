@@ -1,6 +1,6 @@
 {
   "_status": "real_log_v1",
-  "_note": "실제 raw log(activity_logs_full.json 81건 + nhn_activity_logs.json 147건)에 등장하는 action/eventId 만 룰화. activity_name_pattern은 NCP는 action 값(예: 'Login'), NHN은 eventId 값(예: 'event_id.iam.login')에 대해 정규식 매칭. condition은 시연용 MVP에서는 비워두고 패턴만으로 매핑.",
+  "_note": "ATT&CK 매핑 룰 22건 (NCP 11 + NHN 11). base_risk_score 필드는 제거됨 — 산출 근거 부재로 학술 변호 불가. 매칭 시 첫 매칭 룰을 선택하며, 다중 매칭 시 patterns 순서(구체성 높은 룰 먼저)에 의존.",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json (NCP 81건, 분석본 일치)",
     "raw: C:/Users/sasum/nhn_activity_logs.json (NHN 147건, 분석본 일치)",
@@ -15,7 +15,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — attack-sim 다중 Login(SUCCESS+FAIL 혼재)"
     },
@@ -27,7 +26,6 @@
       "condition": {},
       "technique_id": "T1021",
       "tactic": "Lateral Movement",
-      "base_risk_score": 7.5,
       "real_log_count": 10,
       "source": "raw activity_logs_full.json"
     },
@@ -39,7 +37,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 6.5,
       "real_log_count": 6,
       "source": "raw activity_logs_full.json"
     },
@@ -51,7 +48,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — 'Create AccessKey'와 'Create access key' 두 명칭 동시 존재"
     },
@@ -63,7 +59,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json — attack-sim 06:12:59"
     },
@@ -75,7 +70,6 @@
       "condition": {},
       "technique_id": "T1552",
       "tactic": "Credential Access",
-      "base_risk_score": 9.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — kbw11111 사용자"
     },
@@ -87,7 +81,6 @@
       "condition": {},
       "technique_id": "T1537",
       "tactic": "Exfiltration",
-      "base_risk_score": 9.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — Request/Complete 2단계로 기록됨"
     },
@@ -99,7 +92,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 7.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -111,7 +103,6 @@
       "condition": {},
       "technique_id": "T1136.003",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -123,7 +114,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -135,7 +125,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 6.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -147,7 +136,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 계정 다중 Login"
     },
@@ -159,7 +147,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.5,
       "real_log_count": 10,
       "source": "raw nhn_activity_logs.json — attack 계정 2회 FAIL"
     },
@@ -171,7 +158,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json"
     },
@@ -183,7 +169,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw nhn_activity_logs.json"
     },
@@ -195,7 +180,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:02"
     },
@@ -207,7 +191,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 9.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:24"
     },
@@ -219,7 +202,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -231,7 +213,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 8.5,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:07 (stop), 04-05 17:47 (shelve)"
     },
@@ -243,7 +224,6 @@
       "condition": {},
       "technique_id": "T1485",
       "tactic": "Impact",
-      "base_risk_score": 9.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -255,7 +235,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.0,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:02"
     },
@@ -267,9 +246,119 @@
       "condition": {},
       "technique_id": "T1567",
       "tactic": "Exfiltration",
-      "base_risk_score": 7.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:06 (관리자 정상 업로드와 구분 필요, condition 추가 권장)"
+    },
+    {
+      "rule_id": "R-NCP-012",
+      "csp": "ncp",
+      "description": "Cloud Activity Tracer 비활성·삭제 — 감사 로그 변조",
+      "activity_name_pattern": "^(Delete Tracer|Disable Auto Export)$",
+      "condition": {},
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NCP-013",
+      "csp": "ncp",
+      "description": "Object Storage Bucket 삭제 — 데이터 파괴 / RANSOM Impact",
+      "activity_name_pattern": "^Delete Bucket$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NCP-014",
+      "csp": "ncp",
+      "description": "서버 인스턴스 종료 — RANSOM 서비스 중단",
+      "activity_name_pattern": "^Shutdown Server Instance$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NCP-015",
+      "csp": "ncp",
+      "description": "IAM 계정 탐색 (Sub Account Policy 열거)",
+      "activity_name_pattern": "^Get Sub Account Policy List$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 4
+    },
+    {
+      "rule_id": "R-NCP-016",
+      "csp": "ncp",
+      "description": "Server Console 직접 접근 — Lateral Movement / INSIDER",
+      "activity_name_pattern": "^Access Server Connect Console$",
+      "condition": {},
+      "technique_id": "T1021",
+      "tactic": "Lateral Movement",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NHN-012",
+      "csp": "nhn",
+      "description": "Object Storage object 다운로드 — DATA_EXFILTRATION / RANSOM 데이터 수집",
+      "activity_name_pattern": "^event_id\\.object_storage\\.object\\.download$",
+      "condition": {},
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "real_log_count": 11
+    },
+    {
+      "rule_id": "R-NHN-013",
+      "csp": "nhn",
+      "description": "IAM s3credential 삭제 — 자기 흔적 위장 / AUDIT_LOG_TAMPERING",
+      "activity_name_pattern": "^event_id\\.iaas\\.s3credential\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "real_log_count": 6
+    },
+    {
+      "rule_id": "R-NHN-014",
+      "csp": "nhn",
+      "description": "인스턴스 정지/Shelve — RANSOM 서비스 중단",
+      "activity_name_pattern": "^event_id\\.iaas\\.instance_action\\.(stop|shelve)$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NHN-015",
+      "csp": "nhn",
+      "description": "Object Storage container metadata 변경 — 공개 권한 노출 / MISCONFIG",
+      "activity_name_pattern": "^event_id\\.object_storage\\.container\\.metadata\\.update$",
+      "condition": {},
+      "technique_id": "T1538",
+      "tactic": "Discovery",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NHN-016",
+      "csp": "nhn",
+      "description": "IAM 멤버/조직 열거 — Account Discovery",
+      "activity_name_pattern": "^event_id\\.iam\\.(member\\.list|org\\.selected)$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NHN-017",
+      "csp": "nhn",
+      "description": "VPC 삭제 — 인프라 파괴 / Impact",
+      "activity_name_pattern": "^event_id\\.iaas\\.vpc\\.delete_end$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 1
     }
-  ]
+  ],
+  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)"
 }

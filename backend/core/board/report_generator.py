@@ -5,16 +5,25 @@
 
 영속화 위치: config.REPORTS_DIR/{case_id}.json (gitignore 됨)
 DOCX 산출물: config.EXPORTS_DIR/{case_id}.docx (gitignore 됨)
+PDF 산출물:  config.EXPORTS_DIR/{case_id}.pdf  (gitignore 됨, Phase 2.1)
 
 응답 형식: frontend types/index.ts `ReportResponse` 와 일치.
   { caseId, sections: ReportSections, status, created_at }
 """
 import json
+import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from docx import Document
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,6 +38,37 @@ from db.models import (
     OCSFEventModel,
     RawEventModel,
 )
+
+logger = logging.getLogger(__name__)
+
+# 한글 폰트 후보 — Windows·macOS·Linux 순회. 폐쇄망 가정 (SNF-01).
+_KOREAN_FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\malgun.ttf",       # Windows 기본 (맑은 고딕)
+    r"C:\Windows\Fonts\NanumGothic.ttf",  # Windows 추가 설치 시
+    "/System/Library/Fonts/Supplemental/AppleSDGothicNeo.ttc",  # macOS
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",          # Linux
+]
+_PDF_FONT_NAME = "AISherpaKR"
+_pdf_font_registered = False
+
+
+def _ensure_pdf_korean_font() -> Optional[str]:
+    """PDF 한글 폰트 1회 등록. 첫 호출에서만 시스템 폰트 탐색."""
+    global _pdf_font_registered
+    if _pdf_font_registered:
+        return _PDF_FONT_NAME
+    for path in _KOREAN_FONT_CANDIDATES:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(_PDF_FONT_NAME, path))
+                _pdf_font_registered = True
+                logger.info("PDF 한글 폰트 등록: %s", path)
+                return _PDF_FONT_NAME
+            except Exception as exc:  # pragma: no cover
+                logger.warning("폰트 등록 실패 (%s): %s", path, exc)
+                continue
+    logger.warning("한글 폰트 없음 — PDF 한글 깨질 수 있음")
+    return None
 
 
 # 8 섹션 키 (frontend ReportSections 와 1:1 일치)
@@ -111,7 +151,7 @@ class ReportGenerator:
                 .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
-                .order_by(AttackEventModel.risk_score.desc())
+                .order_by(AttackEventModel.mapped_at.desc())
             ).all()
         )
 
@@ -187,20 +227,17 @@ class ReportGenerator:
             f"공격 체인 노드 {len(chain_nodes)}개 / 엣지 {len(chain_edges)}개 식별."
         )
 
-        # ── 섹션 4: ATT&CK 분석 ──
+        # ── 섹션 4: ATT&CK 분석 (risk_score 제거 — 산출 근거 부재) ──
         tech_counter: dict[str, dict] = {}
         for att, _ocsf in attack_rows:
             key = att.technique_id
             entry = tech_counter.setdefault(
                 key,
-                {"tactic": att.tactic, "count": 0, "max_risk": 0.0},
+                {"tactic": att.tactic, "count": 0},
             )
             entry["count"] += 1
-            risk = float(att.risk_score) if att.risk_score is not None else 0.0
-            if risk > entry["max_risk"]:
-                entry["max_risk"] = risk
         tech_lines = [
-            f"  {tid} ({info['tactic']}) — {info['count']}건, max risk {info['max_risk']}"
+            f"  {tid} ({info['tactic']}) — 탐지 {info['count']}건"
             for tid, info in sorted(
                 tech_counter.items(), key=lambda kv: kv[1]["count"], reverse=True
             )
@@ -328,4 +365,96 @@ class ReportGenerator:
 
         out_path = cls._docx_path(case_id)
         doc.save(out_path)
+        return out_path
+
+    # ── PDF 내보내기 (Phase 2.1) ────────────────────────
+    @classmethod
+    def _pdf_path(cls, case_id: str) -> Path:
+        return settings.EXPORTS_DIR / f"{case_id}.pdf"
+
+    @classmethod
+    def render_pdf(cls, report: dict) -> Path:
+        """보고서 dict → PDF 파일 생성. reportlab + 한글 시스템 폰트 사용.
+
+        오프라인 동작 (SNF-01): 시스템에 이미 설치된 폰트만 사용. 외부 다운로드 없음.
+        DOCX 와 동일한 8 섹션 구조 + 헤더 메타.
+        """
+        case_id = report.get("caseId", "unknown")
+        out_path = cls._pdf_path(case_id)
+
+        font_name = _ensure_pdf_korean_font()
+        # 한글 폰트 없으면 reportlab 기본(Helvetica) 사용 — 한글은 □ 로 표시되나
+        # 영문/숫자는 정상. 폐쇄망 평가자 환경에 한글 폰트 없을 가능성 대비.
+
+        # 스타일 정의
+        base = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "TitleKR",
+            parent=base["Title"],
+            fontName=font_name or base["Title"].fontName,
+            fontSize=18,
+            leading=24,
+            spaceAfter=12,
+        )
+        meta_style = ParagraphStyle(
+            "MetaKR",
+            parent=base["Normal"],
+            fontName=font_name or base["Normal"].fontName,
+            fontSize=9,
+            textColor=(0.35, 0.35, 0.35),
+            leading=14,
+        )
+        heading_style = ParagraphStyle(
+            "HeadingKR",
+            parent=base["Heading2"],
+            fontName=font_name or base["Heading2"].fontName,
+            fontSize=13,
+            leading=18,
+            spaceBefore=12,
+            spaceAfter=6,
+            textColor=(0.10, 0.30, 0.55),
+        )
+        body_style = ParagraphStyle(
+            "BodyKR",
+            parent=base["Normal"],
+            fontName=font_name or base["Normal"].fontName,
+            fontSize=10.5,
+            leading=16,
+        )
+
+        doc = SimpleDocTemplate(
+            str(out_path),
+            pagesize=A4,
+            leftMargin=20 * mm,
+            rightMargin=20 * mm,
+            topMargin=20 * mm,
+            bottomMargin=20 * mm,
+            title=f"침해사고 분석 보고서 {case_id}",
+        )
+
+        # XML 이스케이프 — reportlab Paragraph 는 mini-HTML 파서 사용
+        def esc(s: str) -> str:
+            return (
+                str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            )
+
+        story = []
+        story.append(Paragraph("침해사고 분석 보고서", title_style))
+        story.append(Paragraph(f"Case ID: {esc(case_id)}", meta_style))
+        story.append(Paragraph(f"생성 시각: {esc(report.get('created_at', ''))}", meta_style))
+        story.append(Paragraph(f"상태: {esc(report.get('status', 'draft'))}", meta_style))
+        story.append(Spacer(1, 10 * mm))
+
+        sections = report.get("sections", {})
+        for key in SECTION_KEYS:
+            story.append(Paragraph(esc(SECTION_TITLES_KO[key]), heading_style))
+            text = sections.get(key, "") or ""
+            # 줄 단위로 끊어 Paragraph 화 (긴 텍스트 자동 줄바꿈)
+            for line in text.split("\n"):
+                if line.strip():
+                    story.append(Paragraph(esc(line), body_style))
+                else:
+                    story.append(Spacer(1, 4))
+
+        doc.build(story)
         return out_path

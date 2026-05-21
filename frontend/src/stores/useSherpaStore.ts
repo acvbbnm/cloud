@@ -22,6 +22,10 @@ interface SherpaState {
   setOpen: (v: boolean) => void;
   setSessionId: (id: string | null) => void;
   push: (msg: Omit<SherpaMessage, 'id'>) => void;
+  /** 마지막 sherpa 메시지의 일부 필드 갱신 — Phase 2.3 스트리밍 누적용. */
+  updateLast: (partial: Partial<Omit<SherpaMessage, 'id'>>) => void;
+  /** 마지막 sherpa 메시지의 text 에 delta 추가 — Phase 2.3 스트리밍 토큰용. */
+  appendDelta: (delta: string) => void;
   reset: () => void;
 }
 
@@ -37,7 +41,7 @@ const initialMessages: SherpaMessage[] = [
 
 /**
  * AI 셰르파 채팅 상태 — sessionId + messages 를 localStorage 영속화.
- * (시연 체크리스트 § 5 "V-8 sessionId 새로고침 시 사라짐" 이슈 대응)
+ * (시연 체크리스트  5 "V-8 sessionId 새로고침 시 사라짐" 이슈 대응)
  *
  * open 토글 자체는 휘발 (UI 상태라 새로고침 시 닫혀있는 게 자연스러움).
  *
@@ -56,6 +60,22 @@ export const useSherpaStore = create<SherpaState>()(
       setSessionId: (id) => set({ sessionId: id }),
       push: (msg) =>
         set((s) => ({ messages: [...s.messages, { id: ++seq, ...msg }] })),
+      updateLast: (partial) =>
+        set((s) => {
+          if (s.messages.length === 0) return s;
+          const next = [...s.messages];
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, ...partial };
+          return { messages: next };
+        }),
+      appendDelta: (delta) =>
+        set((s) => {
+          if (s.messages.length === 0) return s;
+          const next = [...s.messages];
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, text: last.text + delta };
+          return { messages: next };
+        }),
       reset: () => set({ sessionId: null, messages: initialMessages }),
     }),
     {

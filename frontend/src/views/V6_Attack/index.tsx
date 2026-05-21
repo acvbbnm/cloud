@@ -20,14 +20,15 @@ interface TechniqueAgg {
   technique_name: string | null;
   tactic: string;
   count: number;
-  max_risk: number;
 }
 
 type Intensity = 'high' | 'med' | 'low';
 
-const intensityFor = (maxRisk: number): Intensity => {
-  if (maxRisk >= 70) return 'high';
-  if (maxRisk >= 40) return 'med';
+// risk_score 제거 — 색상·심각도는 탐지 횟수(count) 기반으로 대체.
+// 학술 변호: 한 기법이 여러 번 탐지되면 그만큼 활동이 빈번하다는 객관 지표.
+const intensityFor = (count: number): Intensity => {
+  if (count >= 4) return 'high';
+  if (count >= 2) return 'med';
   return 'low';
 };
 
@@ -37,32 +38,29 @@ const intensityClass: Record<Intensity, string> = {
   low: 'bg-brand-blue/15 text-brand-blue ring-brand-blue/20',
 };
 
-const sevTone = (maxRisk: number): 'red' | 'amber' | 'blue' =>
-  maxRisk >= 70 ? 'red' : maxRisk >= 40 ? 'amber' : 'blue';
+const sevTone = (count: number): 'red' | 'amber' | 'blue' =>
+  count >= 4 ? 'red' : count >= 2 ? 'amber' : 'blue';
 
-const severityLabel = (maxRisk: number): string =>
-  maxRisk >= 70 ? 'Critical' : maxRisk >= 40 ? 'High' : 'Medium';
+const countLabel = (count: number): string =>
+  count >= 4 ? '다수 탐지' : count >= 2 ? '복수 탐지' : '단일 탐지';
 
 /**
  * AttackEventItem[] → tactic 별 컬럼 + technique 집계.
- * (tactic, technique_id) 그룹별 count + maxRiskScore.
+ * (tactic, technique_id) 그룹별 count.
  */
 const aggregate = (items: AttackEventItem[]): TechniqueAgg[] => {
   const map = new Map<string, TechniqueAgg>();
   for (const ev of items) {
     const key = `${ev.tactic}::${ev.technique_id}`;
     const prev = map.get(key);
-    const risk = ev.risk_score ?? 0;
     if (prev) {
       prev.count += 1;
-      if (risk > prev.max_risk) prev.max_risk = risk;
     } else {
       map.set(key, {
         technique_id: ev.technique_id,
         technique_name: ev.technique_name,
         tactic: ev.tactic,
         count: 1,
-        max_risk: risk,
       });
     }
   }
@@ -134,14 +132,14 @@ const V6Attack = () => {
       arr.push(agg);
       groups.set(agg.tactic, arr);
     }
-    // 전술 정렬: max_risk 내림차순 (가장 위험한 전술 왼쪽)
+    // 전술 정렬: tactic 내 총 탐지 count 합산 내림차순 (탐지 많은 전술 왼쪽)
     return Array.from(groups.entries())
       .map(([tactic, techs]) => ({
         tactic,
-        techniques: techs.sort((a, b) => b.max_risk - a.max_risk),
-        max_risk: Math.max(...techs.map((t) => t.max_risk)),
+        techniques: techs.sort((a, b) => b.count - a.count),
+        total_count: techs.reduce((s, t) => s + t.count, 0),
       }))
-      .sort((a, b) => b.max_risk - a.max_risk);
+      .sort((a, b) => b.total_count - a.total_count);
   }, [aggregations]);
 
   // 기법 상세 표: count 내림차순
@@ -243,17 +241,18 @@ const V6Attack = () => {
         {matrixByTactic.length > 0 && (
           <Card
             title={<>ATT&CK Cloud Matrix 히트맵</>}
-            subtitle="● = 탐지 · 색상 = max risk_score (≥70 red / ≥40 amber / 그 외 blue) · 정렬 = 전술 위험도 내림차순"
+            subtitle="● = 탐지 · 색상 = 탐지 횟수 (≥4 red / ≥2 amber / 1 blue) · 정렬 = 전술 내 총 탐지 합산 내림차순"
           >
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               {matrixByTactic.map((col) => (
                 <div key={col.tactic}>
                   <div className="text-center pb-2 border-b-2 border-ink-700/70 text-ink-300 text-[10.5px] font-bold uppercase tracking-[0.08em] mb-2">
                     {col.tactic}
+                    <span className="ml-1 text-[9.5px] text-ink-500">({col.total_count})</span>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     {col.techniques.map((t) => {
-                      const intensity = intensityFor(t.max_risk);
+                      const intensity = intensityFor(t.count);
                       return (
                         <a
                           key={t.technique_id}
@@ -261,12 +260,12 @@ const V6Attack = () => {
                           target="_blank"
                           rel="noreferrer"
                           className={`block px-2 py-2 rounded-lg text-[10.5px] font-medium ring-1 ring-inset ${intensityClass[intensity]} hover:brightness-125 transition-all`}
-                          title={`${t.technique_name ?? ''} (${t.count}건, max risk ${t.max_risk})`}
+                          title={`${t.technique_name ?? ''} (탐지 ${t.count}건)`}
                         >
                           <div className="font-bold">{t.technique_id}</div>
                           <div className="truncate">{t.technique_name ?? '—'}</div>
                           <div className="text-[9.5px] opacity-75 mt-0.5">
-                            {t.count}건 · risk {t.max_risk}
+                            탐지 {t.count}건
                             {intensity === 'high' && <span className="ml-1">●</span>}
                           </div>
                         </a>
@@ -289,8 +288,7 @@ const V6Attack = () => {
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">기법명</th>
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">전술</th>
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">이벤트 수</th>
-                    <th className="text-left px-3 py-3 border-b border-ink-700/60">max risk</th>
-                    <th className="text-left px-3 py-3 border-b border-ink-700/60">심각도</th>
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">탐지 빈도</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,9 +300,8 @@ const V6Attack = () => {
                       <td className="px-3 py-2.5 font-medium">{t.technique_name ?? '—'}</td>
                       <td className="px-3 py-2.5 text-ink-200">{t.tactic}</td>
                       <td className="px-3 py-2.5 font-mono text-ink-100">{t.count}</td>
-                      <td className="px-3 py-2.5 font-mono text-ink-200">{t.max_risk}</td>
                       <td className="px-3 py-2.5">
-                        <Badge tone={sevTone(t.max_risk)}>{severityLabel(t.max_risk)}</Badge>
+                        <Badge tone={sevTone(t.count)}>{countLabel(t.count)}</Badge>
                       </td>
                     </tr>
                   ))}

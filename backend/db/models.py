@@ -19,7 +19,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
-    Numeric,
     String,
     Text,
 )
@@ -34,18 +33,35 @@ def _uuid() -> str:
 
 # ── 테이블 1: 사고 케이스 (설계서 Table 43, 8컬럼) ──
 class IncidentCaseModel(Base):
-    """사고 케이스 메타데이터."""
+    """사고 케이스 메타데이터.
+
+    dev3 (2026-05-19) B-3: V-1 재설계 — Discovery Loop 기반 케이스 메타 확장.
+      title, tlp, observables, secondary_incident_types, triage_state 5개 칼럼 추가.
+      incident_type enum 에 UNCLASSIFIED 추가 (백엔드 Pydantic Literal 측).
+    """
 
     __tablename__ = "incident_cases"
 
     case_id = Column(String(36), primary_key=True, default=_uuid)
-    incident_type = Column(String(32), nullable=False)  # 5종 enum (설계 비고 "6종" — 확정 필요)
+    incident_type = Column(String(32), nullable=False)  # 6종 enum: 5종 + UNCLASSIFIED (dev3)
     csp = Column(String(16), nullable=False)  # naver/nhn/all
     severity = Column(String(8), nullable=False)  # critical/high/medium/low
     occurred_at = Column(DateTime, nullable=False)
     system_config = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     closed_at = Column(DateTime, nullable=True)
+
+    # ── dev3 B-3 (2026-05-19): V-1 재설계 칼럼 5종 ──
+    # Step 1 케이스 메타 (TheHive·DFIR-IRIS 정합)
+    title = Column(String(200), nullable=True)  # 사건 제목 — 기존 row 호환을 위해 nullable
+    tlp = Column(String(16), nullable=False, default="AMBER")  # 정보 공유 등급 (RED/AMBER/GREEN/WHITE)
+    # Step 2 Discovery Loop 결과 — Observable 배열
+    observables = Column(JSON, nullable=False, default=list)
+    # V-8 사후 검증으로 추가될 수 있는 부 사고유형 (메인은 incident_type)
+    secondary_incident_types = Column(JSON, nullable=True)
+    # 결정 트리 진행 상태 영속화 (새로고침·복귀 대비)
+    # {current_node_id, completed_path, hypothesis_scores, recommendation, is_terminal, mapped_techniques}
+    triage_state = Column(JSON, nullable=True)
 
 
 # ── 테이블 2: 수집 대상 카탈로그 (설계서 Table 44, 9컬럼) ──
@@ -120,7 +136,8 @@ class AttackEventModel(Base):
     technique_id = Column(String(16), nullable=False, index=True)  # T1078.004
     tactic = Column(String(32), nullable=False, index=True)
     rule_id = Column(String(36), nullable=False)  # 매핑 규칙 출처
-    risk_score = Column(Numeric(5, 2), nullable=True)  # 0.00~100.00
+    # risk_score 제거 (산출 근거 부재 / 학술 변호 불가). 우선순위 정렬은 mapped_at 또는
+    # technique 빈도 기반으로 대체.
     mapped_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 

@@ -130,7 +130,7 @@ const V7Report = () => {
   });
 
   // 미저장 변경이 있을 때 페이지 떠나기 경고 (탭 닫기·새로고침·뒤로가기)
-  // 시연 체크리스트 § 5 "V-7 dirty 추적 — 페이지 떠나기 전 미저장 변경 경고 없음" 대응
+  // 시연 체크리스트  5 "V-7 dirty 추적 — 페이지 떠나기 전 미저장 변경 경고 없음" 대응
   useEffect(() => {
     if (dirty.size === 0) return;
     const handler = (e: BeforeUnloadEvent) => {

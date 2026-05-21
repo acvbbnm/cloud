@@ -1,0 +1,162 @@
+[
+  {
+    "historyId": "h-a06d45b362f1",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:02:11 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e9fe54f838dd",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:02:48 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-9636123be59c",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Decrypt root password",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:04:33 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-79b3b3997838",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create access key",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:06:09 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e7b1feb0e722",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:08:55 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-af7448fd90e2",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:11:02 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-3185166cbf54",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:14:18 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-15fa9661d6b2",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/thompson-ext",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000007",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-22 04:15:30 UTC",
+    "content": {
+      "actionUserName": "thompson-ext",
+      "sourceIp": "198.51.100.7",
+      "productData": {}
+    }
+  }
+]

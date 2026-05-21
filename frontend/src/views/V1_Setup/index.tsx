@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMutation } from '@tanstack/react-query';
@@ -6,40 +6,89 @@ import { useMutation } from '@tanstack/react-query';
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
+import { useTriageStore } from '@/stores/useTriageStore';
 import { useToastStore } from '@/stores/useToastStore';
-import { createCase } from '@/api/intake';
-import type { IncidentType, CSP, Severity } from '@/types';
+import { createCase, updateCase } from '@/api/intake';
+import type { CSP, IncidentType, Severity } from '@/types';
 
 import Step0_CSPCards from './Step0_CSPCards';
-import Step1_TypeCards from './Step1_TypeCards';
-import Step2_SystemConfig from './Step2_SystemConfig';
-import Step3_GuideChecklist from './Step3_GuideChecklist';
+import Step1_CaseMetadata from './Step1_CaseMetadata';
+import Step2_Discovery from './Step2_Discovery';
+import Step3_GuideChecklist_V2 from './Step3_GuideChecklist_V2';
+
+// v1 수집 가이드는 2026-05-18 회의 결정에 따라 폐기 — V2 가 유일 화면.
 
 const stepLabels = [
   { code: 'M0-0', title: '분석 환경 선택' },
-  { code: 'M0-1', title: '사고 유형' },
+  // dev3: 사고유형 5장 카드 폐기 — 케이스 메타 (Title/시각/Severity/TLP) 입력
+  { code: 'M0-1', title: '케이스 메타' },
   { code: 'M0-2', title: '시스템 구성' },
   { code: 'M0-3', title: '초동 수집 가이드' },
 ];
 
 const V1Setup = () => {
   const navigate = useNavigate();
-  const { csp, incidentType, setCsp, setIncidentType, setSeverity, setCaseId } = useCaseStore();
+  const {
+    csp,
+    incidentType,
+    caseId,
+    title,
+    tlp,
+    severity,
+    setCsp,
+    setSeverity,
+    setCaseId,
+    setIncidentType,
+  } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
+  const resetCase = useCaseStore((s) => s.reset);
+  const resetTriage = useTriageStore((s) => s.reset);
   const [step, setStep] = useState(0);
+  // dev3: occurred_at 은 Step 1 종료 시점에 createCase 로 곧장 전송 — 임시 보관 불필요.
+
+  // 2026-05-21: V-1 mount 시 store 자동 초기화 — 새로고침·새 탭마다 깨끗한 상태로 시작
+  // (사용자 결정: 이전 케이스 잔존이 시연·디버깅에 방해).
+  // 다른 화면(V-2~V-8)에서 caseId 사용 중이면 그 사이에는 store 유지 — V-1 재진입 시만 reset.
+  useEffect(() => {
+    resetCase();
+    resetTriage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const current = stepLabels[step];
 
-  const createCaseMutation = useMutation({
+  // dev3 (2026-05-19): Step 1 종료 시점에 UNCLASSIFIED 빈 케이스 생성 → caseId 부여
+  // → Step 2 Discovery Loop 가 caseId 기반으로 startTriage / 트리 진행 가능
+  const initCaseMutation = useMutation({
     mutationFn: createCase,
     onSuccess: (data) => {
       setCaseId(data.caseId);
-      setStep(3);
-      showToast(`사고 케이스 생성: ${data.caseId.slice(0, 8)}…`);
+      setStep(2);
+      showToast(`케이스 생성: ${data.caseId.slice(0, 8)}… (Discovery Loop 진입)`);
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`케이스 생성 실패: ${msg}`);
+      showToast(`케이스 생성 실패: ${msg} (백엔드 실행 확인)`);
+    },
+  });
+
+  // dev3: Step 2 종료 시점 — system_config·incident_type 갱신 후 Step 3 진입
+  const finalizeCaseMutation = useMutation({
+    mutationFn: ({
+      caseId: id,
+      data,
+    }: {
+      caseId: string;
+      data: Parameters<typeof updateCase>[1];
+    }) => updateCase(id, data),
+    onSuccess: (data) => {
+      if (data.incident_type) setIncidentType(data.incident_type);
+      setStep(3);
+      showToast(`사고유형 확정: ${data.incident_type}`);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`사고유형 갱신 실패: ${msg}`);
     },
   });
 
@@ -113,52 +162,72 @@ const V1Setup = () => {
           />
         )}
         {step === 1 && (
-          <Step1_TypeCards
-            selected={incidentType}
-            csp={csp}
-            onSelect={setIncidentType}
+          <Step1_CaseMetadata
             onPrev={() => setStep(0)}
-            onNext={() => setStep(2)}
+            onNext={(occurredAt) => {
+              if (!csp) {
+                showToast('CSP 누락. Step 0 으로 돌아가세요.');
+                return;
+              }
+              // dev3 (2026-05-19): Step 1 종료 → UNCLASSIFIED 빈 케이스 즉시 생성
+              // → caseId 확보 → Step 2 Discovery Loop 의 startTriage 가 작동
+              const occurredIso = (() => {
+                const d = new Date(occurredAt);
+                return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+              })();
+              initCaseMutation.mutate({
+                incident_type: 'UNCLASSIFIED',
+                csp: csp as CSP,
+                severity: (severity as Severity) ?? 'high',
+                occurred_at: occurredIso,
+                title: title ?? undefined,
+                tlp: tlp ?? 'AMBER',
+                observables: [],
+              });
+            }}
           />
         )}
         {step === 2 && (
-          <Step2_SystemConfig
+          <Step2_Discovery
             csp={csp}
             incidentType={incidentType}
             onPrev={() => setStep(1)}
-            onSubmit={(config) => {
-              if (!csp || !incidentType) {
-                showToast('CSP·사고유형 누락. 이전 단계로 돌아가세요.');
+            onSubmit={(config, confirmedIncidentType) => {
+              if (!caseId) {
+                showToast('caseId 누락. Step 1 으로 돌아가 케이스를 생성하세요.');
                 return;
               }
               setSeverity(config.severity);
-              const occurredIso = (() => {
-                const d = new Date(config.occurred_at);
-                return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-              })();
-              createCaseMutation.mutate({
-                incident_type: incidentType as IncidentType,
-                csp: csp as CSP,
-                severity: config.severity as Severity,
-                occurred_at: occurredIso,
-                system_config: {
-                  vpc_id: config.vpc_id,
-                  region: config.region,
-                  services: config.services,
-                  network: config.network,
-                  publicIp: config.publicIp,
-                  auditEnabled: config.auditEnabled,
-                  scope: config.scope,
+              // dev3: PATCH /api/cases/{caseId} — Discovery Loop 결과 통합 갱신
+              // incident_type 은 Step 2 결정 트리에서 확정된 값 (UNCLASSIFIED 가능)
+              finalizeCaseMutation.mutate({
+                caseId,
+                data: {
+                  incident_type: confirmedIncidentType as IncidentType,
+                  severity: config.severity,
+                  system_config: {
+                    vpc_id: config.vpc_id,
+                    region: config.region,
+                    services: config.services,
+                    network: config.network,
+                    publicIp: config.publicIp,
+                    auditEnabled: config.auditEnabled,
+                    scope: config.scope,
+                    mfa_status: config.mfa_status,
+                    iam_account_count: config.iam_account_count,
+                    audit_log_retention_days: config.audit_log_retention_days,
+                    data_sensitivity: config.data_sensitivity,
+                    sso_enabled: config.sso_enabled,
+                    multi_cloud: config.multi_cloud,
+                  },
                 },
               });
             }}
-            isSubmitting={createCaseMutation.isPending}
+            isSubmitting={finalizeCaseMutation.isPending}
           />
         )}
         {step === 3 && (
-          <Step3_GuideChecklist
-            csp={csp}
-            incidentType={incidentType}
+          <Step3_GuideChecklist_V2
             onPrev={() => setStep(2)}
             onComplete={() => {
               showToast('수집 가이드 완료 → 로그 수집');

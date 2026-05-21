@@ -1,0 +1,867 @@
+{
+  "timestamp": "2026-05-21T03:29:34.482605+00:00",
+  "results": [
+    {
+      "chunk_id": "CASE-REMAP-NCP-RANSOM-001",
+      "expected": "RANSOMWARE",
+      "csp": "naver",
+      "steps": {
+        "1_create": {
+          "status": "ok",
+          "caseId": "0206b038-1690-4d3c-a222-b0953ecc0b0c",
+          "http": 201
+        },
+        "2_upload": {
+          "status": "ok",
+          "http": 201,
+          "stats": {
+            "totalEvents": 11,
+            "matched": 0,
+            "unmatched": 11,
+            "byTarget": {},
+            "sha256": "beb7a964c14188aff1ad5485bf56588bf938e819b2cb7af2afccb2fbd84093e4",
+            "sourceFile": "CASE-REMAP-NCP-RANSOM-001.json"
+          }
+        },
+        "3_normalize": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total": 11,
+            "normalized": 11,
+            "failed": 0,
+            "normalizationRate": 100.0,
+            "failedEvents": []
+          }
+        },
+        "4_map": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total_ocsf": 11,
+            "mapped": 9,
+            "unmapped": 2,
+            "mappingRate": 81.82,
+            "events": [
+              {
+                "attack_id": "70b409ae-2264-4e77-b87b-851d733aba23",
+                "ocsf_id": "4cc21805-9614-4062-98dd-e8790192743c",
+                "technique_id": "T1531",
+                "technique_name": "NCP AccessKey 비활성화/삭제 — 흔적 제거",
+                "tactic": "Impact",
+                "rule_id": "R-NCP-008",
+                "mapped_at": "2026-05-21T03:29:31.771177",
+                "event_time": "2026-05-07T03:55:30",
+                "activity_name": "Disable AccessKey"
+              },
+              {
+                "attack_id": "e8cfa8eb-c46a-4068-8650-0ceeb6598351",
+                "ocsf_id": "3a9748ff-7e4f-4132-96aa-07e58a684c03",
+                "technique_id": "T1489",
+                "technique_name": "NCP 서버 인스턴스 시작/중지 — 인프라 조작",
+                "tactic": "Impact",
+                "rule_id": "R-NCP-003",
+                "mapped_at": "2026-05-21T03:29:31.770491",
+                "event_time": "2026-05-07T03:49:55",
+                "activity_name": "Shutdown Server Instance"
+              },
+              {
+                "attack_id": "9f55dd7f-cd9c-4ffa-b39c-e8062a0f8056",
+                "ocsf_id": "942eb65b-4766-4308-9364-f7d1583e633a",
+                "technique_id": "T1489",
+                "technique_name": "NCP 서버 인스턴스 시작/중지 — 인프라 조작",
+                "tactic": "Impact",
+                "rule_id": "R-NCP-003",
+                "mapped_at": "2026-05-21T03:29:31.770112",
+                "event_time": "2026-05-07T03:49:11",
+                "activity_name": "Shutdown Server Instance"
+              },
+              {
+                "attack_id": "e8e34009-327c-4958-af4c-b629442a8a1d",
+                "ocsf_id": "715d9920-03d8-43e7-a035-7bf850ed4239",
+                "technique_id": "T1489",
+                "technique_name": "NCP 서버 인스턴스 시작/중지 — 인프라 조작",
+                "tactic": "Impact",
+                "rule_id": "R-NCP-003",
+                "mapped_at": "2026-05-21T03:29:31.769701",
+                "event_time": "2026-05-07T03:48:33",
+                "activity_name": "Shutdown Server Instance"
+              },
+              {
+                "attack_id": "a29cf53d-a1fc-4713-a2c3-b4ff57fe8878",
+                "ocsf_id": "3b316694-7d39-4ebe-aac8-460e0ca947fc",
+                "technique_id": "T1537",
+                "technique_name": "NCP Object Storage로 데이터 내보내기 — Exfiltration",
+                "tactic": "Exfiltration",
+                "rule_id": "R-NCP-007",
+                "mapped_at": "2026-05-21T03:29:31.769222",
+                "event_time": "2026-05-07T03:45:50",
+                "activity_name": "Complete For Exporting To Object Storage"
+              },
+              {
+                "attack_id": "fae257b3-edd2-4b51-9765-adfd75be1f5b",
+                "ocsf_id": "48689b51-84ec-492e-9394-e28d923909c2",
+                "technique_id": "T1537",
+                "technique_name": "NCP Object Storage로 데이터 내보내기 — Exfiltration",
+                "tactic": "Exfiltration",
+                "rule_id": "R-NCP-007",
+                "mapped_at": "2026-05-21T03:29:31.768716",
+                "event_time": "2026-05-07T02:30:11",
+                "activity_name": "Request For Exporting To Object Storage"
+              },
+              {
+                "attack_id": "47bcb00f-a9db-45bc-9dea-e5e82babeb74",
+                "ocsf_id": "95e89652-4dc7-468a-8aa9-28ef9b10d099",
+                "technique_id": "T1021",
+                "technique_name": "NCP 서버 콘솔 접근 — Lateral Movement",
+                "tactic": "Lateral Movement",
+                "rule_id": "R-NCP-002",
+                "mapped_at": "2026-05-21T03:29:31.768199",
+                "event_time": "2026-05-07T02:14:22",
+                "activity_name": "Access Server Connect Console"
+              },
+              {
+                "attack_id": "9c51e736-41c3-4fce-8f89-8600a3e6f9c7",
+                "ocsf_id": "7d9da3d0-2d64-485e-b2ad-0c48af283bd0",
+                "technique_id": "T1098.001",
+                "technique_name": "NCP AccessKey 생성 — 영속 자격증명 확보",
+                "tactic": "Persistence",
+                "rule_id": "R-NCP-004",
+                "mapped_at": "2026-05-21T03:29:31.767662",
+                "event_time": "2026-05-07T02:11:45",
+                "activity_name": "Create AccessKey"
+              },
+              {
+                "attack_id": "d97ef40d-41c5-4758-90c8-7b424591bd0d",
+                "ocsf_id": "6f01dce4-719f-48e5-acab-ed26b19aff60",
+                "technique_id": "T1078.004",
+                "technique_name": "NCP 콘솔 로그인 — 자격증명 사용 시작점",
+                "tactic": "Initial Access",
+                "rule_id": "R-NCP-001",
+                "mapped_at": "2026-05-21T03:29:31.765384",
+                "event_time": "2026-05-07T02:10:08",
+                "activity_name": "Login"
+              }
+            ]
+          }
+        },
+        "5_gap": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "gap_id": "8547aa26-8859-4581-a895-c2d844c1df1c",
+            "case_id": "0206b038-1690-4d3c-a222-b0953ecc0b0c",
+            "gap_type": "NONE",
+            "missing": [],
+            "summary": "갭 없음. 필수 증거 0건 모두 수집, OCSF 11건 중 9건 매핑 (매핑률 81.82%).",
+            "recommendation": "Layer 4 수사 보드로 진행하세요.",
+            "completionRate": 0.0,
+            "created_at": "2026-05-21T03:29:31.784981"
+          }
+        },
+        "6_attack": {
+          "status": "ok",
+          "http": 200,
+          "total": 9,
+          "tactic_dist": {
+            "Impact": 4,
+            "Exfiltration": 2,
+            "Lateral Movement": 1,
+            "Persistence": 1,
+            "Initial Access": 1
+          }
+        },
+        "7_board": {
+          "status": "ok",
+          "http": 200,
+          "nodes": 0,
+          "edges": 0
+        },
+        "8_validate": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "caseId": "0206b038-1690-4d3c-a222-b0953ecc0b0c",
+            "status": "REVIEW_NEEDED",
+            "current_incident_type": "UNCLASSIFIED",
+            "current_match": 0,
+            "current_expected": 0,
+            "current_missing": [],
+            "observed_techniques": [
+              "T1021",
+              "T1078.004",
+              "T1098.001",
+              "T1489",
+              "T1531",
+              "T1537"
+            ],
+            "observed_count": 9,
+            "extra_techniques": [
+              "T1021",
+              "T1078",
+              "T1098",
+              "T1489",
+              "T1531",
+              "T1537"
+            ],
+            "candidate_types": [
+              {
+                "type": "PRIVILEGE_ESCALATION",
+                "matched": 2,
+                "expected": 2,
+                "score_ratio": 1.0,
+                "reason": "2/2 기법 관측 (matched=2)"
+              },
+              {
+                "type": "CREDENTIAL_THEFT",
+                "matched": 3,
+                "expected": 5,
+                "score_ratio": 0.6,
+                "reason": "3/5 기법 관측 (matched=3) · 누락 2건: T1136, T1552"
+              },
+              {
+                "type": "DATA_EXFILTRATION",
+                "matched": 1,
+                "expected": 2,
+                "score_ratio": 0.5,
+                "reason": "1/2 기법 관측 (matched=1) · 누락 1건: T1567"
+              },
+              {
+                "type": "INSIDER_THREAT",
+                "matched": 2,
+                "expected": 4,
+                "score_ratio": 0.5,
+                "reason": "2/4 기법 관측 (matched=2) · 누락 2건: T1530, T1562"
+              },
+              {
+                "type": "PHISH_INITIAL_ACCESS",
+                "matched": 1,
+                "expected": 3,
+                "score_ratio": 0.3333,
+                "reason": "1/3 기법 관측 (matched=1) · 누락 2건: T1556, T1566"
+              },
+              {
+                "type": "RANSOMWARE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1486, T1490, T1567"
+              },
+              {
+                "type": "MISCONFIG_EXPOSURE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1190, T1530, T1580"
+              },
+              {
+                "type": "AUDIT_LOG_TAMPERING",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1070, T1562"
+              }
+            ],
+            "message": "사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요. 추가 관측 기법: T1021, T1078, T1098, T1489, T1531…"
+          }
+        }
+      }
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-MISCFG-001",
+      "expected": "MISCONFIG_EXPOSURE",
+      "csp": "nhn",
+      "steps": {
+        "1_create": {
+          "status": "ok",
+          "caseId": "662e15a0-8511-4c2c-b533-3397cbd7014c",
+          "http": 201
+        },
+        "2_upload": {
+          "status": "ok",
+          "http": 201,
+          "stats": {
+            "totalEvents": 9,
+            "matched": 0,
+            "unmatched": 9,
+            "byTarget": {},
+            "sha256": "31c23117124b1d5fe2ce46d7321b96aa9a1d6b5f07fdec6a307eb0c2c114a7fb",
+            "sourceFile": "CASE-REMAP-NHN-MISCFG-001.json"
+          }
+        },
+        "3_normalize": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total": 9,
+            "normalized": 9,
+            "failed": 0,
+            "normalizationRate": 100.0,
+            "failedEvents": []
+          }
+        },
+        "4_map": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total_ocsf": 9,
+            "mapped": 1,
+            "unmapped": 8,
+            "mappingRate": 11.11,
+            "events": [
+              {
+                "attack_id": "6d484078-a1bf-4a84-bc1d-ab08fdbb7900",
+                "ocsf_id": "739e492d-a5d7-4a14-8769-b4f9b4904a9b",
+                "technique_id": "T1078.004",
+                "technique_name": "NHN IAM 로그인 — 자격증명 사용 시작점",
+                "tactic": "Initial Access",
+                "rule_id": "R-NHN-001",
+                "mapped_at": "2026-05-21T03:29:32.408273",
+                "event_time": "2026-05-10T11:08:11",
+                "activity_name": "event_id.iam.login"
+              }
+            ]
+          }
+        },
+        "5_gap": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "gap_id": "bb64f217-6c95-48e7-82e8-286be00f0dc8",
+            "case_id": "662e15a0-8511-4c2c-b533-3397cbd7014c",
+            "gap_type": "INTERPRETATION",
+            "missing": [],
+            "summary": "매핑률 11.11% — OCSF 9건 중 1건만 매핑.",
+            "recommendation": "매핑 안 된 이벤트는 AI 셰르파 브리핑 또는 수사관 직접 판단이 필요합니다.",
+            "completionRate": 0.0,
+            "created_at": "2026-05-21T03:29:32.419969"
+          }
+        },
+        "6_attack": {
+          "status": "ok",
+          "http": 200,
+          "total": 1,
+          "tactic_dist": {
+            "Initial Access": 1
+          }
+        },
+        "7_board": {
+          "status": "ok",
+          "http": 200,
+          "nodes": 0,
+          "edges": 0
+        },
+        "8_validate": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "caseId": "662e15a0-8511-4c2c-b533-3397cbd7014c",
+            "status": "REVIEW_NEEDED",
+            "current_incident_type": "UNCLASSIFIED",
+            "current_match": 0,
+            "current_expected": 0,
+            "current_missing": [],
+            "observed_techniques": [
+              "T1078.004"
+            ],
+            "observed_count": 1,
+            "extra_techniques": [
+              "T1078"
+            ],
+            "candidate_types": [
+              {
+                "type": "PRIVILEGE_ESCALATION",
+                "matched": 1,
+                "expected": 2,
+                "score_ratio": 0.5,
+                "reason": "1/2 기법 관측 (matched=1) · 누락 1건: T1098"
+              },
+              {
+                "type": "PHISH_INITIAL_ACCESS",
+                "matched": 1,
+                "expected": 3,
+                "score_ratio": 0.3333,
+                "reason": "1/3 기법 관측 (matched=1) · 누락 2건: T1556, T1566"
+              },
+              {
+                "type": "RANSOMWARE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1486, T1490, T1567"
+              },
+              {
+                "type": "MISCONFIG_EXPOSURE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1190, T1530, T1580"
+              },
+              {
+                "type": "INSIDER_THREAT",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1098, T1530, T1562"
+              },
+              {
+                "type": "CREDENTIAL_THEFT",
+                "matched": 1,
+                "expected": 5,
+                "score_ratio": 0.2,
+                "reason": "1/5 기법 관측 (matched=1) · 누락 4건: T1098, T1136, T1531…"
+              },
+              {
+                "type": "DATA_EXFILTRATION",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1537, T1567"
+              },
+              {
+                "type": "AUDIT_LOG_TAMPERING",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1070, T1562"
+              }
+            ],
+            "message": "사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요. 추가 관측 기법: T1078"
+          }
+        }
+      }
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-PHISH-001",
+      "expected": "PHISH_INITIAL_ACCESS",
+      "csp": "naver",
+      "steps": {
+        "1_create": {
+          "status": "ok",
+          "caseId": "636d247b-7813-45bf-8825-eb6dd88f11bd",
+          "http": 201
+        },
+        "2_upload": {
+          "status": "ok",
+          "http": 201,
+          "stats": {
+            "totalEvents": 7,
+            "matched": 0,
+            "unmatched": 7,
+            "byTarget": {},
+            "sha256": "583d8787ef42422477283fff3e2e9eed7bc0f103c14db3d0b0b2f198c197b51d",
+            "sourceFile": "CASE-REMAP-NCP-PHISH-001.json"
+          }
+        },
+        "3_normalize": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total": 7,
+            "normalized": 7,
+            "failed": 0,
+            "normalizationRate": 100.0,
+            "failedEvents": []
+          }
+        },
+        "4_map": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total_ocsf": 7,
+            "mapped": 6,
+            "unmapped": 1,
+            "mappingRate": 85.71,
+            "events": [
+              {
+                "attack_id": "f20bcf29-6666-48d7-9d44-ac1d2cb7f1c9",
+                "ocsf_id": "5e5d18b9-af7e-46f1-863f-e99cd8ab882e",
+                "technique_id": "T1021",
+                "technique_name": "NCP 서버 콘솔 접근 — Lateral Movement",
+                "tactic": "Lateral Movement",
+                "rule_id": "R-NCP-002",
+                "mapped_at": "2026-05-21T03:29:33.254674",
+                "event_time": "2026-05-11T08:28:18",
+                "activity_name": "Access Server Connect Console"
+              },
+              {
+                "attack_id": "e5c1bea7-07cd-4a3a-878a-f81978250661",
+                "ocsf_id": "3398479c-3d04-44dd-8f61-4e66fbeab065",
+                "technique_id": "T1098",
+                "technique_name": "NCP Sub Account 정책 부여/교체 — 권한 상승",
+                "tactic": "Privilege Escalation",
+                "rule_id": "R-NCP-010",
+                "mapped_at": "2026-05-21T03:29:33.254163",
+                "event_time": "2026-05-11T08:23:55",
+                "activity_name": "Attach policy to sub account"
+              },
+              {
+                "attack_id": "34ede7c6-b648-45c9-bf4a-5b183ea02320",
+                "ocsf_id": "3b9ed302-616c-4c24-8f34-f1711c98daf1",
+                "technique_id": "T1098.001",
+                "technique_name": "NCP AccessKey 생성 — 영속 자격증명 확보",
+                "tactic": "Persistence",
+                "rule_id": "R-NCP-004",
+                "mapped_at": "2026-05-21T03:29:33.253286",
+                "event_time": "2026-05-11T08:18:11",
+                "activity_name": "Create AccessKey"
+              },
+              {
+                "attack_id": "9151423a-4e34-4855-aff3-a8cca3b16811",
+                "ocsf_id": "8cd579b0-8a9c-48ee-89e9-e6a916c9e0ef",
+                "technique_id": "T1098.001",
+                "technique_name": "NCP 비밀번호 변경 — 자격증명 조작",
+                "tactic": "Persistence",
+                "rule_id": "R-NCP-005",
+                "mapped_at": "2026-05-21T03:29:33.252794",
+                "event_time": "2026-05-11T08:16:42",
+                "activity_name": "Change password"
+              },
+              {
+                "attack_id": "ae973163-9c1c-4d8b-a604-9162721489d8",
+                "ocsf_id": "06449996-353d-4a05-89a5-8b97242a37c1",
+                "technique_id": "T1078.004",
+                "technique_name": "NCP 콘솔 로그인 — 자격증명 사용 시작점",
+                "tactic": "Initial Access",
+                "rule_id": "R-NCP-001",
+                "mapped_at": "2026-05-21T03:29:33.252286",
+                "event_time": "2026-05-11T08:15:18",
+                "activity_name": "Login"
+              },
+              {
+                "attack_id": "6a4cda1d-fb56-4e59-83e7-c218ed41a7c2",
+                "ocsf_id": "f99f6edd-3f81-44f7-857c-136a69e6339b",
+                "technique_id": "T1078.004",
+                "technique_name": "NCP 콘솔 로그인 — 자격증명 사용 시작점",
+                "tactic": "Initial Access",
+                "rule_id": "R-NCP-001",
+                "mapped_at": "2026-05-21T03:29:33.250381",
+                "event_time": "2026-05-11T08:15:02",
+                "activity_name": "Login"
+              }
+            ]
+          }
+        },
+        "5_gap": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "gap_id": "a47fe929-c0f4-4b08-ab9d-af1fd4d8959f",
+            "case_id": "636d247b-7813-45bf-8825-eb6dd88f11bd",
+            "gap_type": "NONE",
+            "missing": [],
+            "summary": "갭 없음. 필수 증거 0건 모두 수집, OCSF 7건 중 6건 매핑 (매핑률 85.71%).",
+            "recommendation": "Layer 4 수사 보드로 진행하세요.",
+            "completionRate": 0.0,
+            "created_at": "2026-05-21T03:29:33.262837"
+          }
+        },
+        "6_attack": {
+          "status": "ok",
+          "http": 200,
+          "total": 6,
+          "tactic_dist": {
+            "Lateral Movement": 1,
+            "Privilege Escalation": 1,
+            "Persistence": 2,
+            "Initial Access": 2
+          }
+        },
+        "7_board": {
+          "status": "ok",
+          "http": 200,
+          "nodes": 0,
+          "edges": 0
+        },
+        "8_validate": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "caseId": "636d247b-7813-45bf-8825-eb6dd88f11bd",
+            "status": "REVIEW_NEEDED",
+            "current_incident_type": "UNCLASSIFIED",
+            "current_match": 0,
+            "current_expected": 0,
+            "current_missing": [],
+            "observed_techniques": [
+              "T1021",
+              "T1078.004",
+              "T1098",
+              "T1098.001"
+            ],
+            "observed_count": 6,
+            "extra_techniques": [
+              "T1021",
+              "T1078",
+              "T1098"
+            ],
+            "candidate_types": [
+              {
+                "type": "PRIVILEGE_ESCALATION",
+                "matched": 2,
+                "expected": 2,
+                "score_ratio": 1.0,
+                "reason": "2/2 기법 관측 (matched=2)"
+              },
+              {
+                "type": "INSIDER_THREAT",
+                "matched": 2,
+                "expected": 4,
+                "score_ratio": 0.5,
+                "reason": "2/4 기법 관측 (matched=2) · 누락 2건: T1530, T1562"
+              },
+              {
+                "type": "CREDENTIAL_THEFT",
+                "matched": 2,
+                "expected": 5,
+                "score_ratio": 0.4,
+                "reason": "2/5 기법 관측 (matched=2) · 누락 3건: T1136, T1531, T1552"
+              },
+              {
+                "type": "PHISH_INITIAL_ACCESS",
+                "matched": 1,
+                "expected": 3,
+                "score_ratio": 0.3333,
+                "reason": "1/3 기법 관측 (matched=1) · 누락 2건: T1556, T1566"
+              },
+              {
+                "type": "RANSOMWARE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1486, T1490, T1567"
+              },
+              {
+                "type": "MISCONFIG_EXPOSURE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1190, T1530, T1580"
+              },
+              {
+                "type": "DATA_EXFILTRATION",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1537, T1567"
+              },
+              {
+                "type": "AUDIT_LOG_TAMPERING",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1070, T1562"
+              }
+            ],
+            "message": "사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요. 추가 관측 기법: T1021, T1078, T1098"
+          }
+        }
+      }
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-INSIDER-001",
+      "expected": "INSIDER_THREAT",
+      "csp": "nhn",
+      "steps": {
+        "1_create": {
+          "status": "ok",
+          "caseId": "2e6ffca1-633e-4f3a-82f6-f074a8669f22",
+          "http": 201
+        },
+        "2_upload": {
+          "status": "ok",
+          "http": 201,
+          "stats": {
+            "totalEvents": 10,
+            "matched": 0,
+            "unmatched": 10,
+            "byTarget": {},
+            "sha256": "726b90548c64b67b8a993da27ea7fa9a6bea65548dba1a5a500fa8f834958940",
+            "sourceFile": "CASE-REMAP-NHN-INSIDER-001.json"
+          }
+        },
+        "3_normalize": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total": 10,
+            "normalized": 10,
+            "failed": 0,
+            "normalizationRate": 100.0,
+            "failedEvents": []
+          }
+        },
+        "4_map": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "total_ocsf": 10,
+            "mapped": 4,
+            "unmapped": 6,
+            "mappingRate": 40.0,
+            "events": [
+              {
+                "attack_id": "757ab393-d3ff-4a47-b1b7-e146ef03decd",
+                "ocsf_id": "f9577ed5-c81f-44bd-8259-eb7ed4de2696",
+                "technique_id": "T1531",
+                "technique_name": "NHN S3 자격증명 삭제 — 흔적 제거",
+                "tactic": "Impact",
+                "rule_id": "R-NHN-006",
+                "mapped_at": "2026-05-21T03:29:33.888607",
+                "event_time": "2026-05-14T23:48:30",
+                "activity_name": "event_id.iaas.s3credential.delete"
+              },
+              {
+                "attack_id": "9f1591b8-0235-46f7-8bd4-13866731c5bc",
+                "ocsf_id": "9acb3444-8ca9-4e43-b5b5-80eb04b18151",
+                "technique_id": "T1098.001",
+                "technique_name": "NHN S3 자격증명 생성 — 영속 자격증명",
+                "tactic": "Persistence",
+                "rule_id": "R-NHN-005",
+                "mapped_at": "2026-05-21T03:29:33.887146",
+                "event_time": "2026-05-14T22:54:11",
+                "activity_name": "event_id.iaas.s3credential.create"
+              },
+              {
+                "attack_id": "e177a664-2d64-4616-9812-ee03d793382d",
+                "ocsf_id": "609e09e7-94b5-4654-a212-b80cd070683d",
+                "technique_id": "T1098",
+                "technique_name": "NHN 프로젝트 멤버 권한 변경 — 권한 상승",
+                "tactic": "Privilege Escalation",
+                "rule_id": "R-NHN-003",
+                "mapped_at": "2026-05-21T03:29:33.886669",
+                "event_time": "2026-05-14T22:52:42",
+                "activity_name": "event_id.project.member.update"
+              },
+              {
+                "attack_id": "59e62482-40ef-4f86-956a-2fb5bdc48708",
+                "ocsf_id": "8b422ee4-4680-4942-a3b8-4ad461d91c56",
+                "technique_id": "T1078.004",
+                "technique_name": "NHN IAM 로그인 — 자격증명 사용 시작점",
+                "tactic": "Initial Access",
+                "rule_id": "R-NHN-001",
+                "mapped_at": "2026-05-21T03:29:33.884455",
+                "event_time": "2026-05-14T22:48:11",
+                "activity_name": "event_id.iam.login"
+              }
+            ]
+          }
+        },
+        "5_gap": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "gap_id": "fa7bc847-549b-4ff0-903c-e16f2c9c1b83",
+            "case_id": "2e6ffca1-633e-4f3a-82f6-f074a8669f22",
+            "gap_type": "NONE",
+            "missing": [],
+            "summary": "갭 없음. 필수 증거 0건 모두 수집, OCSF 10건 중 4건 매핑 (매핑률 40.0%).",
+            "recommendation": "Layer 4 수사 보드로 진행하세요.",
+            "completionRate": 0.0,
+            "created_at": "2026-05-21T03:29:33.921273"
+          }
+        },
+        "6_attack": {
+          "status": "ok",
+          "http": 200,
+          "total": 4,
+          "tactic_dist": {
+            "Impact": 1,
+            "Persistence": 1,
+            "Privilege Escalation": 1,
+            "Initial Access": 1
+          }
+        },
+        "7_board": {
+          "status": "ok",
+          "http": 200,
+          "nodes": 0,
+          "edges": 0
+        },
+        "8_validate": {
+          "status": "ok",
+          "http": 200,
+          "data": {
+            "caseId": "2e6ffca1-633e-4f3a-82f6-f074a8669f22",
+            "status": "REVIEW_NEEDED",
+            "current_incident_type": "UNCLASSIFIED",
+            "current_match": 0,
+            "current_expected": 0,
+            "current_missing": [],
+            "observed_techniques": [
+              "T1078.004",
+              "T1098",
+              "T1098.001",
+              "T1531"
+            ],
+            "observed_count": 4,
+            "extra_techniques": [
+              "T1078",
+              "T1098",
+              "T1531"
+            ],
+            "candidate_types": [
+              {
+                "type": "PRIVILEGE_ESCALATION",
+                "matched": 2,
+                "expected": 2,
+                "score_ratio": 1.0,
+                "reason": "2/2 기법 관측 (matched=2)"
+              },
+              {
+                "type": "CREDENTIAL_THEFT",
+                "matched": 3,
+                "expected": 5,
+                "score_ratio": 0.6,
+                "reason": "3/5 기법 관측 (matched=3) · 누락 2건: T1136, T1552"
+              },
+              {
+                "type": "INSIDER_THREAT",
+                "matched": 2,
+                "expected": 4,
+                "score_ratio": 0.5,
+                "reason": "2/4 기법 관측 (matched=2) · 누락 2건: T1530, T1562"
+              },
+              {
+                "type": "PHISH_INITIAL_ACCESS",
+                "matched": 1,
+                "expected": 3,
+                "score_ratio": 0.3333,
+                "reason": "1/3 기법 관측 (matched=1) · 누락 2건: T1556, T1566"
+              },
+              {
+                "type": "RANSOMWARE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1486, T1490, T1567"
+              },
+              {
+                "type": "MISCONFIG_EXPOSURE",
+                "matched": 1,
+                "expected": 4,
+                "score_ratio": 0.25,
+                "reason": "1/4 기법 관측 (matched=1) · 누락 3건: T1190, T1530, T1580"
+              },
+              {
+                "type": "DATA_EXFILTRATION",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1537, T1567"
+              },
+              {
+                "type": "AUDIT_LOG_TAMPERING",
+                "matched": 0,
+                "expected": 2,
+                "score_ratio": 0.0,
+                "reason": "누락 2건: T1070, T1562"
+              }
+            ],
+            "message": "사고유형 미확정 — 가장 가능성 높은 후보를 검토하세요. 추가 관측 기법: T1078, T1098, T1531"
+          }
+        }
+      }
+    }
+  ]
+}

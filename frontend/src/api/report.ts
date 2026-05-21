@@ -36,7 +36,9 @@ export const patchReport = async (
 };
 
 /** GET /api/report/{caseId}/export?format=docx — DOCX 직접 다운로드.
- *  Blob 으로 받아서 a[download] 트리거. PDF 는 백엔드 501. */
+ *  Blob 으로 받아서 a[download] 트리거.
+ *  PDF 는 UF-05 권장 우선순위(설계서 III장) — 백엔드 501, 프론트 버튼 자체 미노출
+ *  (시연 차단 0). 추후 LibreOffice headless 또는 docx2pdf 통합 시 enablement. */
 export const downloadReportDocx = async (caseId: string): Promise<void> => {
   const res = await client.get(`/api/report/${caseId}/export`, {
     params: { format: 'docx' },

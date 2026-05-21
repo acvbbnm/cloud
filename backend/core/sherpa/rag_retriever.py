@@ -1,49 +1,39 @@
 """Layer 3 — RAGRetriever.
 
-ChromaDB cosine similarity 기반 KB 검색. 인터페이스(`retrieve`, `retrieve_by_technique`)
-는 깡통 시절과 동일하므로 AISherpa 등 호출자 영향 없음.
+설계서 5.4.5절 RAGRetriever 구현. **인터페이스 (`retrieve`/`retrieve_by_technique`)
+는 깡통 1차와 동일** — V-5/V-8 프론트엔드 변경 없음.
 
-Fallback 정책 (시연 안정성):
-  ChromaDB import 실패 / 컬렉션 비어있음 / 쿼리 예외 → 키워드 매칭 fallback.
-  즉 `python -m core.sherpa.embed_kb` 를 한 번도 실행 안 했어도 RAG 가 동작은 한다.
+동작 우선순위:
+1. ChromaDB 의미 검색 (embed_kb.query) — 임베딩 모델 + 컬렉션 준비된 경우
+2. 키워드 매칭 + 점수화 (1차 깡통 로직) — fallback
 
-설계서 5.4.5절 + 설치 검증 2026-05-14 (ONNX MiniLM L6 v2, 384 dim, ~80MB 캐시).
+이렇게 두 단계로 두면:
+- Ollama·ChromaDB 셋업 전: 깡통 동작 (현재 그대로)
+- 셋업 후: 의미 검색 자동 활성화
+- 둘 다 호출자 입장에서 동일한 `[(KBChunk, score)]` 형식 반환
 """
-import logging
 import re
 from typing import Optional
 
 from core.sherpa.knowledge_base import KBChunk, load_all
 
-logger = logging.getLogger(__name__)
-
-
-# ─────────────────────────────────────────────────────────────
-# ChromaDB 모듈 import — 실패 시 키워드 fallback 만 동작
-# ─────────────────────────────────────────────────────────────
+# ChromaDB 백엔드 (선택적)
 try:
-    from core.sherpa import embed_kb as _ek
-
-    _CHROMADB_AVAILABLE = True
-except Exception as e:  # noqa: BLE001 — import-time 오류는 광범위 catch
-    logger.warning("[RAGRetriever] ChromaDB import 실패 — 키워드 fallback 만 사용: %s", e)
-    _ek = None
-    _CHROMADB_AVAILABLE = False
+    from core.sherpa import embed_kb as _embed_kb
+except Exception:  # pragma: no cover — 절대 안 일어나야 하지만 안전 가드
+    _embed_kb = None  # type: ignore
 
 
-# ─────────────────────────────────────────────────────────────
-# 키워드 fallback 유틸 (옛 깡통 로직 그대로 보존)
-# ─────────────────────────────────────────────────────────────
 _TOKEN_PATTERN = re.compile(r"[A-Za-z0-9\.\_가-힣]+")
 
 
 def _tokenize(text: str) -> list[str]:
-    """영문/숫자/한글/.(점)/_(언더바) 기준 토큰화 (≥2자)."""
+    """간단 토큰화 — 영문/숫자/한글/.·_ 기준 ≥2자, 소문자."""
     return [t.lower() for t in _TOKEN_PATTERN.findall(text or "") if len(t) >= 2]
 
 
 def _keyword_score(query_tokens: list[str], chunk: KBChunk) -> float:
-    """쿼리 토큰 × 청크 title+text 출현 횟수 × 토큰 길이 가중치."""
+    """청크 점수 = 쿼리 토큰 각각이 title+text 에 나타난 횟수 가중합."""
     blob = (chunk.title + " " + chunk.text).lower()
     score = 0.0
     for tok in query_tokens:
@@ -52,11 +42,54 @@ def _keyword_score(query_tokens: list[str], chunk: KBChunk) -> float:
     return score
 
 
-# ─────────────────────────────────────────────────────────────
-# RAGRetriever
-# ─────────────────────────────────────────────────────────────
+def _keyword_retrieve(
+    query: str, k: int, kb_filter: Optional[list[str]]
+) -> list[tuple[KBChunk, float]]:
+    """키워드 fallback 구현 (1차 깡통과 동일 로직)."""
+    chunks = load_all()
+    if kb_filter:
+        chunks = [c for c in chunks if c.kb_name in kb_filter]
+
+    tokens = _tokenize(query)
+    if not tokens:
+        return []
+
+    scored: list[tuple[KBChunk, float]] = []
+    for c in chunks:
+        s = _keyword_score(tokens, c)
+        if s > 0:
+            scored.append((c, s))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored[:k]
+
+
+def _chroma_retrieve(
+    query: str, k: int, kb_filter: Optional[list[str]]
+) -> Optional[list[tuple[KBChunk, float]]]:
+    """ChromaDB 의미 검색. 미준비 시 None → 호출자가 키워드 fallback."""
+    if _embed_kb is None:
+        return None
+
+    result = _embed_kb.query(text=query, k=k, kb_filter=kb_filter)
+    if result is None:
+        return None  # ChromaDB 미준비 (컬렉션 비어있거나 모델 미설치)
+    if not result:
+        return []  # 의미 있는 결과 0건
+
+    # chunk_id → KBChunk 매핑
+    all_chunks = {c.chunk_id: c for c in load_all()}
+    out: list[tuple[KBChunk, float]] = []
+    for chunk_id, similarity, _meta in result:
+        chunk = all_chunks.get(chunk_id)
+        if chunk is None:
+            continue
+        out.append((chunk, similarity))
+    return out
+
+
 class RAGRetriever:
-    """KB 청크 검색기 — ChromaDB cosine 우선, 키워드 fallback."""
+    """KB 청크 검색기 — ChromaDB 우선 + 키워드 fallback."""
 
     @classmethod
     def retrieve(
@@ -65,134 +98,114 @@ class RAGRetriever:
         k: int = 3,
         kb_filter: Optional[list[str]] = None,
     ) -> list[tuple[KBChunk, float]]:
-        """가장 관련 있는 KB 청크 k개를 (chunk, score) 내림차순으로 반환.
+        """쿼리에 가장 관련 있는 KB 청크 k개 반환.
 
-        Args:
-            query: 자연어 질의.
-            k: 반환할 청크 수.
-            kb_filter: ['ATTACK', 'PLAYBOOK'] 등 카테고리 한정 (선택).
-
-        Returns:
-            cosine 의 경우 score = 1 - cosine_distance (0~1, 1이 가장 유사).
-            키워드의 경우 score = 단순 가중 횟수 (절대 비교 의미 없음).
+        kb_filter: ['ATTACK', 'PLAYBOOK'] 등으로 카테고리 한정 가능.
         """
-        if not query or not query.strip():
-            return []
+        # 1차: ChromaDB 의미 검색
+        chroma = _chroma_retrieve(query, k, kb_filter)
+        if chroma is not None:
+            # 상위 점수가 약하면(< 0.2) 키워드 결과로 보강
+            if not chroma or chroma[0][1] < 0.2:
+                kw = _keyword_retrieve(query, k, kb_filter)
+                seen = {c.chunk_id for c, _ in chroma}
+                for c, s in kw:
+                    if c.chunk_id not in seen and len(chroma) < k:
+                        # 키워드 점수를 0~1 스케일로 단순 정규화 (보조 결과 표시용)
+                        chroma.append((c, min(s / 100.0, 0.5)))
+                        seen.add(c.chunk_id)
+            return chroma
 
-        if _CHROMADB_AVAILABLE:
-            try:
-                return cls._retrieve_chromadb(query, k, kb_filter)
-            except Exception as e:  # noqa: BLE001
-                logger.warning(
-                    "[RAGRetriever] ChromaDB retrieve 실패 — 키워드 fallback: %s", e
-                )
+        # 2차: 키워드 fallback (ChromaDB 미준비 환경)
+        return _keyword_retrieve(query, k, kb_filter)
 
-        return cls._retrieve_keyword(query, k, kb_filter)
-
-    # ── ChromaDB ────────────────────────────────────────────
-    @classmethod
-    def _retrieve_chromadb(
-        cls, query: str, k: int, kb_filter: Optional[list[str]]
-    ) -> list[tuple[KBChunk, float]]:
-        collection = _ek.get_collection(create_if_missing=False)
-        if collection.count() == 0:
-            raise RuntimeError(
-                "kb_chunks 컬렉션 비어있음 — 'python -m core.sherpa.embed_kb' 먼저 실행"
-            )
-
-        where = None
-        if kb_filter:
-            where = {"kb_name": {"$in": kb_filter}}
-
-        result = collection.query(
-            query_texts=[query],
-            n_results=k,
-            where=where,
-        )
-        ids = (result.get("ids") or [[]])[0]
-        distances = (result.get("distances") or [[]])[0]
-        if not ids:
-            return []
-
-        # chunk_id → KBChunk 매핑 (인메모리 KB와 ChromaDB ID 동기화 가정)
-        chunks_by_id = {c.chunk_id: c for c in load_all()}
-
-        out: list[tuple[KBChunk, float]] = []
-        for chunk_id, distance in zip(ids, distances):
-            chunk = chunks_by_id.get(chunk_id)
-            if chunk is None:
-                # ChromaDB에는 있는데 인메모리 KB엔 없음 — 컬렉션 stale, skip
-                logger.warning(
-                    "[RAGRetriever] chunk_id 매칭 없음(stale collection?): %s", chunk_id
-                )
-                continue
-            score = max(0.0, 1.0 - float(distance))  # cosine: 1 - distance
-            out.append((chunk, score))
-        return out
-
-    # ── 키워드 fallback ─────────────────────────────────────
-    @classmethod
-    def _retrieve_keyword(
-        cls, query: str, k: int, kb_filter: Optional[list[str]]
-    ) -> list[tuple[KBChunk, float]]:
-        chunks = load_all()
-        if kb_filter:
-            chunks = [c for c in chunks if c.kb_name in kb_filter]
-
-        tokens = _tokenize(query)
-        if not tokens:
-            return []
-
-        scored: list[tuple[KBChunk, float]] = []
-        for c in chunks:
-            s = _keyword_score(tokens, c)
-            if s > 0:
-                scored.append((c, s))
-
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored[:k]
-
-    # ── ATT&CK 직매칭 (cosine 거치지 않음 — 빠르고 정확) ──
     @classmethod
     def retrieve_by_technique(
-        cls, technique_id: str, k: int = 3
+        cls,
+        technique_id: str,
+        k: int = 3,
+        incident_type: Optional[str] = None,
+        csp: Optional[str] = None,
     ) -> list[tuple[KBChunk, float]]:
-        """ATT&CK technique_id 메타 직매칭 우선, 없으면 일반 retrieve fallback."""
+        """ATT&CK 기법 ID 직매칭 우선 + 사고유형·CSP 매칭 청크 보강.
+
+        HIGH 3 (2026-05-21): 진규 E2E 보고서 §4.5 발견 — case_db / playbook 청크가
+        검색되지 않던 문제 해결. technique_id 직매칭 외에도 incident_type·csp
+        매칭 청크를 같이 반환하여 CASE_DB / PLAYBOOK 청크도 검색 가능.
+
+        매칭 우선순위:
+          1.0 — technique_id 정확 매칭 (ATTACK 청크 위주)
+          0.85 — incident_type + csp 동시 매칭 (CASE_DB 위주)
+          0.7 — incident_type 만 매칭 (PLAYBOOK·CASE_DB)
+          0.5 — 의미/키워드 검색 fallback
+        """
         chunks = load_all()
-        direct = [c for c in chunks if c.meta.get("technique_id") == technique_id]
-        if direct:
-            return [(c, 1.0) for c in direct[:k]]
-        return cls.retrieve(technique_id, k=k)
+        result: list[tuple[KBChunk, float]] = []
+        seen: set[str] = set()
 
-    # ── health (V-8 우측 패널 + /api/sherpa/kb 응답) ──
+        # 1순위: technique_id 정확 매칭
+        for c in chunks:
+            if c.meta.get("technique_id") == technique_id and c.chunk_id not in seen:
+                result.append((c, 1.0))
+                seen.add(c.chunk_id)
+                if len(result) >= k:
+                    break
+
+        # 2순위: incident_type + csp 동시 매칭 (CASE_DB 직접 매칭 강함)
+        if incident_type and len(result) < k:
+            for c in chunks:
+                if c.chunk_id in seen:
+                    continue
+                if c.meta.get("incident_type") == incident_type and (
+                    not csp or c.meta.get("csp") == csp
+                ):
+                    result.append((c, 0.85))
+                    seen.add(c.chunk_id)
+                    if len(result) >= k:
+                        break
+
+        # 3순위: incident_type 만 매칭 (csp 무관)
+        if incident_type and len(result) < k:
+            for c in chunks:
+                if c.chunk_id in seen:
+                    continue
+                if c.meta.get("incident_type") == incident_type:
+                    result.append((c, 0.7))
+                    seen.add(c.chunk_id)
+                    if len(result) >= k:
+                        break
+
+        # 4순위 (fallback): 의미·키워드 검색 — 직매칭 결과 부족 시
+        if len(result) < k:
+            search_query = f"{technique_id} {incident_type or ''}".strip()
+            for c, s in cls.retrieve(search_query, k=k):
+                if c.chunk_id in seen:
+                    continue
+                result.append((c, min(s, 0.5)))
+                if len(result) >= k:
+                    break
+
+        return result[:k]
+
     @classmethod
-    def health(cls) -> dict:
-        """RAG 엔진 상태."""
-        if not _CHROMADB_AVAILABLE:
+    def backend_info(cls) -> dict:
+        """현재 RAG 백엔드 상태 (V-8 KB 패널 / health 응답용)."""
+        if _embed_kb is None:
+            return {"backend": "keyword", "reason": "embed_kb module unavailable"}
+        status = _embed_kb.status()
+        if status["embedder_loaded"] and status["collection_size"] > 0:
             return {
-                "engine": "keyword",
-                "indexed": 0,
-                "note": "ChromaDB 미설치 — 키워드 매칭으로 동작 중",
+                "backend": "chromadb",
+                "model": status["model"],
+                "collection_size": status["collection_size"],
             }
-
-        try:
-            collection = _ek.get_collection(create_if_missing=False)
-            count = collection.count()
-            if count == 0:
-                return {
-                    "engine": "keyword",
-                    "indexed": 0,
-                    "note": "ChromaDB 컬렉션 비어있음 — 'python -m core.sherpa.embed_kb' 실행 필요",
-                }
+        if not status["chromadb_installed"]:
+            return {"backend": "keyword", "reason": "chromadb not installed"}
+        if not status["sentence_transformers_installed"]:
+            return {"backend": "keyword", "reason": "sentence-transformers not installed"}
+        if status["collection_size"] == 0:
             return {
-                "engine": "chromadb",
-                "indexed": count,
-                "collection": _ek.COLLECTION_NAME,
-                "embedding": "all-MiniLM-L6-v2 (ONNX, 384 dim)",
+                "backend": "keyword",
+                "reason": "ChromaDB collection empty — run `python -m core.sherpa.embed_kb` to populate",
             }
-        except Exception as e:  # noqa: BLE001
-            return {
-                "engine": "keyword",
-                "indexed": 0,
-                "note": f"ChromaDB 접근 실패 — 키워드 fallback: {e}",
-            }
+        return {"backend": "keyword", "reason": status.get("last_error") or "unknown"}

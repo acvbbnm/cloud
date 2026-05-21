@@ -21,6 +21,7 @@ import Badge from '@/components/Badge';
 import CluesInput from '@/components/CluesInput';
 import ConfidenceGauge from '@/components/ConfidenceGauge';
 import DecisionTreeQuestion from '@/components/DecisionTreeQuestion';
+import HypothesisBreakdownChart from '@/components/HypothesisBreakdownChart';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
@@ -528,6 +529,14 @@ const Step2_Discovery = ({
                 // 좌측 단서 입력 영역으로 자동 스크롤 — 컨테이너 미정의 시 무시
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+            />
+
+            {/* E4 §4-8 (2026-05-21): 사고유형 비교 차트 + 기여 요소 요약 */}
+            <HypothesisBreakdownChart
+              scores={hypothesisScores}
+              treeAnswerCount={completedPath.length}
+              clueCount={observables.length}
+              mappedTechniqueCount={mappedTechniques.length}
             />
 
             {/* 단서 누적 요약 */}

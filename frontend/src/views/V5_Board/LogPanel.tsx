@@ -12,7 +12,7 @@ const LogPanel = ({ onDragStart }: LogPanelProps) => {
   return (
     <div className="panel min-h-[440px] max-h-[640px] flex flex-col">
       <div className="flex items-center justify-between p-4 pb-2.5">
-        <h3 className="panel-title">📋 수집 로그</h3>
+        <h3 className="panel-title"> 수집 로그</h3>
         <span className="chip text-[10.5px]">{logs.length}건</span>
       </div>
       <div className="px-4 pb-4 overflow-y-auto flex-1 min-h-0">
@@ -38,7 +38,7 @@ const LogPanel = ({ onDragStart }: LogPanelProps) => {
                   onClick={() => removeLog(l.id)}
                   className="text-ink-400 hover:text-brand-red text-[12px] leading-none"
                 >
-                  ✕
+                  
                 </button>
               </div>
               <div className="font-semibold text-[12px] truncate">{l.ev}</div>

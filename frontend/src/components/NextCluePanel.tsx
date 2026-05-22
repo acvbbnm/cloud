@@ -82,7 +82,7 @@ const NEXT_CLUE_HEURISTIC: Partial<
     },
   ],
   // MULTI_CSP_LATERAL 휴리스틱은 2026-05-19 제거. 환경 변수 multi_cloud 만 보존.
-  // ── dev3 C-1 신규 4종 ──
+  //  dev3 C-1 신규 4종 
   RANSOMWARE: [
     {
       question: '랜섬 노트 또는 비표준 확장자(.locked/.encrypted) 발견된 객체?',
@@ -151,7 +151,7 @@ const NextCluePanel = ({
       return (
         <div className="border-t border-ink-700/40 pt-3">
           <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-            🧭 다음 단서 제안
+             다음 단서 제안
           </div>
           <p className="text-[10.5px] text-ink-500 leading-5">
             결정 트리에 답변하면 가설별 권장 단서가 표시됩니다.
@@ -163,7 +163,7 @@ const NextCluePanel = ({
     return (
       <div className="border-t border-ink-700/40 pt-3">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-          🧭 다음 단서 제안
+           다음 단서 제안
         </div>
         <p className="text-[10px] text-ink-500 mb-2">
           현재 상위 가설을 좁히려면 다음 단서를 입력하세요:
@@ -205,7 +205,7 @@ const NextCluePanel = ({
   return (
     <div className="border-t border-ink-700/40 pt-3">
       <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-        🧭 다음 단서 제안 ({suggestions.length})
+         다음 단서 제안 ({suggestions.length})
       </div>
       <ul className="space-y-1.5">
         {suggestions.slice(0, 5).map((s, i) => (

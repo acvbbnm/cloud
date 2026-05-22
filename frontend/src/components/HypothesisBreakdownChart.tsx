@@ -102,7 +102,7 @@ const HypothesisBreakdownChart = ({
     <div className="border-t border-ink-700/40 pt-3">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-          📊 사고유형 비교 (8종)
+           사고유형 비교 (8종)
         </div>
         <div className="text-[10px] text-ink-500">
           상위 {totalNonZero}/8 활성
@@ -203,9 +203,9 @@ const HypothesisBreakdownChart = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // expanded 영역 — 출처 trace
-// ─────────────────────────────────────────────────────────────
+// 
 
 interface ExpandedDetailProps {
   type: IncidentType;

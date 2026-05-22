@@ -24,14 +24,14 @@ interface SectionMeta {
 }
 
 const SECTIONS: SectionMeta[] = [
-  { key: 'overview', title: '사고 개요', emoji: '📌', rows: 4 },
-  { key: 'timeline', title: '타임라인', emoji: '⏱', rows: 8 },
-  { key: 'impact', title: '영향 분석', emoji: '💥', rows: 4 },
-  { key: 'attack_analysis', title: 'ATT&CK 결과', emoji: '🎯', rows: 5 },
-  { key: 'response', title: '대응 조치', emoji: '🛡', rows: 4 },
-  { key: 'recommendation', title: '권고사항', emoji: '💡', rows: 4 },
-  { key: 'evidence', title: '주요 증거', emoji: '📁', rows: 6 },
-  { key: 'comments', title: '수사관 코멘트', emoji: '🗒', rows: 3 },
+  { key: 'overview', title: '사고 개요', emoji: '', rows: 4 },
+  { key: 'timeline', title: '타임라인', emoji: '', rows: 8 },
+  { key: 'impact', title: '영향 분석', emoji: '', rows: 4 },
+  { key: 'attack_analysis', title: 'ATT&CK 결과', emoji: '', rows: 5 },
+  { key: 'response', title: '대응 조치', emoji: '', rows: 4 },
+  { key: 'recommendation', title: '권고사항', emoji: '', rows: 4 },
+  { key: 'evidence', title: '주요 증거', emoji: '', rows: 6 },
+  { key: 'comments', title: '수사관 코멘트', emoji: '', rows: 3 },
 ];
 
 const STATUS_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
@@ -147,11 +147,11 @@ const V7Report = () => {
       <div>
         <PageHeader
           eyebrow="Layer 4 · M4-2"
-          title="보고서 생성"
-          description="진행 중인 사고 케이스가 없습니다."
+          title="Incident Report"
+          description="No active incident case."
         />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 보고서를 생성할 수 있습니다.
             </p>
@@ -186,12 +186,8 @@ const V7Report = () => {
     <div>
       <PageHeader
         eyebrow="Layer 4 · M4-2"
-        title={
-          <>
-            보고서 <span className="grad-text">생성</span>
-          </>
-        }
-        description="KISA 양식 8 섹션을 편집하고 AI 초안을 활용해 사고 보고서를 완성합니다. DOCX 내보내기 지원."
+        title="Incident Report"
+        description="Edit the KISA-format 8-section report with AI-assisted drafts. DOCX export supported."
         meta={
           <div className="flex items-center gap-2 flex-wrap">
             <Badge tone={STATUS_TONE[status] ?? 'gray'}>{status}</Badge>
@@ -216,7 +212,7 @@ const V7Report = () => {
               className="btn-ghost disabled:opacity-40"
               title="ATT&CK 매핑·갭·로그 데이터로 8섹션을 다시 생성"
             >
-              {regenerateMutation.isPending ? '생성 중…' : '🧠 AI 초안 재생성'}
+              {regenerateMutation.isPending ? '생성 중…' : ' AI 초안 재생성'}
             </button>
             <button
               onClick={() => saveMutation.mutate()}
@@ -225,14 +221,14 @@ const V7Report = () => {
               }
               className="btn-ghost disabled:opacity-40"
             >
-              {saveMutation.isPending ? '저장 중…' : `💾 저장${dirtyCount > 0 ? ` (${dirtyCount})` : ''}`}
+              {saveMutation.isPending ? '저장 중…' : ` 저장${dirtyCount > 0 ? ` (${dirtyCount})` : ''}`}
             </button>
             <button
               onClick={() => exportMutation.mutate()}
               disabled={!report || exportMutation.isPending}
               className="btn-ghost disabled:opacity-40"
             >
-              {exportMutation.isPending ? '다운로드 중…' : '📝 DOCX'}
+              {exportMutation.isPending ? '다운로드 중…' : ' DOCX'}
             </button>
             <button
               onClick={() => finalizeMutation.mutate()}
@@ -242,7 +238,7 @@ const V7Report = () => {
               className="btn-primary disabled:opacity-40"
               title={dirtyCount > 0 ? '미저장 변경이 있습니다. 저장 후 최종화하세요.' : ''}
             >
-              {finalizeMutation.isPending ? '최종화 중…' : '✅ 최종화'}
+              {finalizeMutation.isPending ? '최종화 중…' : ' 최종화'}
             </button>
           </>
         }
@@ -260,7 +256,7 @@ const V7Report = () => {
               {reportQuery.isError && (
                 <span className="tag-red">report 에러</span>
               )}
-              {reportQuery.isSuccess && <span className="tag-teal">report ✓</span>}
+              {reportQuery.isSuccess && <span className="tag-teal">report </span>}
               {regenerateMutation.isPending && (
                 <span className="tag-amber">AI 초안 생성 중…</span>
               )}
@@ -305,7 +301,7 @@ const V7Report = () => {
           )}
           {isFinalized && (
             <div className="text-brand-teal text-[11.5px] mt-1">
-              ✓ 최종화된 보고서입니다. 추가 편집 불가. DOCX 다운로드만 가능.
+               최종화된 보고서입니다. 추가 편집 불가. DOCX 다운로드만 가능.
             </div>
           )}
         </div>
@@ -335,7 +331,7 @@ const V7Report = () => {
                   action={
                     <div className="flex items-center gap-1.5">
                       {isDirty && (
-                        <span className="text-[10px] text-amber-400">●</span>
+                        <span className="text-[10px] text-amber-400"></span>
                       )}
                       <span className="chip text-[10px]">
                         {value.length.toLocaleString()} chars

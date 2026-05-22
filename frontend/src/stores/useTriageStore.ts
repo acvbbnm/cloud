@@ -13,7 +13,7 @@ interface CompletedPathEntry {
 }
 
 interface TriageStoreState {
-  // ── 트리 진행 상태 ──
+  //  트리 진행 상태 
   currentNodeId: string | null;
   completedPath: CompletedPathEntry[];
   hypothesisScores: HypothesisScores;
@@ -21,7 +21,7 @@ interface TriageStoreState {
   recommendation: TriageRecommendation | null;
   isTerminal: boolean;
 
-  // ── 액션 ──
+  //  액션 
   startTriage: (rootNodeId: string) => void;
   recordAnswer: (nodeId: string, selectedOptionIds: string[]) => void;
   setCurrentNode: (nodeId: string | null) => void;
@@ -52,7 +52,7 @@ const initialScores = (): HypothesisScores => ({
 });
 
 /**
- * Triage 결정 트리 진행 상태 — V-1 Step 2 Discovery Loop 의 ③ 결정 트리.
+ * Triage 결정 트리 진행 상태 — V-1 Step 2 Discovery Loop 의  결정 트리.
  *
  * dev3 (2026-05-18):
  *   - useCaseStore 와 분리 — 트리 진행은 케이스 메타와 다른 라이프사이클.

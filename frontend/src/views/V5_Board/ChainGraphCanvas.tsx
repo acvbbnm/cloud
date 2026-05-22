@@ -323,7 +323,7 @@ const ChainGraphCanvas = ({
               fontSize={10}
             >
               <tspan fill="#9aa3b2">
-                {n.is_ai_suggested ? '🧠 AI · ' : '👤 수동 · '}
+                {n.is_ai_suggested ? ' AI · ' : ' 수동 · '}
               </tspan>
               <tspan fill={statusColor} fontWeight={600}>
                 {n.status}

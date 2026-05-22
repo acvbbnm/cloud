@@ -50,7 +50,7 @@ const DiscoveryIntroModal = ({ open, onClose }: DiscoveryIntroModalProps) => {
       >
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[16px] font-bold text-ink-100">
-            🔍 어떤 단서를 입력해야 할까요?
+             어떤 단서를 입력해야 할까요?
           </h2>
           <button
             onClick={handleClose}
@@ -67,12 +67,12 @@ const DiscoveryIntroModal = ({ open, onClose }: DiscoveryIntroModalProps) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
           {[
-            { icon: '📡', label: 'IP 주소', source: 'CSP 콘솔 → 보안 알람 → 출처 IP' },
-            { icon: '👤', label: '계정 (Account)', source: 'IAM 콘솔 → 활동 보고서' },
-            { icon: '🔢', label: '해시 (Hash)', source: 'EDR · VirusTotal 결과' },
-            { icon: '🌐', label: '도메인', source: 'C2 통신 탐지 / DNS exfil' },
-            { icon: '🕐', label: '시각 윈도우', source: '알람 발생 시점 ±5분' },
-            { icon: '🖥', label: '서비스명', source: '영향받은 클라우드 서비스' },
+            { icon: '', label: 'IP 주소', source: 'CSP 콘솔 → 보안 알람 → 출처 IP' },
+            { icon: '', label: '계정 (Account)', source: 'IAM 콘솔 → 활동 보고서' },
+            { icon: '', label: '해시 (Hash)', source: 'EDR · VirusTotal 결과' },
+            { icon: '', label: '도메인', source: 'C2 통신 탐지 / DNS exfil' },
+            { icon: '', label: '시각 윈도우', source: '알람 발생 시점 ±5분' },
+            { icon: '', label: '서비스명', source: '영향받은 클라우드 서비스' },
           ].map((c) => (
             <div
               key={c.label}

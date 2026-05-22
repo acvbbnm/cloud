@@ -1,5 +1,5 @@
 /**
- * 부분 로그 분석 — V-1 Step 2 Discovery Loop ② 부분 로그 분석 (사용자 결정 #2).
+ * 부분 로그 분석 — V-1 Step 2 Discovery Loop  부분 로그 분석 (사용자 결정 #2).
  *
  * dev3 B-2 (2026-05-19): 백엔드 /api/triage/analyze-logs (multipart) 실 호출.
  *   - LogIngestor.ingest → OCSFNormalizer.normalize_case → AttackMapper.map_case
@@ -116,11 +116,11 @@ const PartialLogAnalysis = ({
     <div>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-          📊 부분 로그 분석 (선택)
+           부분 로그 분석 (선택)
         </div>
         {mappedTechniques.length > 0 && (
           <span className="text-[10.5px] text-brand-teal">
-            ● {mappedTechniques.length}개 기법 매핑
+             {mappedTechniques.length}개 기법 매핑
           </span>
         )}
       </div>
@@ -133,7 +133,7 @@ const PartialLogAnalysis = ({
 
       {analyzing && (
         <div className="mt-2 text-[10.5px] text-amber-300 animate-pulse">
-          ⏳ 분석 중…
+           분석 중…
         </div>
       )}
 
@@ -145,7 +145,7 @@ const PartialLogAnalysis = ({
               className="bg-ink-900/60 border border-ink-700/70 rounded-lg px-2.5 py-1.5 text-[11px]"
             >
               <div className="flex items-start gap-2">
-                <span className="text-[13px]">📄</span>
+                <span className="text-[13px]"></span>
                 <div className="flex-1 min-w-0">
                   <div className="text-ink-100 truncate font-medium">{f.name}</div>
                   <div className="text-[10.5px] text-ink-400">

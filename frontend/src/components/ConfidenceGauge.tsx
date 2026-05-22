@@ -8,10 +8,10 @@
  * 색상 단계 (docs/dev3/결정트리_업그레이드.md §4-3):
  *   0-40%   회색  "단서 부족"
  *   40-70%  파랑  "가설 형성 중"
- *   70-90%  초록  "🎯 가설 형성"
- *   90%+    강조  "✅ 자동 확정 가능" + 펄스
+ *   70-90%  초록  " 가설 형성"
+ *   90%+    강조  " 자동 확정 가능" + 펄스
  *
- * 격차(gap) < 30 시 amber "⚠ 복합 사고 의심" 추가 표시.
+ * 격차(gap) < 30 시 amber " 복합 사고 의심" 추가 표시.
  */
 import type { HypothesisScores, IncidentType } from '@/types';
 
@@ -56,10 +56,10 @@ const ConfidenceGauge = ({
   let label: string;
   if (ratio >= 100) {
     tone = 'pulse';
-    label = '✅ 자동 확정 가능';
+    label = ' 자동 확정 가능';
   } else if (ratio >= 70) {
     tone = 'green';
-    label = '🎯 가설 형성';
+    label = ' 가설 형성';
   } else if (ratio >= 40) {
     tone = 'blue';
     label = '가설 형성 중';
@@ -88,7 +88,7 @@ const ConfidenceGauge = ({
   return (
     <div>
       <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-2">
-        🎚 신뢰도 게이지
+         신뢰도 게이지
       </div>
 
       {primary && (
@@ -137,13 +137,13 @@ const ConfidenceGauge = ({
             >
               {isComposite ? (
                 <>
-                  ⚠ 1위 <b>{INCIDENT_TYPE_KO[primary.type]}</b> 과 2위{' '}
+                   1위 <b>{INCIDENT_TYPE_KO[primary.type]}</b> 과 2위{' '}
                   <b>{INCIDENT_TYPE_KO[secondary.type]}</b> 격차 <b>{gap}</b>점 —
                   복합 사고 의심
                 </>
               ) : gap >= gapTo2nd ? (
                 <>
-                  🎯 1위와 2위 격차 <b>{gap}</b>점 — 명확
+                   1위와 2위 격차 <b>{gap}</b>점 — 명확
                 </>
               ) : gap >= 10 ? (
                 <>

@@ -41,18 +41,18 @@ interface Step2Props {
 type TabKey = 'basic' | 'system' | 'csp' | 'security' | 'scope';
 
 const TABS: { id: TabKey; label: string }[] = [
-  { id: 'basic', label: '🗂 사고 기본' },
-  { id: 'system', label: '🖥 시스템 공통' },
-  { id: 'csp', label: '☁ CSP 특화' },
-  { id: 'security', label: '🛡 보안 정책' },
-  { id: 'scope', label: '🎯 영향 범위' },
+  { id: 'basic', label: ' 사고 기본' },
+  { id: 'system', label: ' 시스템 공통' },
+  { id: 'csp', label: ' CSP 특화' },
+  { id: 'security', label: ' 보안 정책' },
+  { id: 'scope', label: ' 영향 범위' },
 ];
 
 const sevOptions = [
-  { id: 'critical', label: '🔴 Critical' },
-  { id: 'high', label: '🟠 High' },
-  { id: 'medium', label: '🟡 Medium' },
-  { id: 'low', label: '🟢 Low' },
+  { id: 'critical', label: ' Critical' },
+  { id: 'high', label: ' High' },
+  { id: 'medium', label: ' Medium' },
+  { id: 'low', label: ' Low' },
 ];
 
 const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting }: Step2Props) => {
@@ -135,30 +135,28 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
         </p>
       </div>
 
-      <div className="panel p-4 flex flex-wrap items-center gap-3 border-l-[3px] border-l-brand-blue">
+      <div className="panel p-3 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
           <span className="eyebrow">CSP</span>
-          <span className="font-semibold text-[13px]" style={{ color: cspMeta.color }}>
-            {cspMeta.label}
-          </span>
+          <span className="font-semibold text-[13px] text-ink-100">{cspMeta.label}</span>
         </div>
         <span className="divider w-px h-4 bg-ink-700" />
         <div className="flex items-center gap-1.5">
           <span className="eyebrow">사고유형</span>
-          <span className="font-semibold text-[13px]" style={{ color: typeMeta?.sevColor ?? '#FBB13B' }}>
+          <span className="font-semibold text-[13px] text-ink-100">
             {typeMeta?.label ?? '—'}
           </span>
         </div>
         <span className="divider w-px h-4 bg-ink-700" />
         <div className="flex items-center gap-1.5">
           <span className="eyebrow">핵심 서비스</span>
-          <span className="text-brand-teal font-semibold text-[12px]">
+          <span className="font-semibold text-[12px] text-ink-200">
             {typeMeta?.services[cspKey].slice(0, 2).join(' · ') ?? '—'}
           </span>
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-ink-700/70">
+      <div className="flex gap-1 border-b border-ink-700">
         {TABS.map((t) => {
           const active = tab === t.id;
           return (
@@ -171,7 +169,7 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
             >
               {t.label}
               {active && (
-                <span className="absolute -bottom-px left-3 right-3 h-[2px] bg-cta-gradient rounded-full" />
+                <span className="absolute -bottom-px left-3 right-3 h-[2px] bg-brand-amber" />
               )}
             </button>
           );
@@ -293,9 +291,7 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
         {tab === 'csp' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2 pb-2 mb-1 border-b border-ink-700/60">
-              <span className="eyebrow" style={{ color: cspMeta.color }}>
-                ☁ {cspMeta.label} 특화 정보
-              </span>
+              <span className="eyebrow text-ink-100">{cspMeta.label} 특화 정보</span>
             </div>
             {!isAll ? (
               <>
@@ -391,7 +387,7 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
         {tab === 'security' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2 pb-2 mb-1 border-b border-ink-700/60 flex items-center gap-2 flex-wrap">
-              <span className="eyebrow text-brand-teal">🛡 보안 정책 (V2 가이드 환경 보정)</span>
+              <span className="eyebrow text-brand-teal"> 보안 정책 (V2 가이드 환경 보정)</span>
               <span className="text-[10.5px] text-ink-400">
                 입력값이 수집 가이드 V2 의 우선순위·추가 항목에 즉시 반영됩니다 (KISA 2.4 + NIST SP 800-86 3 기반).
               </span>
@@ -457,7 +453,7 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 className="input"
               />
               <p className="text-[10.5px] text-ink-400 mt-1">
-                • 90일 미만 → ⚠️ CT-RETENTION-WARNING 항목 추가 (NIST SP 800-86 3.1 휘발성)
+                • 90일 미만 →  CT-RETENTION-WARNING 항목 추가 (NIST SP 800-86 3.1 휘발성)
               </p>
             </Field>
 

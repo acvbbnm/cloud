@@ -1,4 +1,4 @@
-// ── 공통 Enum 타입 (백엔드 DB enum과 정확히 일치) ──
+//  공통 Enum 타입 (백엔드 DB enum과 정확히 일치) 
 
 // 백엔드 Pydantic Literal + types/index.ts 정책과 일치
 // dev3 (2026-05-18): UNCLASSIFIED 추가 — 빈 케이스 시작 패턴 (TheHive·IRIS·NIST 800-61r2)
@@ -6,17 +6,17 @@
 // 2026-05-19 (재결정): MULTI_CSP_LATERAL 제거 — 사용자 명시. 환경 변수 multi_cloud 만 보존.
 // 최종 8종 + UNCLASSIFIED (CSA Pandemic Eleven #1~7 + KISA §3.3 분류표 정합)
 export type IncidentType =
-  // ── 4종 기존 ──
+  //  4종 기존 
   | 'CREDENTIAL_THEFT'
   | 'PRIVILEGE_ESCALATION'
   | 'DATA_EXFILTRATION'
   | 'AUDIT_LOG_TAMPERING'
-  // ── dev3 C-1 신규 4종 ──
+  //  dev3 C-1 신규 4종 
   | 'RANSOMWARE'
   | 'MISCONFIG_EXPOSURE'
   | 'PHISH_INITIAL_ACCESS'
   | 'INSIDER_THREAT'
-  // ── 미분류 ──
+  //  미분류 
   | 'UNCLASSIFIED';
 
 // dev3 신규 — TheHive 5 차용 (정보 공유 등급)
@@ -38,7 +38,7 @@ export type GapType = 'NONE' | 'COLLECTION' | 'EVIDENCE' | 'INTERPRETATION';
 export type NodeStatus = 'CONFIRMED' | 'REJECTED';
 export type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXPORT_REPORT';
 
-// ── API 요청 ──
+//  API 요청 
 
 export interface CreateCaseReq {
   incident_type: IncidentType;
@@ -46,13 +46,13 @@ export interface CreateCaseReq {
   severity: Severity;
   occurred_at: string;
   system_config?: Record<string, unknown>;
-  // ── dev3 신규 (Step 1 케이스 메타) ──
+  //  dev3 신규 (Step 1 케이스 메타) 
   title?: string;
   tlp?: TLP;
   observables?: Observable[];
 }
 
-// ── API 응답 ──
+//  API 응답 
 
 export interface CaseResponse {
   caseId: string;
@@ -63,7 +63,7 @@ export interface CaseResponse {
   system_config: Record<string, unknown> | null;
   created_at: string;
   closed_at: string | null;
-  // ── dev3 신규 ──
+  //  dev3 신규 
   title?: string;
   tlp?: TLP;
   observables?: Observable[];
@@ -302,9 +302,9 @@ export interface KbStatsResponse {
   rag?: RagBackendInfo;
 }
 
-// ─────────────────────────────────────────────────────────
+// 
 // /api/guide/v2 응답 (dev2 청사진  5 정합)
-// ─────────────────────────────────────────────────────────
+// 
 
 export interface GuideV2SourceRef {
   std: string | null;
@@ -386,11 +386,11 @@ export interface GuideV2Response {
   version: 'v2';
 }
 
-// ─────────────────────────────────────────────────────────
+// 
 // dev3 — Triage / Discovery Loop 타입
 // 청사진: docs/dev3/V1_재설계_청사진.md
 // 가중치: backend/data/triage/weights.json
-// ─────────────────────────────────────────────────────────
+// 
 
 // 단서 (Observable) — Step 2 단서 입력
 export interface Observable {
@@ -469,7 +469,7 @@ export interface TriageKbResult {
   csp_doc: SherpaSource[];
 }
 
-// ─── API 요청 / 응답 ───
+//  API 요청 / 응답 
 
 // POST /api/triage/analyze — 단서 + 부분 로그 → 가설 갱신
 // dev3 (2026-05-19): stateless 정책 (청사진 §3) — 클라이언트가 hypothesis_scores 매 요청 전달
@@ -531,7 +531,7 @@ export interface TriageTreeResponse {
   hypothesis_scores: HypothesisScores;
 }
 
-// ─── V-8 사후 검증 ───
+//  V-8 사후 검증 
 // GET /api/sherpa/validate-incident-type?caseId=
 export interface IncidentTypeValidation {
   caseId: string;

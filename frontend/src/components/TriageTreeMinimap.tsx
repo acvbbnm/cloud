@@ -5,8 +5,8 @@
  * (decision_tree.json v3-e4-6stage 정합 — Q1→Q2→Q3→Q4→Q5→Q6→T)
  *
  * 노드 상태:
- *   ● 현재 위치 (currentNodeId)
- *   ✓ 답변 완료 (completedNodeIds)
+ *    현재 위치 (currentNodeId)
+ *    답변 완료 (completedNodeIds)
  *   (밝은 테두리) 활성 분기의 도달 가능 경로
  *   (회색 점선) 다른 옵션 선택 시 갈 수 있었던 비활성 분기
  *
@@ -66,35 +66,35 @@ interface TreeNodeMeta {
  * 시각화용 정적 격자 좌표 (col, row). 백엔드 /api/triage/tree 와 동일 골격.
  */
 const TREE_NODES: TreeNodeMeta[] = [
-  // ── row 0 — Q1 인지 경로 ──
+  //  row 0 — Q1 인지 경로 
   { id: 'Q1_inception', short: 'Q1 인지경로', family: 'common', col: 0, row: 0 },
-  // ── row 1 — Q2 직접 정황 (5 분기) ──
+  //  row 1 — Q2 직접 정황 (5 분기) 
   { id: 'Q2A_alert_type', short: 'Q2A CSP알람', family: 'common', col: -3, row: 1 },
   { id: 'Q2B_report_content', short: 'Q2B 외부신고', family: 'common', col: -1, row: 1 },
   { id: 'Q2C_audit_pattern', short: 'Q2C 정기감사', family: 'common', col: 1, row: 1 },
   { id: 'Q2D_anomaly_form', short: 'Q2D 서비스이상', family: 'common', col: 3, row: 1 },
   { id: 'Q2E_minimal_checklist', short: 'Q2E 출처불명', family: 'common', col: 5, row: 1 },
-  // ── row 2 — Q3 추가 패턴 (4 variant) ──
+  //  row 2 — Q3 추가 패턴 (4 variant) 
   { id: 'Q3_CRED', short: 'Q3 자격증명', family: 'cred', col: -3, row: 2 },
   { id: 'Q3_DATA', short: 'Q3 데이터', family: 'data', col: -1, row: 2 },
   { id: 'Q3_INSIDER', short: 'Q3 내부자', family: 'insider', col: 1, row: 2 },
   { id: 'Q3_IMPACT', short: 'Q3 영향', family: 'ransom', col: 3, row: 2 },
-  // ── row 3 — Q4 증거 무결성 (4 lane) ──
+  //  row 3 — Q4 증거 무결성 (4 lane) 
   { id: 'Q4_CRED', short: 'Q4 MFA우회', family: 'cred', col: -3, row: 3 },
   { id: 'Q4_MISCFG', short: 'Q4 노출시점', family: 'miscfg', col: -1, row: 3 },
   { id: 'Q4_INSIDER', short: 'Q4 직무범위', family: 'insider', col: 1, row: 3 },
   { id: 'Q4_RANSOM', short: 'Q4 백업무결성', family: 'ransom', col: 3, row: 3 },
-  // ── row 4 — Q5 영향 범위·행위자 ──
+  //  row 4 — Q5 영향 범위·행위자 
   { id: 'Q5_CRED', short: 'Q5 행위자', family: 'cred', col: -3, row: 4 },
   { id: 'Q5_MISCFG', short: 'Q5 변경주체', family: 'miscfg', col: -1, row: 4 },
   { id: 'Q5_INSIDER', short: 'Q5 접속환경', family: 'insider', col: 1, row: 4 },
   { id: 'Q5_RANSOM', short: 'Q5 피해규모', family: 'ransom', col: 3, row: 4 },
-  // ── row 5 — Q6 후속 시그널·의도 ──
+  //  row 5 — Q6 후속 시그널·의도 
   { id: 'Q6_CRED', short: 'Q6 후속행동', family: 'cred', col: -3, row: 5 },
   { id: 'Q6_MISCFG', short: 'Q6 민감도', family: 'miscfg', col: -1, row: 5 },
   { id: 'Q6_INSIDER', short: 'Q6 사후행동', family: 'insider', col: 1, row: 5 },
   { id: 'Q6_RANSOM', short: 'Q6 랜섬노트', family: 'ransom', col: 3, row: 5 },
-  // ── row 6 — 종합 평가 ──
+  //  row 6 — 종합 평가 
   { id: 'T_evaluate', short: 'T 종합평가', family: 'common', col: 0, row: 6 },
 ];
 
@@ -221,13 +221,13 @@ const TriageTreeMinimap = ({
         bg = tint(fam.color, 0.2);
         border = `1.5px solid ${tint(fam.color, 0.8)}`;
         color = fam.color;
-        prefix = '✓ ';
+        prefix = ' ';
       }
       if (state === 'current') {
         bg = tint(fam.color, 0.28);
         border = `2px solid ${fam.color}`;
         color = fam.color;
-        prefix = '● ';
+        prefix = ' ';
       }
       if (state === 'inactive') {
         bg = 'rgba(30, 35, 45, 0.45)';
@@ -238,7 +238,7 @@ const TriageTreeMinimap = ({
         bg = 'rgba(245, 158, 11, 0.2)';
         border = '1.5px solid #F59E0B';
         color = '#F59E0B';
-        prefix = '◆ ';
+        prefix = ' ';
       }
 
       return {
@@ -341,9 +341,9 @@ const TriageTreeMinimap = ({
         />
       </ReactFlow>
       <div className="px-2 py-1 text-[9px] text-ink-500 flex items-center gap-2.5 flex-wrap border-t border-ink-700/40">
-        <span><span className="text-brand-blue">●</span> 현재</span>
-        <span><span className="text-brand-teal">✓</span> 완료</span>
-        <span><span style={{ color: '#F59E0B' }}>◆</span> 평가</span>
+        <span><span className="text-brand-blue"></span> 현재</span>
+        <span><span className="text-brand-teal"></span> 완료</span>
+        <span><span style={{ color: '#F59E0B' }}></span> 평가</span>
         <span className="text-ink-600">--- 비활성 분기</span>
         <span className="w-px h-2.5 bg-ink-700" />
         {(['cred', 'ransom', 'miscfg', 'insider', 'data'] as Family[]).map((f) => (

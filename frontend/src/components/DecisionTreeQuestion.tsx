@@ -1,5 +1,5 @@
 /**
- * 결정 트리 단일 질문 컴포넌트 — V-1 Step 2 Discovery Loop 의 ③ 결정 트리.
+ * 결정 트리 단일 질문 컴포넌트 — V-1 Step 2 Discovery Loop 의  결정 트리.
  *
  * single_select / multi_select 자동 분기. 선택 후 [다음 →] 클릭으로 부모에게
  * 답변 ID 배열 전달. multi_select 의 경우 최소 1개 선택 강제.
@@ -55,7 +55,7 @@ const DecisionTreeQuestion = ({
   if (node.type === 'terminal') {
     return (
       <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12.5px]">
-        <div className="eyebrow mb-2">🏁 트리 종료</div>
+        <div className="eyebrow mb-2"> 트리 종료</div>
         <p className="text-ink-200 leading-6 whitespace-pre-line">
           {node.message ??
             '결정 트리가 종료되었습니다. 우측 가설 점수를 확인하세요.'}
@@ -79,7 +79,7 @@ const DecisionTreeQuestion = ({
       {/* 헤더 — 진행 단계 + KISA 출처 */}
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-          📋 결정 트리 질문
+           결정 트리 질문
           {step && totalEstimated && (
             <span className="ml-2 text-ink-500">
               {step} / {totalEstimated}
@@ -127,7 +127,7 @@ const DecisionTreeQuestion = ({
                     : 'border-ink-600'
                 }`}
               >
-                {selected && (multi ? '✓' : '●')}
+                {selected && (multi ? '' : '')}
               </span>
               <span className="text-[12.5px] leading-5 flex-1">{opt.label}</span>
             </button>

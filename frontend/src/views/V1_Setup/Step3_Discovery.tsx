@@ -3,7 +3,7 @@
  *
  * 단서 루프 전용 화면. 시스템 구성(M0-2)은 별도 스텝으로 분리됨 (2026-05-22).
  *
- * 좌측: ① 단서 입력 (CluesInput) · ② 부분 로그 분석 · ③ 결정 트리 6단계
+ * 좌측:  단서 입력 (CluesInput) ·  부분 로그 분석 ·  결정 트리 6단계
  * 우측: 신뢰도 게이지 + 가설 점수 + 트리 미니맵 + 다음 단서 + 비교 차트 + 추천
  *
  * 진입 시 가설 점수는 0 이 아니라 M0-2 시스템 구성의 environment_modifiers 가
@@ -58,7 +58,7 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  // ── dev3 C-1 신규 4종 (2026-05-19, MULTI_CSP_LATERAL 제거) ──
+  //  dev3 C-1 신규 4종 (2026-05-19, MULTI_CSP_LATERAL 제거) 
   RANSOMWARE: '랜섬웨어',
   MISCONFIG_EXPOSURE: '설정 오류 노출',
   PHISH_INITIAL_ACCESS: '피싱 초기 침투',
@@ -67,10 +67,10 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
 };
 
 const OUTCOME_LABEL: Record<TriageRecommendation['outcome'], string> = {
-  auto_confirm: '✅ 자동 확정',
-  propose_single: '🎯 단일 가설 제시',
-  propose_composite: '🔀 복합 가설 (주 + 부)',
-  continue_or_skip: '➡ 추가 단서 또는 UNCLASSIFIED 진행',
+  auto_confirm: ' 자동 확정',
+  propose_single: ' 단일 가설 제시',
+  propose_composite: ' 복합 가설 (주 + 부)',
+  continue_or_skip: ' 추가 단서 또는 UNCLASSIFIED 진행',
 };
 
 const Step3_Discovery = ({
@@ -178,7 +178,7 @@ const Step3_Discovery = ({
           setHypothesisScores(res.hypothesis_scores);
           const seeded = Object.values(res.hypothesis_scores).some((v) => v > 0);
           if (seeded) {
-            showToast('💡 시스템 구성 기반 환경 가중치가 가설 점수에 반영됐습니다', 3200);
+            showToast(' 시스템 구성 기반 환경 가중치가 가설 점수에 반영됐습니다', 3200);
           }
         }
       } catch (e) {
@@ -299,7 +299,7 @@ const Step3_Discovery = ({
         if (hint) {
           setPreferredClueType(hint.clueType);
           setPreferredVariant(hint.variant ?? null);
-          showToast(`💡 ${hint.reason}`, 2800);
+          showToast(` ${hint.reason}`, 2800);
           break;
         }
       }
@@ -311,13 +311,13 @@ const Step3_Discovery = ({
       const gap = sorted[0] - (sorted[1] ?? 0);
       const primary = sorted[0];
       if (primary >= 130 && gap >= 30) {
-        showToast('🎯 명확 — 자동 확정 가능. 우측 “확정” 버튼으로 진행', 3500);
+        showToast(' 명확 — 자동 확정 가능. 우측 “확정” 버튼으로 진행', 3500);
       } else if (gap >= 20) {
-        showToast(`🎯 명확해지는 중 (격차 ${gap}점)`, 2200);
+        showToast(` 명확해지는 중 (격차 ${gap}점)`, 2200);
       } else if (gap >= 10) {
         showToast(`가설 형성 중 (격차 ${gap}점) — Q4·Q5 진행 권장`, 2200);
       } else if (primary > 0) {
-        showToast(`⚠ 여전히 모호 (격차 ${gap}점) — 추가 단서 또는 답변 권장`, 2500);
+        showToast(` 여전히 모호 (격차 ${gap}점) — 추가 단서 또는 답변 권장`, 2500);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -376,7 +376,7 @@ const Step3_Discovery = ({
             onClick={() => setIntroOpen(true)}
             className="ml-auto text-[10.5px] text-brand-blue hover:underline"
           >
-            ⓘ 사전 안내 다시 보기
+             사전 안내 다시 보기
           </button>
         </div>
         <div className="text-ink-500 text-[10.5px]">
@@ -395,9 +395,9 @@ const Step3_Discovery = ({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
         {/* 좌측 — 단서·부분로그·결정트리 */}
         <div className="space-y-3 min-w-0">
-          {/* ① 단서 입력 */}
+          {/*  단서 입력 */}
           <Card
-            title={<>📌 단서 입력 (Observable)</>}
+            title={<> 단서 입력 (Observable)</>}
             subtitle={
               preferredClueType
                 ? `우측 권장 단서 — ${preferredClueType} 를 추가하세요`
@@ -441,9 +441,9 @@ const Step3_Discovery = ({
             />
           </Card>
 
-          {/* ② 부분 로그 분석 (선택) */}
+          {/*  부분 로그 분석 (선택) */}
           <Card
-            title={<>📊 부분 로그 분석 (선택)</>}
+            title={<> 부분 로그 분석 (선택)</>}
             subtitle="AWS Detective scope time + Microsoft Sentinel entity 표준 흐름"
           >
             <PartialLogAnalysis
@@ -461,9 +461,9 @@ const Step3_Discovery = ({
             />
           </Card>
 
-          {/* ③ 결정 트리 질문 */}
+          {/*  결정 트리 질문 */}
           <Card
-            title={<>📋 결정 트리 (KISA §2.4 + NIST 800-61r2 §3.2)</>}
+            title={<> 결정 트리 (KISA §2.4 + NIST 800-61r2 §3.2)</>}
             subtitle="질문 답변이 우측 가설 점수에 즉시 반영됩니다"
           >
             {!caseId ? (
@@ -511,7 +511,7 @@ const Step3_Discovery = ({
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
             <div>
               <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-                🌳 결정 트리 진행
+                 결정 트리 진행
               </div>
               <TriageTreeMinimap
                 currentNodeId={currentNodeId}
@@ -546,7 +546,7 @@ const Step3_Discovery = ({
             {observables.length > 0 && (
               <div className="border-t border-ink-700/40 pt-3">
                 <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-                  📌 단서 {observables.length}개
+                   단서 {observables.length}개
                 </div>
                 <ul className="space-y-0.5">
                   {observables.slice(0, 5).map((o, i) => (
@@ -568,7 +568,7 @@ const Step3_Discovery = ({
             {completedPath.length > 0 && (
               <div>
                 <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-                  🧭 트리 경로
+                   트리 경로
                 </div>
                 <ul className="space-y-0.5">
                   {completedPath.map((p) => (
@@ -593,7 +593,7 @@ const Step3_Discovery = ({
               currentNodeId && (
                 <div className="border-l-[3px] border-l-brand-teal bg-brand-teal/10 rounded-md p-3">
                   <div className="text-[11px] text-brand-teal font-semibold mb-1">
-                    🎯 {recommendation.primary
+                     {recommendation.primary
                       ? INCIDENT_TYPE_KO[recommendation.primary.incident_type]
                       : '사고유형'}{' '}
                     신뢰도 도달
@@ -608,7 +608,7 @@ const Step3_Discovery = ({
                       disabled={isSubmitting}
                       className="btn-primary btn-xs flex-1 disabled:opacity-50"
                     >
-                      ✓ 지금 확정
+                       지금 확정
                     </button>
                     <button
                       onClick={() => {
@@ -626,7 +626,7 @@ const Step3_Discovery = ({
             {recommendation && (
               <div className="border-t border-ink-700/40 pt-3">
                 <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-                  🎯 추천
+                   추천
                 </div>
                 <div className="text-[12px] mb-2">
                   <Badge
@@ -687,7 +687,7 @@ const Step3_Discovery = ({
                   >
                     {isSubmitting
                       ? '진행 중…'
-                      : `✓ ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정 → 수집 가이드`}
+                      : ` ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정 → 수집 가이드`}
                   </button>
                 )}
               <button
@@ -706,7 +706,7 @@ const Step3_Discovery = ({
               </button>
               {!recommendation && (
                 <p className="text-[10px] text-ink-500 leading-4 pt-1">
-                  ⓘ 결정 트리를 끝까지 진행하면 추천 사고유형이 산출됩니다.
+                   결정 트리를 끝까지 진행하면 추천 사고유형이 산출됩니다.
                   단서만으로 진행하려면 “건너뛰기”.
                 </p>
               )}

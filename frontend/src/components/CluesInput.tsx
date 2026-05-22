@@ -1,13 +1,13 @@
 /**
- * 단서(Observable) 입력 컴포넌트 — V-1 Step 2 Discovery Loop 의 ① 단서.
+ * 단서(Observable) 입력 컴포넌트 — V-1 Step 2 Discovery Loop 의  단서.
  *
  * 6종 ClueType 폼:
- *   📡 IP_ADDRESS    — 의심 IP (분석 시 비국내 / 비표준 ASN 여부 가중치)
- *   👤 ACCOUNT       — 사용자명·이메일 (자기상승·동시 다지역 가중치)
- *   🔢 HASH          — SHA-256 (EDR·VirusTotal cross-ref)
- *   🌐 DOMAIN        — C2·DNS exfil 도메인
- *   🕐 TIME_WINDOW   — 사고 인지 시각 ±윈도우
- *   🖥 SERVICE       — 영향받은 클라우드 서비스 (Object Storage·IAM 등)
+ *    IP_ADDRESS    — 의심 IP (분석 시 비국내 / 비표준 ASN 여부 가중치)
+ *    ACCOUNT       — 사용자명·이메일 (자기상승·동시 다지역 가중치)
+ *    HASH          — SHA-256 (EDR·VirusTotal cross-ref)
+ *    DOMAIN        — C2·DNS exfil 도메인
+ *    TIME_WINDOW   — 사고 인지 시각 ±윈도우
+ *    SERVICE       — 영향받은 클라우드 서비스 (Object Storage·IAM 등)
  *
  * 학술 근거: DFIR-IRIS IOC + NIST 800-61r2 표 3-2 + Velociraptor artifact.
  * 단서 추가 시 useCaseStore.addObservable 호출 → 백엔드 /api/triage/analyze 호출.
@@ -42,7 +42,7 @@ const CLUE_TYPES: ClueTypeMeta[] = [
   {
     type: 'IP_ADDRESS',
     label: 'IP 주소',
-    icon: '📡',
+    icon: '',
     placeholder: '203.0.113.7',
     hint: 'CSP 콘솔 보안 알람 / sourceIp 필드',
     variants: [
@@ -55,7 +55,7 @@ const CLUE_TYPES: ClueTypeMeta[] = [
   {
     type: 'ACCOUNT',
     label: '계정',
-    icon: '👤',
+    icon: '',
     placeholder: 'attacker@example.com 또는 attack-sim',
     hint: 'IAM 콘솔 활동 보고서 / actionUserName',
     variants: [
@@ -69,7 +69,7 @@ const CLUE_TYPES: ClueTypeMeta[] = [
   {
     type: 'HASH',
     label: '파일 해시',
-    icon: '🔢',
+    icon: '',
     placeholder: 'SHA-256 (64자)',
     hint: 'EDR / VirusTotal 결과',
     variants: [
@@ -80,7 +80,7 @@ const CLUE_TYPES: ClueTypeMeta[] = [
   {
     type: 'DOMAIN',
     label: '도메인',
-    icon: '🌐',
+    icon: '',
     placeholder: 'malicious.example.com',
     hint: 'C2 통신 탐지 / DNS exfil',
     variants: [
@@ -91,17 +91,17 @@ const CLUE_TYPES: ClueTypeMeta[] = [
   {
     type: 'TIME_WINDOW',
     label: '시각 윈도우',
-    icon: '🕐',
+    icon: '',
     placeholder: '2026-05-18 14:00-15:00',
     hint: '알람 발생 시점 ±5분',
     variants: [
-      { id: 'off_hours', label: '비업무 시각', hint: '야간·주말 패턴 (KISA §2.4 ⑤)' },
+      { id: 'off_hours', label: '비업무 시각', hint: '야간·주말 패턴 (KISA §2.4 )' },
     ],
   },
   {
     type: 'SERVICE',
     label: '서비스명',
-    icon: '🖥',
+    icon: '',
     placeholder: 'Object Storage / IAM / Server',
     hint: '영향받은 클라우드 서비스',
     variants: [
@@ -181,11 +181,11 @@ const CluesInput = ({
     <div>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-          📌 단서 입력 (Observable)
+           단서 입력 (Observable)
         </div>
         {observables.length > 0 && (
           <span className="text-[10.5px] text-brand-teal">
-            ● {observables.length}개 누적
+             {observables.length}개 누적
           </span>
         )}
       </div>
@@ -216,7 +216,7 @@ const CluesInput = ({
       {meta.variants.length > 0 && (
         <div className="mb-2">
           <div className="text-[10.5px] text-ink-500 mb-1">
-            🏷 변종 분류 <span className="text-ink-600">(선택 — 명시 시 가중치 ↑, 미선택은 약한 fallback 5점)</span>
+             변종 분류 <span className="text-ink-600">(선택 — 명시 시 가중치 ↑, 미선택은 약한 fallback 5점)</span>
           </div>
           <div className="flex flex-wrap gap-1">
             <button
@@ -279,7 +279,7 @@ const CluesInput = ({
           disabled={disabled}
           className="input text-[11px]"
         />
-        <p className="text-[10.5px] text-ink-500">💡 {meta.hint}</p>
+        <p className="text-[10.5px] text-ink-500"> {meta.hint}</p>
       </div>
 
       {/* 누적된 단서 리스트 */}

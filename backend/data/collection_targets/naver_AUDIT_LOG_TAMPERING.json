@@ -1,0 +1,46 @@
+[
+  {
+    "target_id": "CT-NCP-AUDIT-001",
+    "incident_type": "AUDIT_LOG_TAMPERING",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Tracer 자체 변경",
+    "description": "Activity Tracer 비활성화·삭제·구성 변경. 감사 로그 자체를 무력화하는 가장 강한 변조 신호. MITRE T1562.008 Disable Cloud Logs.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (Tracer 비활성화 전까지 보존)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-AUDIT-002",
+    "incident_type": "AUDIT_LOG_TAMPERING",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - AccessKey 무력화",
+    "description": "Disable/Delete AccessKey — 자격증명 흔적을 없애서 후속 추적을 어렵게 만드는 anti-forensics 패턴. MITRE T1070 Indicator Removal.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-AUDIT-003",
+    "incident_type": "AUDIT_LOG_TAMPERING",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 정책·계정 삭제",
+    "description": "Detach/Delete policy, Delete sub account — 권한·계정 흔적 제거. MITRE T1531 Account Access Removal.",
+    "evidence_role": "REQUIRED",
+    "priority": 8,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-AUDIT-004",
+    "incident_type": "AUDIT_LOG_TAMPERING",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 리소스·서비스 삭제",
+    "description": "Delete Server / Stop Server / Delete Bucket — 사고 결과물 삭제로 분석 어렵게 만드는 패턴. MITRE T1485 Data Destruction.",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  }
+]

@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
+import Pagination from '@/components/Pagination';
 import Badge from '@/components/Badge';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
@@ -308,25 +309,14 @@ const V6Attack = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
             {total > FETCH_PAGE_SIZE && (
-              <div className="flex justify-end gap-2 mt-3">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="btn-ghost btn-sm disabled:opacity-40"
-                >
-                  ← 이전
-                </button>
-                <span className="self-center text-[11.5px] text-ink-400">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages}
-                  className="btn-ghost btn-sm disabled:opacity-40"
-                >
-                  다음 →
-                </button>
+              <div className="text-[10.5px] text-ink-500 text-right mt-1">
+                총 {total.toLocaleString()}건 · {FETCH_PAGE_SIZE}건씩 표시
               </div>
             )}
           </Card>

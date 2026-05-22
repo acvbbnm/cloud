@@ -18,6 +18,7 @@ import client from './client';
 
 import type {
   HypothesisScores,
+  Observable,
   TriageNextRequest,
   TriageNextResponse,
 } from '@/types';
@@ -188,7 +189,7 @@ export interface BreakdownResponse {
 export const getBreakdown = async (
   caseId: string,
   treePath: Array<{ node_id: string; selected_option_ids: string[] }>,
-  observables: Array<Record<string, unknown>>,
+  observables: Observable[],
   techniqueIds: string[],
 ): Promise<BreakdownResponse> => {
   const res = await client.post('/api/triage/breakdown', {

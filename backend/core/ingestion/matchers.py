@@ -4,11 +4,15 @@ LogIngestor 에서 분리한 순수 함수 모음.
 - DB 의존성 없음 → 단위 테스트 용이
 - (csp, incident_type) 조합별 매칭 함수를 등록
 
-지원 범위 (2026-05-21 갱신):
+지원 범위 (2026-05-22 갱신):
   · CREDENTIAL_THEFT     × {naver, nhn}  — 5+5 target
   · PRIVILEGE_ESCALATION × {naver, nhn}  — 4+5 target
   · DATA_EXFILTRATION    × {naver, nhn}  — 3+3 target
-  · AUDIT_LOG_TAMPERING  × {naver, nhn}  — 4+4 target  ← 신규 (2026-05-21)
+  · AUDIT_LOG_TAMPERING  × {naver, nhn}  — 8+8 target
+  · RANSOMWARE           × {naver, nhn}  — 5+5 target  ← 신규 (2026-05-22)
+  · MISCONFIG_EXPOSURE   × {naver, nhn}  — 4+4 target  ← 신규 (2026-05-22)
+  · PHISH_INITIAL_ACCESS × {naver, nhn}  — 4+4 target  ← 신규 (2026-05-22)
+  · INSIDER_THREAT       × {naver, nhn}  — 5+5 target  ← 신규 (2026-05-22)
 
 설계 근거:
   · 시드(`data/collection_targets/*.json`)와 1:1 정합
@@ -263,6 +267,218 @@ def nhn_audit_log_tampering(ev: dict) -> Optional[str]:
     return None
 
 
+# ── NCP × RANSOMWARE ─────────────────────────────────────────
+
+
+def ncp_ransomware(ev: dict) -> Optional[str]:
+    """NCP raw → RANSOM target_id (CT-NCP-RANSOM-001~005)."""
+    action = (ev.get("action") or "").strip()
+    action_l = action.lower()
+    product = (ev.get("product_name") or "").strip()
+
+    # Object Storage 대량 조작 — Put/Get/Delete/Copy/Export
+    if product in {"Object Storage", "ObjectStorage"} or any(
+        k in action_l for k in ("putobject", "getobject", "deleteobject", "copyobject", "exporting to object storage")
+    ):
+        return "CT-NCP-RANSOM-001"
+    # 서버 인스턴스 중지/재시작
+    if any(k in action_l for k in ("shutdown server", "start server instance", "stop server", "restart server")):
+        return "CT-NCP-RANSOM-002"
+    # 백업·스냅샷 삭제
+    if "snapshot" in action_l or ("delete" in action_l and ("backup" in action_l or "snapshot" in action_l)):
+        return "CT-NCP-RANSOM-003"
+    # 초기 접근
+    if action_l == "login":
+        return "CT-NCP-RANSOM-004"
+    # 감사 로그 변조 (RANSOM 컨텍스트에서)
+    if "tracer" in action_l or "disable auto export" in action_l:
+        return "CT-NCP-RANSOM-005"
+    return None
+
+
+# ── NHN × RANSOMWARE ─────────────────────────────────────────
+
+
+_NHN_RANSOM_RULES: list[tuple[str, re.Pattern]] = [
+    # Object Storage 대량 조작
+    ("CT-NHN-RANSOM-001", re.compile(r"^event_id\.object_storage\.object\.(upload|delete)")),
+    # 인스턴스 정지/Shelve
+    ("CT-NHN-RANSOM-002", re.compile(r"^event_id\.iaas\.instance_action\.(stop|shelve)")),
+    # 인프라 파괴 (VPC/볼륨 삭제)
+    ("CT-NHN-RANSOM-003", re.compile(r"^event_id\.iaas\.(vpc|volume)\.delete")),
+    # IAM 인증
+    ("CT-NHN-RANSOM-004", re.compile(r"^event_id\.iam\.login")),
+    # Object Storage 다운로드 (이중협박)
+    ("CT-NHN-RANSOM-005", re.compile(r"^event_id\.object_storage\.object\.download")),
+]
+
+
+def nhn_ransomware(ev: dict) -> Optional[str]:
+    event_id = ev.get("event_id") or ""
+    for tid, pat in _NHN_RANSOM_RULES:
+        if pat.match(event_id):
+            return tid
+    return None
+
+
+# ── NCP × MISCONFIG_EXPOSURE ────────────────────────────────
+
+
+def ncp_misconfig_exposure(ev: dict) -> Optional[str]:
+    """NCP raw → MISCONF target_id (CT-NCP-MISCONF-001~004)."""
+    action = (ev.get("action") or "").strip()
+    action_l = action.lower()
+    product = (ev.get("product_name") or "").strip()
+
+    # Object Storage ACL/버킷 정책
+    if any(k in action_l for k in ("putbucketacl", "putbucketpolicy", "bucket policy", "bucket acl")):
+        return "CT-NCP-MISCONF-001"
+    # VPC/Security Group 변경
+    if any(k in action_l for k in ("accesscontrolgroup", "putaccesscontrolgroup", "security group")) or (
+        product == "VPC"
+    ):
+        return "CT-NCP-MISCONF-002"
+    # Sub Account 기본 정책
+    if "attach policy" in action_l or "replace policy" in action_l or "default policy" in action_l:
+        return "CT-NCP-MISCONF-003"
+    # 로그인 (노출 접근 확인)
+    if action_l == "login":
+        return "CT-NCP-MISCONF-004"
+    return None
+
+
+# ── NHN × MISCONFIG_EXPOSURE ────────────────────────────────
+
+
+_NHN_MISCONF_RULES: list[tuple[str, re.Pattern]] = [
+    # Object Storage container 메타데이터
+    (
+        "CT-NHN-MISCONF-001",
+        re.compile(r"^event_id\.object_storage\.(container|account)\.metadata"),
+    ),
+    # Security Group / VPC
+    ("CT-NHN-MISCONF-002", re.compile(r"^event_id\.iaas\.(security_group|vpc)\.")),
+    # IAM 기본 계정·과도 권한
+    ("CT-NHN-MISCONF-003", re.compile(r"^event_id\.(iam|org\.iam)\.member\.")),
+    # Object Storage object 다운로드 (노출 확인)
+    ("CT-NHN-MISCONF-004", re.compile(r"^event_id\.object_storage\.object\.download")),
+]
+
+
+def nhn_misconfig_exposure(ev: dict) -> Optional[str]:
+    event_id = ev.get("event_id") or ""
+    for tid, pat in _NHN_MISCONF_RULES:
+        if pat.match(event_id):
+            return tid
+    return None
+
+
+# ── NCP × PHISH_INITIAL_ACCESS ──────────────────────────────
+
+
+def ncp_phish_initial_access(ev: dict) -> Optional[str]:
+    """NCP raw → PHISH target_id (CT-NCP-PHISH-001~004)."""
+    action = (ev.get("action") or "").strip()
+    action_l = action.lower()
+
+    # Sub Account 인증
+    if action_l == "login" or "mfa" in action_l or "console login" in action_l:
+        return "CT-NCP-PHISH-001"
+    # 자격증명 변경
+    if any(k in action_l for k in ("change password", "create accesskey", "create login key")):
+        return "CT-NCP-PHISH-002"
+    # 백도어 계정 생성
+    if "create sub account" in action_l:
+        return "CT-NCP-PHISH-003"
+    # 감사 로그 변조
+    if "tracer" in action_l or "disable auto export" in action_l:
+        return "CT-NCP-PHISH-004"
+    return None
+
+
+# ── NHN × PHISH_INITIAL_ACCESS ──────────────────────────────
+
+
+_NHN_PHISH_RULES: list[tuple[str, re.Pattern]] = [
+    # IAM 인증
+    ("CT-NHN-PHISH-001", re.compile(r"^event_id\.iam\.login")),
+    # 자격증명 변경
+    (
+        "CT-NHN-PHISH-002",
+        re.compile(
+            r"^event_id\.iaas\.(identity\.password_change|s3credential\.create|keypair\.create)"
+        ),
+    ),
+    # IAM 멤버 초대·권한
+    (
+        "CT-NHN-PHISH-003",
+        re.compile(r"^event_id\.(iam|org\.iam)\.member\.(add|role)"),
+    ),
+    # 리소스 조작 (후속 행위)
+    ("CT-NHN-PHISH-004", re.compile(r"^event_id\.iaas\.instance_action\.")),
+]
+
+
+def nhn_phish_initial_access(ev: dict) -> Optional[str]:
+    event_id = ev.get("event_id") or ""
+    for tid, pat in _NHN_PHISH_RULES:
+        if pat.match(event_id):
+            return tid
+    return None
+
+
+# ── NCP × INSIDER_THREAT ────────────────────────────────────
+
+
+def ncp_insider_threat(ev: dict) -> Optional[str]:
+    """NCP raw → INSIDER target_id (CT-NCP-INSIDER-001~005)."""
+    action = (ev.get("action") or "").strip()
+    action_l = action.lower()
+    product = (ev.get("product_name") or "").strip()
+
+    # Object Storage 대량 다운로드·내보내기
+    if product in {"Object Storage", "ObjectStorage"} or "exporting to object storage" in action_l or "getobject" in action_l:
+        return "CT-NCP-INSIDER-001"
+    # 자기 권한 상승
+    if "attach policy" in action_l or "replace policy" in action_l:
+        return "CT-NCP-INSIDER-002"
+    # 감사 로그 변조·삭제
+    if "tracer" in action_l or "disable auto export" in action_l:
+        return "CT-NCP-INSIDER-003"
+    # 인증 (접근 패턴)
+    if action_l == "login":
+        return "CT-NCP-INSIDER-004"
+    # 리소스 파괴
+    if "delete server" in action_l or "delete bucket" in action_l:
+        return "CT-NCP-INSIDER-005"
+    return None
+
+
+# ── NHN × INSIDER_THREAT ────────────────────────────────────
+
+
+_NHN_INSIDER_RULES: list[tuple[str, re.Pattern]] = [
+    # Object Storage 대량 다운로드
+    ("CT-NHN-INSIDER-001", re.compile(r"^event_id\.object_storage\.object\.(download|upload)")),
+    # IAM 권한 변경 (자기 상승)
+    ("CT-NHN-INSIDER-002", re.compile(r"^event_id\.(iam|org\.iam)\.member\.role")),
+    # 자격증명 삭제 (흔적 제거)
+    ("CT-NHN-INSIDER-003", re.compile(r"^event_id\.iaas\.s3credential\.delete")),
+    # IAM 인증 (접근 패턴)
+    ("CT-NHN-INSIDER-004", re.compile(r"^event_id\.iam\.login")),
+    # 인프라 파괴
+    ("CT-NHN-INSIDER-005", re.compile(r"^event_id\.iaas\.instance_action\.delete")),
+]
+
+
+def nhn_insider_threat(ev: dict) -> Optional[str]:
+    event_id = ev.get("event_id") or ""
+    for tid, pat in _NHN_INSIDER_RULES:
+        if pat.match(event_id):
+            return tid
+    return None
+
+
 # ── 디스패처 ───────────────────────────────────────────────
 
 # (csp, incident_type) → matcher fn
@@ -277,6 +493,15 @@ _REGISTRY: dict[tuple[str, str], Callable[[dict], Optional[str]]] = {
     # 2026-05-21 — AUDIT 매처 추가
     ("naver", "AUDIT_LOG_TAMPERING"): ncp_audit_log_tampering,
     ("nhn", "AUDIT_LOG_TAMPERING"): nhn_audit_log_tampering,
+    # 2026-05-22 — dev3 C-1 신규 4종 매처 추가
+    ("naver", "RANSOMWARE"): ncp_ransomware,
+    ("nhn", "RANSOMWARE"): nhn_ransomware,
+    ("naver", "MISCONFIG_EXPOSURE"): ncp_misconfig_exposure,
+    ("nhn", "MISCONFIG_EXPOSURE"): nhn_misconfig_exposure,
+    ("naver", "PHISH_INITIAL_ACCESS"): ncp_phish_initial_access,
+    ("nhn", "PHISH_INITIAL_ACCESS"): nhn_phish_initial_access,
+    ("naver", "INSIDER_THREAT"): ncp_insider_threat,
+    ("nhn", "INSIDER_THREAT"): nhn_insider_threat,
 }
 
 

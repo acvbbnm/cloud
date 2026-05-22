@@ -1,10 +1,11 @@
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 
+// CSP 2종 — 'all'(통합 뷰)은 2026-05-21 데이터 모델에서 제거됨.
+// 잘못된 csp='all' 설정 시 케이스 생성이 422 로 실패하므로 토글에서도 제외.
 const cspTabs = [
   { id: 'naver', label: 'Naver Cloud' },
   { id: 'nhn', label: 'NHN Cloud' },
-  { id: 'all', label: '통합 뷰' },
 ];
 
 const Header = () => {

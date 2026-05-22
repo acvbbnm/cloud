@@ -248,6 +248,117 @@
       "tactic": "Exfiltration",
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:06 (관리자 정상 업로드와 구분 필요, condition 추가 권장)"
+    },
+    {
+      "rule_id": "R-NCP-012",
+      "csp": "ncp",
+      "description": "Cloud Activity Tracer 비활성·삭제 — 감사 로그 변조",
+      "activity_name_pattern": "^(Delete Tracer|Disable Auto Export)$",
+      "condition": {},
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NCP-013",
+      "csp": "ncp",
+      "description": "Object Storage Bucket 삭제 — 데이터 파괴 / RANSOM Impact",
+      "activity_name_pattern": "^Delete Bucket$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NCP-014",
+      "csp": "ncp",
+      "description": "서버 인스턴스 종료 — RANSOM 서비스 중단",
+      "activity_name_pattern": "^Shutdown Server Instance$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NCP-015",
+      "csp": "ncp",
+      "description": "IAM 계정 탐색 (Sub Account Policy 열거)",
+      "activity_name_pattern": "^Get Sub Account Policy List$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 4
+    },
+    {
+      "rule_id": "R-NCP-016",
+      "csp": "ncp",
+      "description": "Server Console 직접 접근 — Lateral Movement / INSIDER",
+      "activity_name_pattern": "^Access Server Connect Console$",
+      "condition": {},
+      "technique_id": "T1021",
+      "tactic": "Lateral Movement",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NHN-012",
+      "csp": "nhn",
+      "description": "Object Storage object 다운로드 — DATA_EXFILTRATION / RANSOM 데이터 수집",
+      "activity_name_pattern": "^event_id\\.object_storage\\.object\\.download$",
+      "condition": {},
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "real_log_count": 11
+    },
+    {
+      "rule_id": "R-NHN-013",
+      "csp": "nhn",
+      "description": "IAM s3credential 삭제 — 자기 흔적 위장 / AUDIT_LOG_TAMPERING",
+      "activity_name_pattern": "^event_id\\.iaas\\.s3credential\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "real_log_count": 6
+    },
+    {
+      "rule_id": "R-NHN-014",
+      "csp": "nhn",
+      "description": "인스턴스 정지/Shelve — RANSOM 서비스 중단",
+      "activity_name_pattern": "^event_id\\.iaas\\.instance_action\\.(stop|shelve)$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NHN-015",
+      "csp": "nhn",
+      "description": "Object Storage container metadata 변경 — 공개 권한 노출 / MISCONFIG",
+      "activity_name_pattern": "^event_id\\.object_storage\\.container\\.metadata\\.update$",
+      "condition": {},
+      "technique_id": "T1538",
+      "tactic": "Discovery",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NHN-016",
+      "csp": "nhn",
+      "description": "IAM 멤버/조직 열거 — Account Discovery",
+      "activity_name_pattern": "^event_id\\.iam\\.(member\\.list|org\\.selected)$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NHN-017",
+      "csp": "nhn",
+      "description": "VPC 삭제 — 인프라 파괴 / Impact",
+      "activity_name_pattern": "^event_id\\.iaas\\.vpc\\.delete_end$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 1
     }
-  ]
+  ],
+  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)"
 }

@@ -16,7 +16,7 @@ import type {
   GuideV2Target,
 } from '@/types';
 
-interface Step3V2Props {
+interface Step4V2Props {
   onPrev: () => void;
   onComplete: () => void;
 }
@@ -820,7 +820,7 @@ const loadViewMode = (): ViewMode => {
   }
 };
 
-const Step3GuideChecklistV2 = ({ onPrev, onComplete }: Step3V2Props) => {
+const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
   const caseId = useCaseStore((s) => s.caseId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<GuideV2Target | null>(null);
@@ -1019,4 +1019,4 @@ const Step3GuideChecklistV2 = ({ onPrev, onComplete }: Step3V2Props) => {
   );
 };
 
-export default Step3GuideChecklistV2;
+export default Step4GuideChecklistV2;

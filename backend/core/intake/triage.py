@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from config import settings
+from core.intake.modifier_eval import triggered_modifier_ids
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,32 @@ def _accumulate_many(
         if delta:
             out = _accumulate(out, delta)
     return out
+
+
+def seed_scores_from_environment(
+    system_config: Optional[dict],
+) -> tuple[dict[str, int], list[str]]:
+    """시스템 구성(M0-2) → environment_modifiers 발동 → 가설 점수 시드 (2026-05-22).
+
+    `environment_modifiers.json` 의 트리거 조건을 `system_config` 로 평가해
+    발동한 modifier 의 `weights.json.environment_modifiers_to_hypothesis` 가중치를
+    초기 가설 점수에 누적한다. 단서 루프(M0-3) 진입 시 0 이 아닌 환경 기반
+    시작점을 제공 — 청사진 §2 + 사용자 결정 2026-05-22.
+
+    Returns:
+        (seeded_scores, applied_modifier_ids)
+    """
+    scores = _initial_scores()
+    if not system_config:
+        return scores, []
+    em_table = _weights().get("environment_modifiers_to_hypothesis") or {}
+    applied: list[str] = []
+    for mid in triggered_modifier_ids(system_config):
+        delta = em_table.get(mid)
+        if delta:
+            scores = _accumulate(scores, delta)
+            applied.append(mid)
+    return scores, applied
 
 
 # ─────────────────────────────────────────────────────────────
@@ -235,20 +262,26 @@ class Triage:
     """결정 트리 트리아주 평가 엔진."""
 
     @classmethod
-    def start(cls) -> dict:
+    def start(cls, system_config: Optional[dict] = None) -> dict:
         """트리아주 시작 — root 노드 + 초기 점수.
 
+        `system_config` 가 주어지면 environment_modifiers 를 평가해 가설 점수를
+        0 이 아닌 환경 기반 값으로 시딩한다 (M0-2 시스템 구성 → M0-3 단서 루프).
+
         Returns:
-            { next_node, hypothesis_scores, tree_path: [], is_terminal: False }
+            { next_node, hypothesis_scores, tree_path: [], is_terminal: False,
+              environment_seed: [발동 modifier id, ...] }
         """
         tree = _decision_tree()
         root_id = tree.get("root", "Q1_inception")
+        scores, applied = seed_scores_from_environment(system_config)
         return {
             "next_node": _serialize_node(root_id),
-            "hypothesis_scores": _initial_scores(),
+            "hypothesis_scores": scores,
             "tree_path": [],
             "is_terminal": False,
             "recommendation": None,
+            "environment_seed": applied,
         }
 
     @classmethod
@@ -298,13 +331,47 @@ class Triage:
                 weight_keys.append(wk)
             if not next_node_id and opt.get("next"):
                 next_node_id = opt.get("next")
-        # 옵션 레벨 next 없으면 노드 레벨 next 사용 (Q2A·Q2B·Q2C·Q2D 다중/단일 합류형)
+        # 옵션 레벨 next 없으면 dynamic_next (E4 동적 분기) 시도
+        if not next_node_id:
+            dynamic_next = node.get("dynamic_next")
+            if dynamic_next:
+                # current_path 에서 Q2 노드 ID 를 찾아 분기 결정
+                q2_node_id = None
+                for p in current_path:
+                    pid = p.get("node_id", "")
+                    if pid.startswith("Q2"):
+                        q2_node_id = pid
+                        break
+                if q2_node_id and q2_node_id in dynamic_next:
+                    next_node_id = dynamic_next[q2_node_id]
+                else:
+                    next_node_id = dynamic_next.get("default")
+        # 그래도 없으면 노드 레벨 next 사용 (Q2A·Q2B·Q2C·Q2D 다중/단일 합류형)
         if not next_node_id:
             next_node_id = node.get("next")
 
         # 점수 누적 (decision_tree_answers 가중치)
         weight_table = _weights().get("decision_tree_answers") or {}
         new_scores = _accumulate_many(current_scores, weight_keys, weight_table)
+
+        # E4 조합 부스트 — 이전 답변과 현재 답변의 조합에 추가 점수
+        combo_table = _weights().get("combination_boosts") or {}
+        if combo_table:
+            all_answer_keys = set()
+            for p in current_path:
+                for oid in p.get("selected_option_ids", []):
+                    pid = p.get("node_id", "")
+                    node_def = (tree.get("nodes") or {}).get(pid, {})
+                    for opt in node_def.get("options") or []:
+                        if opt.get("id") == oid and opt.get("weight_key"):
+                            all_answer_keys.add(opt["weight_key"])
+            all_answer_keys.update(weight_keys)
+            for combo_key, combo_delta in combo_table.items():
+                if combo_key.startswith("_"):
+                    continue
+                parts = combo_key.split("+")
+                if len(parts) == 2 and all(p in all_answer_keys for p in parts):
+                    new_scores = _accumulate(new_scores, combo_delta)
 
         # 경로 갱신
         new_path = [p for p in current_path if p.get("node_id") != current_node_id]
@@ -355,10 +422,14 @@ class Triage:
 
         # 단서 가중치
         if clue:
-            wk = clue.get("weight_key")
-            if not wk and clue.get("type"):
-                # 기본 weight_key — '{TYPE}:generic' 패턴. weights 에 없으면 무영향.
-                wk = f"{clue['type']}:generic"
+            # Q3 (2026-05-21): 자동 variant 분류 — weight_key 없으면 백엔드가 자동 추정.
+            # 폐쇄망 호환 (정적 룰만 — 외부 IP DB·VT API 호출 X).
+            # 자동 분류 실패 시 Q1 generic fallback (5점) 적용.
+            from core.intake.clue_classifier import enrich_clue
+            enriched = enrich_clue(clue)
+            wk = enriched.get("weight_key")
+            if not wk and enriched.get("type"):
+                wk = f"{enriched['type']}:generic"
             clue_table = _weights().get("clue_types") or {}
             new_scores = _accumulate_many(new_scores, [wk] if wk else [], clue_table)
 

@@ -121,19 +121,71 @@ class RAGRetriever:
 
     @classmethod
     def retrieve_by_technique(
-        cls, technique_id: str, k: int = 3
+        cls,
+        technique_id: str,
+        k: int = 3,
+        incident_type: Optional[str] = None,
+        csp: Optional[str] = None,
     ) -> list[tuple[KBChunk, float]]:
-        """ATT&CK 기법 ID 직매칭 우선 + 의미/키워드 검색 보조.
+        """ATT&CK 기법 ID 직매칭 우선 + 사고유형·CSP 매칭 청크 보강.
 
-        기법 ID가 메타에 정확히 매칭되는 청크는 score=1.0 (최우선).
-        그 다음 의미 검색 또는 키워드 검색으로 보강.
+        HIGH 3 (2026-05-21): 진규 E2E 보고서 §4.5 발견 — case_db / playbook 청크가
+        검색되지 않던 문제 해결. technique_id 직매칭 외에도 incident_type·csp
+        매칭 청크를 같이 반환하여 CASE_DB / PLAYBOOK 청크도 검색 가능.
+
+        매칭 우선순위:
+          1.0 — technique_id 정확 매칭 (ATTACK 청크 위주)
+          0.85 — incident_type + csp 동시 매칭 (CASE_DB 위주)
+          0.7 — incident_type 만 매칭 (PLAYBOOK·CASE_DB)
+          0.5 — 의미/키워드 검색 fallback
         """
         chunks = load_all()
-        direct = [c for c in chunks if c.meta.get("technique_id") == technique_id]
-        if direct:
-            return [(c, 1.0) for c in direct[:k]]
-        # fallback — 의미 검색 또는 키워드 검색
-        return cls.retrieve(technique_id, k=k)
+        result: list[tuple[KBChunk, float]] = []
+        seen: set[str] = set()
+
+        # 1순위: technique_id 정확 매칭
+        for c in chunks:
+            if c.meta.get("technique_id") == technique_id and c.chunk_id not in seen:
+                result.append((c, 1.0))
+                seen.add(c.chunk_id)
+                if len(result) >= k:
+                    break
+
+        # 2순위: incident_type + csp 동시 매칭 (CASE_DB 직접 매칭 강함)
+        if incident_type and len(result) < k:
+            for c in chunks:
+                if c.chunk_id in seen:
+                    continue
+                if c.meta.get("incident_type") == incident_type and (
+                    not csp or c.meta.get("csp") == csp
+                ):
+                    result.append((c, 0.85))
+                    seen.add(c.chunk_id)
+                    if len(result) >= k:
+                        break
+
+        # 3순위: incident_type 만 매칭 (csp 무관)
+        if incident_type and len(result) < k:
+            for c in chunks:
+                if c.chunk_id in seen:
+                    continue
+                if c.meta.get("incident_type") == incident_type:
+                    result.append((c, 0.7))
+                    seen.add(c.chunk_id)
+                    if len(result) >= k:
+                        break
+
+        # 4순위 (fallback): 의미·키워드 검색 — 직매칭 결과 부족 시
+        if len(result) < k:
+            search_query = f"{technique_id} {incident_type or ''}".strip()
+            for c, s in cls.retrieve(search_query, k=k):
+                if c.chunk_id in seen:
+                    continue
+                result.append((c, min(s, 0.5)))
+                if len(result) >= k:
+                    break
+
+        return result[:k]
 
     @classmethod
     def backend_info(cls) -> dict:

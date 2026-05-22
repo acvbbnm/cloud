@@ -1,16 +1,13 @@
 /**
- * V-1 Step 2 — Discovery Loop (dev3 신규).
+ * V-1 Step 3 — Discovery Loop (M0-3, dev3).
  *
- * 3-panel:
- *   좌측: 시스템 구성 (기존 Step2_SystemConfig 의 보안 정책·CSP 특화 폼)
- *   중앙: 결정 트리 질문 (DecisionTreeQuestion) — 향후 단서 입력·부분 로그 분석 추가
- *   우측: 가설 점수 (HypothesisScoreBar) + 추천 결과
+ * 단서 루프 전용 화면. 시스템 구성(M0-2)은 별도 스텝으로 분리됨 (2026-05-22).
  *
- * 차후 확장 (다음 사이클):
- *   - 단서 입력 (CluesInput) — IP·계정·해시·도메인·시각·서비스명
- *   - 부분 로그 분석 (DropZone 재사용)
- *   - 다음 단서 제안 (next_clue_graph.json 시각화)
- *   - 결정 트리 시각화 (react-flow 미니 그래프)
+ * 좌측: ① 단서 입력 (CluesInput) · ② 부분 로그 분석 · ③ 결정 트리 6단계
+ * 우측: 신뢰도 게이지 + 가설 점수 + 트리 미니맵 + 다음 단서 + 비교 차트 + 추천
+ *
+ * 진입 시 가설 점수는 0 이 아니라 M0-2 시스템 구성의 environment_modifiers 가
+ * 시딩한 값에서 출발한다 (POST /api/triage/start 가 case.system_config 평가).
  *
  * 학술 근거: docs/dev3/V1_재설계_청사진.md §2 Step 2
  */
@@ -19,11 +16,12 @@ import { useEffect, useState } from 'react';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import CluesInput from '@/components/CluesInput';
+import ConfidenceGauge from '@/components/ConfidenceGauge';
 import DecisionTreeQuestion from '@/components/DecisionTreeQuestion';
+import HypothesisBreakdownChart from '@/components/HypothesisBreakdownChart';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
-import HypothesisBreakdownChart from '@/components/HypothesisBreakdownChart';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
@@ -34,9 +32,7 @@ import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
-import { nextTriage, startTriage } from '@/api/triage';
-
-import Step2_SystemConfig from './Step2_SystemConfig';
+import { analyzeClue, nextTriage, startTriage } from '@/api/triage';
 
 import type {
   IncidentType,
@@ -49,16 +45,10 @@ import type {
 // (청사진 §3 — 정적 weights.json 단일 소스). 학술 변호: 클라이언트 mock 가중치
 // 잔존은 weights.json 과 어긋날 위험이 있어 일괄 제거.
 
-interface Step2DiscoveryProps {
-  csp: string | null;
-  incidentType: string | null;
+interface Step3DiscoveryProps {
   onPrev: () => void;
-  onSubmit: (
-    config: Parameters<
-      React.ComponentProps<typeof Step2_SystemConfig>['onSubmit']
-    >[0],
-    confirmedIncidentType: IncidentType,
-  ) => void;
+  /** 사고유형 확정 → M0-4 초동 수집 가이드로 진행. */
+  onConfirm: (confirmedIncidentType: IncidentType) => void;
   isSubmitting?: boolean;
 }
 
@@ -82,13 +72,11 @@ const OUTCOME_LABEL: Record<TriageRecommendation['outcome'], string> = {
   continue_or_skip: '➡ 추가 단서 또는 UNCLASSIFIED 진행',
 };
 
-const Step2_Discovery = ({
-  csp,
-  incidentType,
+const Step3_Discovery = ({
   onPrev,
-  onSubmit,
+  onConfirm,
   isSubmitting,
-}: Step2DiscoveryProps) => {
+}: Step3DiscoveryProps) => {
   const caseId = useCaseStore((s) => s.caseId);
   const observables = useCaseStore((s) => s.observables);
   const addObservable = useCaseStore((s) => s.addObservable);
@@ -127,7 +115,9 @@ const Step2_Discovery = ({
     }
   }, []);
 
-  // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때
+  // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때.
+  // POST /api/triage/start 가 case.system_config 의 environment_modifiers 를
+  // 평가하여 0 이 아닌 가설 점수를 시딩해 반환한다 (M0-2 → M0-3 연결).
   useEffect(() => {
     let cancelled = false;
     const initTree = async () => {
@@ -140,6 +130,10 @@ const Step2_Discovery = ({
           storeStart(res.next_node.id);
           setCurrentNodeData(res.next_node);
           setHypothesisScores(res.hypothesis_scores);
+          const seeded = Object.values(res.hypothesis_scores).some((v) => v > 0);
+          if (seeded) {
+            showToast('💡 시스템 구성 기반 환경 가중치가 가설 점수에 반영됐습니다', 3200);
+          }
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -154,9 +148,6 @@ const Step2_Discovery = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
-
-  // currentNodeId 변경 시 currentNode 데이터 동기화 (mock 응답에서 채워짐)
-  // — 실제로는 startTriage / nextTriage 응답에서 next_node 를 직접 받음
 
   // Q4 (2026-05-21): 트리 답변 → 단서 힌트 매핑 — 답변 선택 시 CluesInput 의 type
   // + variant 자동 선택. 사용자가 단서를 직접 추가하면 가중치까지 함께 부여됨.
@@ -180,11 +171,56 @@ const Step2_Discovery = ({
     permission_changes: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 다수 — 계정 단서' },
     log_gap: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '감사 로그 누락 — Cloud Trail 단서' },
     data_access: { clueType: 'SERVICE', variant: 'object_storage', reason: '비정상 데이터 액세스 — 서비스 단서' },
-    // Q3 옵션
+    // Q3 옵션 (Q3_additional_context — 호환 유지)
     fail_then_success: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: '실패→성공 패턴 — MFA 미적용 계정 단서' },
     multi_region_concurrent: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '동시 다지역 — IP 단서' },
     storage_policy_change: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 정책 변경 — 서비스 단서' },
     serverless_new: { clueType: 'SERVICE', variant: 'iam', reason: 'Serverless 신규 — IAM 단서' },
+    // E4 2026-05-21 — Q3 variants
+    non_korean_geographic: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '비국내 지리 — IP 단서' },
+    storage_policy_public: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage public 변경 — 서비스 단서' },
+    s3_credential_change: { clueType: 'SERVICE', variant: 'iam', reason: 'S3 credential 변경 — IAM 단서' },
+    multi_csp_pivot: { clueType: 'IP_ADDRESS', variant: 'multi_csp_observed', reason: '멀티 CSP 횡적이동 — IP 단서' },
+    billing_spike: { clueType: 'SERVICE', variant: 'iam', reason: '결제 spike — 자원 단서' },
+    off_hours_priv: { clueType: 'TIME_WINDOW', variant: 'off_hours', reason: '비표준 시각 권한 변경 — 시각 단서' },
+    multiple_iam_changes: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '다수 IAM 변경 — 계정 단서' },
+    gradual_priv_creep: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 점진 상승 — 계정 단서' },
+    self_audit_disable: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '본인 감사 비활성 — Cloud Trail 단서' },
+    mass_encrypt: { clueType: 'SERVICE', variant: 'object_storage', reason: '대량 암호화 — Object Storage 단서' },
+    backup_deletion: { clueType: 'SERVICE', variant: 'object_storage', reason: '백업 삭제 — Object Storage 단서' },
+    ransom_extension: { clueType: 'HASH', variant: 'unknown', reason: '비표준 확장자 — 해시 단서 (unknown)' },
+    storage_destruction: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Object Storage 파괴 — 서비스 단서' },
+    // E4 — Q4 옵션
+    mfa_token_reuse: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 토큰 재사용 — 해당 계정 단서' },
+    mfa_registration_change: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 등록 변경 — 계정 단서' },
+    mfa_not_applied: { clueType: 'ACCOUNT', variant: 'mfa_disabled', reason: 'MFA 미적용 — 계정 단서' },
+    audit_log_tampered: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '인증 감사 로그 변조 — Cloud Trail 단서' },
+    backup_destroyed: { clueType: 'SERVICE', variant: 'object_storage', reason: '백업 파괴 — Object Storage 단서' },
+    short_term_public: { clueType: 'TIME_WINDOW', reason: '단기 공개 — 시각 윈도우 단서' },
+    long_term_public: { clueType: 'TIME_WINDOW', reason: '장기 노출 — 시각 윈도우 단서' },
+    scope_excess: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '직무 초과 — 계정 단서' },
+    partner_account: { clueType: 'ACCOUNT', variant: 'newly_created', reason: '협력사 계정 — 계정 단서' },
+    // E4 — Q5 옵션
+    tor_vpn: { clueType: 'IP_ADDRESS', variant: 'tor_vpn', reason: 'Tor/VPN exit — IP 단서' },
+    internal_ip: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '사내 IP — IP 단서' },
+    internal_endpoint: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '사내 단말 — IP 단서' },
+    internal_vpn: { clueType: 'IP_ADDRESS', variant: 'multi_csp_observed', reason: '사내+VPN — IP 단서' },
+    trace_deletion: { clueType: 'SERVICE', variant: 'cloud_trail', reason: '흔적 삭제 — Cloud Trail 단서' },
+    storage_wide: { clueType: 'SERVICE', variant: 'object_storage', reason: 'Storage 광범위 — 서비스 단서' },
+    multi_region: { clueType: 'IP_ADDRESS', variant: 'multi_account', reason: '멀티 리전 — IP 단서' },
+    operator: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '운영자 변경 — 계정 단서' },
+    abnormal_ip: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '비정상 IP — IP 단서' },
+    automation_script: { clueType: 'ACCOUNT', variant: 'newly_created', reason: '자동화 스크립트 — 계정 단서' },
+    // E4 — Q6 옵션
+    priv_change: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: '권한 변경 — 계정 단서' },
+    storage_download: { clueType: 'SERVICE', variant: 'object_storage', reason: '대량 다운로드 — Object Storage 단서' },
+    function_persist: { clueType: 'SERVICE', variant: 'iam', reason: '신규 함수 지속성 — IAM 단서' },
+    note_found: { clueType: 'HASH', variant: 'known_malicious', reason: '랜섬 노트 — 해시 단서' },
+    double_extortion: { clueType: 'DOMAIN', variant: 'c2', reason: '이중 협박 도메인 — 도메인 단서' },
+    pii: { clueType: 'SERVICE', variant: 'object_storage', reason: 'PII 데이터 — Object Storage 단서' },
+    trade_secret: { clueType: 'SERVICE', variant: 'object_storage', reason: '영업비밀 — Object Storage 단서' },
+    data_external: { clueType: 'IP_ADDRESS', variant: 'non_korean', reason: '데이터 외부 전송 — IP 단서' },
+    iam_self_delete: { clueType: 'ACCOUNT', variant: 'privilege_changed', reason: 'IAM 자기 삭제 — 계정 단서' },
   };
 
   const handleSubmitAnswer = async (answerIds: string[]) => {
@@ -212,34 +248,30 @@ const Step2_Discovery = ({
         setCurrentNodeData(null);
       }
       // Q4: 답변 중 단서 힌트가 있는 것 — 첫 번째만 적용 (CluesInput 자동 선택)
-      let hintFired = false;
       for (const ansId of answerIds) {
         const hint = ANSWER_TO_CLUE_HINT[ansId];
         if (hint) {
           setPreferredClueType(hint.clueType);
           setPreferredVariant(hint.variant ?? null);
           showToast(`💡 ${hint.reason}`, 2800);
-          hintFired = true;
           break;
         }
       }
-      // §4-4: 격차 기반 진단 hint — 1위·2위 점수 격차로 토스트
-      if (!hintFired) {
-        const sorted = Object.entries(res.hypothesis_scores)
-          .filter(([k]) => k !== 'UNCLASSIFIED')
-          .sort(([, a], [, b]) => b - a);
-        if (sorted.length >= 2) {
-          const gap = sorted[0][1] - sorted[1][1];
-          if (gap < 10) {
-            showToast('⚠ 여전히 모호 — 추가 질문 권장', 2500);
-          } else if (gap < 20) {
-            showToast('가설 형성 중 — Q4·Q5·Q6 진행', 2500);
-          } else if (gap < 30) {
-            showToast('🎯 명확해지는 중', 2000);
-          } else {
-            showToast('🎯 명확 — 조기 확정 가능', 2500);
-          }
-        }
+      // E4 §4-4 (2026-05-21): 격차 기반 진단 hint — 답변 직후 1·2위 격차 토스트
+      const sorted = (Object.keys(res.hypothesis_scores) as IncidentType[])
+        .filter((t) => t !== 'UNCLASSIFIED')
+        .map((t) => res.hypothesis_scores[t] ?? 0)
+        .sort((a, b) => b - a);
+      const gap = sorted[0] - (sorted[1] ?? 0);
+      const primary = sorted[0];
+      if (primary >= 130 && gap >= 30) {
+        showToast('🎯 명확 — 자동 확정 가능. 우측 “확정” 버튼으로 진행', 3500);
+      } else if (gap >= 20) {
+        showToast(`🎯 명확해지는 중 (격차 ${gap}점)`, 2200);
+      } else if (gap >= 10) {
+        showToast(`가설 형성 중 (격차 ${gap}점) — Q4·Q5 진행 권장`, 2200);
+      } else if (primary > 0) {
+        showToast(`⚠ 여전히 모호 (격차 ${gap}점) — 추가 단서 또는 답변 권장`, 2500);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -269,34 +301,14 @@ const Step2_Discovery = ({
     }
   };
 
-  // 추천 결과에 따른 사고유형 확정 → 다음 단계로
-  const handleAccept = (sysConfig: Parameters<typeof onSubmit>[0]) => {
-    const chosen: IncidentType =
-      recommendation?.primary?.incident_type ?? 'UNCLASSIFIED';
-    onSubmit(sysConfig, chosen);
+  // 추천 결과의 주 사고유형으로 확정 → M0-4 진행
+  const handleConfirm = () => {
+    onConfirm(recommendation?.primary?.incident_type ?? 'UNCLASSIFIED');
   };
 
-  const handleSkip = (sysConfig: Parameters<typeof onSubmit>[0]) => {
-    onSubmit(sysConfig, 'UNCLASSIFIED');
-  };
-
-  // 시스템 구성 폼은 submit 시 좌측에서 호출. 우리는 Discovery 결과와 묶어서 처리.
-  // Step2_SystemConfig 는 form 의 onSubmit prop 으로 sysConfig 전달.
-  // 우리는 그 sysConfig 를 받아 사고유형과 함께 onSubmit 호출.
-  const [pendingConfig, setPendingConfig] = useState<
-    Parameters<typeof onSubmit>[0] | null
-  >(null);
-
-  // 시스템 구성 제출 → 추천 결과에 따라 자동 또는 사용자 선택
-  const handleSystemConfigSubmit = (
-    config: Parameters<typeof onSubmit>[0],
-  ) => {
-    setPendingConfig(config);
-    // 자동 확정이면 바로 진행
-    if (recommendation?.outcome === 'auto_confirm') {
-      handleAccept(config);
-    }
-    // 그 외에는 사용자 명시 클릭 대기 (handleAccept / handleSkip)
+  // 건너뛰기 — UNCLASSIFIED 로 진행 (Layer 2 분석 후 V-8 Sherpa 가 추론)
+  const handleSkip = () => {
+    onConfirm('UNCLASSIFIED');
   };
 
   return (
@@ -307,7 +319,7 @@ const Step2_Discovery = ({
       {/* 헤더 — 가벼운 안내 */}
       <div className="panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="eyebrow">Layer 0 · M0-2 · Discovery Loop</span>
+          <span className="eyebrow">Layer 0 · M0-3 · Discovery Loop</span>
           <Badge tone="purple" size="sm">
             UNCLASSIFIED
           </Badge>
@@ -326,32 +338,16 @@ const Step2_Discovery = ({
         </div>
       </div>
 
-      {/* 답변 타임라인 스테퍼 (§4-5) + 조기 종료 인라인 카드 (§4-6) */}
-      {(completedPath.length > 0 || currentNodeId) && (
-        <TriageStepper
-          completedPath={completedPath}
-          currentNodeId={currentNodeId}
-          hypothesisScores={hypothesisScores}
-          isTerminal={isTerminal}
-          onStepClick={(nodeId, _stepIndex) => {
-            showToast(`${nodeId} 로 되돌아갑니다 — 해당 노드부터 재진행`, 2500);
-          }}
-          onEarlyConfirm={() => {
-            if (pendingConfig) {
-              handleAccept(pendingConfig);
-            } else {
-              showToast('좌측 시스템 구성 폼을 먼저 제출해주세요', 2500);
-            }
-          }}
-          onContinue={() => {
-            showToast('Q4·Q5·Q6 추가 질문을 계속합니다', 2000);
-          }}
-        />
-      )}
+      {/* E4 (2026-05-21): 진단 타임라인 stepper — Q1~Q6 6단계 가시화 */}
+      <TriageStepper
+        completedPath={completedPath}
+        currentNodeId={currentNodeId}
+        isTerminal={isTerminal}
+      />
 
-      {/* 3-panel 레이아웃 */}
+      {/* 2-panel 레이아웃 — 좌측 단서 루프 / 우측 가설 점수 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
-        {/* 좌측+중앙 묶음 (큰 영역) */}
+        {/* 좌측 — 단서·부분로그·결정트리 */}
         <div className="space-y-3 min-w-0">
           {/* ① 단서 입력 */}
           <Card
@@ -377,7 +373,6 @@ const Step2_Discovery = ({
                 // weight_key 가 있으면 그 가중치, 없으면 generic fallback (Q1) 적용.
                 if (!caseId) return;
                 try {
-                  const { analyzeClue } = await import('@/api/triage');
                   const res = await analyzeClue(caseId, hypothesisScores, {
                     type: o.type,
                     value: o.value,
@@ -453,72 +448,19 @@ const Step2_Discovery = ({
               />
             )}
           </Card>
-
-          {/* 좌측 — 시스템 구성 (기존 폼 그대로) */}
-          <Card
-            title={<>⚙ 시스템 구성 (environment_modifiers)</>}
-            subtitle="입력한 구성·보안 정책이 Step 3 가이드 우선순위에 반영됩니다"
-          >
-            <Step2_SystemConfig
-              csp={csp}
-              incidentType={incidentType}
-              onPrev={onPrev}
-              onSubmit={handleSystemConfigSubmit}
-              isSubmitting={isSubmitting}
-            />
-          </Card>
         </div>
 
         {/* 우측 — 가설 점수 + 추천 + 액션 (sticky) */}
         <div className="min-w-0">
           <div className="panel p-4 lg:sticky lg:top-4 space-y-4">
+            {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
+            <ConfidenceGauge scores={hypothesisScores} />
+
             <HypothesisScoreBar
               scores={hypothesisScores}
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
             />
-
-            {/* §4-3: 신뢰도 게이지 — 1위 사고유형의 score / 70 비율 */}
-            {(() => {
-              const sorted = Object.entries(hypothesisScores)
-                .filter(([k]) => k !== 'UNCLASSIFIED')
-                .sort(([, a], [, b]) => b - a);
-              if (sorted.length < 1 || sorted[0][1] === 0) return null;
-              const topScore = sorted[0][1];
-              const confidence = Math.min(100, Math.round((topScore / 70) * 100));
-              const gap = sorted.length >= 2 ? sorted[0][1] - sorted[1][1] : topScore;
-              const stage =
-                confidence < 40
-                  ? { color: 'bg-ink-600', text: '단서 부족', textColor: 'text-ink-400' }
-                  : confidence < 70
-                  ? { color: 'bg-brand-blue', text: '가설 형성 중', textColor: 'text-brand-blue' }
-                  : confidence < 90
-                  ? { color: 'bg-green-500', text: '🎯 가설 형성', textColor: 'text-green-400' }
-                  : { color: 'bg-amber-400', text: '✅ 자동 확정 가능', textColor: 'text-amber-300' };
-              return (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10.5px]">
-                    <span className={`font-semibold ${stage.textColor}`}>
-                      {stage.text}
-                    </span>
-                    <span className="text-ink-400">{confidence}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-ink-800/60 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ease-out ${stage.color} ${
-                        confidence >= 90 ? 'animate-pulse' : ''
-                      }`}
-                      style={{ width: `${confidence}%` }}
-                    />
-                  </div>
-                  {gap < 20 && sorted[0][1] > 0 && (
-                    <div className="text-[9.5px] text-amber-400">
-                      ⚠ 1위·2위 격차 {gap}점 — 복합 사고 의심
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
 
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
             <div>
@@ -532,14 +474,6 @@ const Step2_Discovery = ({
               />
             </div>
 
-            {/* 사고유형 비교 차트 (§4-8) */}
-            {Object.values(hypothesisScores).some((v) => v > 0) && (
-              <HypothesisBreakdownChart
-                scores={hypothesisScores}
-                highlightType={recommendation?.primary?.incident_type}
-              />
-            )}
-
             {/* 다음 단서 제안 — 클릭 시 좌측 CluesInput 활성 */}
             <NextCluePanel
               scores={hypothesisScores}
@@ -549,6 +483,14 @@ const Step2_Discovery = ({
                 // 좌측 단서 입력 영역으로 자동 스크롤 — 컨테이너 미정의 시 무시
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+            />
+
+            {/* E4 §4-8 (2026-05-21): 사고유형 비교 차트 + 기여 요소 요약 */}
+            <HypothesisBreakdownChart
+              scores={hypothesisScores}
+              treeAnswerCount={completedPath.length}
+              clueCount={observables.length}
+              mappedTechniqueCount={mappedTechniques.length}
             />
 
             {/* 단서 누적 요약 */}
@@ -568,7 +510,7 @@ const Step2_Discovery = ({
                   )}
                 </ul>
                 <p className="text-[10px] text-ink-500 mt-1.5 leading-4">
-                  ※ 단서별 가설 점수 기여는 백엔드 /api/triage/analyze 가 구현되면 활성화됩니다.
+                  ※ 단서 추가 시 백엔드 /api/triage/analyze 가 가설 점수에 즉시 반영합니다.
                 </p>
               </div>
             )}
@@ -594,6 +536,42 @@ const Step2_Discovery = ({
                 </ul>
               </div>
             )}
+
+            {/* E4 §4-6 (2026-05-21): 조기 종료 인라인 카드 — auto_confirm 도달했으나
+                트리가 아직 진행 중일 때 노출 (Q4·Q5·Q6 계속 vs 즉시 확정) */}
+            {recommendation?.outcome === 'auto_confirm' &&
+              !isTerminal &&
+              currentNodeId && (
+                <div className="border-l-[3px] border-l-brand-teal bg-brand-teal/10 rounded-md p-3">
+                  <div className="text-[11px] text-brand-teal font-semibold mb-1">
+                    🎯 {recommendation.primary
+                      ? INCIDENT_TYPE_KO[recommendation.primary.incident_type]
+                      : '사고유형'}{' '}
+                    신뢰도 도달
+                  </div>
+                  <div className="text-[10.5px] text-ink-200 mb-2 leading-4">
+                    1위 점수 {recommendation.primary?.score}점 — auto_skip 임계 도달.
+                    Q4·Q5·Q6 진행 시 의외성(복합 사고) 추가 발견 가능.
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleConfirm}
+                      disabled={isSubmitting}
+                      className="btn-primary btn-xs flex-1 disabled:opacity-50"
+                    >
+                      ✓ 지금 확정
+                    </button>
+                    <button
+                      onClick={() => {
+                        showToast('Q4·Q5·Q6 계속 진행 — 추가 시그널 확인');
+                      }}
+                      className="btn-ghost btn-xs flex-1"
+                    >
+                      계속 진행
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {/* 추천 결과 */}
             {recommendation && (
@@ -649,36 +627,41 @@ const Step2_Discovery = ({
               </div>
             )}
 
-            {/* 액션 버튼 — 시스템 구성이 제출되고 추천이 있을 때만 활성 */}
-            {pendingConfig && recommendation && (
-              <div className="border-t border-ink-700/40 pt-3 space-y-1.5">
-                {recommendation.primary &&
-                  recommendation.outcome !== 'continue_or_skip' && (
-                    <button
-                      onClick={() => handleAccept(pendingConfig)}
-                      disabled={isSubmitting}
-                      className="btn-primary btn-sm w-full disabled:opacity-50"
-                    >
-                      {isSubmitting
-                        ? '진행 중…'
-                        : `✓ ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정`}
-                    </button>
-                  )}
-                <button
-                  onClick={() => handleSkip(pendingConfig)}
-                  disabled={isSubmitting}
-                  className="btn-ghost btn-sm w-full disabled:opacity-50"
-                >
-                  건너뛰기 — UNCLASSIFIED 진행
-                </button>
-              </div>
-            )}
-
-            {!pendingConfig && isTerminal && (
-              <p className="text-[10.5px] text-ink-500 leading-5 border-t border-ink-700/40 pt-2">
-                ⓘ 좌측 시스템 구성 폼을 제출하면 추천 사고유형으로 다음 단계 진행 가능.
-              </p>
-            )}
+            {/* 액션 — 추천이 나오면 확정 가능, 이전·건너뛰기는 항상 제공 */}
+            <div className="border-t border-ink-700/40 pt-3 space-y-1.5">
+              {recommendation?.primary &&
+                recommendation.outcome !== 'continue_or_skip' && (
+                  <button
+                    onClick={handleConfirm}
+                    disabled={isSubmitting}
+                    className="btn-primary btn-sm w-full disabled:opacity-50"
+                  >
+                    {isSubmitting
+                      ? '진행 중…'
+                      : `✓ ${INCIDENT_TYPE_KO[recommendation.primary.incident_type]} 로 확정 → 수집 가이드`}
+                  </button>
+                )}
+              <button
+                onClick={handleSkip}
+                disabled={isSubmitting}
+                className="btn-ghost btn-sm w-full disabled:opacity-50"
+              >
+                건너뛰기 — UNCLASSIFIED 로 진행
+              </button>
+              <button
+                onClick={onPrev}
+                disabled={isSubmitting}
+                className="btn-ghost btn-sm w-full text-ink-400 disabled:opacity-50"
+              >
+                ← 시스템 구성
+              </button>
+              {!recommendation && (
+                <p className="text-[10px] text-ink-500 leading-4 pt-1">
+                  ⓘ 결정 트리를 끝까지 진행하면 추천 사고유형이 산출됩니다.
+                  단서만으로 진행하려면 “건너뛰기”.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -686,4 +669,4 @@ const Step2_Discovery = ({
   );
 };
 
-export default Step2_Discovery;
+export default Step3_Discovery;

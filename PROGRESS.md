@@ -1,6 +1,6 @@
 # AI Sherpa — 진행 현황
 
-> 마지막 업데이트: 2026-05-21 (저녁) · 브랜치: `byungwoo` (Plan-Q + jingyu 머지 + HIGH 3건 + 결정트리 E4 인계)
+> 마지막 업데이트: 2026-05-22 · 브랜치: `byungwoo` (E4 7/7 + **안정화 — 통합 진단 / V-1 5단계 분리 / 환경 시딩**)
 > 이 문서는 **팀이 같은 그림을 보기 위한 작업 메모**입니다. 작업 시작 전·종료 후 갱신해 주세요.
 
 ---
@@ -41,6 +41,103 @@
 ---
 
 ## 작업 내역
+
+### 2026-05-22 — 안정화 단계 (통합 진단 + V-1 흐름 재구조화)
+
+기능 동결 후 안정화 — UI/UX 흐름 정정 + 백엔드·DB 완벽 동작 목표.
+
+**MOCK 일괄 제거** (커밋 `2f47a3d`·`d9f6730`):
+- `api/triage.ts` 구식 3단계 mock 트리·가중치·임계값 제거 (E4 6단계와 불일치, fallback 시 퇴행 위험).
+- `api/intake.ts` `MOCK_CASE`·`VITE_USE_MOCK` 제거. 프론트 8개 api 모듈 30개 함수 전부 실 `/api` 호출 — mock 분기 0건.
+- 백엔드 `stub`(LLM)·`깡통`(RAG) 은 mock 이 아닌 필수 오프라인 폴백 — 보존.
+
+**통합 진단** (커밋 `6d8cbe2` — `scripts/e2e_full_pipeline.py` 신규):
+- L0~L4 + 공통 29 엔드포인트 전수 호출 검증 — **29/29 PASS**.
+- Ollama 연결됨(llama3.1:8b)·ChromaDB 연결됨 확인.
+
+**버그 수정** (커밋 `63cf1c0`):
+- Header CSP 토글 `통합 뷰`(csp=all) 제거 — 제거된 데이터 모델 잔존, 클릭 시 케이스 생성 422.
+
+**V-1 흐름 5단계 분리** (커밋 `58d5ae9`):
+- 기존 4단계의 M0-2 "시스템 구성"이 실제로는 Discovery Loop 전체를 담던 문제 해소.
+- `M0-0 분석환경 · M0-1 케이스메타 · M0-2 시스템구성 · M0-3 단서루프 · M0-4 초동수집가이드`.
+- `Step2_Discovery`→`Step3_Discovery`(단서 루프 전용) / `Step3_GuideChecklist_V2`→`Step4_`.
+
+**환경 변경자 → 가설 점수 시딩** (커밋 `9f8f34c`):
+- 죽어있던 `weights.json.environment_modifiers_to_hypothesis`(13개) 실제 배선.
+- 신규 `core/intake/modifier_eval.py` — 트리거 평가 공용 모듈 (가이드·가설 공용, DRY).
+- `Triage.start(system_config)` + `POST /api/triage/start` 가 `case.system_config` 평가 →
+  M0-3 단서 루프가 0 이 아닌 환경 기반 가설 점수에서 출발.
+
+**회귀 검증**: 풀 파이프라인 29/29 · 트리 E4 5/5 PASS · 프론트 `tsc` 통과.
+
+**남은 안정화 항목**: ① KB 임베딩 갭 (KB 125 청크 vs ChromaDB 109) ② Sidebar 계층 라벨 (V5·V6 = Layer 4, V8 = Layer 3 정정).
+
+### 2026-05-21 (심야) — 결정 트리 E4 구현 (A~G 7/7 완료)
+
+**배경**: 같은 날 저녁 인계 문서 `docs/dev3/결정트리_업그레이드.md` 등록 후, 사용자 결정으로 직접 구현 진행.
+
+**완료된 작업 (5/7)**:
+
+**A — `decision_tree.json` 노드 확장** (커밋 `4a8b020`):
+- Q3 4종 variant 분리 — `Q3_CRED` (CSP 알람 → 자격증명), `Q3_DATA` (외부 신고 → 데이터), `Q3_INSIDER` (감사 → 내부자), `Q3_IMPACT` (서비스 이상 → 임팩트). 각 4-5 옵션.
+- Q4·Q5·Q6 12 신규 노드 — `Q4_CRED/RANSOM/MISCFG/INSIDER`, `Q5_CRED/RANSOM/MISCFG/INSIDER`, `Q6_CRED/RANSOM/MISCFG/INSIDER`. 각 3-4 옵션.
+- Q2A·Q2B·Q2C·Q2D `next` 라우팅 — 사고유형 흐름별 동적 분기.
+- `max_depth`: 3 → 6.
+- `Q3_additional_context` 는 backward compat 유지 (deprecated 표기).
+- 총 노드 수: 8 → 24.
+
+**B — `weights.json` 신규 52 키 + 학술 근거** (커밋 `4a8b020` 포함):
+- 신규 키 52개 (Q3 variants 13 + Q4·Q5·Q6 39).
+- 각 키에 ISO 27035-1:2023 Assess & Decide 태그 + MITRE T1490/T1556/T1562.008 등 학술 근거.
+- 단위 5 정책 유지 (`Q4-INSIDER:scope_within` 만 -5 감점 예외).
+- 임계값 상향 조정: `high_confidence` 70→90, `auto_skip_tree` 90→130, `gap_to_2nd` 20→30, `terminal_score` 120→180 (E4 6단계 누적 130-230 범위 정합).
+
+**5 시나리오 시뮬레이션 결과** (G 일부):
+| 시나리오 | 최종 점수 | outcome | 학술 정합 |
+|---|---|---|---|
+| S1 CRED+MFA | 140 | `auto_confirm` (gap 30) | ✅ |
+| S2 RANSOM | 230 | `auto_confirm` (gap 165) | ✅ |
+| S3 MISCFG | 160 | `auto_confirm` (gap 35) | ✅ |
+| S4 PHISH | 145 | `propose_composite` (PHISH+CRED gap 20) | ✅ (의도적 — 인과 연쇄) |
+| S5 INSIDER | 150 | `auto_confirm` (gap 80) | ✅ |
+
+S4 라우팅 정정 — `Q2B:identity_theft` / `phishing_report` 의 `next` 를 `Q3_DATA` → `Q3_CRED` 로 (PHISH 흐름 정합).
+
+**C + E — Step2_Discovery UX 강화** (커밋 `e35c621`):
+- `ConfidenceGauge` 신규 컴포넌트 — 1위 score / auto_skip(130) ratio 원형 게이지 (conic-gradient). 0-40% 회색 / 40-70% 파랑 / 70-90% 초록 / 90%+ 펄스. gap < 30 시 amber 복합 사고 의심 hint.
+- `TriageStepper` 신규 컴포넌트 — Q1~Q6 6 단계 timeline. 완료 노드 ✓ + 클릭으로 답변 수정 진입점. 현재 노드 ▷ 펄스 강조.
+- `HypothesisScoreBar` 임계값 기본값 70/90/120 → 90/130/180 (E4 정합).
+- `Step2_Discovery` ANSWER_TO_CLUE_HINT 에 Q3 variant·Q4·Q5·Q6 답변 30+ 신규 매핑 (CluesInput 자동 선택).
+- `handleSubmitAnswer` 에 격차 기반 진단 hint 토스트 4단계 (모호/형성/명확/조기확정).
+- 조기 종료 인라인 카드 — `outcome === 'auto_confirm'` 도달 시 "지금 확정 vs 계속 진행" 노출.
+- `types/index.ts`: `TriagePathEntry` 타입 분리 (TriageStepper 등 공유).
+
+**F — HypothesisBreakdownChart** (커밋 `6c429eb`):
+- 8 사고유형 leaderboard (점수 내림차순) + 사고유형별 색상 (CRED=blue, RANSOM=red, MISCFG=amber, PHISH=fuchsia, INSIDER=teal, ...).
+- 각 행 클릭 시 펼침 → 기여 출처 (트리 답변·단서·부분 분석) 카운트 표시.
+- 우측 패널 하단에 통합.
+- 학술 변호: 결정성 100% — "왜 이 가설인가" 추적성. 출처별 정확한 점수 분해는 추후 `/api/triage/breakdown` API 도입 시 보강 (현재 누적값 권위).
+
+**D·G 완료 (7/7) — 2026-05-21 추가 작업**:
+- **D — TriageTreeMinimap 분기 시각화 강화**: 미니맵을 E4 6단계 24 노드 구조로 재구성. 사고유형 계열별 색상 (자격증명=파랑·랜섬웨어=빨강·설정오류=주황·내부자=청록·데이터=자홍), 활성 lane 은 실선·다른 lane 은 회색 점선, Q3_DATA 라우터 단계 처리 + 범례 색 칩 추가. doc §4-7 충족.
+- **G — `scripts/e2e_tree_e4_test.py` 신규**: HTTP 서버 없이 `Triage` 엔진을 직접 호출하는 결정론적 5 시나리오 검증 스크립트. 단계별 점수 델타·순위·outcome 리포트 + 기대치 assert, 종료 코드 0/1. 실행 결과 **5/5 PASS** (S1 CRED 140·S2 RANSOM 190·S3 MISCFG 160·S4 PHISH→CRED 복합 110/110·S5 INSIDER 145).
+
+**TypeScript 검증**: `npx tsc --noEmit` 통과 (커밋마다 pre-commit 훅 확인).
+
+**커밋 3건**:
+- `4a8b020` — feat(data): E4 결정 트리 6단계 동적 분기 확장
+- `e35c621` — feat(ux): E4 ConfidenceGauge + TriageStepper + 격차 hint + Q4-Q6 ANSWER_TO_CLUE_HINT 확장
+- `6c429eb` — feat(ux): E4 HypothesisBreakdownChart 8종 비교 + 기여 요소 요약
+
+**학술 변호 정합 매핑** (`docs/dev3/결정트리_업그레이드.md` §6):
+- Q4 증거 무결성·시간축 ← NIST SP 800-86 §3 Volatility Hierarchy + 의료 "현재 상태"
+- Q5 영향 범위·행위자 ← ISO/IEC 27035-1:2023 Assess & Decide impact assessment + 의료 "전파 범위"
+- Q6 후속 시그널·의도 ← AWS Detective Profile-by-Profile pivot + 의료 "사후 변화"
+- 신뢰도 게이지 ← 의료 감별진단 "diagnostic confidence"
+- 답변 timeline stepper ← 의료 "diagnostic timeline"
+
+---
 
 ### 2026-05-21 (저녁) — 결정 트리 E4 + UX 강화 작업 지시서 등록 (다른 팀원 인계)
 

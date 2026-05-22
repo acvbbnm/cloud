@@ -102,7 +102,8 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
       <div>
         <h2 className="h-section">시스템 구성 정보</h2>
         <p className="text-[13px] text-ink-400 mt-1.5 max-w-2xl">
-          인프라 구성과 사고 범위를 입력하세요. 다음 단계의 수집 가이드 자동 생성에 활용됩니다.
+          인프라 구성과 보안 정책을 입력하세요. 다음 단계 단서 루프의 가설 점수 시딩
+          (environment_modifiers)과 초동 수집 가이드 우선순위에 활용됩니다.
         </p>
       </div>
 
@@ -451,7 +452,7 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
           ← 이전
         </button>
         <button onClick={handleSubmit} className="btn-primary disabled:opacity-50" disabled={isSubmitting}>
-          {isSubmitting ? '생성 중…' : '다음: 수집 가이드 →'}
+          {isSubmitting ? '저장 중…' : '다음: 단서 루프 →'}
         </button>
       </div>
     </div>

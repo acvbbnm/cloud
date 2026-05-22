@@ -1,13 +1,14 @@
 {
   "_meta": {
-    "version": "v1-skeleton",
+    "version": "v3-e4-6stage",
     "created": "2026-05-18",
-    "status": "draft — dev3 구현 진행 중 확장",
+    "status": "v3 — E4 6단계 동적 분기 결정 트리 (2026-05-21 진행)",
     "purpose": "Step 2 Discovery Loop 의 결정 트리. 가중치는 weights.json 분리.",
-    "primary_standard": "KISA 침해사고 분석절차 안내서 §2.4 + NIST SP 800-61r2 §3.2",
-    "design_principle": "정적 JSON — 결정성 100%. 같은 입력 → 같은 다음 질문.",
+    "primary_standard": "KISA 침해사고 분석절차 안내서 §2.4 + NIST SP 800-61r2 §3.2 + ISO/IEC 27035-1:2023 Assess & Decide",
+    "design_principle": "정적 JSON — 결정성 100%. 같은 입력 → 같은 다음 질문. 의료 감별진단(Differential Diagnosis) 점진적 가설 좁히기.",
     "weights_reference": "docs/dev3/가중치_설계_근거.md",
-    "dev3_c1_step3": "2026-05-19 — 9종 확장 분기 옵션 +10"
+    "dev3_c1_step3": "2026-05-19 — 9종 확장 분기 옵션 +10",
+    "e4_upgrade_2026_05_21": "Q3 4종 variant + Q4/Q5/Q6 12개 노드 추가. 6단계 동적 분기. NIST 800-86 Volatility + ISO 27035-1 Assess & Decide + AWS Detective Profile-by-Profile 차용."
   },
   "root": "Q1_inception",
   "max_depth": 6,
@@ -106,7 +107,7 @@
           "weight_key": "Q2A:phishing_kit_detect"
         }
       ],
-      "next": "Q3_additional_context"
+      "next": "Q3_CRED"
     },
     "Q2B_report_content": {
       "type": "question",
@@ -116,43 +117,43 @@
           "id": "data_exposed",
           "label": "데이터 외부 노출 확인",
           "weight_key": "Q2B:data_exposed",
-          "next": "Q3_additional_context"
+          "next": "Q3_DATA"
         },
         {
           "id": "abnormal_billing",
           "label": "비정상 결제·자원 사용",
           "weight_key": "Q2B:abnormal_billing",
-          "next": "Q3_additional_context"
+          "next": "Q3_DATA"
         },
         {
           "id": "identity_theft",
           "label": "신원도용 의심",
           "weight_key": "Q2B:identity_theft",
-          "next": "Q3_additional_context"
+          "next": "Q3_CRED"
         },
         {
           "id": "multi_csp_suspicious",
           "label": "멀티 CSP 의심 활동",
           "weight_key": "Q2B:multi_csp_suspicious",
-          "next": "Q3_additional_context"
+          "next": "Q3_DATA"
         },
         {
           "id": "ransom_note_visible",
           "label": "외부에서 랜섬 노트 또는 다크웹 데이터 게시 발견",
           "weight_key": "Q2B:ransom_note_visible",
-          "next": "Q3_additional_context"
+          "next": "Q3_IMPACT"
         },
         {
           "id": "phishing_report",
           "label": "직원·사용자가 받은 피싱 메일·URL 제보",
           "weight_key": "Q2B:phishing_report",
-          "next": "Q3_additional_context"
+          "next": "Q3_CRED"
         },
         {
           "id": "insider_complaint",
           "label": "내부자 의심 익명 제보 — 동료의 비정상 활동",
           "weight_key": "Q2B:insider_complaint",
-          "next": "Q3_additional_context"
+          "next": "Q3_INSIDER"
         }
       ]
     },
@@ -165,35 +166,37 @@
           "id": "iam_burst",
           "label": "신규 IAM 계정 비정상 생성",
           "weight_key": "Q2C:iam_burst",
-          "next": "Q3_additional_context"
+          "next": "Q3_INSIDER"
         },
         {
           "id": "permission_changes",
           "label": "권한 변경 이력 다수",
           "weight_key": "Q2C:permission_changes",
-          "next": "Q3_additional_context"
+          "next": "Q3_INSIDER"
         },
         {
           "id": "log_gap",
           "label": "감사 로그 누락·삭제",
           "weight_key": "Q2C:log_gap",
-          "next": "Q3_additional_context"
+          "next": "Q3_INSIDER"
         },
         {
           "id": "data_access",
           "label": "비정상 데이터 액세스",
           "weight_key": "Q2C:data_access",
-          "next": "Q3_additional_context"
+          "next": "Q3_INSIDER"
         },
         {
           "id": "insider_anomaly",
           "label": "정상 시간 + 내부 IP + 권한 있는 사용자의 다량 데이터 다운로드",
-          "weight_key": "Q2C:insider_anomaly"
+          "weight_key": "Q2C:insider_anomaly",
+          "next": "Q3_INSIDER"
         },
         {
           "id": "default_account_used",
           "label": "기본 계정(admin/admin 등) 또는 미변경 초기 자격증명 사용",
-          "weight_key": "Q2C:default_account_used"
+          "weight_key": "Q2C:default_account_used",
+          "next": "Q3_INSIDER"
         }
       ]
     },
@@ -205,30 +208,31 @@
           "id": "data_destruction",
           "label": "데이터 변조·파괴",
           "weight_key": "Q2D:data_destruction",
-          "next": "Q3_additional_context"
+          "next": "Q3_IMPACT"
         },
         {
           "id": "ddos",
           "label": "서비스 장애·DDoS",
           "weight_key": "Q2D:ddos",
-          "next": "Q3_additional_context"
+          "next": "Q3_IMPACT"
         },
         {
           "id": "resource_abuse",
           "label": "자원 비정상 소비 (Cryptocurrency mining 등)",
           "weight_key": "Q2D:resource_abuse",
-          "next": "Q3_additional_context"
+          "next": "Q3_IMPACT"
         },
         {
           "id": "response_delay",
           "label": "응답 지연",
           "weight_key": "Q2D:response_delay",
-          "next": "Q3_additional_context"
+          "next": "Q3_IMPACT"
         },
         {
           "id": "mass_encryption",
           "label": "대량 객체 암호화 또는 .locked 확장자 신규 생성 시각 화면 노출",
-          "weight_key": "Q2D:mass_encryption"
+          "weight_key": "Q2D:mass_encryption",
+          "next": "Q3_IMPACT"
         }
       ]
     },
@@ -238,38 +242,505 @@
       "message": "사고 인지 단서가 부족합니다. KrCERT/CC 2025-08 제2장 초기 대응 점검표 6항목 (구 KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) 계승) 모드로 진입합니다. 사고유형은 UNCLASSIFIED 로 시작하고 Layer 2 분석 후 V-8 Sherpa 가 추론합니다.",
       "fallback_incident_type": "UNCLASSIFIED"
     },
-    "Q3_additional_context": {
+    "Q3_CRED": {
       "type": "question",
-      "question": "추가 정황은?",
-      "kisa_field": "§2.4 ⑥ 네트워크 연결 지점",
-      "dynamic_next": {
-        "_note": "Q2 경로에 따라 Q4 분기 결정 — 의료 감별진단 동적 분기",
-        "Q2A_alert_type": "Q4_CRED",
-        "Q2B_report_content": "Q4_MISCFG",
-        "Q2C_audit_pattern": "Q4_INSIDER",
-        "Q2D_anomaly_form": "Q4_RANSOM",
-        "default": "T_evaluate"
-      },
+      "question": "추가 자격증명 패턴은? (CRED·PHISH 변별)",
+      "kisa_field": "KrCERT/CC 2025-08 제3장 — 자격증명 침해 1차 분류",
+      "academic_ref": "NIST SP 800-61r2 §3.2.2 indicator analysis + MITRE T1078/T1110/T1556",
       "options": [
         {
           "id": "fail_then_success",
-          "label": "실패→성공 인증 패턴",
-          "weight_key": "Q3:fail_then_success"
+          "label": "실패→성공 인증 패턴 (brute-force·credential stuffing)",
+          "weight_key": "Q3:fail_then_success",
+          "next": "Q4_CRED"
         },
         {
           "id": "multi_region_concurrent",
           "label": "동일 계정 동시 다지역 로그인",
-          "weight_key": "Q3:multi_region_concurrent"
+          "weight_key": "Q3:multi_region_concurrent",
+          "next": "Q4_CRED"
+        },
+        {
+          "id": "non_korean_geographic",
+          "label": "비국내 지리적 위치 (Tor/VPN exit 의심)",
+          "weight_key": "Q3_CRED:non_korean_geographic",
+          "next": "Q4_CRED"
+        },
+        {
+          "id": "serverless_new",
+          "label": "Cloud Function·Lambda 신규 생성 (지속성 시그널)",
+          "weight_key": "Q3:serverless_new",
+          "next": "Q4_CRED"
+        },
+        {
+          "id": "unknown_extra",
+          "label": "알 수 없음 / 추가 단서 없음",
+          "weight_key": "Q3:unknown_extra",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q3_DATA": {
+      "type": "question",
+      "question": "데이터 노출·외부 활동 추가 패턴은? (DATA·MISCFG·INSIDER 변별)",
+      "kisa_field": "KrCERT/CC 2025-08 제3장 — 정보 누설 1차 분류",
+      "academic_ref": "ISO 27035-1:2023 Assess & Decide — impact assessment + MITRE T1530/T1552",
+      "options": [
+        {
+          "id": "storage_policy_public",
+          "label": "Object Storage 정책 public 변경",
+          "weight_key": "Q3_DATA:storage_policy_public",
+          "next": "Q4_MISCFG"
+        },
+        {
+          "id": "s3_credential_change",
+          "label": "S3·NCP Object Storage credential 정책 변경",
+          "weight_key": "Q3_DATA:s3_credential_change",
+          "next": "Q4_MISCFG"
+        },
+        {
+          "id": "multi_csp_pivot",
+          "label": "타 CSP 자원으로 횡적 이동 흔적",
+          "weight_key": "Q3_DATA:multi_csp_pivot",
+          "next": "Q4_INSIDER"
+        },
+        {
+          "id": "billing_spike",
+          "label": "급격한 결제·자원 사용 spike (랜섬·크립토마이닝 의심)",
+          "weight_key": "Q3_DATA:billing_spike",
+          "next": "Q4_RANSOM"
+        },
+        {
+          "id": "unknown_extra",
+          "label": "알 수 없음 / 추가 단서 없음",
+          "weight_key": "Q3:unknown_extra",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q3_INSIDER": {
+      "type": "question",
+      "question": "감사·내부자 추가 패턴은? (INSIDER·AUDIT 변별)",
+      "kisa_field": "KrCERT/CC 2025-08 제3장 — 내부자 위협·로그 변조",
+      "academic_ref": "NIST SP 800-53 AU-12 audit content + MITRE T1098/T1562",
+      "options": [
+        {
+          "id": "off_hours_priv",
+          "label": "비표준 시각 권한 변경 작업",
+          "weight_key": "Q3_INSIDER:off_hours_priv",
+          "next": "Q4_INSIDER"
+        },
+        {
+          "id": "multiple_iam_changes",
+          "label": "단기간 다수 IAM 변경 (cascading edits)",
+          "weight_key": "Q3_INSIDER:multiple_iam_changes",
+          "next": "Q4_INSIDER"
+        },
+        {
+          "id": "gradual_priv_creep",
+          "label": "장기간 점진적 권한 상승 (privilege creep)",
+          "weight_key": "Q3_INSIDER:gradual_priv_creep",
+          "next": "Q4_INSIDER"
+        },
+        {
+          "id": "self_audit_disable",
+          "label": "본인 권한으로 본인 활동 감사 비활성",
+          "weight_key": "Q3_INSIDER:self_audit_disable",
+          "next": "Q4_INSIDER"
+        },
+        {
+          "id": "unknown_extra",
+          "label": "알 수 없음 / 추가 단서 없음",
+          "weight_key": "Q3:unknown_extra",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q3_IMPACT": {
+      "type": "question",
+      "question": "서비스 영향 추가 패턴은? (RANSOM·DATA 변별)",
+      "kisa_field": "KrCERT/CC 2025-08 제3장 — 데이터 변조·파괴 1차 분류",
+      "academic_ref": "MITRE TA0040 Impact + T1485/T1486/T1490",
+      "options": [
+        {
+          "id": "mass_encrypt",
+          "label": "대량 객체 암호화 행위 (.locked/.encrypted)",
+          "weight_key": "Q3_IMPACT:mass_encrypt",
+          "next": "Q4_RANSOM"
+        },
+        {
+          "id": "backup_deletion",
+          "label": "스냅샷·백업 삭제 흔적 (T1490)",
+          "weight_key": "Q3_IMPACT:backup_deletion",
+          "next": "Q4_RANSOM"
+        },
+        {
+          "id": "ransom_extension",
+          "label": "비표준 확장자 신규 생성 (.lock/.crypted)",
+          "weight_key": "Q3_IMPACT:ransom_extension",
+          "next": "Q4_RANSOM"
+        },
+        {
+          "id": "storage_destruction",
+          "label": "Object Storage 정책 destructive 변경 (delete-all)",
+          "weight_key": "Q3_IMPACT:storage_destruction",
+          "next": "Q4_RANSOM"
+        },
+        {
+          "id": "unknown_extra",
+          "label": "알 수 없음 / 추가 단서 없음",
+          "weight_key": "Q3:unknown_extra",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q4_CRED": {
+      "type": "question",
+      "question": "Q4 — 증거 무결성: MFA·인증 우회 흔적은?",
+      "academic_ref": "NIST SP 800-86 §3 Volatility Hierarchy + MITRE T1556 + AWS Detective MFA bypass",
+      "options": [
+        {
+          "id": "mfa_token_reuse",
+          "label": "MFA 토큰 재사용 흔적 (0ktapus/Twilio 2022 사례)",
+          "weight_key": "Q4-CRED:mfa_token_reuse",
+          "next": "Q5_CRED"
+        },
+        {
+          "id": "mfa_registration_change",
+          "label": "MFA 등록 변경 (사용자 직접 우회)",
+          "weight_key": "Q4-CRED:mfa_registration_change",
+          "next": "Q5_CRED"
+        },
+        {
+          "id": "mfa_not_applied",
+          "label": "MFA 미적용 계정",
+          "weight_key": "Q4-CRED:mfa_not_applied",
+          "next": "Q5_CRED"
+        },
+        {
+          "id": "audit_log_tampered",
+          "label": "인증 관련 감사 로그 변조 흔적",
+          "weight_key": "Q4-CRED:audit_log_tampered",
+          "next": "Q5_CRED"
+        }
+      ]
+    },
+    "Q4_RANSOM": {
+      "type": "question",
+      "question": "Q4 — 증거 무결성: 백업·스냅샷 무결성은?",
+      "academic_ref": "MITRE T1490 Inhibit System Recovery + NIST SP 800-184 Recovery",
+      "options": [
+        {
+          "id": "backup_destroyed",
+          "label": "백업·스냅샷 삭제·암호화 (T1490)",
+          "weight_key": "Q4-RANSOM:backup_destroyed",
+          "next": "Q5_RANSOM"
+        },
+        {
+          "id": "backup_intact",
+          "label": "백업 정상 확인 (복구 가능)",
+          "weight_key": "Q4-RANSOM:backup_intact",
+          "next": "Q5_RANSOM"
+        },
+        {
+          "id": "backup_missing",
+          "label": "백업 자체가 없음 (운영 미설계)",
+          "weight_key": "Q4-RANSOM:backup_missing",
+          "next": "Q5_RANSOM"
+        }
+      ]
+    },
+    "Q4_MISCFG": {
+      "type": "question",
+      "question": "Q4 — 증거 무결성: 공개 변경 시점은?",
+      "academic_ref": "ISO 27035-1:2023 Assess & Decide — temporal scoping + CSA Top Threats 2024 #3",
+      "options": [
+        {
+          "id": "short_term_public",
+          "label": "외부 신고 직전 단기간 공개 (의도적)",
+          "weight_key": "Q4-MISCFG:short_term_public",
+          "next": "Q5_MISCFG"
+        },
+        {
+          "id": "long_term_public",
+          "label": "사고 발견 이전 장기 노출 (실수·방치)",
+          "weight_key": "Q4-MISCFG:long_term_public",
+          "next": "Q5_MISCFG"
+        },
+        {
+          "id": "timing_unknown",
+          "label": "변경 시점 불명",
+          "weight_key": "Q4-MISCFG:timing_unknown",
+          "next": "Q5_MISCFG"
+        }
+      ]
+    },
+    "Q4_INSIDER": {
+      "type": "question",
+      "question": "Q4 — 증거 무결성: 사용자 직무 범위는?",
+      "academic_ref": "MITRE T1078 Valid Accounts + NIST SP 800-53 AC-2 + CERT Insider Threat Guide",
+      "options": [
+        {
+          "id": "scope_excess",
+          "label": "직무 범위 초과 활동",
+          "weight_key": "Q4-INSIDER:scope_excess",
+          "next": "Q5_INSIDER"
+        },
+        {
+          "id": "scope_within",
+          "label": "직무 범위 내 (정상 가능성)",
+          "weight_key": "Q4-INSIDER:scope_within",
+          "next": "Q5_INSIDER"
+        },
+        {
+          "id": "partner_account",
+          "label": "협력사·외주 계정",
+          "weight_key": "Q4-INSIDER:partner_account",
+          "next": "Q5_INSIDER"
+        }
+      ]
+    },
+    "Q5_CRED": {
+      "type": "question",
+      "question": "Q5 — 행위자: 접속 출처는?",
+      "academic_ref": "ISO 27035-1:2023 Assess & Decide — actor attribution + AWS Detective scope time",
+      "options": [
+        {
+          "id": "non_korean_ip",
+          "label": "비국내 IP (외부 위협)",
+          "weight_key": "Q5-CRED:non_korean_ip",
+          "next": "Q6_CRED"
+        },
+        {
+          "id": "internal_ip",
+          "label": "사내 IP (INSIDER 가능)",
+          "weight_key": "Q5-CRED:internal_ip",
+          "next": "Q6_CRED"
+        },
+        {
+          "id": "tor_vpn",
+          "label": "Tor·VPN exit node",
+          "weight_key": "Q5-CRED:tor_vpn",
+          "next": "Q6_CRED"
+        },
+        {
+          "id": "actor_unknown",
+          "label": "행위자 출처 불명",
+          "weight_key": "Q5-CRED:actor_unknown",
+          "next": "Q6_CRED"
+        }
+      ]
+    },
+    "Q5_RANSOM": {
+      "type": "question",
+      "question": "Q5 — 영향 범위: 피해 자원 규모는?",
+      "academic_ref": "ISO 27035-1:2023 Assess & Decide — impact magnitude + Verizon DBIR 2024 Ransomware/Extortion",
+      "options": [
+        {
+          "id": "single_instance",
+          "label": "단일 인스턴스·버킷",
+          "weight_key": "Q5-RANSOM:single_instance",
+          "next": "Q6_RANSOM"
+        },
+        {
+          "id": "storage_wide",
+          "label": "Object Storage 전체",
+          "weight_key": "Q5-RANSOM:storage_wide",
+          "next": "Q6_RANSOM"
+        },
+        {
+          "id": "multi_region",
+          "label": "멀티 리전·계정 영향",
+          "weight_key": "Q5-RANSOM:multi_region",
+          "next": "Q6_RANSOM"
+        }
+      ]
+    },
+    "Q5_MISCFG": {
+      "type": "question",
+      "question": "Q5 — 행위자: 변경 주체는?",
+      "academic_ref": "MITRE T1098/T1552.005 + CSA Top Threats 2024 #3",
+      "options": [
+        {
+          "id": "operator",
+          "label": "운영자 권한 (실수)",
+          "weight_key": "Q5-MISCFG:operator",
+          "next": "Q6_MISCFG"
+        },
+        {
+          "id": "abnormal_ip",
+          "label": "비정상 IP 의해 변경 (침해)",
+          "weight_key": "Q5-MISCFG:abnormal_ip",
+          "next": "Q6_MISCFG"
+        },
+        {
+          "id": "automation_script",
+          "label": "자동화 스크립트·CI/CD",
+          "weight_key": "Q5-MISCFG:automation_script",
+          "next": "Q6_MISCFG"
+        }
+      ]
+    },
+    "Q5_INSIDER": {
+      "type": "question",
+      "question": "Q5 — 행위자 가시성: 접속 환경은?",
+      "academic_ref": "CERT Insider Threat Guide + MITRE T1562.008 Disable Cloud Logs",
+      "options": [
+        {
+          "id": "internal_endpoint",
+          "label": "사내 단말",
+          "weight_key": "Q5-INSIDER:internal_endpoint",
+          "next": "Q6_INSIDER"
+        },
+        {
+          "id": "internal_vpn",
+          "label": "사내 IP + 외부 VPN 혼용",
+          "weight_key": "Q5-INSIDER:internal_vpn",
+          "next": "Q6_INSIDER"
+        },
+        {
+          "id": "trace_deletion",
+          "label": "자기 흔적 삭제 (s3:DeleteObject·log clear)",
+          "weight_key": "Q5-INSIDER:trace_deletion",
+          "next": "Q6_INSIDER"
+        }
+      ]
+    },
+    "Q6_CRED": {
+      "type": "question",
+      "question": "Q6 — 후속 시그널: 인증 성공 이후 행동은?",
+      "academic_ref": "AWS Detective Profile-by-Profile pivot + MITRE TA0008/TA0009/TA0010",
+      "options": [
+        {
+          "id": "priv_change",
+          "label": "즉시 권한 변경·IAM 신규 생성 (PRIV 복합)",
+          "weight_key": "Q6-CRED:priv_change",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "storage_download",
+          "label": "Object Storage 대량 다운로드 (DATA 복합)",
+          "weight_key": "Q6-CRED:storage_download",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "function_persist",
+          "label": "Cloud Function·Lambda 신규 생성 (PERSIST)",
+          "weight_key": "Q6-CRED:function_persist",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "no_follow",
+          "label": "후속 시그널 없음 (CRED 단독)",
+          "weight_key": "Q6-CRED:no_follow",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q6_RANSOM": {
+      "type": "question",
+      "question": "Q6 — 후속 시그널: 랜섬 노트·이중 협박 흔적은?",
+      "academic_ref": "MITRE T1486 + Mandiant 2024 Double Extortion 트렌드",
+      "options": [
+        {
+          "id": "note_found",
+          "label": "랜섬 노트 발견 (RANSOM 확정)",
+          "weight_key": "Q6-RANSOM:note_found",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "double_extortion",
+          "label": "데이터 유출 동반 협박 (Double Extortion)",
+          "weight_key": "Q6-RANSOM:double_extortion",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "no_note",
+          "label": "노트 없음 (단순 파괴 T1485)",
+          "weight_key": "Q6-RANSOM:no_note",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q6_MISCFG": {
+      "type": "question",
+      "question": "Q6 — 후속 시그널: 노출 데이터 민감도는?",
+      "academic_ref": "ISO 27035-1:2023 + 개인정보보호법·GDPR 분류",
+      "options": [
+        {
+          "id": "pii",
+          "label": "개인정보 (GDPR·개보법 적용)",
+          "weight_key": "Q6-MISCFG:pii",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "trade_secret",
+          "label": "영업비밀·기밀 자료",
+          "weight_key": "Q6-MISCFG:trade_secret",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "general",
+          "label": "일반 공개 가능 데이터",
+          "weight_key": "Q6-MISCFG:general",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q6_INSIDER": {
+      "type": "question",
+      "question": "Q6 — 후속 시그널: 사후 행동은?",
+      "academic_ref": "CERT Insider Threat Guide §4.3 + MITRE T1531/T1098.001",
+      "options": [
+        {
+          "id": "normal_exit",
+          "label": "정상 종료·로그아웃",
+          "weight_key": "Q6-INSIDER:normal_exit",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "data_external",
+          "label": "데이터 외부 전송 흔적",
+          "weight_key": "Q6-INSIDER:data_external",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "iam_self_delete",
+          "label": "자기 IAM 계정 삭제 (반증거 인멸)",
+          "weight_key": "Q6-INSIDER:iam_self_delete",
+          "next": "T_evaluate"
+        }
+      ]
+    },
+    "Q3_additional_context": {
+      "type": "question",
+      "question": "추가 정황은? (deprecated — Q3_CRED/DATA/INSIDER/IMPACT 로 대체)",
+      "deprecated_2026_05_21": "E4 6단계 트리 도입으로 Q3 4종 variant 로 분기. 본 노드는 backward compat 목적으로 유지.",
+      "kisa_field": "§2.4 ⑥ 네트워크 연결 지점",
+      "options": [
+        {
+          "id": "fail_then_success",
+          "label": "실패→성공 인증 패턴",
+          "weight_key": "Q3:fail_then_success",
+          "next": "T_evaluate"
+        },
+        {
+          "id": "multi_region_concurrent",
+          "label": "동일 계정 동시 다지역 로그인",
+          "weight_key": "Q3:multi_region_concurrent",
+          "next": "T_evaluate"
         },
         {
           "id": "storage_policy_change",
           "label": "Object Storage 정책 변경",
-          "weight_key": "Q3:storage_policy_change"
+          "weight_key": "Q3:storage_policy_change",
+          "next": "T_evaluate"
         },
         {
           "id": "serverless_new",
           "label": "Cloud Function·Lambda 신규 생성",
-          "weight_key": "Q3:serverless_new"
+          "weight_key": "Q3:serverless_new",
+          "next": "T_evaluate"
         },
         {
           "id": "unknown_extra",
@@ -279,322 +750,6 @@
         }
       ]
     },
-
-    "Q4_CRED": {
-      "type": "question",
-      "question": "증거 무결성 + MFA 상태를 확인해주세요.",
-      "academic": "NIST SP 800-86 §3 Volatility Hierarchy + 의료 감별진단 '현재 상태'",
-      "options": [
-        {
-          "id": "mfa_token_reuse",
-          "label": "MFA 토큰 재사용 (피싱/0ktapus 시그널)",
-          "weight_key": "Q4_CRED:mfa_token_reuse",
-          "next": "Q5_CRED"
-        },
-        {
-          "id": "mfa_register_change",
-          "label": "MFA 등록 변경 (사용자 직접 우회)",
-          "weight_key": "Q4_CRED:mfa_register_change",
-          "next": "Q5_CRED"
-        },
-        {
-          "id": "mfa_not_applied",
-          "label": "MFA 미적용",
-          "weight_key": "Q4_CRED:mfa_not_applied",
-          "next": "Q5_CRED"
-        },
-        {
-          "id": "audit_log_deleted",
-          "label": "감사 로그 비활성·삭제 흔적",
-          "weight_key": "Q4_CRED:audit_log_deleted",
-          "next": "Q5_CRED"
-        }
-      ]
-    },
-    "Q4_RANSOM": {
-      "type": "question",
-      "question": "백업 무결성을 확인해주세요.",
-      "academic": "NIST SP 800-86 §3 Volatility Hierarchy",
-      "options": [
-        {
-          "id": "backup_destroyed",
-          "label": "백업 삭제·암호화 (T1490)",
-          "weight_key": "Q4_RANSOM:backup_destroyed",
-          "next": "Q5_RANSOM"
-        },
-        {
-          "id": "backup_intact",
-          "label": "백업 정상",
-          "weight_key": "Q4_RANSOM:backup_intact",
-          "next": "Q5_RANSOM"
-        },
-        {
-          "id": "backup_none",
-          "label": "백업 없음",
-          "weight_key": "Q4_RANSOM:backup_none",
-          "next": "Q5_RANSOM"
-        }
-      ]
-    },
-    "Q4_MISCFG": {
-      "type": "question",
-      "question": "공개 변경 시점을 확인해주세요.",
-      "academic": "NIST SP 800-86 §3 Volatility Hierarchy",
-      "options": [
-        {
-          "id": "intentional_recent",
-          "label": "외부 신고 직전 (의도적)",
-          "weight_key": "Q4_MISCFG:intentional_recent",
-          "next": "Q5_MISCFG"
-        },
-        {
-          "id": "long_term_exposure",
-          "label": "사고 발견 이전 장기 노출 (실수)",
-          "weight_key": "Q4_MISCFG:long_term_exposure",
-          "next": "Q5_MISCFG"
-        },
-        {
-          "id": "unknown_timing",
-          "label": "미상",
-          "weight_key": "Q4_MISCFG:unknown_timing",
-          "next": "Q5_MISCFG"
-        }
-      ]
-    },
-    "Q4_INSIDER": {
-      "type": "question",
-      "question": "사용자 직무 범위를 확인해주세요.",
-      "academic": "NIST SP 800-86 §3 Volatility Hierarchy + 의료 '현재 상태'",
-      "options": [
-        {
-          "id": "scope_excess",
-          "label": "직무 범위 초과",
-          "weight_key": "Q4_INSIDER:scope_excess",
-          "next": "Q5_INSIDER"
-        },
-        {
-          "id": "scope_normal",
-          "label": "직무 범위 내 (정상)",
-          "weight_key": "Q4_INSIDER:scope_normal",
-          "next": "Q5_INSIDER"
-        },
-        {
-          "id": "vendor_account",
-          "label": "협력사 계정",
-          "weight_key": "Q4_INSIDER:vendor_account",
-          "next": "Q5_INSIDER"
-        }
-      ]
-    },
-
-    "Q5_CRED": {
-      "type": "question",
-      "question": "행위자를 추정해주세요.",
-      "academic": "ISO/IEC 27035-1:2023 Assess & Decide (impact assessment) + 의료 '전파 범위'",
-      "options": [
-        {
-          "id": "non_korean_ip",
-          "label": "비국내 IP (외부)",
-          "weight_key": "Q5_CRED:non_korean_ip",
-          "next": "Q6_CRED"
-        },
-        {
-          "id": "internal_ip",
-          "label": "내부 사내 IP",
-          "weight_key": "Q5_CRED:internal_ip",
-          "next": "Q6_CRED"
-        },
-        {
-          "id": "tor_vpn_exit",
-          "label": "Tor·VPN exit",
-          "weight_key": "Q5_CRED:tor_vpn_exit",
-          "next": "Q6_CRED"
-        }
-      ]
-    },
-    "Q5_RANSOM": {
-      "type": "question",
-      "question": "영향 범위를 확인해주세요.",
-      "academic": "ISO/IEC 27035-1:2023 Assess & Decide",
-      "options": [
-        {
-          "id": "single_instance",
-          "label": "단일 인스턴스",
-          "weight_key": "Q5_RANSOM:single_instance",
-          "next": "Q6_RANSOM"
-        },
-        {
-          "id": "storage_wide",
-          "label": "Object Storage 전체",
-          "weight_key": "Q5_RANSOM:storage_wide",
-          "next": "Q6_RANSOM"
-        },
-        {
-          "id": "multi_region_account",
-          "label": "멀티 리전·계정",
-          "weight_key": "Q5_RANSOM:multi_region_account",
-          "next": "Q6_RANSOM"
-        }
-      ]
-    },
-    "Q5_MISCFG": {
-      "type": "question",
-      "question": "변경 주체를 확인해주세요.",
-      "academic": "ISO/IEC 27035-1:2023 Assess & Decide",
-      "options": [
-        {
-          "id": "operator_error",
-          "label": "운영자 권한 (실수)",
-          "weight_key": "Q5_MISCFG:operator_error",
-          "next": "Q6_MISCFG"
-        },
-        {
-          "id": "suspicious_ip",
-          "label": "비정상 IP (침해)",
-          "weight_key": "Q5_MISCFG:suspicious_ip",
-          "next": "Q6_MISCFG"
-        },
-        {
-          "id": "automation_script",
-          "label": "자동화 스크립트",
-          "weight_key": "Q5_MISCFG:automation_script",
-          "next": "Q6_MISCFG"
-        }
-      ]
-    },
-    "Q5_INSIDER": {
-      "type": "question",
-      "question": "행위자 가시성을 확인해주세요.",
-      "academic": "ISO/IEC 27035-1:2023 Assess & Decide + 의료 '전파 범위'",
-      "options": [
-        {
-          "id": "internal_device",
-          "label": "사내 단말",
-          "weight_key": "Q5_INSIDER:internal_device",
-          "next": "Q6_INSIDER"
-        },
-        {
-          "id": "internal_vpn",
-          "label": "사내 IP + 외부 VPN",
-          "weight_key": "Q5_INSIDER:internal_vpn",
-          "next": "Q6_INSIDER"
-        },
-        {
-          "id": "trace_deletion",
-          "label": "자기 흔적 삭제 (s3credential.delete)",
-          "weight_key": "Q5_INSIDER:trace_deletion",
-          "next": "Q6_INSIDER"
-        }
-      ]
-    },
-
-    "Q6_CRED": {
-      "type": "question",
-      "question": "후속 시그널을 확인해주세요.",
-      "academic": "AWS Detective Profile-by-Profile pivot + 의료 '사후 변화 관찰'",
-      "options": [
-        {
-          "id": "priv_change",
-          "label": "즉시 권한 변경 → CRED + PRIV 복합",
-          "weight_key": "Q6_CRED:priv_change",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "storage_download",
-          "label": "Object Storage 다운로드 → CRED→DATA",
-          "weight_key": "Q6_CRED:storage_download",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "cloud_function_new",
-          "label": "Cloud Function 신규 → PERSIST",
-          "weight_key": "Q6_CRED:cloud_function_new",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "no_followup",
-          "label": "후속 시그널 없음 (CRED 단독)",
-          "weight_key": "Q6_CRED:no_followup",
-          "next": "T_evaluate"
-        }
-      ]
-    },
-    "Q6_RANSOM": {
-      "type": "question",
-      "question": "랜섬 노트·협박 메시지를 확인해주세요.",
-      "academic": "AWS Detective Profile-by-Profile pivot + 의료 '사후 변화'",
-      "options": [
-        {
-          "id": "ransom_note_found",
-          "label": "노트 발견 (확정 RANSOM)",
-          "weight_key": "Q6_RANSOM:ransom_note_found",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "double_extortion",
-          "label": "데이터 유출 동반 (Double Extortion)",
-          "weight_key": "Q6_RANSOM:double_extortion",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "simple_destruction",
-          "label": "노트 없음 (T1485 단순 파괴)",
-          "weight_key": "Q6_RANSOM:simple_destruction",
-          "next": "T_evaluate"
-        }
-      ]
-    },
-    "Q6_MISCFG": {
-      "type": "question",
-      "question": "데이터 민감도를 확인해주세요.",
-      "academic": "AWS Detective Profile-by-Profile pivot + 의료 '사후 변화'",
-      "options": [
-        {
-          "id": "pii_data",
-          "label": "개인정보 (GDPR·개보법)",
-          "weight_key": "Q6_MISCFG:pii_data",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "trade_secret",
-          "label": "영업비밀",
-          "weight_key": "Q6_MISCFG:trade_secret",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "general_data",
-          "label": "일반 공개 데이터",
-          "weight_key": "Q6_MISCFG:general_data",
-          "next": "T_evaluate"
-        }
-      ]
-    },
-    "Q6_INSIDER": {
-      "type": "question",
-      "question": "사후 행동을 확인해주세요.",
-      "academic": "AWS Detective Profile-by-Profile pivot + 의료 '사후 변화'",
-      "options": [
-        {
-          "id": "normal_exit",
-          "label": "정상 종료",
-          "weight_key": "Q6_INSIDER:normal_exit",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "data_exfil",
-          "label": "데이터 외부 전송",
-          "weight_key": "Q6_INSIDER:data_exfil",
-          "next": "T_evaluate"
-        },
-        {
-          "id": "self_iam_deletion",
-          "label": "자기 IAM 삭제",
-          "weight_key": "Q6_INSIDER:self_iam_deletion",
-          "next": "T_evaluate"
-        }
-      ]
-    },
-
     "T_evaluate": {
       "type": "terminal",
       "action": "evaluate_hypothesis",
@@ -625,8 +780,7 @@
   "extension_points": {
     "TODO_Q2A_drill_down": "Q2A 의 각 옵션별 추가 깊이 (예: 비정상 로그인 → 실패→성공·brute-force·credential stuffing)",
     "TODO_Q2B_drill_down": "Q2B 의 외부 신고 출처별 추가 분기 (개인·법인·CERT)",
-    "DONE_Q3_branching": "2026-05-21 E4 — Q3 dynamic_next 로 Q4 분기 구현 완료",
-    "DONE_Q4_Q5_Q6": "2026-05-21 E4 — Q4·Q5·Q6 노드 12개 (CRED·RANSOM·MISCFG·INSIDER 각 3개)",
-    "TODO_minimum_checklist": "Q2E unknown 경로의 KISA 6항목 점검표 — 별도 JSON 파일 분리 권장"
+    "TODO_minimum_checklist": "Q2E unknown 경로의 KISA 6항목 점검표 — 별도 JSON 파일 분리 권장",
+    "TODO_combo_boost": "Q4·Q5·Q6 답변 조합별 부스트 룰 — 별도 branch_rules.json 분리 검토 (예: Q4-CRED:mfa_token_reuse + Q5-CRED:non_korean → PHISH +15)"
   }
 }

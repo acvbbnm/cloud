@@ -1,87 +1,174 @@
 /**
- * 사고유형 비교 차트 + 출처 breakdown — V-1 Step 2 (§4-8).
+ * HypothesisBreakdownChart — V-1 Step 2 Discovery Loop 우측 패널 하단.
  *
- * 8 사고유형 막대 그래프. 각 막대에 점수 출처 breakdown 표시:
- *   environment_modifiers / 단서(clues) / 부분로그(partial_logs) / 결정트리(decision_tree)
+ * E4 §4-8 (2026-05-21): 8 사고유형 비교 차트 + 기여 요소 breakdown.
+ * 의료 감별진단의 "diagnostic breakdown" 비유.
  *
- * 현재 구현은 결정 트리 점수만 표시 (env_modifiers·clues·partial_logs 는 백엔드 확장 시 추가).
- * 학술 근거: 점수 출처 100% 투명 + 재현 가능 (NIST 800-61r2 §3.2.4 incident analysis).
+ * 표시:
+ *   - 8 사고유형 leaderboard (점수 내림차순)
+ *   - 각 사고유형 행 클릭 → 펼침 (기여 요소 카운트)
+ *   - 학술 변호: 결정성 100% — "왜 이 가설인가" 추적 가능
+ *
+ * 기여 요소 카운트:
+ *   - 결정 트리 답변 N개 (completedPath)
+ *   - 단서 N개 (observables — 부모 전달)
+ *   - 부분 분석 기법 N개 (mappedTechniques)
+ *
+ * 백엔드 가중치 매트릭스를 클라이언트가 직접 읽지 않으므로, 출처별 정확한 점수
+ * breakdown 은 추후 백엔드 /api/triage/breakdown API 도입 후 가능 (TODO).
  */
+import { useState } from 'react';
+
 import type { HypothesisScores, IncidentType } from '@/types';
 
 interface HypothesisBreakdownChartProps {
   scores: HypothesisScores;
-  highlightType?: IncidentType;
+  /** 결정 트리 답변 수 */
+  treeAnswerCount: number;
+  /** 단서 수 */
+  clueCount: number;
+  /** 부분 분석 매핑된 기법 수 */
+  mappedTechniqueCount: number;
+  /** auto_skip_tree threshold (default 130) */
+  autoSkip?: number;
 }
 
-const TYPE_META: Array<{
-  key: IncidentType;
-  label: string;
-  color: string;
-}> = [
-  { key: 'CREDENTIAL_THEFT', label: 'CRED', color: '#3B82F6' },
-  { key: 'PRIVILEGE_ESCALATION', label: 'PRIV', color: '#8B5CF6' },
-  { key: 'DATA_EXFILTRATION', label: 'DATA', color: '#EC4899' },
-  { key: 'AUDIT_LOG_TAMPERING', label: 'AUDIT', color: '#F97316' },
-  { key: 'RANSOMWARE', label: 'RANSOM', color: '#EF4444' },
-  { key: 'MISCONFIG_EXPOSURE', label: 'MISCFG', color: '#F59E0B' },
-  { key: 'PHISH_INITIAL_ACCESS', label: 'PHISH', color: '#A855F7' },
-  { key: 'INSIDER_THREAT', label: 'INSIDER', color: '#14B8A6' },
-];
+const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
+  CREDENTIAL_THEFT: '자격증명 탈취',
+  PRIVILEGE_ESCALATION: '권한 상승',
+  DATA_EXFILTRATION: '데이터 유출',
+  AUDIT_LOG_TAMPERING: '감사 로그 변조',
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 오류 노출',
+  PHISH_INITIAL_ACCESS: '피싱 초기 침투',
+  INSIDER_THREAT: '내부자 위협',
+  UNCLASSIFIED: '미분류',
+};
+
+const TYPE_COLOR: Record<IncidentType, string> = {
+  CREDENTIAL_THEFT: 'bg-blue-500',
+  PRIVILEGE_ESCALATION: 'bg-purple-500',
+  DATA_EXFILTRATION: 'bg-orange-500',
+  AUDIT_LOG_TAMPERING: 'bg-rose-500',
+  RANSOMWARE: 'bg-red-500',
+  MISCONFIG_EXPOSURE: 'bg-amber-500',
+  PHISH_INITIAL_ACCESS: 'bg-fuchsia-500',
+  INSIDER_THREAT: 'bg-teal-500',
+  UNCLASSIFIED: 'bg-ink-700',
+};
 
 const HypothesisBreakdownChart = ({
   scores,
-  highlightType,
+  treeAnswerCount,
+  clueCount,
+  mappedTechniqueCount,
+  autoSkip = 130,
 }: HypothesisBreakdownChartProps) => {
-  const maxScore = Math.max(1, ...TYPE_META.map((t) => scores[t.key] ?? 0));
+  const [expanded, setExpanded] = useState<IncidentType | null>(null);
 
-  const sorted = [...TYPE_META].sort(
-    (a, b) => (scores[b.key] ?? 0) - (scores[a.key] ?? 0),
-  );
+  const sorted = (Object.keys(scores) as IncidentType[])
+    .filter((t) => t !== 'UNCLASSIFIED')
+    .map((type) => ({ type, score: scores[type] }))
+    .sort((a, b) => b.score - a.score);
+
+  const totalNonZero = sorted.filter((r) => r.score > 0).length;
+  const max = sorted[0]?.score ?? 0;
 
   return (
-    <div className="space-y-1.5">
-      <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-2">
-        📊 사고유형 점수 비교
+    <div className="border-t border-ink-700/40 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
+          📊 사고유형 비교 (8종)
+        </div>
+        <div className="text-[10px] text-ink-500">
+          상위 {totalNonZero}/8 활성
+        </div>
       </div>
-      {sorted.map(({ key, label, color }) => {
-        const score = scores[key] ?? 0;
-        const pct = Math.min(100, (score / maxScore) * 100);
-        const isHighlight = key === highlightType;
 
-        return (
-          <div key={key} className="flex items-center gap-2 group">
-            <span
-              className={`text-[10px] font-mono w-[52px] text-right flex-shrink-0 ${
-                isHighlight ? 'text-amber-300 font-bold' : 'text-ink-400'
-              }`}
-            >
-              {label}
-            </span>
-            <div className="flex-1 h-[14px] rounded bg-ink-800/60 overflow-hidden relative">
-              <div
-                className="h-full rounded transition-all duration-500 ease-out"
-                style={{
-                  width: `${pct}%`,
-                  backgroundColor: isHighlight ? color : `${color}99`,
-                }}
-              />
-              {score > 0 && (
+      {/* 기여 요소 요약 */}
+      <div className="text-[10px] text-ink-500 leading-4 mb-2">
+        기여 요소: 트리 답변 <b className="text-ink-300">{treeAnswerCount}</b> ·
+        단서 <b className="text-ink-300">{clueCount}</b> ·
+        부분 분석 <b className="text-ink-300">{mappedTechniqueCount}</b>
+      </div>
+
+      {/* 8 사고유형 leaderboard */}
+      <div className="space-y-0.5">
+        {sorted.map((row, i) => {
+          const pct = max > 0 ? (row.score / Math.max(autoSkip, max)) * 100 : 0;
+          const isPrimary = i === 0 && row.score > 0;
+          const isSecondary = i === 1 && row.score > 0;
+          const isExpanded = expanded === row.type;
+
+          return (
+            <div key={row.type}>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpanded((cur) => (cur === row.type ? null : row.type))
+                }
+                className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left hover:bg-ink-800/60 transition-colors ${
+                  isExpanded ? 'bg-ink-800/40' : ''
+                }`}
+              >
                 <span
-                  className={`absolute right-1.5 top-0 h-full flex items-center text-[9px] font-semibold ${
-                    pct > 30 ? 'text-white' : 'text-ink-300'
+                  className={`w-4 shrink-0 text-[10px] font-mono ${
+                    isPrimary
+                      ? 'text-brand-teal font-bold'
+                      : isSecondary
+                      ? 'text-brand-amber'
+                      : 'text-ink-500'
                   }`}
-                  style={pct <= 30 ? { right: '-28px', position: 'absolute' } : undefined}
                 >
-                  {score}
+                  {i + 1}
                 </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span
+                      className={`text-[10.5px] truncate ${
+                        isPrimary
+                          ? 'text-brand-teal font-semibold'
+                          : isSecondary
+                          ? 'text-brand-amber'
+                          : 'text-ink-300'
+                      }`}
+                    >
+                      {INCIDENT_TYPE_KO[row.type]}
+                    </span>
+                    <span className="text-[10px] font-mono text-ink-300 ml-2 shrink-0">
+                      {row.score}
+                    </span>
+                  </div>
+                  <div className="relative h-1.5 bg-ink-900 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        TYPE_COLOR[row.type]
+                      } ${row.score === 0 ? 'opacity-30' : ''}`}
+                      style={{ width: `${Math.min(100, pct)}%` }}
+                    />
+                  </div>
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="ml-6 mt-1 mb-1 text-[10px] text-ink-400 leading-4 bg-ink-900/40 rounded px-2 py-1.5 border border-ink-700/30">
+                  <div className="text-ink-300 font-semibold mb-0.5">
+                    {INCIDENT_TYPE_KO[row.type]} {row.score}점 기여 출처
+                  </div>
+                  <ul className="space-y-0.5 list-disc pl-3">
+                    <li>결정 트리 답변 {treeAnswerCount}개 (Q1~Q6)</li>
+                    <li>단서(Observable) {clueCount}개</li>
+                    <li>부분 로그 분석 기법 {mappedTechniqueCount}개</li>
+                  </ul>
+                  <div className="text-[9.5px] text-ink-500 mt-1.5">
+                    ※ 출처별 정확한 점수 분해는 추후 /api/triage/breakdown API 로 보강.
+                    현재는 누적값만 권위 (weights.json 단일 소스).
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        );
-      })}
-      <div className="text-[9px] text-ink-600 mt-1.5">
-        결정 트리 + 단서 + 부분 로그 누적 합산. 결정성 100%.
+          );
+        })}
       </div>
     </div>
   );

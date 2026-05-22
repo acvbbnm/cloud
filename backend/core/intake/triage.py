@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from config import settings
+from core.intake.modifier_eval import triggered_modifier_ids
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,32 @@ def _accumulate_many(
         if delta:
             out = _accumulate(out, delta)
     return out
+
+
+def seed_scores_from_environment(
+    system_config: Optional[dict],
+) -> tuple[dict[str, int], list[str]]:
+    """시스템 구성(M0-2) → environment_modifiers 발동 → 가설 점수 시드 (2026-05-22).
+
+    `environment_modifiers.json` 의 트리거 조건을 `system_config` 로 평가해
+    발동한 modifier 의 `weights.json.environment_modifiers_to_hypothesis` 가중치를
+    초기 가설 점수에 누적한다. 단서 루프(M0-3) 진입 시 0 이 아닌 환경 기반
+    시작점을 제공 — 청사진 §2 + 사용자 결정 2026-05-22.
+
+    Returns:
+        (seeded_scores, applied_modifier_ids)
+    """
+    scores = _initial_scores()
+    if not system_config:
+        return scores, []
+    em_table = _weights().get("environment_modifiers_to_hypothesis") or {}
+    applied: list[str] = []
+    for mid in triggered_modifier_ids(system_config):
+        delta = em_table.get(mid)
+        if delta:
+            scores = _accumulate(scores, delta)
+            applied.append(mid)
+    return scores, applied
 
 
 # ─────────────────────────────────────────────────────────────
@@ -235,20 +262,26 @@ class Triage:
     """결정 트리 트리아주 평가 엔진."""
 
     @classmethod
-    def start(cls) -> dict:
+    def start(cls, system_config: Optional[dict] = None) -> dict:
         """트리아주 시작 — root 노드 + 초기 점수.
 
+        `system_config` 가 주어지면 environment_modifiers 를 평가해 가설 점수를
+        0 이 아닌 환경 기반 값으로 시딩한다 (M0-2 시스템 구성 → M0-3 단서 루프).
+
         Returns:
-            { next_node, hypothesis_scores, tree_path: [], is_terminal: False }
+            { next_node, hypothesis_scores, tree_path: [], is_terminal: False,
+              environment_seed: [발동 modifier id, ...] }
         """
         tree = _decision_tree()
         root_id = tree.get("root", "Q1_inception")
+        scores, applied = seed_scores_from_environment(system_config)
         return {
             "next_node": _serialize_node(root_id),
-            "hypothesis_scores": _initial_scores(),
+            "hypothesis_scores": scores,
             "tree_path": [],
             "is_terminal": False,
             "recommendation": None,
+            "environment_seed": applied,
         }
 
     @classmethod

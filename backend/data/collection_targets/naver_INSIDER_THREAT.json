@@ -1,0 +1,57 @@
+[
+  {
+    "target_id": "CT-NCP-INSIDER-001",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Object Storage 대량 다운로드·내보내기",
+    "description": "Export To Object Storage, 객체 대량 접근 — 내부자 데이터 반출 핵심 단서. MITRE T1530 Data from Cloud Storage Object.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-INSIDER-002",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 자기 권한 상승",
+    "description": "AttachSubAccountPolicy — 정당 권한 보유자의 비인가 권한 확장. MITRE T1098 Account Manipulation.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-INSIDER-003",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 감사 로그 변조·삭제",
+    "description": "Delete Tracer, Disable Auto Export — 내부자 행위 은폐. MITRE T1562.008 Disable Cloud Logs.",
+    "evidence_role": "REQUIRED",
+    "priority": 8,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-INSIDER-004",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 인증 이벤트 (접근 패턴)",
+    "description": "Login — 정당 계정의 비업무 시간·대량 접근 패턴 식별. MITRE T1078 Valid Accounts.",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-INSIDER-005",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 리소스 파괴",
+    "description": "Delete Server, Delete Bucket — 내부자 보복성 인프라 파괴. MITRE T1485 Data Destruction.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  }
+]

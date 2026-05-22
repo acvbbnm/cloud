@@ -358,7 +358,96 @@
       "technique_id": "T1485",
       "tactic": "Impact",
       "real_log_count": 1
+    },
+    {
+      "rule_id": "R-NCP-017",
+      "csp": "ncp",
+      "description": "Object Storage 대량 업로드·덮어쓰기 — 랜섬웨어 암호화 행위",
+      "activity_name_pattern": "^(Put Object|Copy Object)$",
+      "condition": {},
+      "technique_id": "T1486",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1486 Data Encrypted for Impact — NCP Object Storage 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-018",
+      "csp": "ncp",
+      "description": "스냅샷·백업 삭제 — 복구 수단 제거",
+      "activity_name_pattern": "^(Delete Snapshot|Delete Block Storage)$",
+      "condition": {},
+      "technique_id": "T1490",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1490 Inhibit System Recovery — NCP 스냅샷/볼륨 삭제 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-018",
+      "csp": "nhn",
+      "description": "Object Storage 대량 업로드·덮어쓰기 — 랜섬웨어 암호화 행위",
+      "activity_name_pattern": "^event_id\\.object_storage\\.object\\.upload$",
+      "condition": {},
+      "technique_id": "T1486",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1486 Data Encrypted for Impact — NHN Object Storage 기반 추정 패턴 (기존 R-NHN-011 Exfiltration과 구분 필요: 대량 burst 시 T1486)"
+    },
+    {
+      "rule_id": "R-NHN-019",
+      "csp": "nhn",
+      "description": "볼륨·스냅샷 삭제 — 복구 수단 제거",
+      "activity_name_pattern": "^event_id\\.iaas\\.volume\\.delete$",
+      "condition": {},
+      "technique_id": "T1490",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1490 Inhibit System Recovery — NHN 볼륨 삭제 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-019",
+      "csp": "ncp",
+      "description": "Security Group 0.0.0.0/0 허용 등 과도 네트워크 노출",
+      "activity_name_pattern": "^(Add ACG Rule|Create ACG)$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1190 Exploit Public-Facing Application — NCP ACG 과도 규칙 추가 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-020",
+      "csp": "nhn",
+      "description": "Security Group 과도 규칙 추가 — 외부 노출",
+      "activity_name_pattern": "^event_id\\.iaas\\.security_group\\.rule\\.create$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1190 Exploit Public-Facing Application — NHN Security Group 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-020",
+      "csp": "ncp",
+      "description": "기본 계정(root/admin) 로그인 — Default Accounts 악용",
+      "activity_name_pattern": "^Login$",
+      "condition": {"actionUserType": "Customer"},
+      "technique_id": "T1078.001",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1078.001 Default Accounts — NCP Customer(root) 직접 로그인 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-021",
+      "csp": "nhn",
+      "description": "기본 계정 로그인 — Default Accounts 악용",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {"userType": "OWNER"},
+      "technique_id": "T1078.001",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1078.001 Default Accounts — NHN OWNER(root) 직접 로그인 기반 추정 패턴"
     }
   ],
-  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)"
+  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
+  "_c1_2026_05_22": "C-1 신규 4종 보강 8건 추가 — T1486(NCP/NHN) + T1490(NCP/NHN) + T1190(NCP/NHN) + T1078.001(NCP/NHN)"
 }

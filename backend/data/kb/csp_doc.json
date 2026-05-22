@@ -165,6 +165,42 @@
       "text": "NHN Cloud 의 Security Monitoring 부가 서비스 — 자체 위협 인텔리전스 기반 자동 탐지. 탐지 이벤트: event_id.security_monitoring.alert.* (이상 로그인, 비정상 API 호출, 알려진 악성 IP 접근). 본 시스템 V-1 v2 가이드 1.5.7(위험 기반 검색) 의 NHN 측 데이터 소스. NCP Cloud Insight 와 마찬가지로 부가 서비스 활성화 필요. 활성화 안 된 환경에서는 V-1 가이드의 modifier 가 1.5.7 priority -1 권고.",
       "source": "NHN Cloud 공식 가이드",
       "url": "https://docs.nhncloud.com/ko/Security/Security%20Monitoring/ko/overview/"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-SNAPSHOT-001",
+      "csp": "naver",
+      "service": "Server Snapshot · Block Storage",
+      "title": "NCP 서버 스냅샷 및 Block Storage 백업",
+      "text": "NCP 서버 스냅샷은 서버의 디스크 이미지를 특정 시점 기준으로 저장하는 백업 기능이다. Block Storage 볼륨 단위로도 스냅샷 생성·복원이 가능. 랜섬웨어 대응 시 핵심 단서: (1) 스냅샷·볼륨 대량 삭제(Delete Snapshot, Delete Block Storage) → T1490 Inhibit System Recovery, (2) 정상 백업 주기 이외 시점의 삭제 → 공격자의 복구 수단 제거 의도. Object Storage WORM(Write Once Read Many) 정책 활성화 시 삭제 방어 가능.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/server-snapshot-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-ACG-001",
+      "csp": "naver",
+      "service": "ACG (Access Control Group)",
+      "title": "NCP ACG — 네트워크 접근 제어",
+      "text": "ACG(Access Control Group)는 NCP 의 방화벽 역할 보안 그룹이다. 인바운드·아웃바운드 규칙으로 IP 대역·포트를 허용/차단. MISCONFIG_EXPOSURE 핵심 단서: (1) 0.0.0.0/0 인바운드 허용 규칙 추가(Add ACG Rule) → T1190 외부 노출, (2) 기존 규칙 제거 후 전체 허용 교체 → 의도적 방화벽 해제. Cloud Activity Tracer 에서 Create ACG, Add ACG Rule, Remove ACG Rule 이벤트로 변경 이력 추적.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/server-acg-overview"
+    },
+    {
+      "chunk_id": "CSPDOC-NHN-SG-001",
+      "csp": "nhn",
+      "service": "Security Group",
+      "title": "NHN Cloud Security Group — 네트워크 접근 제어",
+      "text": "NHN Cloud Security Group은 인스턴스 레벨 네트워크 방화벽이다. 규칙 단위로 프로토콜·포트·CIDR 허용. MISCONFIG_EXPOSURE 핵심 단서: (1) 0.0.0.0/0 ingress 규칙 추가(event_id.iaas.security_group.rule.create) → T1190 외부 노출, (2) Default Security Group 에 전체 허용 규칙 → 모든 신규 인스턴스 자동 노출. Cloud Trail 에서 security_group.rule.create/delete 이벤트로 추적.",
+      "source": "NHN Cloud 공식 가이드",
+      "url": "https://docs.nhncloud.com/ko/Network/Security%20Groups/ko/overview/"
+    },
+    {
+      "chunk_id": "CSPDOC-NCP-OBJLOCK-001",
+      "csp": "naver",
+      "service": "Object Storage Object Lock",
+      "title": "NCP Object Storage Object Lock (WORM) — 랜섬웨어 방어",
+      "text": "NCP Object Storage 의 Object Lock 기능은 WORM(Write Once Read Many) 정책으로 지정 기간 객체 삭제·덮어쓰기를 방지한다. 랜섬웨어 대응 핵심: (1) Governance Mode — 특정 권한 보유자만 해제 가능, (2) Compliance Mode — 보존 기간 내 누구도 삭제 불가. 공격자가 Object Lock 해제를 시도하면 Cloud Activity Tracer 에 기록. 백업 버킷에 Compliance Mode 적용 권장.",
+      "source": "NCP 공식 가이드",
+      "url": "https://guide.ncloud-docs.com/docs/objectstorage-overview"
     }
   ]
 }

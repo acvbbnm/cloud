@@ -57,13 +57,10 @@ def _migrate_dev3_columns() -> None:
 
 
 def seed_collection_targets() -> None:
-    """collection_targets 시드 데이터 로딩."""
+    """collection_targets 시드 데이터 로딩 (멱등 — target_id 기준 중복 skip)."""
     db = SessionLocal()
     try:
-        existing = db.query(CollectionTargetModel).count()
-        if existing > 0:
-            print(f"[SKIP] collection_targets 이미 {existing}건 존재")
-            return
+        existing_ids = {r[0] for r in db.query(CollectionTargetModel.target_id).all()}
 
         seed_dir = settings.COLLECTION_TARGETS_DIR
         if not seed_dir.exists():
@@ -76,6 +73,8 @@ def seed_collection_targets() -> None:
                 targets = json.load(f)
 
             for t in targets:
+                if t["target_id"] in existing_ids:
+                    continue
                 model = CollectionTargetModel(
                     target_id=t["target_id"],
                     incident_type=t["incident_type"],
@@ -88,10 +87,14 @@ def seed_collection_targets() -> None:
                     description=t.get("description"),
                 )
                 db.add(model)
+                existing_ids.add(t["target_id"])
                 count += 1
 
-        db.commit()
-        print(f"[OK] collection_targets {count}건 시드 완료")
+        if count > 0:
+            db.commit()
+            print(f"[OK] collection_targets {count}건 신규 시드 완료")
+        else:
+            print("[SKIP] collection_targets 신규 시드 없음")
     finally:
         db.close()
 

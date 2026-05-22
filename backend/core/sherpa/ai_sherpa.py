@@ -224,15 +224,39 @@ class AISherpa:
         ChatSession.append(sess.session_id, "assistant", "".join(full_text_parts))
         yield _json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
 
-    # ── suggest (후순위 깡통) ──
+    # ── ATT&CK 킬체인 tactic 순서 (MITRE ATT&CK Cloud Matrix v14) ──
+    _TACTIC_ORDER: dict[str, int] = {
+        "Initial Access": 0,
+        "Execution": 1,
+        "Persistence": 2,
+        "Privilege Escalation": 3,
+        "Defense Evasion": 4,
+        "Credential Access": 5,
+        "Discovery": 6,
+        "Lateral Movement": 7,
+        "Collection": 8,
+        "Exfiltration": 9,
+        "Impact": 10,
+    }
+
+    @classmethod
+    def _tactic_index(cls, tactic: str | None) -> int | None:
+        """tactic 문자열 → 킬체인 순서 인덱스. 매칭 안 되면 None."""
+        if not tactic:
+            return None
+        return cls._TACTIC_ORDER.get(tactic)
+
+    # ── suggest ──
     @classmethod
     def suggest_missing_link(
         cls, db: Session, case_id: str, node_a: str, node_b: str
     ) -> dict:
-        """nodeA → nodeB 사이에 끼워넣을 후보 ATT&CK 기법.
+        """nodeA → nodeB 사이 킬체인 흐름상 빠진 고리 후보를 추천한다.
 
-        깡통 구현: case 내 attack_events 중 nodeA·nodeB 의 기법 ID 와 다른 기법을
-        최신 매핑 순으로 추천. 진짜 추론은 향후 LLM 으로.
+        결정론적 룰 기반:
+        1) nodeA·nodeB의 tactic 킬체인 순서를 구한다.
+        2) 케이스 내 attack_events 중 그 사이 tactic에 해당하는 기법을 우선 추천 (confidence=medium).
+        3) 케이스에 없더라도 KB(attack.json)에서 해당 tactic 구간의 기법을 보완 후보로 추천 (confidence=low).
         """
         rows = list(
             db.execute(
@@ -241,18 +265,40 @@ class AISherpa:
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
                 .order_by(AttackEventModel.mapped_at.desc())
-                .limit(20)
+                .limit(50)
             ).scalars()
         )
-        node_a_tech = next((r.technique_id for r in rows if r.attack_id == node_a), None)
-        node_b_tech = next((r.technique_id for r in rows if r.attack_id == node_b), None)
-        seen = {node_a_tech, node_b_tech, None}
 
-        suggestions = []
+        node_a_row = next((r for r in rows if r.attack_id == node_a), None)
+        node_b_row = next((r for r in rows if r.attack_id == node_b), None)
+
+        idx_a = cls._tactic_index(node_a_row.tactic if node_a_row else None)
+        idx_b = cls._tactic_index(node_b_row.tactic if node_b_row else None)
+
+        if idx_a is not None and idx_b is not None:
+            lo, hi = min(idx_a, idx_b), max(idx_a, idx_b)
+        else:
+            lo, hi = 0, 10
+
+        tactic_a_name = node_a_row.tactic if node_a_row else "?"
+        tactic_b_name = node_b_row.tactic if node_b_row else "?"
+
+        seen_techniques: set[str | None] = {
+            node_a_row.technique_id if node_a_row else None,
+            node_b_row.technique_id if node_b_row else None,
+            None,
+        }
+
+        suggestions: list[dict] = []
+
+        # ── 1단계: 케이스 내 이벤트 중 킬체인 구간에 해당하는 기법 ──
         for r in rows:
-            if r.technique_id in seen:
+            if r.technique_id in seen_techniques:
                 continue
-            seen.add(r.technique_id)
+            r_idx = cls._tactic_index(r.tactic)
+            if r_idx is None or not (lo < r_idx < hi):
+                continue
+            seen_techniques.add(r.technique_id)
             chunks = RAGRetriever.retrieve_by_technique(r.technique_id, k=1)
             ctitle = chunks[0][0].title if chunks else r.technique_id
             suggestions.append(
@@ -260,14 +306,74 @@ class AISherpa:
                     "technique_id": r.technique_id,
                     "technique_name": ctitle,
                     "tactic": r.tactic,
-                    "reason": f"케이스에 존재하는 {r.tactic} 기법으로, nodeA·B 사이 흐름 보완 후보.",
+                    "reason": (
+                        f"킬체인 흐름상 {tactic_a_name}(순서 {idx_a}) → {tactic_b_name}"
+                        f"(순서 {idx_b}) 사이에 위치하는 {r.tactic}(순서 {r_idx}) 기법이며, "
+                        f"이 케이스에서 실제 탐지된 이벤트입니다."
+                    ),
                     "candidateEvents": [r.attack_id],
-                    "confidence": "low",
+                    "confidence": "medium",
                     "sources": [_source_dict(c) for c, _ in chunks],
                 }
             )
             if len(suggestions) >= 3:
                 break
+
+        # ── 2단계: KB에서 킬체인 구간에 해당하지만 케이스에 없는 기법 ──
+        if len(suggestions) < 3:
+            from core.sherpa.knowledge_base import load_all
+
+            kb_chunks = [c for c in load_all() if c.kb_name == "ATTACK"]
+            for c in kb_chunks:
+                tech_id = c.meta.get("technique_id")
+                if tech_id in seen_techniques:
+                    continue
+                c_idx = cls._tactic_index(c.meta.get("tactic"))
+                if c_idx is None or not (lo < c_idx < hi):
+                    continue
+                seen_techniques.add(tech_id)
+                suggestions.append(
+                    {
+                        "technique_id": tech_id,
+                        "technique_name": c.title,
+                        "tactic": c.meta.get("tactic"),
+                        "reason": (
+                            f"킬체인 흐름상 {tactic_a_name}(순서 {idx_a}) → {tactic_b_name}"
+                            f"(순서 {idx_b}) 사이에 위치하는 {c.meta.get('tactic')}(순서 {c_idx}) "
+                            f"기법이지만 이 케이스에서 아직 탐지되지 않았습니다. 추가 로그 수집을 검토하세요."
+                        ),
+                        "candidateEvents": [],
+                        "confidence": "low",
+                        "sources": [_source_dict(c)],
+                    }
+                )
+                if len(suggestions) >= 3:
+                    break
+
+        # ── 3단계: 구간 내 후보가 없으면 케이스 내 나머지 기법으로 폴백 ──
+        if not suggestions:
+            for r in rows:
+                if r.technique_id in seen_techniques:
+                    continue
+                seen_techniques.add(r.technique_id)
+                chunks = RAGRetriever.retrieve_by_technique(r.technique_id, k=1)
+                ctitle = chunks[0][0].title if chunks else r.technique_id
+                suggestions.append(
+                    {
+                        "technique_id": r.technique_id,
+                        "technique_name": ctitle,
+                        "tactic": r.tactic,
+                        "reason": (
+                            f"킬체인 구간(순서 {lo}~{hi}) 내 직접 매칭 후보가 없어 "
+                            f"케이스에 존재하는 {r.tactic} 기법을 대안으로 제시합니다."
+                        ),
+                        "candidateEvents": [r.attack_id],
+                        "confidence": "low",
+                        "sources": [_source_dict(c) for c, _ in chunks],
+                    }
+                )
+                if len(suggestions) >= 3:
+                    break
 
         return {"suggestions": suggestions}
 

@@ -99,7 +99,7 @@ const V6Attack = () => {
     return (
       <div>
         <PageHeader
-          eyebrow="Layer 3 · M3-2"
+          eyebrow="Layer 2 · M2-3"
           title="ATT&CK 매핑"
           description="진행 중인 사고 케이스가 없습니다."
         />
@@ -151,7 +151,7 @@ const V6Attack = () => {
   return (
     <div>
       <PageHeader
-        eyebrow="Layer 3 · M3-2"
+        eyebrow="Layer 2 · M2-3"
         title={
           <>
             MITRE ATT&CK <span className="grad-text">매핑</span>

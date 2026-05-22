@@ -450,9 +450,9 @@ const Step3_Discovery = ({
           </Card>
         </div>
 
-        {/* 우측 — 가설 점수 + 추천 + 액션 (sticky) */}
+        {/* 우측 — 가설 점수 + 추천 + 액션 (sticky + 자체 스크롤) */}
         <div className="min-w-0">
-          <div className="panel p-4 lg:sticky lg:top-4 space-y-4">
+          <div className="panel p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4">
             {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
             <ConfidenceGauge scores={hypothesisScores} />
 

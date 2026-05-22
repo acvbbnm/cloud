@@ -1,60 +1,72 @@
 import { useState, useRef, useEffect } from 'react';
 
 import { useSherpaStore } from '@/stores/useSherpaStore';
+import { useCaseStore } from '@/stores/useCaseStore';
+import { streamChat } from '@/api/sherpa';
+import type { SherpaSource } from '@/types';
 
-const quickReplies: { label: string; reply: string; source: string }[] = [
-  {
-    label: '수집 갭 설명',
-    reply:
-      'VPC Flow Log 미수집 — T1071 탐지에 REQUIRED 등급 증거입니다. NCP Console → VPC → Flow Log 추출을 권장합니다.',
-    source: '갭 감지 모듈',
-  },
-  {
-    label: 'T1078 사례',
-    reply:
-      'T1078 Valid Accounts: 해외 IP에서 consoleSignIn 후 권한 상승하는 패턴이 전형적입니다. NCP Activity Tracer에서 동일 시간대의 changeSubAccountLoginId 이벤트를 함께 확인하세요.',
-    source: 'ATT&CK Cloud v14',
-  },
-  {
-    label: '빠진 고리',
-    reply:
-      'T1078 → T1098 사이에 deleteAccessKey(T1070.008), createAccessKey(T1098.001) 이벤트가 누락되었을 가능성이 높습니다. 14:32~14:35 구간을 재검토해 주세요.',
-    source: 'ATT&CK 교차 검색',
-  },
+const quickQueries: { label: string; query: string }[] = [
+  { label: '수집 갭 설명', query: '현재 케이스의 수집 갭을 설명해줘. REQUIRED 등급 우선.' },
+  { label: 'T1078 사례', query: 'T1078 Valid Accounts 의 클라우드 침해 사례와 탐지 포인트를 알려줘.' },
+  { label: '빠진 고리', query: '현재 ATT&CK 매핑 결과에서 빠졌을 가능성이 높은 기법을 추정해줘.' },
 ];
 
+const formatSourceSummary = (sources: SherpaSource[] | undefined): string => {
+  if (!sources || sources.length === 0) return '출처 없음';
+  const types = Array.from(new Set(sources.map((s) => s.type))).join(' · ');
+  return `${types} (${sources.length}건)`;
+};
+
 const SherpaFab = () => {
+  const caseId = useCaseStore((s) => s.caseId);
+
   const open = useSherpaStore((s) => s.open);
   const toggle = useSherpaStore((s) => s.toggle);
   const messages = useSherpaStore((s) => s.messages);
   const push = useSherpaStore((s) => s.push);
+  const updateLast = useSherpaStore((s) => s.updateLast);
+  const appendDelta = useSherpaStore((s) => s.appendDelta);
+  const sessionId = useSherpaStore((s) => s.sessionId);
+  const setSessionId = useSherpaStore((s) => s.setSessionId);
 
   const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, open]);
 
-  const handleQuick = (i: number) => {
-    const q = quickReplies[i];
-    push({ role: 'user', text: q.label });
-    window.setTimeout(() => push({ role: 'sherpa', text: q.reply, source: q.source }), 280);
-  };
-
-  const handleSend = () => {
-    const q = input.trim();
-    if (!q) return;
-    push({ role: 'user', text: q });
+  const handleSend = async (q?: string) => {
+    const text = (q ?? input).trim();
+    if (!text || isStreaming) return;
+    push({ role: 'user', text });
+    push({ role: 'sherpa', text: '' });
     setInput('');
-    window.setTimeout(
-      () =>
-        push({
-          role: 'sherpa',
-          text: `RAG 검색 결과: "${q}" 관련 ATT&CK 문서와 NCP/NHN 매핑 결과를 종합하면, 해당 이벤트는 권한 탈취 패턴과 연관됩니다. 90일 보존 윈도우를 우선 확보하세요.`,
-          source: 'ChromaDB RAG / ATT&CK v14',
-        }),
-      350,
+    setIsStreaming(true);
+
+    await streamChat(
+      {
+        caseId: caseId ?? null,
+        sessionId: sessionId ?? null,
+        query: text,
+      },
+      {
+        onStart: (newSessionId, sources) => {
+          if (!sessionId) setSessionId(newSessionId);
+          updateLast({ sources, source: formatSourceSummary(sources) });
+        },
+        onDelta: (delta) => appendDelta(delta),
+        onDone: () => setIsStreaming(false),
+        onError: (err) => {
+          updateLast({
+            text:
+              '⚠ 셰르파 응답 실패. 백엔드(/api/sherpa/chat/stream) 확인이 필요합니다.\n' +
+              `(상세: ${err.message})`,
+          });
+          setIsStreaming(false);
+        },
+      },
     );
   };
 
@@ -97,7 +109,20 @@ const SherpaFab = () => {
               >
                 <b className="text-brand-purple text-[11px]">AI 셰르파</b>
                 <div className="mt-1 whitespace-pre-wrap text-ink-100">{m.text}</div>
-                {m.source && (
+                {m.sources && m.sources.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {m.sources.map((s) => (
+                      <span
+                        key={s.source_id}
+                        title={s.source_id}
+                        className="text-[9.5px] text-ink-400 bg-ink-900 border border-ink-700/60 rounded-full px-1.5 py-0.5"
+                      >
+                        {s.type} · {s.title || s.source_id}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {!m.sources && m.source && (
                   <span className="block mt-1.5 text-[9px] text-ink-400">출처: {m.source}</span>
                 )}
               </div>
@@ -110,12 +135,21 @@ const SherpaFab = () => {
               </div>
             ),
           )}
+          {isStreaming &&
+            messages.length > 0 &&
+            messages[messages.length - 1].role === 'sherpa' &&
+            messages[messages.length - 1].text === '' && (
+              <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[11px] text-ink-400 max-w-[60%] animate-pulse">
+                KB 검색 + 토큰 스트리밍 시작 중…
+              </div>
+            )}
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {quickReplies.map((q, i) => (
+            {quickQueries.map((q) => (
               <button
                 key={q.label}
-                onClick={() => handleQuick(i)}
-                className="text-[11px] text-brand-blue bg-brand-blue/10 border border-brand-blue/25 rounded-full px-3 py-1 hover:bg-brand-blue/20"
+                onClick={() => handleSend(q.query)}
+                disabled={isStreaming}
+                className="text-[11px] text-brand-blue bg-brand-blue/10 border border-brand-blue/25 rounded-full px-3 py-1 hover:bg-brand-blue/20 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {q.label}
               </button>
@@ -130,9 +164,14 @@ const SherpaFab = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            disabled={isStreaming}
           />
-          <button onClick={handleSend} className="btn-primary btn-sm">
-            전송
+          <button
+            onClick={() => handleSend()}
+            disabled={isStreaming || !input.trim()}
+            className="btn-primary btn-sm disabled:opacity-50"
+          >
+            {isStreaming ? '…' : '전송'}
           </button>
         </div>
       </div>

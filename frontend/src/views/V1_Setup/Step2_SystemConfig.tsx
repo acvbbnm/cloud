@@ -19,6 +19,15 @@ interface SystemConfig {
   data_sensitivity: string;
   sso_enabled: string;
   multi_cloud: string;
+  // 부가 메타 — system_config 에만 영속화 (matcher 미사용, 보고서/감사 추적용)
+  investigator: string;
+  memo: string;
+  detection_route: string;
+  os_type: string;
+  server_role: string;
+  server_count: number;
+  scope_vpc: string;
+  scope_resources: string;
 }
 
 interface Step2Props {
@@ -55,16 +64,26 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
 
   const [tab, setTab] = useState<TabKey>('basic');
   const [severity, setSeverity] = useState('critical');
-  const [occurredAt, setOccurredAt] = useState('2026-03-25T14:32');
-  const [investigator, setInvestigator] = useState('홍길동');
+  const [occurredAt, setOccurredAt] = useState(() => {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d.toISOString().slice(0, 16);
+  });
+  const [investigator, setInvestigator] = useState('');
   const [memo, setMemo] = useState('');
-  const [vpcId, setVpcId] = useState('vpc-prod-01');
+  const [detectionRoute, setDetectionRoute] = useState('SIEM 알럿');
+  const [osType, setOsType] = useState('Ubuntu 22.04');
+  const [serverRole, setServerRole] = useState('웹서버 (Web)');
+  const [serverCount, setServerCount] = useState<number>(12);
+  const [vpcId, setVpcId] = useState('');
   const [region, setRegion] = useState('KR (한국)');
   const [services, setServices] = useState<string[]>([]);
   const [network, setNetwork] = useState('VPC + Security Group 적용');
   const [publicIp, setPublicIp] = useState('있음 (LB 경유)');
   const [auditEnabled, setAuditEnabled] = useState('활성화 (정상 수집 중)');
-  const [scope, setScope] = useState('admin-user, svc-backup');
+  const [scope, setScope] = useState('');
+  const [scopeVpc, setScopeVpc] = useState('');
+  const [scopeResources, setScopeResources] = useState('');
   // dev2 v2 가이드 — environment_modifiers.json 트리거 필드
   const [mfaStatus, setMfaStatus] = useState('적용');
   const [iamAccountCount, setIamAccountCount] = useState<number>(12);
@@ -94,6 +113,15 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
       sso_enabled: ssoEnabled,
       // csp='all' 선택 시 자동으로 멀티 클라우드 환경으로 인식 (m-010 트리거)
       multi_cloud: isAll ? '있음 (NCP + NHN 동시 사용)' : '없음',
+      // 부가 메타 — system_config JSON 에 함께 저장 (보고서·감사 추적용)
+      investigator,
+      memo,
+      detection_route: detectionRoute,
+      os_type: osType,
+      server_role: serverRole,
+      server_count: serverCount,
+      scope_vpc: scopeVpc,
+      scope_resources: scopeResources,
     });
   };
 
@@ -162,7 +190,12 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
               />
             </Field>
             <Field label="담당 수사관">
-              <input value={investigator} onChange={(e) => setInvestigator(e.target.value)} className="input" />
+              <input
+                value={investigator}
+                onChange={(e) => setInvestigator(e.target.value)}
+                placeholder="이름 입력"
+                className="input"
+              />
             </Field>
             <Field label="사고 심각도">
               <div className="flex flex-wrap gap-1.5">
@@ -185,7 +218,11 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
               </div>
             </Field>
             <Field label="탐지 / 신고 경로">
-              <select className="input">
+              <select
+                value={detectionRoute}
+                onChange={(e) => setDetectionRoute(e.target.value)}
+                className="input"
+              >
                 <option>SIEM 알럿</option>
                 <option>내부 직원 신고</option>
                 <option>외부 제보</option>
@@ -208,7 +245,11 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
         {tab === 'system' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="OS 종류">
-              <select className="input">
+              <select
+                value={osType}
+                onChange={(e) => setOsType(e.target.value)}
+                className="input"
+              >
                 <option>CentOS 7</option>
                 <option>RHEL 8/9</option>
                 <option>Ubuntu 22.04</option>
@@ -217,7 +258,11 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
               </select>
             </Field>
             <Field label="서버 역할">
-              <select className="input">
+              <select
+                value={serverRole}
+                onChange={(e) => setServerRole(e.target.value)}
+                className="input"
+              >
                 <option>웹서버 (Web)</option>
                 <option>WAS (Application)</option>
                 <option>DB 서버</option>
@@ -226,10 +271,21 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
               </select>
             </Field>
             <Field label="VPC ID">
-              <input value={vpcId} onChange={(e) => setVpcId(e.target.value)} className="input" />
+              <input
+                value={vpcId}
+                onChange={(e) => setVpcId(e.target.value)}
+                placeholder="vpc-xxxx"
+                className="input"
+              />
             </Field>
             <Field label="총 서버 / VM 수">
-              <input type="number" defaultValue={12} className="input" />
+              <input
+                type="number"
+                min={0}
+                value={serverCount}
+                onChange={(e) => setServerCount(Number(e.target.value) || 0)}
+                className="input"
+              />
             </Field>
           </div>
         )}
@@ -432,14 +488,26 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
         {tab === 'scope' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="영향 계정">
-              <input value={scope} onChange={(e) => setScope(e.target.value)} className="input" placeholder="쉼표로 구분" />
+              <input
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+                className="input"
+                placeholder="admin-user, svc-backup (쉼표로 구분)"
+              />
             </Field>
             <Field label="영향 VPC / 서브넷">
-              <input defaultValue="vpc-prod-01 / 172.16.0.0/24" className="input" />
+              <input
+                value={scopeVpc}
+                onChange={(e) => setScopeVpc(e.target.value)}
+                placeholder="vpc-prod-01 / 172.16.0.0/24"
+                className="input"
+              />
             </Field>
             <Field label="영향 서비스 및 리소스" full>
               <input
-                defaultValue="Object Storage (bucket-finance-2026), Sub Account IAM"
+                value={scopeResources}
+                onChange={(e) => setScopeResources(e.target.value)}
+                placeholder="Object Storage (bucket-finance-2026), Sub Account IAM"
                 className="input"
               />
             </Field>

@@ -21,22 +21,19 @@ const sections: { layer: string; items: NavItem[] }[] = [
     items: [
       { path: '/ocsf', label: 'OCSF 정규화', icon: '🔄', num: 'V3' },
       { path: '/gap', label: '갭 감지', icon: '🔍', num: 'V4' },
-    ],
-  },
-  {
-    layer: 'Layer 3 — AI 분석',
-    items: [
-      { path: '/board', label: '수사 보드', icon: '🕸', num: 'V5' },
       { path: '/attack', label: 'ATT&CK 매핑', icon: '🎯', num: 'V6' },
     ],
   },
   {
-    layer: 'Layer 4 — 보고',
-    items: [{ path: '/report', label: '보고서', icon: '📄', num: 'V7' }],
+    layer: 'Layer 3 — AI 셰르파',
+    items: [{ path: '/sherpa', label: 'AI 셰르파', icon: '🤖', num: 'V8' }],
   },
   {
-    layer: '도우미',
-    items: [{ path: '/sherpa', label: 'AI 셰르파', icon: '🤖', num: 'V8' }],
+    layer: 'Layer 4 — 보드/보고서',
+    items: [
+      { path: '/board', label: '수사 보드', icon: '🕸', num: 'V5' },
+      { path: '/report', label: '보고서', icon: '📄', num: 'V7' },
+    ],
   },
 ];
 

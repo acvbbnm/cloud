@@ -51,10 +51,10 @@ export const nextTriage = async (
   return res.data.data;
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // 부분 로그 분석 — POST /api/triage/analyze-logs (multipart)
-// dev3 B-2 — Step 2 Discovery Loop ② 부분 로그 분석.
-// ─────────────────────────────────────────────────────────────
+// dev3 B-2 — Step 2 Discovery Loop  부분 로그 분석.
+// 
 
 export interface AnalyzeLogsResponse {
   caseId: string;
@@ -103,9 +103,9 @@ export const analyzeLogs = async (
   return res.data.data;
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // 단서 입력 시 가설 점수 보강 — POST /api/triage/analyze (JSON)
-// ─────────────────────────────────────────────────────────────
+// 
 
 export interface AnalyzeClueResponse {
   caseId: string;
@@ -140,13 +140,13 @@ export const analyzeClue = async (
   return res.data.data;
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // 출처 트레이스 — POST /api/triage/breakdown (JSON)
 //
 // HypothesisBreakdownChart "왜 이 가설인가" 출처 분해.
 // 5개 소스(environment / tree / combo / clues / techniques) × 8 사고유형.
 // 학술 변호: 결정성 100% — 같은 입력 시 같은 분해 (weights.json 단일 소스).
-// ─────────────────────────────────────────────────────────────
+// 
 
 export type BreakdownSource =
   | 'environment'

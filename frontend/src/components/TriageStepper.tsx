@@ -5,8 +5,8 @@
  * 의료 감별진단의 "diagnostic timeline" 비유 + 답변 수정 진입점.
  *
  * 동작:
- *   - 완료된 노드는 ✓ + 선택한 옵션 요약 표시
- *   - 현재 노드는 ▷ + 강조
+ *   - 완료된 노드는  + 선택한 옵션 요약 표시
+ *   - 현재 노드는  + 강조
  *   - 미진행 노드는 회색 dot
  *   - 완료된 노드 클릭 시 onRevisit 콜백 호출 (해당 노드 재방문 — 점수 재계산)
  *
@@ -128,7 +128,7 @@ const TriageStepper = ({
                       : 'bg-ink-800 text-ink-500'
                   }`}
                 >
-                  {done ? '✓' : cur ? '▷' : stg}
+                  {done ? '' : cur ? '' : stg}
                 </span>
                 <span className="text-[10.5px] font-semibold">Q{stg}</span>
                 <span className="text-[10px] opacity-70 truncate max-w-[7.5em]">
@@ -152,7 +152,7 @@ const TriageStepper = ({
 
       {isTerminal && (
         <div className="text-[10.5px] text-brand-teal mt-2 font-semibold">
-          ✓ 6단계 완료 — 우측 추천 결과 확인
+           6단계 완료 — 우측 추천 결과 확인
         </div>
       )}
     </div>

@@ -6,10 +6,11 @@ html, body, #root {
   height: 100%;
 }
 
+/* 블룸버그 단말기 스타일 — 순흑 배경, 고밀도, 플랫 (2026-05-22 리디자인) */
 body {
   margin: 0;
-  background-color: #0B0D14;
-  color: #E6EAF2;
+  background-color: #050506;
+  color: #E6E6EA;
   font-family:
     'Pretendard',
     -apple-system,
@@ -18,100 +19,111 @@ body {
     Roboto,
     system-ui,
     sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'ss03', 'cv11';
+}
+
+/* 숫자·코드는 균일폭(tabular) — 단말기 데이터 정렬감 */
+code, .tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0C0C0F;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2A3045;
-  border-radius: 999px;
+  background: #2A2A31;
+  border: 2px solid #0C0C0F;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4A5168;
+  background: #3A3A43;
 }
 
 @layer components {
+  /* 패널 — 플랫 단색, 1px 하드 보더, 각진 모서리 */
   .panel {
-    @apply bg-panel-gradient border border-ink-700/80 rounded-xl2 shadow-soft;
+    @apply bg-ink-900 border border-ink-700;
   }
   .panel-flat {
-    @apply bg-ink-850 border border-ink-700/70 rounded-xl;
+    @apply bg-ink-850 border border-ink-700;
   }
   .panel-pad {
-    @apply panel p-5;
+    @apply panel p-4;
   }
+  /* eyebrow — 단말기 라벨 (대문자 + 자간) */
   .eyebrow {
-    @apply inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-300;
+    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-400;
   }
   .h-display {
-    @apply text-display text-ink-100;
+    @apply text-display text-ink-50;
   }
   .h-page {
-    @apply text-h1 text-ink-100;
+    @apply text-h1 text-ink-50;
   }
   .h-section {
     @apply text-h2 text-ink-100;
   }
   .panel-title {
-    @apply text-h3 flex items-center gap-2 text-ink-100;
+    @apply text-h3 flex items-center gap-2 text-ink-100 uppercase tracking-[0.04em];
   }
+  /* 버튼 — 각진 사각, 플랫 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold border border-transparent transition-all whitespace-nowrap;
+    @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] border transition-colors whitespace-nowrap;
   }
   .btn-primary {
-    @apply btn bg-cta-gradient text-white hover:bg-cta-gradient-hover hover:shadow-glow active:translate-y-px;
+    @apply btn bg-brand-amber border-brand-amber text-ink-975 hover:bg-brand-orange hover:border-brand-orange;
   }
   .btn-ghost {
-    @apply btn bg-transparent border-ink-600 text-ink-200 hover:border-brand-blue/60 hover:text-brand-blue hover:bg-brand-blue/[0.06];
+    @apply btn bg-transparent border-ink-600 text-ink-200 hover:border-brand-amber hover:text-brand-amber;
   }
   .btn-success {
-    @apply btn bg-brand-teal text-ink-950 hover:bg-brand-tealDark;
+    @apply btn bg-brand-teal border-brand-teal text-ink-975 hover:bg-brand-tealDark hover:border-brand-tealDark;
   }
   .btn-danger {
-    @apply btn bg-brand-red/10 border-brand-red/40 text-brand-red hover:bg-brand-red/20;
+    @apply btn bg-transparent border-brand-red/60 text-brand-red hover:bg-brand-red/15;
   }
   .btn-sm {
-    @apply px-3 py-1 text-[12px];
+    @apply px-2.5 py-1 text-[11px];
   }
+  .btn-xs {
+    @apply px-2 py-0.5 text-[10px];
+  }
+  /* 입력 — 각진, 앰버 포커스 */
   .input {
-    @apply w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-[13px] text-ink-100 placeholder-ink-400 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/25 transition-colors;
+    @apply w-full bg-ink-950 border border-ink-700 px-2.5 py-1.5 text-[12px] text-ink-100 placeholder-ink-500 focus:border-brand-amber focus:outline-none transition-colors;
   }
+  /* 칩·태그 — 각진 사각 (라운드 제거) */
   .chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-ink-700/80 bg-ink-850 text-ink-200;
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] border border-ink-700 bg-ink-850 text-ink-300;
   }
   .tag {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold;
+    @apply inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em];
   }
-  .tag-red    { @apply tag bg-brand-red/15 text-brand-red ring-1 ring-inset ring-brand-red/20; }
-  .tag-amber  { @apply tag bg-brand-amber/15 text-brand-amber ring-1 ring-inset ring-brand-amber/20; }
-  .tag-teal   { @apply tag bg-brand-teal/15 text-brand-teal ring-1 ring-inset ring-brand-teal/20; }
-  .tag-blue   { @apply tag bg-brand-blue/15 text-brand-blue ring-1 ring-inset ring-brand-blue/20; }
-  .tag-purple { @apply tag bg-brand-purple/15 text-brand-purple ring-1 ring-inset ring-brand-purple/20; }
-  .tag-gray   { @apply tag bg-ink-700/60 text-ink-200; }
+  .tag-red    { @apply tag bg-brand-red/15 text-brand-red border border-brand-red/30; }
+  .tag-amber  { @apply tag bg-brand-amber/15 text-brand-amber border border-brand-amber/30; }
+  .tag-teal   { @apply tag bg-brand-teal/15 text-brand-teal border border-brand-teal/30; }
+  .tag-blue   { @apply tag bg-brand-blue/15 text-brand-blue border border-brand-blue/30; }
+  .tag-purple { @apply tag bg-brand-purple/15 text-brand-purple border border-brand-purple/30; }
+  .tag-gray   { @apply tag bg-ink-700/60 text-ink-300 border border-ink-600; }
 
+  /* 카드 hover — 글로우·이동 제거, 보더 강조만 */
   .card-hover {
-    @apply transition-all hover:border-brand-blue/50 hover:shadow-glow hover:-translate-y-0.5;
+    @apply transition-colors hover:border-brand-amber/50;
   }
 
   .divider {
-    @apply h-px w-full bg-ink-700/70;
+    @apply h-px w-full bg-ink-700;
   }
 }
 
 @layer utilities {
+  /* grad-text — 그라데이션 제거, 앰버 단색 */
   .grad-text {
-    background: linear-gradient(135deg, #3D7BFF 0%, #8B5CF6 70%, #D946EF 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: #FF9500;
   }
 }

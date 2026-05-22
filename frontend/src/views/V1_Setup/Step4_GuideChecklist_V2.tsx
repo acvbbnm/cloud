@@ -21,7 +21,7 @@ interface Step4V2Props {
   onComplete: () => void;
 }
 
-// ── 상수 ─────────────────────────────────────────
+//  상수 
 
 const STD_META: Record<
   string,
@@ -85,7 +85,7 @@ const KILL_CHAIN_TACTICS: { id: string; en: string; ko: string; def: string }[] 
   { id: 'TA0040', en: 'Impact', ko: '영향·파괴', def: '서비스 중단·자원 삭제·데이터 파괴' },
 ];
 
-// ── 헬퍼 ─────────────────────────────────────────
+//  헬퍼 
 
 const priorityColor = (p: number): string => {
   if (p >= 11) return 'text-red-300 border-red-500/50 bg-red-500/15';
@@ -115,7 +115,7 @@ const summarizeForList = (t: GuideV2Target, primaryCsp: string): string => {
   return `${label} · ${cs[csp]}`;
 };
 
-// ── 외부 표준 카드 (KB 패널용) ─────────────────────
+//  외부 표준 카드 (KB 패널용) 
 const SourceCardLarge = ({ s }: { s: GuideV2SourceRef }) => {
   const meta = stdMeta(s.std);
   const Inner = (
@@ -140,7 +140,7 @@ const SourceCardLarge = ({ s }: { s: GuideV2SourceRef }) => {
   );
 };
 
-// ── 수집 방법 카드 (KB 패널용) ─────────────────────
+//  수집 방법 카드 (KB 패널용) 
 const CollectionMethodCard = ({ csp, method }: { csp: string; method: GuideV2CollectionMethod }) => {
   if (!method) return null;
   const label = CSP_KO[csp] ?? csp.toUpperCase();
@@ -181,7 +181,7 @@ const CollectionMethodCard = ({ csp, method }: { csp: string; method: GuideV2Col
   );
 };
 
-// ── KB 패널 ──────────────────────────────────────
+//  KB 패널 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="mb-3.5">
     <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
@@ -203,7 +203,7 @@ const KbPanel = ({
   if (!target) {
     return (
       <div className="panel p-5 lg:sticky lg:top-4 h-fit">
-        <div className="eyebrow mb-2">📚 지식 베이스 (KB)</div>
+        <div className="eyebrow mb-2"> 지식 베이스 (KB)</div>
         <div className="text-[12px] text-ink-300 leading-6">
           좌측 가이드 / 매트릭스 셀을 클릭하면 여기에 <b>왜 필요한가</b>, <b>어떻게 수집하나</b>, <b>활용 사례</b>, <b>외부 표준 인용</b> 등 자세한 내용이 펼쳐집니다.
         </div>
@@ -226,7 +226,7 @@ const KbPanel = ({
     <div className="panel p-5 lg:sticky lg:top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
       <div className="flex items-start gap-2 mb-3 pb-3 border-b border-ink-700/60">
         <div className="flex-1 min-w-0">
-          <div className="eyebrow mb-1">📚 KB · {target.category_id}</div>
+          <div className="eyebrow mb-1"> KB · {target.category_id}</div>
           <div className="text-[15px] font-bold text-ink-100 leading-snug">{target.category_name}</div>
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span
@@ -251,12 +251,12 @@ const KbPanel = ({
         </button>
       </div>
 
-      <Section title="🧭 왜 필요한가">
+      <Section title=" 왜 필요한가">
         <p className="text-[12px] text-ink-200 leading-6 whitespace-pre-line">{target.rationale}</p>
       </Section>
 
       {cspOrder.length > 0 && (
-        <Section title="📥 어떻게 수집하나 (CSP 별 단계)">
+        <Section title=" 어떻게 수집하나 (CSP 별 단계)">
           {cspOrder.map((csp) => (
             <CollectionMethodCard key={csp} csp={csp} method={methods[csp]} />
           ))}
@@ -264,7 +264,7 @@ const KbPanel = ({
       )}
 
       {target.use_cases && target.use_cases.length > 0 && (
-        <Section title={`🎯 활용 사례 (${target.use_cases.length}건)`}>
+        <Section title={` 활용 사례 (${target.use_cases.length}건)`}>
           <ul className="text-[11.5px] text-ink-200 leading-6 list-disc pl-5 space-y-0.5">
             {target.use_cases.map((u, i) => (
               <li key={i}>{u}</li>
@@ -274,13 +274,13 @@ const KbPanel = ({
       )}
 
       {target.priority_basis && (
-        <Section title="📊 우선순위 산출 근거">
+        <Section title=" 우선순위 산출 근거">
           <p className="text-[11px] text-ink-300 leading-6">{target.priority_basis}</p>
         </Section>
       )}
 
       {(target.sources ?? []).length > 0 && (
-        <Section title={`📑 외부 표준 인용 (${target.sources?.length ?? 0}건)`}>
+        <Section title={` 외부 표준 인용 (${target.sources?.length ?? 0}건)`}>
           <div className="space-y-1.5">
             {target.sources?.map((s, i) => (
               <SourceCardLarge key={i} s={s} />
@@ -292,7 +292,7 @@ const KbPanel = ({
   );
 };
 
-// ── Phase 안내 카드 (접이식) ────────────────────────
+//  Phase 안내 카드 (접이식) 
 const PhaseInfoBanner = ({ activePhases }: { activePhases: Set<string> }) => {
   const [expanded, setExpanded] = useState(false);
   const activeCount = KILL_CHAIN_TACTICS.filter((t) => activePhases.has(t.en)).length;
@@ -303,7 +303,7 @@ const PhaseInfoBanner = ({ activePhases }: { activePhases: Set<string> }) => {
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-ink-900/50 transition-colors"
       >
-        <span className="text-[14px]">🛡</span>
+        <span className="text-[14px]"></span>
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-ink-100">
             MITRE Kill Chain 12 전술이란?
@@ -356,7 +356,7 @@ const PhaseInfoBanner = ({ activePhases }: { activePhases: Set<string> }) => {
   );
 };
 
-// ── 리스트 뷰: 단일 행 ─────────────────────────────
+//  리스트 뷰: 단일 행 
 interface TargetRowProps {
   t: GuideV2Target;
   primaryCsp: string;
@@ -398,7 +398,7 @@ const TargetRow = ({
           }`}
           title={checked ? '수집 완료 표시 해제' : '수집 완료로 표시'}
         >
-          {checked && <span className="text-[12px] leading-none">✓</span>}
+          {checked && <span className="text-[12px] leading-none"></span>}
         </button>
         <span
           className={`flex-shrink-0 inline-flex flex-col items-center justify-center min-w-[58px] h-10 rounded-md border ${priorityColor(
@@ -425,7 +425,7 @@ const TargetRow = ({
           </div>
           {summary && (
             <div className="text-[11px] text-ink-400 leading-5 truncate">
-              <span className="text-brand-teal">📥</span> {summary}
+              <span className="text-brand-teal"></span> {summary}
             </div>
           )}
         </button>
@@ -442,7 +442,7 @@ const TargetRow = ({
   );
 };
 
-// ── 리스트 뷰: Phase 카드 ──────────────────────────
+//  리스트 뷰: Phase 카드 
 const PhaseCard = ({
   phase,
   data,
@@ -485,7 +485,7 @@ const PhaseCard = ({
         <div className="flex items-center gap-2 text-[10px] flex-wrap">
           {data.mitre_url && (
             <a href={data.mitre_url} target="_blank" rel="noreferrer" className="text-brand-purple hover:underline">
-              📖 MITRE 공식
+               MITRE 공식
             </a>
           )}
           {data.kisa_reference && (
@@ -525,7 +525,7 @@ const PhaseCard = ({
   );
 };
 
-// ── 매트릭스 뷰 ────────────────────────────────────
+//  매트릭스 뷰 
 interface MatrixViewProps {
   phases: [string, GuideV2PhaseGroup][];
   selectedKey: string | null;
@@ -569,7 +569,7 @@ const MatrixView = ({
 
   return (
     <Card
-      title={<>🗂 MITRE ATT&CK 매트릭스</>}
+      title={<> MITRE ATT&CK 매트릭스</>}
       subtitle={
         <span className="text-[10.5px] text-ink-400">
           가로: Kill Chain 단계 · 세로: 수집 카테고리 · 빈 칸은 매칭 없음 · 셀 클릭 시 KB 펼침
@@ -660,7 +660,7 @@ const MatrixView = ({
                             {boost > 0 && (
                               <span className="text-[9.5px] text-amber-300 font-semibold">↑+{boost}</span>
                             )}
-                            {isChecked && <span className="text-[10px] text-green-400">✓</span>}
+                            {isChecked && <span className="text-[10px] text-green-400"></span>}
                           </div>
                           <div className="text-[9.5px] opacity-80 mt-0.5">
                             {priorityLabel(t.priority)}
@@ -678,7 +678,7 @@ const MatrixView = ({
                           }`}
                           title={isChecked ? '수집 완료 표시 해제' : '수집 완료로 표시'}
                         >
-                          {isChecked ? '✓ 수집됨' : '☐ 수집 표시'}
+                          {isChecked ? ' 수집됨' : ' 수집 표시'}
                         </button>
                       </td>
                     );
@@ -702,11 +702,11 @@ const MatrixView = ({
   );
 };
 
-// ── 환경 보정 카드 ─────────────────────────────────
+//  환경 보정 카드 
 const AppliedModifiersCard = ({ items }: { items: GuideV2AppliedModifier[] }) => {
   if (!items || items.length === 0) {
     return (
-      <Card title={<>🛠 환경 보정</>} className="mb-3">
+      <Card title={<> 환경 보정</>} className="mb-3">
         <p className="text-[11.5px] text-ink-400">
           Step2 시스템 환경 입력에 따라 추가 적용된 보정이 없습니다.
         </p>
@@ -715,7 +715,7 @@ const AppliedModifiersCard = ({ items }: { items: GuideV2AppliedModifier[] }) =>
   }
   return (
     <Card
-      title={<>🛠 환경 보정 ({items.length}건 적용)</>}
+      title={<> 환경 보정 ({items.length}건 적용)</>}
       subtitle={
         <span className="text-[10.5px] text-ink-400">
           Step2 입력값이 가이드 우선순위에 어떻게 반영됐는지
@@ -747,7 +747,7 @@ const AppliedModifiersCard = ({ items }: { items: GuideV2AppliedModifier[] }) =>
               <code className="text-[9.5px] text-ink-500 font-mono ml-auto">{m.id}</code>
             </div>
             <div className="text-ink-200">{m.reason}</div>
-            {m.source && <div className="text-[10px] text-ink-500 mt-0.5">📚 {m.source}</div>}
+            {m.source && <div className="text-[10px] text-ink-500 mt-0.5"> {m.source}</div>}
           </div>
         ))}
       </div>
@@ -755,12 +755,12 @@ const AppliedModifiersCard = ({ items }: { items: GuideV2AppliedModifier[] }) =>
   );
 };
 
-// ── 환경 경고 카드 ─────────────────────────────────
+//  환경 경고 카드 
 const EnvWarningsCard = ({ items }: { items: GuideV2EnvWarning[] }) => {
   if (!items || items.length === 0) return null;
   return (
     <Card
-      title={<span className="text-red-400">⚠ 환경 경고 ({items.length})</span>}
+      title={<span className="text-red-400"> 환경 경고 ({items.length})</span>}
       subtitle={
         <span className="text-[10.5px] text-ink-400">
           현재 환경에서 즉시 조치가 권장되는 항목 — 분석 신뢰성에 직접 영향
@@ -789,7 +789,7 @@ const EnvWarningsCard = ({ items }: { items: GuideV2EnvWarning[] }) => {
   );
 };
 
-// ── 메인 ──────────────────────────────────────────
+//  메인 
 const CHECKED_KEY_PREFIX = 'ai-sherpa-v2-collected:';
 const VIEW_MODE_KEY = 'ai-sherpa-v2-view-mode';
 
@@ -870,7 +870,7 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
   if (!caseId) {
     return (
       <div className="panel p-6 text-[12.5px]">
-        <p className="text-ink-300">⚠ 케이스가 없습니다. 이전 단계에서 케이스를 먼저 생성해주세요.</p>
+        <p className="text-ink-300"> 케이스가 없습니다. 이전 단계에서 케이스를 먼저 생성해주세요.</p>
         <button onClick={onPrev} className="btn-ghost mt-3">← Step2 시스템 구성</button>
       </div>
     );
@@ -931,7 +931,7 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
           수집 완료
           {guide.environment_warnings.length > 0 && (
             <>
-              {' '}· <span className="text-red-400">⚠ 환경 경고 {guide.environment_warnings.length}건</span>
+              {' '}· <span className="text-red-400"> 환경 경고 {guide.environment_warnings.length}건</span>
             </>
           )}
         </div>
@@ -943,14 +943,14 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
             onClick={() => switchView('list')}
             className={viewMode === 'list' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
           >
-            📋 리스트
+             리스트
           </button>
           <button
             onClick={() => switchView('matrix')}
             className={viewMode === 'matrix' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
             title="MITRE ATT&CK 매트릭스 형태로 한눈에 시각화"
           >
-            🗂 매트릭스
+             매트릭스
           </button>
           <span className="ml-auto text-[10px] text-ink-500">
             {viewMode === 'matrix'

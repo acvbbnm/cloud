@@ -59,9 +59,9 @@ const V3OCSF = () => {
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF 정규화" description="진행 중인 사고 케이스가 없습니다." />
+        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF Normalization" description="No active incident case." />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료하고 V-2 에서 로그를 업로드하세요.
             </p>
@@ -97,12 +97,8 @@ const V3OCSF = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-1"
-        title={
-          <>
-            OCSF <span className="grad-text">정규화</span>
-          </>
-        }
-        description="원본 CSP 로그를 OCSF 1.3 평탄화 컬럼으로 변환합니다. 좌·우 패널에서 변환 전후를 비교하세요."
+        title="OCSF Normalization"
+        description="Convert raw CSP logs to OCSF 1.3 flattened columns. Compare before/after in the left/right panels."
         actions={
           <>
             <button
@@ -110,7 +106,7 @@ const V3OCSF = () => {
               disabled={normalizeMutation.isPending}
               className="btn-ghost disabled:opacity-50"
             >
-              {normalizeMutation.isPending ? '정규화 중…' : '🔁 정규화 실행'}
+              {normalizeMutation.isPending ? '정규화 중…' : ' 정규화 실행'}
             </button>
             <button onClick={() => navigate('/gap')} className="btn-primary">
               갭 감지 →
@@ -127,7 +123,7 @@ const V3OCSF = () => {
               <span className="eyebrow">백엔드 응답</span>
               {ocsfQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
               {ocsfQuery.isError && <span className="tag-red">에러</span>}
-              {ocsfQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {ocsfQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
               {normalizeMutation.isPending && <span className="tag-amber">정규화 중…</span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>

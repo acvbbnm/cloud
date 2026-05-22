@@ -1,64 +1,34 @@
-import { useCaseStore } from '@/stores/useCaseStore';
-import { useToastStore } from '@/stores/useToastStore';
-
-// CSP 2종 — 'all'(통합 뷰)은 2026-05-21 데이터 모델에서 제거됨.
-// 잘못된 csp='all' 설정 시 케이스 생성이 422 로 실패하므로 토글에서도 제외.
-const cspTabs = [
-  { id: 'naver', label: 'Naver Cloud' },
-  { id: 'nhn', label: 'NHN Cloud' },
-];
+/**
+ * 단말기 상단 바 — 미니멀 (2026-05-22 재개정).
+ * 워드마크 + 오프라인·시각만. CSP 토글·CASE 표시 제거 (V-1 내부에서 설정).
+ */
+import { useEffect, useState } from 'react';
 
 const Header = () => {
-  const csp = useCaseStore((s) => s.csp);
-  const setCsp = useCaseStore((s) => s.setCsp);
-  const caseId = useCaseStore((s) => s.caseId);
-  const showToast = useToastStore((s) => s.show);
+  const [ts, setTs] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
 
-  const handleSwitch = (id: string) => {
-    setCsp(id);
-    const meta = cspTabs.find((c) => c.id === id);
-    showToast(`CSP 전환: ${meta?.label ?? id}`);
-  };
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const d = new Date();
+      setTs(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
-    <header className="h-14 bg-ink-900/80 backdrop-blur border-b border-ink-700/70 flex items-center justify-between px-6 shrink-0 z-20">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2.5">
-          <span className="w-7 h-7 rounded-lg bg-sherpa-gradient flex items-center justify-center text-[14px] shadow-glow">
-            🛡
-          </span>
-          <div className="leading-tight">
-            <b className="text-[15px] tracking-tight">AI 셰르파</b>
-            <span className="text-[10px] text-ink-400 ml-2">v3.1</span>
-          </div>
-        </div>
-        <div className="hidden md:flex items-center gap-1 p-1 bg-ink-850 border border-ink-700/70 rounded-full">
-          {cspTabs.map((tab) => {
-            const active = csp === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleSwitch(tab.id)}
-                className={`text-[12px] px-3.5 py-1.5 rounded-full transition-all ${
-                  active
-                    ? 'bg-cta-gradient text-white shadow-soft'
-                    : 'text-ink-300 hover:text-ink-100'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+    <header className="h-9 bg-ink-975 border-b border-ink-700 flex items-stretch shrink-0 z-20 font-mono text-[11px]">
+      <div className="px-3 flex items-center border-r border-ink-700">
+        <span className="text-brand-amber font-bold tracking-[0.18em]">AI · SHERPA</span>
       </div>
-      <div className="flex items-center gap-4">
-        <span className="hidden sm:inline-flex chip">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-          {caseId ? caseId : 'CASE-NEW'}
-        </span>
-        <div className="w-8 h-8 rounded-full bg-ink-800 border border-ink-700 flex items-center justify-center text-[13px]">
-          👤
+      <div className="ml-auto flex items-stretch">
+        <div className="px-3 flex items-center gap-1.5 border-l border-ink-700">
+          <span className="w-1.5 h-1.5 bg-brand-teal" />
+          <span className="text-ink-400 uppercase tracking-[0.12em]">OFFLINE</span>
         </div>
+        <div className="px-3 flex items-center text-ink-300 border-l border-ink-700">{ts}</div>
       </div>
     </header>
   );

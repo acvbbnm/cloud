@@ -55,7 +55,7 @@ const DropZone = ({ onUpload }: DropZoneProps) => {
           active ? 'scale-110' : ''
         }`}
       >
-        ☁️
+        
       </div>
       <div className="font-bold text-[14px]">CSP 로그 파일 업로드</div>
       <div className="text-[12px] text-ink-400">

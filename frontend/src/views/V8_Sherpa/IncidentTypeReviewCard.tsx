@@ -16,7 +16,7 @@ const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  // ── dev3 C-1 신규 4종 (MULTI_CSP_LATERAL 2026-05-19 제거) ──
+  //  dev3 C-1 신규 4종 (MULTI_CSP_LATERAL 2026-05-19 제거) 
   RANSOMWARE: '랜섬웨어',
   MISCONFIG_EXPOSURE: '설정 오류 노출',
   PHISH_INITIAL_ACCESS: '피싱 초기 침투',
@@ -124,7 +124,7 @@ const IncidentTypeReviewCard = ({ caseId }: Props) => {
       <div className="panel p-4 border-l-[3px] border-l-amber-500/80 bg-amber-500/5 animate-fade-up">
         {/* 헤더 */}
         <div className="flex items-start gap-3 mb-3">
-          <span className="text-[18px] leading-none mt-0.5">⚠</span>
+          <span className="text-[18px] leading-none mt-0.5"></span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="eyebrow text-[10.5px] text-amber-300">
@@ -141,7 +141,7 @@ const IncidentTypeReviewCard = ({ caseId }: Props) => {
             className="text-ink-500 hover:text-ink-300 text-[11px] shrink-0"
             title="이 세션에서 숨기기"
           >
-            ✕
+            
           </button>
         </div>
 
@@ -238,7 +238,7 @@ const IncidentTypeReviewCard = ({ caseId }: Props) => {
         )}
 
         <p className="text-[10.5px] text-ink-500 mt-3 leading-5">
-          ⓘ AI 제안 — 결정은 수사관. 부 사고유형 등록 시 보고서·가이드가 자동 보강됩니다.
+           AI 제안 — 결정은 수사관. 부 사고유형 등록 시 보고서·가이드가 자동 보강됩니다.
         </p>
       </div>
     </div>

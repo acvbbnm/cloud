@@ -18,7 +18,7 @@ from core.sherpa.chat_session import ChatSession, Message
 from core.sherpa.knowledge_base import KBChunk
 from core.sherpa.llm_engine import LLMEngine
 from core.sherpa.rag_retriever import RAGRetriever
-from db.models import AttackEventModel, OCSFEventModel, RawEventModel
+from db.models import AttackEventModel, IncidentCaseModel, OCSFEventModel, RawEventModel
 
 
 def _source_dict(chunk: KBChunk) -> dict:
@@ -73,8 +73,16 @@ class AISherpa:
                 "confidence": "low",
             }
 
-        # KB 검색
-        scored = RAGRetriever.retrieve_by_technique(attack_row.technique_id, k=3)
+        # KB 검색 — HIGH 3 (2026-05-21): case 의 incident_type·csp 도 전달하여
+        # CASE_DB / PLAYBOOK 청크도 검색 (진규 E2E §4.5 fix).
+        case_obj = db.execute(
+            select(IncidentCaseModel).where(IncidentCaseModel.case_id == case_id)
+        ).scalar_one_or_none()
+        incident_type = case_obj.incident_type if case_obj else None
+        csp = case_obj.csp if case_obj else None
+        scored = RAGRetriever.retrieve_by_technique(
+            attack_row.technique_id, k=3, incident_type=incident_type, csp=csp,
+        )
         sources = [_source_dict(c) for c, _ in scored]
         related = sorted(
             {c.meta.get("technique_id") for c, _ in scored if c.meta.get("technique_id")}

@@ -168,13 +168,13 @@ async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> 
 
 @router.get("/kb")
 async def get_kb_stats() -> dict:
-    """KB 인덱스 통계 + LLM/RAG 엔진 상태 (V8 우측 패널)."""
+    """KB 인덱스 통계 + 엔진 health (V-8 우측 패널)."""
     return {
         "status": "ok",
         "data": {
             **kb_stats(),
             "engine": LLMEngine.health(),
-            "rag": RAGRetriever.backend_info(),
+            "rag": RAGRetriever.health(),
         },
     }
 
@@ -329,11 +329,16 @@ async def validate_incident_type(
             + ("…" if len(extra_techniques) > 5 else "")
         )
 
+    # HIGH 3 후속 (2026-05-21): E2E 스크립트 호환용 verdict 필드 추가.
+    # 최상위 후보 type — REVIEW_NEEDED 또는 CONSISTENT 모두에서 가장 유력 사고유형.
+    verdict = candidates[0]["type"] if candidates and candidates[0].get("score_ratio", 0) > 0 else current_type
+
     return {
         "status": "ok",
         "data": {
             "caseId": caseId,
             "status": status_val,
+            "verdict": verdict,
             "current_incident_type": current_type,
             "current_match": cur_matched,
             "current_expected": cur_total,

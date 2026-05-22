@@ -31,6 +31,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from config import settings
+from core.intake.modifier_eval import eval_operator, resolve_field
 from db.models import IncidentCaseModel
 
 logger = logging.getLogger(__name__)
@@ -256,59 +257,6 @@ def _categories_for_phases(phases: list[str], csp: str) -> list[dict]:
 # ── modifier operator 평가 ──────────────────────────────────
 
 
-def _resolve_field(system_config: dict, field_path: str) -> object:
-    """`system_config.mfa_status` 같은 dot-path 를 dict 에서 추출."""
-    if not system_config:
-        return None
-    if field_path.startswith("system_config."):
-        field_path = field_path[len("system_config."):]
-    cur: object = system_config
-    for key in field_path.split("."):
-        if isinstance(cur, dict):
-            cur = cur.get(key)
-        else:
-            return None
-        if cur is None:
-            return None
-    return cur
-
-
-def _eval_operator(actual: object, operator: str, expected: object) -> bool:
-    """modifier operator 평가. 미지원 operator 는 False."""
-    if actual is None:
-        return False
-    op = operator.lower()
-    if op == "equals":
-        return actual == expected
-    if op == "contains":
-        if isinstance(actual, str):
-            return str(expected) in actual
-        if isinstance(actual, (list, tuple)):
-            return expected in actual
-        return False
-    if op == "contains_any":
-        if not isinstance(expected, (list, tuple)):
-            return False
-        if isinstance(actual, str):
-            return any(str(e) in actual for e in expected)
-        if isinstance(actual, (list, tuple)):
-            actual_set = set(actual)
-            return any(e in actual_set for e in expected)
-        return False
-    if op in ("greater_than_or_equal", "gte"):
-        try:
-            return float(actual) >= float(expected)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            return False
-    if op == "less_than":
-        try:
-            return float(actual) < float(expected)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            return False
-    logger.warning("unknown operator: %s", operator)
-    return False
-
-
 def _apply_effect(
     effect: dict | str,
     categories: list[dict],
@@ -389,8 +337,8 @@ def _apply_environment_modifiers(
         field = m.get("field", "")
         operator = m.get("operator", "")
         expected = m.get("value")
-        actual = _resolve_field(sc, field)
-        if not _eval_operator(actual, operator, expected):
+        actual = resolve_field(sc, field)
+        if not eval_operator(actual, operator, expected):
             continue
 
         # primary effect 적용

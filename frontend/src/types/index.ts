@@ -423,15 +423,19 @@ export interface TriageTreeNode {
   message?: string;
   fallback_incident_type?: IncidentType;
   kisa_field?: string;
+  dynamic_next?: Record<string, string>;
+}
+
+// 결정 트리 경로 엔트리 (E4 2026-05-21: TriageStepper 등 다수 컴포넌트 공유)
+export interface TriagePathEntry {
+  node_id: string;
+  selected_option_ids: string[];
 }
 
 // 결정 트리 진행 상태 (DB triage_state JSON 칼럼)
 export interface TriageState {
   current_node_id: string;
-  completed_path: Array<{
-    node_id: string;
-    selected_option_ids: string[];
-  }>;
+  completed_path: TriagePathEntry[];
   hypothesis_scores: HypothesisScores;
   is_terminal: boolean;
   recommendation?: TriageRecommendation | null;

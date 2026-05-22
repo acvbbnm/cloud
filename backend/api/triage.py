@@ -139,10 +139,12 @@ def _ensure_case(db: Session, case_id: str) -> IncidentCaseModel:
 async def post_start(req: TriageStartRequest, db: Session = Depends(get_db)) -> dict:
     """트리아주 시작 — root 노드 반환.
 
-    클라이언트가 신규 케이스 진입 시 1회 호출. 응답의 next_node 를 화면에 표시.
+    클라이언트가 신규 케이스(M0-3 단서 루프) 진입 시 1회 호출. 케이스의
+    `system_config`(M0-2 입력)를 평가해 environment_modifiers 기반 가설 점수를
+    시딩한 뒤 root 노드와 함께 반환한다.
     """
-    _ensure_case(db, req.caseId)
-    data = Triage.start()
+    case = _ensure_case(db, req.caseId)
+    data = Triage.start(system_config=case.system_config)
     return {"status": "ok", "data": {"caseId": req.caseId, **data}}
 
 

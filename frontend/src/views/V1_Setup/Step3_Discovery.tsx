@@ -32,8 +32,8 @@ import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
-import { analyzeClue, getBreakdown, nextTriage, startTriage } from '@/api/triage';
-import type { BreakdownResponse } from '@/api/triage';
+import { analyzeClue, getBreakdown, getTriageTree, nextTriage, startTriage } from '@/api/triage';
+import type { BreakdownResponse, TreeVisualizationNode } from '@/api/triage';
 
 import type {
   IncidentType,
@@ -111,6 +111,9 @@ const Step3_Discovery = ({
   // E4 §4-8 (2026-05-22): 출처 트레이스 — breakdown 응답 캐시 + 로딩 상태
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
+  // 2026-05-22: 결정 트리 옵션 → 다음 질문 프리뷰용 노드 라벨 맵.
+  // /api/triage/tree 응답을 첫 입장 시 1회만 prefetch. 트리 자체는 정적 — 변경 없음.
+  const [nodeLabelMap, setNodeLabelMap] = useState<Record<string, TreeVisualizationNode>>({});
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -189,6 +192,31 @@ const Step3_Discovery = ({
       }
     };
     initTree();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseId]);
+
+  // 2026-05-22: 결정 트리 전체 노드 프리페치 — 옵션 카드 하단 "다음 질문 프리뷰"용.
+  // 케이스 진입 시 1회만 호출 (트리 자체는 정적, 캐시 충분히 길게 가능).
+  useEffect(() => {
+    let cancelled = false;
+    const loadTree = async () => {
+      if (!caseId || Object.keys(nodeLabelMap).length > 0) return;
+      try {
+        const tree = await getTriageTree(caseId);
+        if (cancelled) return;
+        const map: Record<string, TreeVisualizationNode> = {};
+        for (const n of tree.nodes) {
+          map[n.id] = n;
+        }
+        setNodeLabelMap(map);
+      } catch (_e) {
+        // 프리뷰는 nice-to-have — 실패해도 결정 트리 자체는 동작
+      }
+    };
+    loadTree();
     return () => {
       cancelled = true;
     };
@@ -491,6 +519,7 @@ const Step3_Discovery = ({
                 loading={loading}
                 onSubmit={handleSubmitAnswer}
                 onReset={handleResetTree}
+                nodeLabelMap={nodeLabelMap}
               />
             )}
           </Card>

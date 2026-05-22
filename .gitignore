@@ -20,6 +20,7 @@ yarn-error.log*
 frontend/dist/
 frontend/build/
 *.js.map
+*.tsbuildinfo
 
 # ── 환경 설정 (비밀 정보) ──
 .env
@@ -56,9 +57,11 @@ chromadb/
 # ── Ollama 모델 (용량 큼) ──
 models/
 
-# ── 보고서 출력 ──
+# ── 보고서 출력·영속화 (런타임 생성) ──
 output/
 exports/
+backend/exports/
+backend/data/reports/*.json
 
 # ── 테스트 커버리지 ──
 htmlcov/

@@ -1,19 +1,22 @@
+import type { IncidentType } from '@/types';
+
 import { TYPE_META, CSP_META } from './meta';
 
 interface Step1Props {
-  selected: string | null;
+  selected: IncidentType | null;
   csp: string | null;
-  onSelect: (type: string) => void;
+  onSelect: (type: IncidentType) => void;
   onPrev: () => void;
   onNext: () => void;
 }
 
-const orderedTypes = [
+// dev3 (2026-05-18): 이 화면은 폐기되고 Step1_CaseMetadata 로 교체됨. 파일 보존만.
+// MULTI_CSP_LATERAL 도 2026-05-19 제거.
+const orderedTypes: IncidentType[] = [
   'CREDENTIAL_THEFT',
   'PRIVILEGE_ESCALATION',
   'DATA_EXFILTRATION',
   'AUDIT_LOG_TAMPERING',
-  'MULTI_CSP_LATERAL',
 ];
 
 const sevTone = (sev: string) =>

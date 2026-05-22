@@ -9,13 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 
-# ── 라우터 import (구현 완료 시 주석 해제) ──
+# ── 라우터 import ──
 from api.intake import router as intake_router
 from api.ingestion import router as ingestion_router
 from api.analysis import router as analysis_router
-# from api.sherpa import router as sherpa_router
+from api.sherpa import router as sherpa_router
 from api.board import router as board_router
-# from api.report import router as report_router
+from api.report import router as report_router
+from api.common import router as common_router
+from api.triage import router as triage_router  # dev3 B-1
 
 app = FastAPI(
     title="AI Sherpa",
@@ -32,13 +34,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── 라우터 등록 (구현 완료 시 주석 해제) ──
+# ── 라우터 등록 ──
 app.include_router(intake_router)
 app.include_router(ingestion_router)
 app.include_router(analysis_router)
-# app.include_router(sherpa_router)
+app.include_router(sherpa_router)
 app.include_router(board_router)
-# app.include_router(report_router)
+app.include_router(report_router)
+app.include_router(common_router)
+app.include_router(triage_router)  # dev3 B-1
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    """서버 시작 시 DB 테이블 생성 + 시드 데이터 로딩."""
+    from db.init_db import init
+    init()
 
 
 @app.get("/api/health", tags=["common"])

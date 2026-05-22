@@ -1,0 +1,57 @@
+[
+  {
+    "target_id": "CT-NCP-RANSOM-001",
+    "incident_type": "RANSOMWARE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Object Storage 대량 조작",
+    "description": "Object Storage 버킷·객체 대량 Put/Copy/Delete — 파일 암호화·덮어쓰기 행위. MITRE T1486 Data Encrypted for Impact.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-RANSOM-002",
+    "incident_type": "RANSOMWARE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 서버 인스턴스 중지·재시작",
+    "description": "Shutdown/Start Server Instance 반복 — 서비스 중단 행위. MITRE T1489 Service Stop.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-RANSOM-003",
+    "incident_type": "RANSOMWARE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 백업·스냅샷 삭제",
+    "description": "Delete Bucket, Delete Snapshot 등 복구 수단 제거. MITRE T1490 Inhibit System Recovery.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-RANSOM-004",
+    "incident_type": "RANSOMWARE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 초기 접근 (로그인)",
+    "description": "Login — 랜섬 실행 전 초기 접근 경로 식별 (IP·시각·계정). MITRE T1078 Valid Accounts.",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-RANSOM-005",
+    "incident_type": "RANSOMWARE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 감사 로그 변조",
+    "description": "Delete Tracer, Disable Auto Export — 랜섬 실행 전후 흔적 제거. MITRE T1562.008 Disable Cloud Logs.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  }
+]

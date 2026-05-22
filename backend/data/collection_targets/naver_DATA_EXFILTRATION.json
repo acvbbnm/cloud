@@ -1,0 +1,35 @@
+[
+  {
+    "target_id": "CT-NCP-DE-001",
+    "incident_type": "DATA_EXFILTRATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Object Storage 내보내기",
+    "description": "Request/Complete For Exporting To Object Storage — 외부 저장소로 데이터 이전 본행위. MITRE T1567 Exfiltration Over Web Service / T1537 Transfer to Cloud Account.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-DE-002",
+    "incident_type": "DATA_EXFILTRATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - AccessKey 비활성화",
+    "description": "Disable AccessKey — 유출 직후 흔적 지움 패턴 (anti-forensics). MITRE T1098 Account Manipulation (revoke).",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NCP-DE-003",
+    "incident_type": "DATA_EXFILTRATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 로그인 (초기 접근 보강)",
+    "description": "Login — 유출 사건 직전·직후 로그인 컨텍스트 (IP·시각). 유출 주체 식별 보강.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90
+  }
+]

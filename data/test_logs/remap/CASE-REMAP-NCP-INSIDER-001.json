@@ -1,0 +1,182 @@
+[
+  {
+    "historyId": "h-843d7445c45a",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:18:11 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-b8d8cb570f7f",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Get Sub Account Policy List",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:19:55 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-cdad52f34130",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:22:30 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-d46c845bc4b8",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:28:18 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-f2d68e27f6fc",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:35:42 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-d9f3c4e49c05",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:48:11 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e2623e4f78df",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 03:18:30 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-4d1116e8e523",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Cloud Activity Tracer",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000007",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Disable Auto Export",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 03:22:55 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-38cac35f8990",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/mfg-eng-tripp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000008",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Disable AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 03:25:18 UTC",
+    "content": {
+      "actionUserName": "mfg-eng-tripp",
+      "sourceIp": "10.5.20.110",
+      "productData": {}
+    }
+  }
+]

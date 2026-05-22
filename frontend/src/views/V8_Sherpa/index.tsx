@@ -1,55 +1,111 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
+
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
-import { useSherpaStore } from '@/stores/useSherpaStore';
 
-const playbooks = [
-  {
-    title: 'IAM 권한 탈취 대응',
-    techniques: ['T1078', 'T1098'],
-    summary: '해외 IP 로그인 직후 권한 상승 패턴 — 즉시 계정 잠금 및 Access Key 회전을 권고합니다.',
-  },
-  {
-    title: '데이터 유출 대응',
-    techniques: ['T1530', 'T1537'],
-    summary:
-      'Object Storage 대용량 GET 이벤트가 단시간에 발생하면 Pre-signed URL 발급 이력과 외부 IP 트래픽을 함께 확인하세요.',
-  },
-  {
-    title: '수집 갭 보강',
-    techniques: ['T1071'],
-    summary:
-      'VPC Flow Log 미수집 시 네트워크 공격 경로 추적이 어렵습니다. NCP 콘솔에서 Flow Log를 활성화하고 30일 보존 윈도우 내 추출하세요.',
-  },
+import { useSherpaStore } from '@/stores/useSherpaStore';
+import { useCaseStore } from '@/stores/useCaseStore';
+import { getKbStats, streamChat } from '@/api/sherpa';
+
+import IncidentTypeReviewCard from './IncidentTypeReviewCard';
+
+import type { SherpaSource } from '@/types';
+
+const KB_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
+  ATTACK: 'purple',
+  PLAYBOOK: 'teal',
+  CSP_DOC: 'blue',
+  CASE_DB: 'amber',
+};
+
+const KB_LABEL: Record<string, string> = {
+  ATTACK: 'MITRE ATT&CK for Cloud',
+  PLAYBOOK: '대응 플레이북',
+  CSP_DOC: 'CSP 공식 문서',
+  CASE_DB: '침해사고 사례 DB',
+};
+
+const QUICK_QUERIES = [
+  'T1078.004 IAM 권한 탈취 사례 알려줘',
+  'NCP Activity Tracer 90일 보존 정책',
+  '데이터 유출 대응 플레이북 우선순위',
 ];
 
 const V8Sherpa = () => {
+  const caseId = useCaseStore((s) => s.caseId);
+
   const messages = useSherpaStore((s) => s.messages);
   const push = useSherpaStore((s) => s.push);
+  const updateLast = useSherpaStore((s) => s.updateLast);
+  const appendDelta = useSherpaStore((s) => s.appendDelta);
+  const sessionId = useSherpaStore((s) => s.sessionId);
+  const setSessionId = useSherpaStore((s) => s.setSessionId);
+
   const [input, setInput] = useState('');
+  // Phase 2.3 — 스트리밍 응답 진행 중 여부 (UI disabled 토글)
+  const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // KB 인덱스 + 엔진 상태 — caseId 무관, 서버 KB 카탈로그.
+  const kbQuery = useQuery({
+    queryKey: ['sherpa', 'kb'],
+    queryFn: getKbStats,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    const q = input.trim();
-    if (!q) return;
-    push({ role: 'user', text: q });
+  /**
+   * Phase 2.3 스트리밍 자연어 질의.
+   *   1. user 메시지 push
+   *   2. 빈 sherpa 메시지 push (스트리밍 누적용)
+   *   3. streamChat → onStart(sources)·onDelta(텍스트 누적)·onDone
+   *   4. 에러 시 마지막 sherpa 메시지를 fallback 텍스트로 갱신
+   */
+  const handleSend = async (q?: string) => {
+    const text = (q ?? input).trim();
+    if (!text || isStreaming) return;
+    push({ role: 'user', text });
+    push({ role: 'sherpa', text: '' }); // 빈 sherpa 메시지 — 토큰 누적용
     setInput('');
-    window.setTimeout(
-      () =>
-        push({
-          role: 'sherpa',
-          text: `RAG 검색 결과: "${q}" 관련 ATT&CK 문서·NCP/NHN 매핑·과거 사고 사례를 종합하면, 해당 질의는 클라우드 권한 탈취 패턴과 연관됩니다. 90일 보존 윈도우 내 Activity Tracer / CloudTrail 이벤트를 우선 추출하시기 바랍니다.`,
-          source: 'ChromaDB RAG · ATT&CK v14',
-        }),
-      400,
+    setIsStreaming(true);
+
+    await streamChat(
+      {
+        caseId: caseId ?? null,
+        sessionId: sessionId ?? null,
+        query: text,
+      },
+      {
+        onStart: (newSessionId, sources) => {
+          if (!sessionId) setSessionId(newSessionId);
+          updateLast({ sources, source: formatSourceSummary(sources) });
+        },
+        onDelta: (delta) => {
+          appendDelta(delta);
+        },
+        onDone: () => {
+          setIsStreaming(false);
+        },
+        onError: (err) => {
+          updateLast({
+            text:
+              '⚠ 셰르파 응답 실패. 백엔드(/api/sherpa/chat/stream) 또는 KB 인덱스 확인이 필요합니다.\n' +
+              `(상세: ${err.message})`,
+          });
+          setIsStreaming(false);
+        },
+      },
     );
   };
+
+  const engine = kbQuery.data?.engine;
+  const engineConnected = engine && engine.engine !== 'stub';
 
   return (
     <div className="flex flex-col h-full">
@@ -60,20 +116,56 @@ const V8Sherpa = () => {
             AI <span className="grad-text">셰르파</span>
           </>
         }
-        description="오프라인 sLLM(Llama 3.1 8B) + ChromaDB RAG. AI는 판단·결정하지 않고 검색·요약·제안만 수행합니다."
+        description="오프라인 sLLM + KB RAG. AI는 판단·결정하지 않고 검색·요약·제안만 수행합니다."
         meta={
           <div className="flex items-center gap-2">
             <span className="chip">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-              모델 연결됨
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  engineConnected ? 'bg-brand-teal' : 'bg-amber-400'
+                }`}
+              />
+              {engine ? `${engine.engine}${engineConnected ? '' : ' (깡통 모드)'}` : '연결 확인 중…'}
             </span>
-            <span className="chip">v14 ATT&CK</span>
+            <span className="chip">KB {kbQuery.data?.total ?? '…'}건</span>
             <span className="chip">{messages.length} 메시지</span>
+            {sessionId && (
+              <span className="chip text-[10px]">
+                <code className="text-ink-400 font-mono">{sessionId.slice(0, 12)}…</code>
+              </span>
+            )}
           </div>
         }
       />
 
-      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-8 grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 animate-fade-up">
+      {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
+      {caseId && <IncidentTypeReviewCard caseId={caseId} />}
+
+      {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
+      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">
+        <div className="bg-ink-950/60 border border-ink-700/60 rounded-xl px-4 py-3 text-[11.5px] text-ink-300 flex items-center gap-4 flex-wrap">
+          <b className="text-brand-teal">백엔드 응답 ✓</b>
+          <span>
+            caseId: <code className="text-ink-400 font-mono">{caseId ?? '— (케이스 미선택)'}</code>
+          </span>
+          <span>
+            engine:{' '}
+            <code className="text-ink-400 font-mono">{engine?.engine ?? '?'}</code>
+            {engine?.note && <span className="text-ink-500 ml-1">· {engine.note}</span>}
+          </span>
+          <span>
+            KB:{' '}
+            {kbQuery.data
+              ? Object.entries(kbQuery.data.byKb)
+                  .map(([k, v]) => `${KB_LABEL[k] ?? k} ${v}`)
+                  .join(' · ')
+              : '로딩…'}
+          </span>
+        </div>
+      </div>
+
+      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 animate-fade-up">
+        {/* 좌측: 채팅 패널 */}
         <div className="lg:col-span-2 panel flex flex-col p-0 min-h-0">
           <div className="px-5 py-4 border-b border-ink-700/60 flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-sherpa-gradient flex items-center justify-center text-[18px]">
@@ -81,11 +173,21 @@ const V8Sherpa = () => {
             </span>
             <div>
               <b className="text-[14px]">AI 셰르파</b>
-              <div className="text-[11px] text-ink-400">sLLM Llama 3.1 8B · 오프라인</div>
+              <div className="text-[11px] text-ink-400">
+                {engine?.model ?? 'template-based'} · 오프라인
+              </div>
             </div>
-            <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-brand-teal">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-              연결됨
+            <span
+              className={`ml-auto inline-flex items-center gap-1 text-[11px] ${
+                engineConnected ? 'text-brand-teal' : 'text-amber-400'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  engineConnected ? 'bg-brand-teal' : 'bg-amber-400'
+                }`}
+              />
+              {engineConnected ? '연결됨' : 'stub'}
             </span>
           </div>
 
@@ -98,7 +200,23 @@ const V8Sherpa = () => {
                 >
                   <b className="text-brand-purple text-[11px]">AI 셰르파</b>
                   <div className="mt-1 whitespace-pre-wrap text-ink-100">{m.text}</div>
-                  {m.source && (
+                  {m.sources && m.sources.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {m.sources.map((s) => (
+                        <span
+                          key={s.source_id}
+                          title={s.source_id}
+                          className="inline-flex items-center gap-1 text-[10.5px] bg-ink-900 border border-ink-700/70 rounded-full px-2 py-0.5"
+                        >
+                          <Badge tone={KB_TONE[s.type] ?? 'gray'} size="sm">
+                            {s.type}
+                          </Badge>
+                          <span className="text-ink-300">{s.title || s.source_id}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {!m.sources && m.source && (
                     <div className="mt-2 text-[10px] text-ink-400">출처: {m.source}</div>
                   )}
                 </div>
@@ -111,6 +229,29 @@ const V8Sherpa = () => {
                 </div>
               ),
             )}
+            {isStreaming &&
+              messages.length > 0 &&
+              messages[messages.length - 1].role === 'sherpa' &&
+              messages[messages.length - 1].text === '' && (
+                <div className="bg-ink-950 border border-ink-700/70 rounded-2xl p-4 text-[12px] text-ink-400 max-w-[60%] animate-pulse">
+                  <b className="text-brand-purple text-[11px]">AI 셰르파</b>
+                  <div className="mt-1">KB 검색 + 토큰 스트리밍 시작 중…</div>
+                </div>
+              )}
+          </div>
+
+          {/* 빠른 질의 칩 */}
+          <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+            {QUICK_QUERIES.map((q) => (
+              <button
+                key={q}
+                onClick={() => handleSend(q)}
+                disabled={isStreaming}
+                className="text-[10.5px] px-2.5 py-1 rounded-full bg-ink-900 border border-ink-700/70 text-ink-300 hover:border-brand-blue/40 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {q}
+              </button>
+            ))}
           </div>
 
           <div className="border-t border-ink-700/60 p-3 flex gap-2">
@@ -118,47 +259,78 @@ const V8Sherpa = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="질문 입력 (예: T1078 사례, VPC Flow Log 수집 방법 등)"
+              placeholder="질문 입력 (예: T1078.004 사례, NCP Activity Tracer 보존 기간 등)"
               className="input"
+              disabled={isStreaming}
             />
-            <button onClick={handleSend} className="btn-primary">
-              전송
+            <button
+              onClick={() => handleSend()}
+              disabled={isStreaming || !input.trim()}
+              className="btn-primary disabled:opacity-50"
+            >
+              {isStreaming ? '스트리밍…' : '전송'}
             </button>
           </div>
         </div>
 
+        {/* 우측: KB 인덱스 + 안내 (V-8 사후 검증 카드는 본 영역 상단에 IncidentTypeReviewCard 로 별도 배치됨) */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-          <Card title={<>🎯 추천 플레이북</>}>
-            <div className="space-y-2.5">
-              {playbooks.map((p) => (
-                <div key={p.title} className="bg-ink-950 border border-ink-700/70 rounded-xl p-3.5 hover:border-brand-blue/40 transition-colors">
-                  <div className="font-bold text-[13px] mb-1.5">{p.title}</div>
-                  <div className="flex flex-wrap gap-1 mb-1.5">
-                    {p.techniques.map((t) => (
-                      <Badge key={t} tone="purple" size="sm">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="text-[11.5px] text-ink-300 leading-6">{p.summary}</div>
+          <Card title={<>📚 KB 인덱스 (RAG 입력)</>}>
+            {kbQuery.isLoading ? (
+              <div className="text-[12px] text-ink-400 py-2">로딩 중…</div>
+            ) : kbQuery.isError ? (
+              <div className="text-[12px] text-red-400 py-2">KB 통계 조회 실패</div>
+            ) : kbQuery.data ? (
+              <div className="text-[12px] text-ink-300 leading-7 space-y-1">
+                {Object.entries(kbQuery.data.byKb).map(([k, v]) => (
+                  <KbRow
+                    key={k}
+                    label={KB_LABEL[k] ?? k}
+                    count={v}
+                    tone={KB_TONE[k] ?? 'gray'}
+                  />
+                ))}
+                <div className="pt-2 mt-2 border-t border-ink-700/40 text-[11px] text-ink-400">
+                  총 <b className="text-ink-200">{kbQuery.data.total}</b>건 청크. 엔진:{' '}
+                  <code className="text-ink-300 font-mono">{kbQuery.data.engine.engine}</code>
                 </div>
-              ))}
-            </div>
+                {kbQuery.data.engine.engine === 'stub' && (
+                  <div className="text-[10.5px] text-amber-400/80 leading-5">
+                    ※ 현재 키워드 매칭 + 템플릿 응답으로 동작 중. Ollama Llama 3.1 8B + ChromaDB
+                    교체는 후속 작업.
+                  </div>
+                )}
+              </div>
+            ) : null}
           </Card>
 
-          <Card title={<>📚 KB 인덱스</>}>
-            <div className="text-[12px] text-ink-300 leading-7 space-y-1">
-              <KbRow label="ATT&CK Cloud v14" count={623} tone="purple" />
-              <KbRow label="NCP Activity Tracer 매핑" count={412} tone="blue" />
-              <KbRow label="NHN CloudTrail 매핑" count={398} tone="teal" />
-              <KbRow label="KISA 침해사고 보고서 양식" count={1} tone="amber" />
-              <KbRow label="OCSF 1.3 스키마 정의" count={1} tone="gray" />
+          <Card title={<>🎯 활용 안내</>}>
+            <div className="text-[11.5px] text-ink-300 leading-6 space-y-2">
+              <p>
+                질문은 <b>ATT&CK 기법 ID</b>(예: <code>T1078.004</code>), <b>CSP 서비스명</b>(예:
+                "Activity Tracer", "Cloud Trail"), <b>사고 유형</b>(예: "권한 탈취", "데이터 유출")
+                키워드를 포함하면 KB 검색 정확도가 올라갑니다.
+              </p>
+              <p className="text-ink-400">
+                케이스가 선택된 상태(<code>caseId</code> 존재)에서는 V-5 수사 보드에서 노드 클릭 시
+                해당 기법의 컨텍스트 브리핑(<code>/api/sherpa/brief</code>)이 자동으로 호출됩니다.
+              </p>
+              <p className="text-amber-400/90 text-[11px]">
+                AI는 판단하지 않습니다 — 모든 응답은 KB 출처가 첨부되며, 최종 결정은 수사관이
+                수행합니다.
+              </p>
             </div>
           </Card>
         </div>
       </div>
     </div>
   );
+};
+
+const formatSourceSummary = (sources: SherpaSource[] | undefined): string => {
+  if (!sources || sources.length === 0) return '출처 없음';
+  const types = Array.from(new Set(sources.map((s) => s.type))).join(' · ');
+  return `${types} (${sources.length}건)`;
 };
 
 const KbRow = ({

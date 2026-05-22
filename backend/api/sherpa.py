@@ -147,7 +147,7 @@ async def post_chat_stream(req: ChatRequest, db: Session = Depends(get_db)) -> S
 
 @router.post("/suggest")
 async def post_suggest(req: SuggestRequest, db: Session = Depends(get_db)) -> dict:
-    """빠진 고리 후보 (후순위 깡통)."""
+    """빠진 고리 후보 — kill-chain 전술 갭 기반 결정론적 추론."""
     case = IncidentCase.get_by_id(db, req.caseId)
     if case is None:
         raise _case_not_found()
@@ -174,7 +174,8 @@ async def get_kb_stats() -> dict:
         "data": {
             **kb_stats(),
             "engine": LLMEngine.health(),
-            "rag": RAGRetriever.health(),
+            # RAGRetriever 의 ChromaDB 통합(jingyu 59afcae) 이후 health → backend_info 로 개명됨
+            "rag": RAGRetriever.backend_info(),
         },
     }
 

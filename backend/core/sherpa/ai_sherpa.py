@@ -9,11 +9,14 @@
 
 핵심 원칙: AI 는 판단하지 않고 검색·요약·제안만 수행한다. 모든 응답에 출처 첨부.
 """
+import json
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from config import settings
+from core.intake.knowledge import IncidentTypeKnowledge
 from core.sherpa.chat_session import ChatSession, Message
 from core.sherpa.knowledge_base import KBChunk
 from core.sherpa.llm_engine import LLMEngine
@@ -29,6 +32,62 @@ def _source_dict(chunk: KBChunk) -> dict:
         "title": chunk.title,
         "url": chunk.url,
     }
+
+
+# ── 빠진 고리 추론용 정적 데이터 (suggest_missing_link) ──────────────
+#
+# MITRE ATT&CK Enterprise kill-chain 전술 순서. 두 노드의 전술 단계 인덱스
+# 사이가 "비어 있는 단계" = 빠진 고리 후보 공간. 정적 표준이라 결정성 100%.
+_TACTIC_ORDER = [
+    "Reconnaissance",
+    "Resource Development",
+    "Initial Access",
+    "Execution",
+    "Persistence",
+    "Privilege Escalation",
+    "Defense Evasion",
+    "Credential Access",
+    "Discovery",
+    "Lateral Movement",
+    "Collection",
+    "Command and Control",
+    "Exfiltration",
+    "Impact",
+]
+
+_rules_cache: dict[str, str] = {}
+
+
+def _technique_tactic_index() -> dict[str, str]:
+    """`attack_rules/rules.json` → {technique_id: tactic}.
+
+    NCP/NHN 매처 룰이 존재하는 기법만 — 즉 우리 시스템이 raw 로그에서 실제로
+    검출·검증 가능한 기법만 후보가 된다 (실행 가능한 제안 보장).
+    """
+    if _rules_cache:
+        return _rules_cache
+    path = settings.DATA_DIR / "attack_rules" / "rules.json"
+    if not path.exists():
+        return _rules_cache
+    with open(path, encoding="utf-8") as f:
+        doc = json.load(f)
+    rules = doc.get("rules", doc) if isinstance(doc, dict) else doc
+    for r in rules:
+        tech = r.get("technique_id")
+        tactic = r.get("tactic")
+        if tech and tactic and tech not in _rules_cache:
+            _rules_cache[tech] = tactic
+    return _rules_cache
+
+
+def _tactic_index(tactic: Optional[str]) -> Optional[int]:
+    """전술명 → kill-chain 순서 인덱스. 미상·미지원 전술이면 None."""
+    if not tactic:
+        return None
+    try:
+        return _TACTIC_ORDER.index(tactic)
+    except ValueError:
+        return None
 
 
 class AISherpa:
@@ -229,10 +288,16 @@ class AISherpa:
     def suggest_missing_link(
         cls, db: Session, case_id: str, node_a: str, node_b: str
     ) -> dict:
-        """nodeA → nodeB 사이에 끼워넣을 후보 ATT&CK 기법.
+        """nodeA → nodeB 사이 빠진 고리(ATT&CK 기법) 후보 — 결정론적 추론.
 
-        깡통 구현: case 내 attack_events 중 nodeA·nodeB 의 기법 ID 와 다른 기법을
-        최신 매핑 순으로 추천. 진짜 추론은 향후 LLM 으로.
+        Kill-chain 전술 순서로 두 노드 사이 '비어 있는 단계'를 계산하고, 그
+        단계에 속하면서 케이스에 아직 매핑되지 않은 기법을 후보로 제시한다.
+
+        AI 판단 없음 — 정적 데이터만 사용 (CLAUDE.md 정합):
+          - `_TACTIC_ORDER`        : MITRE ATT&CK kill-chain 전술 순서
+          - `attack_rules/rules.json` : 기법↔전술 (NCP/NHN 검출 가능 기법)
+          - `IncidentTypeKnowledge`   : 사고유형별 대표 기법·전술 (신뢰도 등급)
+        모든 후보에 KB 출처 첨부. 채택 여부는 수사관이 결정.
         """
         rows = list(
             db.execute(
@@ -241,35 +306,105 @@ class AISherpa:
                 .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
                 .where(RawEventModel.case_id == case_id)
                 .order_by(AttackEventModel.mapped_at.desc())
-                .limit(20)
             ).scalars()
         )
-        node_a_tech = next((r.technique_id for r in rows if r.attack_id == node_a), None)
-        node_b_tech = next((r.technique_id for r in rows if r.attack_id == node_b), None)
-        seen = {node_a_tech, node_b_tech, None}
+        by_attack_id = {r.attack_id: r for r in rows}
+        a = by_attack_id.get(node_a)
+        b = by_attack_id.get(node_b)
+        if a is None or b is None:
+            return {
+                "suggestions": [],
+                "message": "노드 A 또는 B 를 케이스 attack_events 에서 찾을 수 없습니다.",
+            }
 
-        suggestions = []
-        for r in rows:
-            if r.technique_id in seen:
-                continue
-            seen.add(r.technique_id)
-            chunks = RAGRetriever.retrieve_by_technique(r.technique_id, k=1)
-            ctitle = chunks[0][0].title if chunks else r.technique_id
-            suggestions.append(
-                {
-                    "technique_id": r.technique_id,
-                    "technique_name": ctitle,
-                    "tactic": r.tactic,
-                    "reason": f"케이스에 존재하는 {r.tactic} 기법으로, nodeA·B 사이 흐름 보완 후보.",
-                    "candidateEvents": [r.attack_id],
-                    "confidence": "low",
-                    "sources": [_source_dict(c) for c, _ in chunks],
-                }
-            )
-            if len(suggestions) >= 3:
-                break
+        idx_a = _tactic_index(a.tactic)
+        idx_b = _tactic_index(b.tactic)
+        if idx_a is None or idx_b is None:
+            return {
+                "suggestions": [],
+                "message": f"전술 단계를 판정할 수 없습니다 (A={a.tactic}, B={b.tactic}).",
+            }
 
-        return {"suggestions": suggestions}
+        lo, hi = sorted([idx_a, idx_b])
+        missing_tactics = _TACTIC_ORDER[lo + 1 : hi]
+        if not missing_tactics:
+            return {
+                "suggestions": [],
+                "missing_tactics": [],
+                "message": "두 노드가 인접·동일 전술 단계 — 사이 빠진 고리 없음.",
+            }
+
+        # 케이스에 이미 매핑된 기법 — 중복 제안 방지
+        present = {r.technique_id for r in rows}
+
+        # 사고유형 도메인 지식 — 신뢰도 등급 산출용
+        case_obj = db.execute(
+            select(IncidentCaseModel).where(IncidentCaseModel.case_id == case_id)
+        ).scalar_one_or_none()
+        incident_type = case_obj.incident_type if case_obj else None
+        knowledge = (
+            IncidentTypeKnowledge.lookup(incident_type) if incident_type else None
+        )
+        related = set(knowledge.get("related_techniques", [])) if knowledge else set()
+        type_tactics = set(knowledge.get("tactics", [])) if knowledge else set()
+
+        # 빈 단계별 후보 기법 수집
+        tech_tac = _technique_tactic_index()
+        suggestions: list[dict] = []
+        for missing in missing_tactics:
+            for tech, tac in sorted(tech_tac.items()):
+                if tac != missing or tech in present:
+                    continue
+                # 신뢰도 — 정적 룰 (높을수록 사고유형 정합)
+                if tech in related:
+                    confidence = "high"
+                    note = f"{incident_type} 유형의 대표 기법 — 확인 우선순위 높음."
+                elif tac in type_tactics:
+                    confidence = "medium"
+                    note = f"{incident_type} 유형에서 관측되는 전술 단계."
+                else:
+                    confidence = "low"
+                    note = "공격 체인 구조상 누락 가능 단계."
+                # KB 출처 — 해당 기법의 ATTACK 청크를 정확히 매칭한 것만 사용.
+                # 매칭 청크가 없으면 잘못된 제목 차용을 막기 위해 technique_id 를
+                # 그대로 기법명으로 쓰고 출처는 비운다 (KB 미수록 기법).
+                scored = RAGRetriever.retrieve_by_technique(tech, k=3)
+                exact = next(
+                    (
+                        c
+                        for c, _ in scored
+                        if c.kb_name == "ATTACK"
+                        and c.meta.get("technique_id") == tech
+                    ),
+                    None,
+                )
+                suggestions.append(
+                    {
+                        "technique_id": tech,
+                        "technique_name": exact.title if exact else tech,
+                        "tactic": tac,
+                        "reason": (
+                            f"노드 A({a.technique_id}·{a.tactic})와 "
+                            f"노드 B({b.technique_id}·{b.tactic}) 사이 "
+                            f"'{missing}' 단계가 비어 있습니다. {note}"
+                        ),
+                        "candidateEvents": [],
+                        "confidence": confidence,
+                        "sources": [_source_dict(exact)] if exact else [],
+                    }
+                )
+
+        # 신뢰도 high > medium > low 정렬, 상위 5건
+        rank = {"high": 0, "medium": 1, "low": 2}
+        suggestions.sort(key=lambda s: rank[s["confidence"]])
+        return {
+            "suggestions": suggestions[:5],
+            "missing_tactics": missing_tactics,
+            "message": (
+                f"{a.tactic} → {b.tactic} 사이 {len(missing_tactics)}개 전술 단계 "
+                f"점검 권장 — 후보 {min(len(suggestions), 5)}건."
+            ),
+        }
 
     # ── playbook (후순위 깡통) ──
     @classmethod

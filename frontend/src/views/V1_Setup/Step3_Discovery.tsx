@@ -32,7 +32,8 @@ import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTriageStore } from '@/stores/useTriageStore';
-import { analyzeClue, nextTriage, startTriage } from '@/api/triage';
+import { analyzeClue, getBreakdown, nextTriage, startTriage } from '@/api/triage';
+import type { BreakdownResponse } from '@/api/triage';
 
 import type {
   IncidentType,
@@ -107,6 +108,9 @@ const Step3_Discovery = ({
   const [preferredClueType, setPreferredClueType] = useState<ClueType | null>(null);
   // Q4 (2026-05-21): 트리 답변에서 자동 추출된 variant — CluesInput 토글 자동 선택
   const [preferredVariant, setPreferredVariant] = useState<string | null>(null);
+  // E4 §4-8 (2026-05-22): 출처 트레이스 — breakdown 응답 캐시 + 로딩 상태
+  const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -114,6 +118,48 @@ const Step3_Discovery = ({
       setIntroOpen(true);
     }
   }, []);
+
+  // E4 §4-8 (2026-05-22): 출처 트레이스 자동 갱신 — 트리 답변·단서·기법 변할 때.
+  // 500ms 디바운스 — 연속 입력 시 API 호출 폭주 방지.
+  // breakdown 은 결정성 100% 라 매 입력마다 재계산해도 같은 결과 (학술 변호).
+  useEffect(() => {
+    if (!caseId) {
+      setBreakdown(null);
+      return;
+    }
+    // 아무 입력도 없으면 breakdown 비움 (서버 호출 X)
+    if (
+      completedPath.length === 0 &&
+      observables.length === 0 &&
+      mappedTechniques.length === 0
+    ) {
+      setBreakdown(null);
+      return;
+    }
+    let cancelled = false;
+    setBreakdownLoading(true);
+    const t = window.setTimeout(async () => {
+      try {
+        const data = await getBreakdown(
+          caseId,
+          completedPath,
+          observables,
+          mappedTechniques,
+        );
+        if (!cancelled) setBreakdown(data);
+      } catch (e) {
+        // breakdown 실패는 핵심 흐름 차단 X — 토스트는 띄우지 않고 콘솔만
+        console.warn('[triage/breakdown] 실패:', e);
+        if (!cancelled) setBreakdown(null);
+      } finally {
+        if (!cancelled) setBreakdownLoading(false);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [caseId, completedPath, observables, mappedTechniques]);
 
   // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때.
   // POST /api/triage/start 가 case.system_config 의 environment_modifiers 를
@@ -485,12 +531,15 @@ const Step3_Discovery = ({
               }}
             />
 
-            {/* E4 §4-8 (2026-05-21): 사고유형 비교 차트 + 기여 요소 요약 */}
+            {/* E4 §4-8 (2026-05-21): 사고유형 비교 차트 + 기여 요소 요약
+                2026-05-22: 백엔드 /api/triage/breakdown 실 데이터 연동 — 출처 trace */}
             <HypothesisBreakdownChart
               scores={hypothesisScores}
               treeAnswerCount={completedPath.length}
               clueCount={observables.length}
               mappedTechniqueCount={mappedTechniques.length}
+              breakdown={breakdown}
+              breakdownLoading={breakdownLoading}
             />
 
             {/* 단서 누적 요약 */}

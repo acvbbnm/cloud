@@ -112,6 +112,20 @@ class TriageAnalyzeRequest(BaseModel):
     technique_ids: Optional[list[str]] = None
 
 
+class TriageBreakdownRequest(BaseModel):
+    """V-1 차트 출처 트레이스 — 점수 소스별·항목별 분해 요청.
+
+    클라이언트가 보유한 누적 상태 (tree_path + observables + technique_ids) 를
+    그대로 보내면 백엔드가 weights.json 단일 소스로 재계산하여 분해.
+    case.system_config 는 서버가 DB 에서 조회 (environment 소스 평가용).
+    """
+
+    caseId: str
+    tree_path: list[dict] = []
+    observables: list[dict] = []
+    technique_ids: list[str] = []
+
+
 class TriageConfirmRequest(BaseModel):
     caseId: str
     incident_type: IncidentType
@@ -183,6 +197,29 @@ async def post_analyze(req: TriageAnalyzeRequest, db: Session = Depends(get_db))
     data = Triage.analyze(
         current_scores=req.hypothesis_scores,
         clue=clue_dict,
+        technique_ids=req.technique_ids,
+    )
+    return {"status": "ok", "data": {"caseId": req.caseId, **data}}
+
+
+@router.post("/breakdown")
+async def post_breakdown(
+    req: TriageBreakdownRequest, db: Session = Depends(get_db),
+) -> dict:
+    """가설 점수 소스별·항목별 분해 (V-1 HypothesisBreakdownChart 트레이스).
+
+    응답:
+      totals       : 5 소스 합산 사고유형별 점수 (검증용 — 클라이언트 누적과 비교)
+      by_source    : 사고유형 × {environment, tree, combo, clues, techniques} 매트릭스
+      items        : 항목별 기여 trace — "왜 이 가설인가" 추적성
+
+    학술 변호: 결정성 100% (정적 weights.json 단일 소스). AI 판단 X.
+    """
+    case = _ensure_case(db, req.caseId)
+    data = Triage.breakdown(
+        system_config=case.system_config,
+        tree_path=req.tree_path,
+        observables=req.observables,
         technique_ids=req.technique_ids,
     )
     return {"status": "ok", "data": {"caseId": req.caseId, **data}}

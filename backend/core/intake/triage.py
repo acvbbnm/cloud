@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from config import settings
-from core.intake.modifier_eval import triggered_modifier_ids
+from core.intake.modifier_eval import load_modifiers, triggered_modifier_ids
 
 logger = logging.getLogger(__name__)
 
@@ -449,6 +449,217 @@ class Triage:
     def evaluate(cls, scores: dict[str, int]) -> dict:
         """현재 점수만으로 추천 결과 산출 (강제 평가)."""
         return evaluate_recommendation(scores)
+
+    @classmethod
+    def breakdown(
+        cls,
+        system_config: Optional[dict] = None,
+        tree_path: Optional[list[dict]] = None,
+        observables: Optional[list[dict]] = None,
+        technique_ids: Optional[list[str]] = None,
+    ) -> dict:
+        """현재 누적된 가설 점수를 소스별·항목별로 분해 (V-1 차트 출처 트레이스).
+
+        클라이언트가 보유한 상태(`tree_path`·`observables`·`technique_ids`)와
+        케이스의 `system_config`를 받아, 5개 점수 소스 각각이 사고유형별로
+        몇 점씩 기여했는지 재계산하여 반환한다.
+
+        점수 소스 (weights.json 단일 소스):
+          1. environment            — system_config → environment_modifiers
+          2. tree                   — decision_tree_answers
+          3. combo                  — combination_boosts (트리 답변 조합)
+          4. clues                  — clue_types (단서 variant 자동 분류 포함)
+          5. techniques             — partial_analysis_techniques
+
+        결정성 100% 보장 — 같은 입력 시 같은 분해 결과 (학술 변호).
+        AI 판단 X — 정적 가중치 lookup 만 수행.
+
+        Returns:
+            {
+              totals: {CRED: 95, ...},        # 5 소스 합산
+              by_source: {                    # 사고유형 × 소스 매트릭스
+                environment: {CRED: 5, ...},
+                tree: {CRED: 30, ...},
+                combo: {CRED: 10, ...},
+                clues: {CRED: 25, ...},
+                techniques: {CRED: 25, ...}
+              },
+              items: [                        # 항목별 기여 trace
+                {source, key, label, weights, rationale?},
+                ...
+              ]
+            }
+        """
+        zero = {t: 0 for t in INCIDENT_TYPES_8}
+        by_source: dict[str, dict[str, int]] = {
+            "environment": dict(zero),
+            "tree": dict(zero),
+            "combo": dict(zero),
+            "clues": dict(zero),
+            "techniques": dict(zero),
+        }
+        items: list[dict] = []
+
+        tree = _decision_tree()
+        nodes_raw = tree.get("nodes") or {}
+        weights = _weights()
+
+        def _typed_delta(delta: dict) -> dict[str, int]:
+            """delta dict 에서 사고유형 키만 추출 (source/_meta 등 메타 키 제거)."""
+            return {t: int(delta.get(t, 0) or 0) for t in INCIDENT_TYPES_8}
+
+        def _add(src: str, contrib: dict[str, int]) -> None:
+            for t in INCIDENT_TYPES_8:
+                by_source[src][t] += contrib.get(t, 0)
+
+        # ── 1) environment_modifiers — system_config 트리거 평가 ──
+        if system_config:
+            em_table = weights.get("environment_modifiers_to_hypothesis") or {}
+            mod_index = {
+                m.get("id"): m
+                for m in (load_modifiers().get("modifiers") or [])
+            }
+            for mid in triggered_modifier_ids(system_config):
+                delta = em_table.get(mid)
+                if not delta:
+                    continue
+                contrib = _typed_delta(delta)
+                if not any(contrib.values()):
+                    continue
+                _add("environment", contrib)
+                mod = mod_index.get(mid) or {}
+                target = mod.get("target") or {}
+                label_text = (
+                    target.get("category_name")
+                    or mod.get("reason")
+                    or f"환경 보정 {mid}"
+                )
+                items.append({
+                    "source": "environment",
+                    "key": mid,
+                    "label": label_text,
+                    "weights": contrib,
+                    "rationale": delta.get("source"),
+                })
+
+        # ── 2) tree answers — decision_tree_answers ──
+        tree_table = weights.get("decision_tree_answers") or {}
+        all_tree_keys: set[str] = set()
+        if tree_path:
+            for entry in tree_path:
+                node_id = entry.get("node_id") or ""
+                node = nodes_raw.get(node_id) or {}
+                opts_by_id = {o.get("id"): o for o in (node.get("options") or [])}
+                for opt_id in entry.get("selected_option_ids") or []:
+                    opt = opts_by_id.get(opt_id) or {}
+                    wk = opt.get("weight_key")
+                    if not wk:
+                        continue
+                    all_tree_keys.add(wk)
+                    delta = tree_table.get(wk)
+                    if not delta:
+                        continue
+                    contrib = _typed_delta(delta)
+                    if not any(contrib.values()):
+                        continue
+                    _add("tree", contrib)
+                    q_label = node.get("question") or node_id
+                    opt_label = opt.get("label") or opt_id
+                    items.append({
+                        "source": "tree",
+                        "key": wk,
+                        "label": f"{q_label} — {opt_label}",
+                        "weights": contrib,
+                        "rationale": delta.get("source"),
+                    })
+
+        # ── 3) combination_boosts — 트리 답변 조합 부스트 ──
+        combo_table = weights.get("combination_boosts") or {}
+        for combo_key, combo_delta in combo_table.items():
+            if not isinstance(combo_key, str) or combo_key.startswith("_"):
+                continue
+            if not isinstance(combo_delta, dict):
+                continue
+            parts = combo_key.split("+")
+            if len(parts) != 2:
+                continue
+            if not all(p in all_tree_keys for p in parts):
+                continue
+            contrib = _typed_delta(combo_delta)
+            if not any(contrib.values()):
+                continue
+            _add("combo", contrib)
+            items.append({
+                "source": "combo",
+                "key": combo_key,
+                "label": f"조합 부스트 — {parts[0]} + {parts[1]}",
+                "weights": contrib,
+                "rationale": combo_delta.get("source"),
+            })
+
+        # ── 4) clue_types — 단서 (variant 자동 분류 포함) ──
+        clue_table = weights.get("clue_types") or {}
+        if observables:
+            from core.intake.clue_classifier import enrich_clue
+            for clue in observables:
+                if not isinstance(clue, dict):
+                    continue
+                try:
+                    enriched = enrich_clue(clue)
+                except Exception:  # noqa: BLE001
+                    enriched = dict(clue)
+                wk = enriched.get("weight_key")
+                if not wk and enriched.get("type"):
+                    wk = f"{enriched['type']}:generic"
+                delta = clue_table.get(wk) if wk else None
+                if not delta:
+                    continue
+                contrib = _typed_delta(delta)
+                if not any(contrib.values()):
+                    continue
+                _add("clues", contrib)
+                ctype = enriched.get("type") or "?"
+                value = (clue.get("value") or "")[:48]
+                items.append({
+                    "source": "clue",
+                    "key": wk,
+                    "label": f"{ctype} 단서 — {value}",
+                    "weights": contrib,
+                    "rationale": delta.get("source"),
+                })
+
+        # ── 5) partial_analysis_techniques — 부분 로그 매핑 ──
+        tech_table = weights.get("partial_analysis_techniques") or {}
+        if technique_ids:
+            for tid in technique_ids:
+                if not tid:
+                    continue
+                delta = tech_table.get(tid)
+                if not delta:
+                    continue
+                contrib = _typed_delta(delta)
+                if not any(contrib.values()):
+                    continue
+                _add("techniques", contrib)
+                items.append({
+                    "source": "technique",
+                    "key": tid,
+                    "label": f"{tid} 매핑",
+                    "weights": contrib,
+                    "rationale": delta.get("source"),
+                })
+
+        # totals — 5 소스 합산
+        totals = dict(zero)
+        for src_scores in by_source.values():
+            for t, v in src_scores.items():
+                totals[t] += v
+
+        return {
+            "totals": totals,
+            "by_source": by_source,
+            "items": items,
+        }
 
     @classmethod
     def tree_visualization(cls, current_node_id: Optional[str] = None) -> dict:

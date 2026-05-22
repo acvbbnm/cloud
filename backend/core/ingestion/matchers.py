@@ -4,10 +4,11 @@ LogIngestor 에서 분리한 순수 함수 모음.
 - DB 의존성 없음 → 단위 테스트 용이
 - (csp, incident_type) 조합별 매칭 함수를 등록
 
-지원 범위 (2026-05-19 갱신, 본 dev3 작업):
+지원 범위 (2026-05-21 갱신):
   · CREDENTIAL_THEFT     × {naver, nhn}  — 5+5 target
-  · PRIVILEGE_ESCALATION × {naver, nhn}  — 4+5 target  ← 신규
-  · DATA_EXFILTRATION    × {naver, nhn}  — 3+3 target  ← 신규
+  · PRIVILEGE_ESCALATION × {naver, nhn}  — 4+5 target
+  · DATA_EXFILTRATION    × {naver, nhn}  — 3+3 target
+  · AUDIT_LOG_TAMPERING  × {naver, nhn}  — 4+4 target  ← 신규 (2026-05-21)
 
 설계 근거:
   · 시드(`data/collection_targets/*.json`)와 1:1 정합
@@ -188,6 +189,80 @@ def nhn_data_exfiltration(ev: dict) -> Optional[str]:
     return None
 
 
+# ── NCP × AUDIT_LOG_TAMPERING ──────────────────────────────
+
+
+def ncp_audit_log_tampering(ev: dict) -> Optional[str]:
+    """NCP raw event → AUDIT target_id (CT-NCP-AUDIT-001~004).
+
+    핵심 패턴 (Anti-forensics 행위):
+      · Activity Tracer 자체 비활성화/삭제                 → CT-NCP-AUDIT-001
+      · Disable/Delete AccessKey                            → CT-NCP-AUDIT-002
+      · Detach policy / Delete sub account                  → CT-NCP-AUDIT-003
+      · Delete/Stop Server, Delete Bucket                   → CT-NCP-AUDIT-004
+    """
+    action = (ev.get("action") or "").strip()
+    action_l = action.lower()
+    product = (ev.get("product_name") or "").strip()
+
+    # Tracer 자체 변조 — 가장 결정적 신호
+    if "activity tracer" in action_l or "tracer" in action_l:
+        return "CT-NCP-AUDIT-001"
+    if "disable accesskey" in action_l or "delete accesskey" in action_l or "deactivate" in action_l:
+        return "CT-NCP-AUDIT-002"
+    if (
+        "detach policy" in action_l
+        or "delete sub account" in action_l
+        or "delete policy" in action_l
+        or "deletesubaccount" in action_l.replace(" ", "")
+    ):
+        return "CT-NCP-AUDIT-003"
+    if (
+        "delete server" in action_l
+        or "stop server" in action_l
+        or "delete bucket" in action_l
+        or (product in {"Object Storage", "ObjectStorage"} and "delete" in action_l)
+    ):
+        return "CT-NCP-AUDIT-004"
+    return None
+
+
+# ── NHN × AUDIT_LOG_TAMPERING ──────────────────────────────
+
+
+_NHN_AUDIT_RULES: list[tuple[str, re.Pattern]] = [
+    # Trail 자체 변경 — 가장 결정적 신호
+    ("CT-NHN-AUDIT-001", re.compile(r"^event_id\.cloud_trail\.")),
+    # 자격증명 폐기 (anti-forensics)
+    (
+        "CT-NHN-AUDIT-002",
+        re.compile(r"^event_id\.iaas\.(s3credential|keypair)\.delete"),
+    ),
+    # 멤버·역할 삭제
+    (
+        "CT-NHN-AUDIT-003",
+        re.compile(
+            r"^event_id\.(iam|org\.iam)\.member\.(delete|role\.delete)"
+        ),
+    ),
+    # 인프라·데이터 파괴
+    (
+        "CT-NHN-AUDIT-004",
+        re.compile(
+            r"^event_id\.(iaas\.instance_action\.delete|object_storage\.bucket\.delete)"
+        ),
+    ),
+]
+
+
+def nhn_audit_log_tampering(ev: dict) -> Optional[str]:
+    event_id = ev.get("event_id") or ""
+    for target_id, pattern in _NHN_AUDIT_RULES:
+        if pattern.match(event_id):
+            return target_id
+    return None
+
+
 # ── 디스패처 ───────────────────────────────────────────────
 
 # (csp, incident_type) → matcher fn
@@ -199,6 +274,9 @@ _REGISTRY: dict[tuple[str, str], Callable[[dict], Optional[str]]] = {
     ("nhn", "PRIVILEGE_ESCALATION"): nhn_privilege_escalation,
     ("naver", "DATA_EXFILTRATION"): ncp_data_exfiltration,
     ("nhn", "DATA_EXFILTRATION"): nhn_data_exfiltration,
+    # 2026-05-21 — AUDIT 매처 추가
+    ("naver", "AUDIT_LOG_TAMPERING"): ncp_audit_log_tampering,
+    ("nhn", "AUDIT_LOG_TAMPERING"): nhn_audit_log_tampering,
 }
 
 

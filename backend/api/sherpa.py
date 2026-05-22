@@ -174,7 +174,7 @@ async def get_kb_stats() -> dict:
         "data": {
             **kb_stats(),
             "engine": LLMEngine.health(),
-            "rag": RAGRetriever.health(),
+            "rag": RAGRetriever.backend_info(),
         },
     }
 

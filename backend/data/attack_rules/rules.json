@@ -252,12 +252,13 @@
     {
       "rule_id": "R-NCP-012",
       "csp": "ncp",
-      "description": "Cloud Activity Tracer 비활성·삭제 — 감사 로그 변조",
-      "activity_name_pattern": "^(Delete Tracer|Disable Auto Export)$",
+      "description": "Cloud Activity Tracer 비활성·삭제 — 감사 로그 변조 (Disable Cloud Logs)",
+      "activity_name_pattern": "^(Delete Tracer|Delete Activity Tracer|Disable Tracer|Disable Activity Tracer|Disable Auto Export)$",
       "condition": {},
       "technique_id": "T1562.008",
       "tactic": "Defense Evasion",
-      "real_log_count": 3
+      "real_log_count": 3,
+      "source": "MITRE T1562.008 Disable Cloud Logs — NCP Activity Tracer 자체 변조 (2026-05-22 보강)"
     },
     {
       "rule_id": "R-NCP-013",
@@ -298,6 +299,76 @@
       "technique_id": "T1021",
       "tactic": "Lateral Movement",
       "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NCP-017",
+      "csp": "ncp",
+      "description": "AccessKey 삭제 — 자격증명 흔적 제거 / AUDIT_LOG_TAMPERING (anti-forensics)",
+      "activity_name_pattern": "^Delete AccessKey$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — AccessKey 흔적 제거 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-018",
+      "csp": "ncp",
+      "description": "Sub Account 정책 디태치 — 권한 회수 (Account Manipulation: revoke)",
+      "activity_name_pattern": "^Detach policy from sub account$",
+      "condition": {},
+      "technique_id": "T1098",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098 Account Manipulation — 권한 회수도 동일 카테고리 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-019",
+      "csp": "ncp",
+      "description": "Sub Account 삭제 — 백도어 계정 흔적 제거 / Account Access Removal",
+      "activity_name_pattern": "^Delete sub account$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — 계정 자체 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-020",
+      "csp": "ncp",
+      "description": "Server 삭제 — 인프라 파괴 / Data Destruction",
+      "activity_name_pattern": "^Delete Server$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 사고 인프라 흔적 제거 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-021",
+      "csp": "ncp",
+      "description": "Sub Account 조회 — Discovery (cloud account enumeration)",
+      "activity_name_pattern": "^Get Sub Account$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "source": "MITRE T1087.004 Account Discovery: Cloud Account — 정찰 단계 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-022",
+      "csp": "ncp",
+      "description": "Sub Account 정책 목록 조회 — Discovery (permission enumeration)",
+      "activity_name_pattern": "^List Sub Account Policy$",
+      "condition": {},
+      "technique_id": "T1069.003",
+      "tactic": "Discovery",
+      "source": "MITRE T1069.003 Permission Groups Discovery: Cloud Groups (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-023",
+      "csp": "ncp",
+      "description": "Object Storage 버킷 목록 조회 — Discovery (cloud storage enumeration)",
+      "activity_name_pattern": "^List Buckets$",
+      "condition": {},
+      "technique_id": "T1619",
+      "tactic": "Discovery",
+      "source": "MITRE T1619 Cloud Storage Object Discovery (2026-05-22 보강)"
     },
     {
       "rule_id": "R-NHN-012",
@@ -358,7 +429,68 @@
       "technique_id": "T1485",
       "tactic": "Impact",
       "real_log_count": 1
+    },
+    {
+      "rule_id": "R-NHN-018",
+      "csp": "nhn",
+      "description": "Cloud Trail 비활성화 — 감사 로그 자체 변조 (Disable Cloud Logs)",
+      "activity_name_pattern": "^event_id\\.cloud_trail\\.(disable|stop|delete)$",
+      "condition": {},
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.008 Disable Cloud Logs — NHN Cloud Trail 자체 변조 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-019",
+      "csp": "nhn",
+      "description": "Keypair 삭제 — 자격증명 흔적 제거",
+      "activity_name_pattern": "^event_id\\.iaas\\.keypair\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — keypair 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-020",
+      "csp": "nhn",
+      "description": "IAM 멤버 역할 삭제 — 권한 흔적 제거",
+      "activity_name_pattern": "^event_id\\.iam\\.member\\.role\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — 멤버 역할 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-021",
+      "csp": "nhn",
+      "description": "IAM 멤버 자체 삭제 — 백도어 계정 흔적 제거",
+      "activity_name_pattern": "^event_id\\.(iam|org\\.iam)\\.member\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — IAM 멤버 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-022",
+      "csp": "nhn",
+      "description": "Instance 삭제 — 인프라 파괴",
+      "activity_name_pattern": "^event_id\\.iaas\\.instance_action\\.delete$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 인스턴스 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-023",
+      "csp": "nhn",
+      "description": "Object Storage 버킷 삭제 — 데이터 파괴",
+      "activity_name_pattern": "^event_id\\.object_storage\\.(bucket|container)\\.delete$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 버킷 삭제 (2026-05-22 보강)"
     }
   ],
-  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)"
+  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
+  "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)"
 }

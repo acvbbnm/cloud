@@ -28,11 +28,12 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from config import settings
 from core.intake.modifier_eval import eval_operator, resolve_field
-from db.models import IncidentCaseModel
+from db.models import IncidentCaseModel, RawEventModel
 
 logger = logging.getLogger(__name__)
 
@@ -468,15 +469,20 @@ def _sources_from_kb(cat: dict) -> list[dict]:
 def _group_by_phase(
     categories: list[dict],
     phases: list[str],
+    collected_map: Optional[dict[str, bool]] = None,
 ) -> dict[str, dict]:
     """phase 별로 카테고리들을 묶어서 응답 형식으로 변환.
 
     각 카테고리는 phases 여러 개에 속할 수 있어서, 본 사고유형의 phases 마다 등장.
     phase 안에서는 priority 내림차순 정렬.
 
+    Phase G (2026-05-22) — `collected_map` 이 주어지면 target.collected 를 갱신.
+    `_compute_collection_status` 가 산출한 {category_id: bool} 매핑을 사용.
+
     참고: ADD_TARGET 환경 경고는 phase 와 무관한 권고이므로 본 함수에서 처리하지 않고
     응답 상단의 `environment_warnings` 영역으로 분리한다 (`_format_env_warnings`).
     """
+    collected_map = collected_map or {}
     grouped: dict[str, dict] = {}
 
     for phase in phases:
@@ -493,8 +499,9 @@ def _group_by_phase(
             if phase not in cat.get("kill_chain_phases", []):
                 continue
             priority = _compute_priority(cat)
+            cat_id = cat.get("category_id")
             target = {
-                "category_id": cat.get("category_id"),
+                "category_id": cat_id,
                 "category_name": cat.get("category_name"),
                 "evidence_role": cat.get("evidence_role"),
                 "priority": priority,
@@ -504,7 +511,8 @@ def _group_by_phase(
                 "csp_specific": _summarize_csp_mapping(cat),
                 "collection_methods": _collection_methods_from_csp_mapping(cat),
                 "sources": _sources_from_kb(cat),
-                "collected": False,  # Phase G: raw_events 매칭 후 갱신 예정
+                # Phase G: raw_events.action / eventId 매칭 결과
+                "collected": bool(collected_map.get(cat_id, False)),
             }
             phase_targets.append(target)
 
@@ -548,12 +556,125 @@ def _format_env_warnings(extra_targets: list[dict]) -> list[dict]:
     return out
 
 
-def _compute_completion_rate(categories: list[dict]) -> float:
-    """현재는 단순 placeholder (Phase G 에서 raw_events 매칭 기반으로 보강).
+# ─────────────────────────────────────────────────────────────
+# Phase G — raw_events 매칭 기반 수집 진행도 산출
+# ─────────────────────────────────────────────────────────────
 
-    1차 구현: 0.0 반환. v1 가이드와 동일 정책.
+
+def _action_matches(action: str, patterns: list[str]) -> bool:
+    """NCP `action` 필드 vs `csp_mapping.naver.action_patterns` 매칭 (대소문자 무시 substring/equal)."""
+    if not action or not patterns:
+        return False
+    act = action.strip().lower()
+    for p in patterns:
+        p_l = (p or "").strip().lower()
+        if not p_l:
+            continue
+        # 정확 일치 또는 부분 매칭 (양방향) — 카테고리 시드의 패턴이 raw 보다
+        # 더 구체/더 일반 둘 다 가능
+        if p_l == act or p_l in act or act in p_l:
+            return True
+    return False
+
+
+def _event_id_matches(event_id: str, patterns: list[str]) -> bool:
+    """NHN `eventId` 필드 vs `csp_mapping.nhn.event_id_patterns` 매칭.
+
+    카테고리 시드 패턴이 prefix 형태(`event_id.iam.login`, `event_id.cloud_trail.*`)이므로
+    와일드카드 끝 `.*` 제거 후 startswith 매칭. 정확 일치도 허용.
     """
-    return 0.0
+    if not event_id or not patterns:
+        return False
+    eid = event_id.strip()
+    for p in patterns:
+        p_clean = (p or "").rstrip(".*").rstrip(".").strip()
+        if not p_clean:
+            continue
+        if eid == p_clean or eid.startswith(p_clean + ".") or eid.startswith(p_clean):
+            return True
+    return False
+
+
+def _compute_collection_status(
+    db: Session,
+    case_id: str,
+    csp: str,
+    categories: list[dict],
+) -> tuple[float, dict[str, bool]]:
+    """case 의 raw_events 를 스캔해 카테고리별 수집 여부를 산출한다.
+
+    동작:
+      1. raw_events.raw_json 에서 NCP `action` / NHN `eventId` 필드 추출
+      2. 각 category 의 `csp_mapping[csp]` 패턴과 매칭
+      3. (completion_rate, {category_id: collected_bool}) 반환
+
+    completion_rate 분모 정책:
+      · REQUIRED 카테고리만 카운트 (GapDetector 와 정합)
+      · REQUIRED 가 없으면 전체 카테고리로 fallback
+    """
+    if not categories:
+        return 0.0, {}
+
+    rows = list(
+        db.execute(
+            select(RawEventModel.raw_json).where(RawEventModel.case_id == case_id)
+        ).scalars()
+    )
+    if not rows:
+        return 0.0, {c.get("category_id"): False for c in categories}
+
+    # 관측된 action(NCP) / event_id(NHN) 집합 — 중복 제거로 매칭 비용 절감
+    observed_actions: set[str] = set()
+    observed_event_ids: set[str] = set()
+    for raw_str in rows:
+        try:
+            r = json.loads(raw_str)
+        except Exception:
+            continue
+        if not isinstance(r, dict):
+            continue
+        a = r.get("action")
+        if isinstance(a, str):
+            observed_actions.add(a)
+        e = r.get("eventId") or r.get("event_id")
+        if isinstance(e, str):
+            observed_event_ids.add(e)
+
+    collected_map: dict[str, bool] = {}
+    for cat in categories:
+        cat_id = cat.get("category_id")
+        if not cat_id:
+            continue
+        csp_map = (cat.get("csp_mapping") or {}).get(csp, {})
+        action_patterns = csp_map.get("action_patterns") or []
+        event_id_patterns = csp_map.get("event_id_patterns") or []
+        matched = False
+        # NCP 측 매칭
+        if action_patterns and observed_actions:
+            for a in observed_actions:
+                if _action_matches(a, action_patterns):
+                    matched = True
+                    break
+        # NHN 측 매칭 (case csp 와 무관하게 양쪽 모두 확인 — 환경 보정·통합 시나리오 대비)
+        if not matched and event_id_patterns and observed_event_ids:
+            for e in observed_event_ids:
+                if _event_id_matches(e, event_id_patterns):
+                    matched = True
+                    break
+        collected_map[cat_id] = matched
+
+    required_cats = [c for c in categories if c.get("evidence_role") == "REQUIRED"]
+    if required_cats:
+        total = len(required_cats)
+        collected = sum(
+            1 for c in required_cats if collected_map.get(c.get("category_id"))
+        )
+    else:
+        total = len(categories)
+        collected = sum(1 for v in collected_map.values() if v)
+
+    rate = round(collected / total * 100, 2) if total else 0.0
+    return rate, collected_map
 
 
 # ─────────────────────────────────────────────────────────────
@@ -599,15 +720,20 @@ class CollectionGuideV2:
             categories, system_config
         )
 
-        # 4) phase 별 그룹화 + 정렬 (정렬은 _group_by_phase 내부에서 priority 기준)
-        grouped = _group_by_phase(categories, phases)
+        # 4) Phase G — raw_events 매칭 기반 수집 진행도 산출
+        completion_rate, collected_map = _compute_collection_status(
+            db, case_id, csp, categories
+        )
 
-        # 5) 응답 조립 — environment_warnings 는 phase 와 분리하여 별도 영역
+        # 5) phase 별 그룹화 + 정렬 (정렬은 _group_by_phase 내부에서 priority 기준)
+        grouped = _group_by_phase(categories, phases, collected_map)
+
+        # 6) 응답 조립 — environment_warnings 는 phase 와 분리하여 별도 영역
         return {
             "caseId": case_id,
             "incidentType": incident_type,
             "csp": csp,
-            "completionRate": _compute_completion_rate(categories),
+            "completionRate": completion_rate,
             "phases": grouped,
             "environment_warnings": _format_env_warnings(extra_targets),
             "applied_modifiers": applied_modifiers,

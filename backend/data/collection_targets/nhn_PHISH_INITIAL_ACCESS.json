@@ -1,0 +1,46 @@
+[
+  {
+    "target_id": "CT-NHN-PHISH-001",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 인증 이벤트",
+    "description": "event_id.iam.login — 피싱으로 탈취된 자격증명의 비정상 로그인 (비국내 IP, 비업무 시간). MITRE T1078.004 Valid Accounts: Cloud.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-PHISH-002",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 자격증명 변경",
+    "description": "event_id.iaas.identity.password_change, event_id.iaas.s3credential.create — 피싱 침투 후 자격증명 변경·추가. MITRE T1556 Modify Authentication Process.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-PHISH-003",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 멤버 초대·권한 변경",
+    "description": "event_id.project.member.invite, event_id.iam.member.role.update — 피싱 침투 후 영속 접근용 계정 확보. MITRE T1136.003 Create Account: Cloud.",
+    "evidence_role": "CORROBORATING",
+    "priority": 7,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-PHISH-004",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 리소스 조작 (후속 행위)",
+    "description": "event_id.iaas.instance_action.*, event_id.iaas.vpc.* — 피싱 침투 후 인프라 조작 여부 확인.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  }
+]

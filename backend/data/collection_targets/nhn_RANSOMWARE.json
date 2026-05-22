@@ -1,0 +1,57 @@
+[
+  {
+    "target_id": "CT-NHN-RANSOM-001",
+    "incident_type": "RANSOMWARE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Object Storage 대량 조작",
+    "description": "event_id.object_storage.object.upload/delete 대량 발생 — 파일 암호화·덮어쓰기 행위. MITRE T1486 Data Encrypted for Impact.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-RANSOM-002",
+    "incident_type": "RANSOMWARE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 인스턴스 정지·Shelve",
+    "description": "event_id.iaas.instance_action.stop/shelve — 서비스 중단 행위. MITRE T1489 Service Stop.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-RANSOM-003",
+    "incident_type": "RANSOMWARE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 인프라 파괴 (VPC·볼륨 삭제)",
+    "description": "event_id.iaas.vpc.delete_end, event_id.iaas.volume.delete — 복구 수단 제거. MITRE T1490 Inhibit System Recovery.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-RANSOM-004",
+    "incident_type": "RANSOMWARE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 인증 (초기 접근)",
+    "description": "event_id.iam.login — 랜섬 실행 전 초기 접근 경로 식별. MITRE T1078 Valid Accounts.",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-RANSOM-005",
+    "incident_type": "RANSOMWARE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Object Storage 다운로드 (이중 협박)",
+    "description": "event_id.object_storage.object.download 대량 발생 — Double Extortion 시 유출 단서. MITRE T1530 Data from Cloud Storage.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  }
+]

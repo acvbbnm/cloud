@@ -622,9 +622,172 @@
       "technique_id": "T1190",
       "tactic": "Initial Access",
       "source": "MITRE T1190 Exploit Public-Facing Application — 잘못된 SG 노출이 침투 경로 (2026-05-22 보강)"
+    },
+
+    {
+      "rule_id": "R-NCP-032",
+      "csp": "ncp",
+      "description": "다중 로그인 실패 — Brute Force / Credential Stuffing",
+      "activity_name_pattern": "^Login$",
+      "condition": {"actionResultType": "FAIL"},
+      "technique_id": "T1110",
+      "tactic": "Credential Access",
+      "source": "MITRE T1110 Brute Force — FAIL 결과 다발 시 무차별 대입 의심 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-033",
+      "csp": "ncp",
+      "description": "C2 채널 데이터 송신 — Exfiltration Over C2 Channel",
+      "activity_name_pattern": "^(Exfil Via C2|C2 Channel Transfer)$",
+      "condition": {},
+      "technique_id": "T1041",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-034",
+      "csp": "ncp",
+      "description": "대체 프로토콜 데이터 송신 — Exfil Over Alternative Protocol (FTP/DNS 등)",
+      "activity_name_pattern": "^(Exfil Via Alt Protocol|DNS Tunnel Exfil|FTP Upload)$",
+      "condition": {},
+      "technique_id": "T1048",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-035",
+      "csp": "ncp",
+      "description": "감사 로그 자체 삭제 — Indicator Removal (Clear Logs)",
+      "activity_name_pattern": "^(Clear Activity Log|Delete Log Entry|Purge Audit Log)$",
+      "condition": {},
+      "technique_id": "T1070",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1070 Indicator Removal — 로그 자체 삭제 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-036",
+      "csp": "ncp",
+      "description": "보안 도구 비활성화 — Disable or Modify Tools",
+      "activity_name_pattern": "^(Disable Security Tool|Modify Anti-Virus Config|Stop CWPP Agent)$",
+      "condition": {},
+      "technique_id": "T1562.001",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.001 Impair Defenses: Disable or Modify Tools (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-037",
+      "csp": "ncp",
+      "description": "MFA 우회 / 인증 메커니즘 수정 — Modify Authentication Process",
+      "activity_name_pattern": "^(Disable MFA|Bypass MFA|Modify Auth Method)$",
+      "condition": {},
+      "technique_id": "T1556",
+      "tactic": "Credential Access",
+      "source": "MITRE T1556 Modify Authentication Process — MFA 우회·인증 흐름 변조 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-038",
+      "csp": "ncp",
+      "description": "피싱 의심 — 외부 이메일/SMS 링크 클릭 후 로그인 (의심 IP)",
+      "activity_name_pattern": "^Login$",
+      "condition": {"actionResultType": "SUCCESS", "external_ip": true},
+      "technique_id": "T1566",
+      "tactic": "Initial Access",
+      "source": "MITRE T1566 Phishing — 비국내 IP 즉시 로그인 패턴 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-039",
+      "csp": "ncp",
+      "description": "글로벌 관리자 권한 부여 — Additional Cloud Roles (T1098.003)",
+      "activity_name_pattern": "^(Attach Global Admin|Grant Owner Role|Promote To Owner)$",
+      "condition": {},
+      "technique_id": "T1098.003",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098.003 Account Manipulation: Additional Cloud Roles (2026-05-23)"
+    },
+
+    {
+      "rule_id": "R-NHN-024",
+      "csp": "nhn",
+      "description": "다중 로그인 실패 — Brute Force",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {"result": "FAIL"},
+      "technique_id": "T1110",
+      "tactic": "Credential Access",
+      "source": "MITRE T1110 Brute Force (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-025",
+      "csp": "nhn",
+      "description": "C2 채널 데이터 송신",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.c2$",
+      "condition": {},
+      "technique_id": "T1041",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-026",
+      "csp": "nhn",
+      "description": "대체 프로토콜 데이터 송신 (DNS·FTP)",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.(dns_tunnel|ftp)$",
+      "condition": {},
+      "technique_id": "T1048",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-028",
+      "csp": "nhn",
+      "description": "감사 로그 삭제 — Cloud Trail 로그 엔트리 자체 제거",
+      "activity_name_pattern": "^event_id\\.cloud_trail\\.(clear|purge|entry_delete)$",
+      "condition": {},
+      "technique_id": "T1070",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1070 Indicator Removal — Cloud Trail entries (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-029",
+      "csp": "nhn",
+      "description": "보안 도구 비활성화 — CWPP/Anti-DDoS 등",
+      "activity_name_pattern": "^event_id\\.security\\.(disable|stop|uninstall)$",
+      "condition": {},
+      "technique_id": "T1562.001",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.001 Impair Defenses: Disable or Modify Tools (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-030",
+      "csp": "nhn",
+      "description": "MFA 비활성화·우회 — 인증 흐름 변조",
+      "activity_name_pattern": "^event_id\\.iam\\.mfa\\.(disable|bypass|remove)$",
+      "condition": {},
+      "technique_id": "T1556",
+      "tactic": "Credential Access",
+      "source": "MITRE T1556 Modify Authentication Process (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-031",
+      "csp": "nhn",
+      "description": "피싱 의심 — 외부 IP 즉시 로그인 후 자격증명 변경",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {"result": "SUCCESS", "external_ip": true},
+      "technique_id": "T1566",
+      "tactic": "Initial Access",
+      "source": "MITRE T1566 Phishing — 비국내 IP 패턴 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-032",
+      "csp": "nhn",
+      "description": "조직 Owner 역할 부여 — Additional Cloud Roles",
+      "activity_name_pattern": "^event_id\\.org\\.iam\\.role\\.(grant_owner|promote_admin)$",
+      "condition": {},
+      "technique_id": "T1098.003",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098.003 Additional Cloud Roles (2026-05-23)"
     }
   ],
   "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
   "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)",
-  "_cycle3_2026_05_22": "사이클 3 보강 — DE (T1530, T1567) + MISCONFIG (T1580, T1190). NCP +4 룰. P1 attack_rules 갭 해소."
+  "_cycle3_2026_05_22": "사이클 3 보강 — DE (T1530, T1567) + MISCONFIG (T1580, T1190). NCP +4 룰. P1 attack_rules 갭 해소.",
+  "_cycle5_2026_05_23": "사이클 5 보강 — 8 기법(T1110/T1041/T1048/T1070/T1562.001/T1556/T1566/T1098.003) × NCP/NHN = +16 룰 (R-NCP-032~039 + R-NHN-024~032). CT/DE/AUDIT/PHISH/PE 모든 사고유형 attack_rules 갭 해소 목표."
 }

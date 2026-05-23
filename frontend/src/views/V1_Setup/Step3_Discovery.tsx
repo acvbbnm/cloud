@@ -27,6 +27,7 @@ import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import TriageStepper from '@/components/TriageStepper';
 import TriageTreeMinimap from '@/components/TriageTreeMinimap';
+import TriageTreeGraph from '@/components/TriageTreeGraph';
 
 import type { ClueType } from '@/types';
 import { useCaseStore } from '@/stores/useCaseStore';
@@ -104,6 +105,17 @@ const Step3_Discovery = ({
   const [currentNode, setCurrentNodeData] = useState<TriageTreeNode | null>(null);
   const [loading, setLoading] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
+  // 동적 트리 진행 — 각 단계의 질문·옵션·확정된 옵션 누적 (TriageTreeMinimap 입력)
+  const [decisionTrail, setDecisionTrail] = useState<
+    Array<{
+      node_id: string;
+      question: string;
+      options: Array<{ id: string; label: string }>;
+      selectedIds: string[];
+    }>
+  >([]);
+  // 전체 트리 그래프 오버레이 토글
+  const [treeGraphOpen, setTreeGraphOpen] = useState(false);
   /** NextCluePanel 권장 단서 클릭 시 CluesInput 의 selectedType 동기화 (mount 시점 키) */
   const [preferredClueType, setPreferredClueType] = useState<ClueType | null>(null);
   // Q4 (2026-05-21): 트리 답변에서 자동 추출된 variant — CluesInput 토글 자동 선택
@@ -283,6 +295,21 @@ const Step3_Discovery = ({
         completedPath,
       );
       recordAnswer(currentNodeId, answerIds);
+      // 동적 트리 진행 누적 — 현재 질문의 질문문·옵션·확정 옵션을 trail 에 추가
+      if (currentNode) {
+        setDecisionTrail((prev) => [
+          ...prev,
+          {
+            node_id: currentNode.id,
+            question: currentNode.question ?? '',
+            options: (currentNode.options ?? []).map((o) => ({
+              id: o.id,
+              label: o.label,
+            })),
+            selectedIds: answerIds,
+          },
+        ]);
+      }
       setHypothesisScores(res.hypothesis_scores);
       setRecommendation(res.recommendation ?? null);
       setTerminal(res.is_terminal);
@@ -331,6 +358,7 @@ const Step3_Discovery = ({
     if (!caseId) return;
     resetTriage();
     setCurrentNodeData(null);
+    setDecisionTrail([]);
     setLoading(true);
     try {
       const res = await startTriage(caseId);
@@ -514,9 +542,22 @@ const Step3_Discovery = ({
                  결정 트리 진행
               </div>
               <TriageTreeMinimap
-                currentNodeId={currentNodeId}
-                completedNodeIds={completedPath.map((p) => p.node_id)}
+                trail={decisionTrail}
+                current={
+                  currentNode
+                    ? {
+                        node_id: currentNode.id,
+                        question: currentNode.question ?? '',
+                        options: (currentNode.options ?? []).map((o) => ({
+                          id: o.id,
+                          label: o.label,
+                        })),
+                        selectedIds: [],
+                      }
+                    : null
+                }
                 isTerminal={isTerminal}
+                onExpand={() => setTreeGraphOpen(true)}
               />
             </div>
 
@@ -714,6 +755,46 @@ const Step3_Discovery = ({
           </div>
         </div>
       </div>
+
+      {/* 전체 결정 트리 그래프 — 우측 슬라이드 오버레이 (2026-05-22) */}
+      {treeGraphOpen && (
+        <div
+          className="fixed inset-y-0 right-0 z-50 bg-ink-900 border-l border-ink-700 flex flex-col animate-fade-up"
+          style={{ width: '70%' }}
+        >
+          <div className="h-9 bg-ink-850 border-b border-ink-700 flex items-center justify-between px-3 shrink-0">
+            <span className="text-brand-amber font-mono text-[11px] uppercase tracking-[0.16em] font-bold">
+              결정 트리 진행 — 전체 보기
+            </span>
+            <button
+              onClick={() => setTreeGraphOpen(false)}
+              className="text-ink-400 hover:text-ink-100 text-[14px] leading-none font-mono"
+              title="닫기"
+            >
+              ×
+            </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            <TriageTreeGraph
+              trail={decisionTrail}
+              current={
+                currentNode
+                  ? {
+                      node_id: currentNode.id,
+                      question: currentNode.question ?? '',
+                      options: (currentNode.options ?? []).map((o) => ({
+                        id: o.id,
+                        label: o.label,
+                      })),
+                      selectedIds: [],
+                    }
+                  : null
+              }
+              isTerminal={isTerminal}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

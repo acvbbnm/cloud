@@ -8,6 +8,7 @@ import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
 import Badge from '@/components/Badge';
+import Pagination from '@/components/Pagination';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
@@ -257,25 +258,12 @@ const V2Logs = () => {
             onToggleAll={toggleAll}
           />
           {totalEvents > PAGE_SIZE && (
-            <div className="flex justify-end gap-2 mt-3">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                ← 이전
-              </button>
-              <span className="self-center text-[11.5px] text-ink-400">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                다음 →
-              </button>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mt-3"
+            />
           )}
         </Card>
       </PageBody>

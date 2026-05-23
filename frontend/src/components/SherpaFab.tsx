@@ -78,14 +78,14 @@ const SherpaFab = () => {
     <>
       <button
         onClick={toggle}
-        className="fixed bottom-5 right-5 px-3 h-9 bg-brand-amber text-ink-975 z-[999] font-mono text-[11px] font-bold uppercase tracking-[0.12em] border border-brand-amber hover:bg-brand-orange hover:border-brand-orange transition-colors"
+        className="fixed bottom-16 right-5 w-11 h-11 rounded-full bg-brand-teal text-ink-975 z-[999] font-mono text-[14px] font-bold flex items-center justify-center border border-brand-teal hover:bg-brand-tealDark hover:border-brand-tealDark transition-colors"
         title="AI 셰르파"
       >
-        SHERPA
+        S
       </button>
 
       <div
-        className={`fixed bottom-[58px] right-5 z-[998] w-[400px] h-[540px] bg-ink-900 border border-ink-700 flex flex-col transition-opacity duration-150 ${
+        className={`fixed bottom-[124px] right-5 z-[998] w-[400px] h-[540px] bg-ink-900 border border-ink-700 flex flex-col transition-opacity duration-150 ${
           open ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >

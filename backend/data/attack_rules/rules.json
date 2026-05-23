@@ -582,7 +582,49 @@
       "real_log_count": 0,
       "source": "MITRE ATT&CK v14 T1078.001 Default Accounts — NHN OWNER(root) 직접 로그인 기반 추정 패턴"
     }
+    ,
+    {
+      "rule_id": "R-NCP-028",
+      "csp": "ncp",
+      "description": "Object Storage 직접 GetObject — DATA_EXFILTRATION 수집 (T1530)",
+      "activity_name_pattern": "^GetObject$",
+      "condition": {},
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "source": "MITRE T1530 Data from Cloud Storage Object — Phase 2 사이클 3 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-029",
+      "csp": "ncp",
+      "description": "Object Storage 외부 채널 전송 — Exfiltration over Web Service",
+      "activity_name_pattern": "^(Exfil To External|Transfer To External Account)$",
+      "condition": {},
+      "technique_id": "T1567",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1567 Exfiltration Over Web Service — Phase 2 사이클 3 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-030",
+      "csp": "ncp",
+      "description": "Object Storage 버킷 ACL/정책 변경 — Public Cloud Storage 노출 (MISCONFIG)",
+      "activity_name_pattern": "^(PutBucketAcl|PutBucketPolicy)$",
+      "condition": {},
+      "technique_id": "T1580",
+      "tactic": "Discovery",
+      "source": "MITRE T1580 Cloud Infrastructure Discovery — 잘못된 ACL 노출 후 외부 정찰 가능 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-031",
+      "csp": "ncp",
+      "description": "Security Group 무차별 허용 — 외부 노출 / Network Service Discovery",
+      "activity_name_pattern": "^(putAccessControlGroup|PutACG|Modify Access Control Group)$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "source": "MITRE T1190 Exploit Public-Facing Application — 잘못된 SG 노출이 침투 경로 (2026-05-22 보강)"
+    }
   ],
   "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
-  "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)"
+  "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)",
+  "_cycle3_2026_05_22": "사이클 3 보강 — DE (T1530, T1567) + MISCONFIG (T1580, T1190). NCP +4 룰. P1 attack_rules 갭 해소."
 }

@@ -9,7 +9,7 @@ interface CaseState {
   incidentType: IncidentType | null;
   severity: string | null;
   currentStep: number;
-  // ── dev3 신규 (Step 1 케이스 메타) ──
+  //  dev3 신규 (Step 1 케이스 메타) 
   title: string | null;
   tlp: TLP | null;
   observables: Observable[];
@@ -20,7 +20,7 @@ interface CaseState {
   setIncidentType: (type: IncidentType | null) => void;
   setSeverity: (severity: string) => void;
   setStep: (step: number) => void;
-  // ── dev3 신규 액션 ──
+  //  dev3 신규 액션 
   setTitle: (title: string) => void;
   setTlp: (tlp: TLP) => void;
   setObservables: (observables: Observable[]) => void;

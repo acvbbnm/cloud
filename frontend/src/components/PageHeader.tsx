@@ -1,3 +1,7 @@
+/**
+ * 페이지 헤더 — 2026-05-22 블룸버그 스타일.
+ * hero-gradient 제거, 좌측 앰버 띠 + 고밀도 한 줄 메타.
+ */
 import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
@@ -10,17 +14,21 @@ interface PageHeaderProps {
 
 const PageHeader = ({ eyebrow, title, description, actions, meta }: PageHeaderProps) => {
   return (
-    <div className="relative pt-10 pb-7 px-8 lg:px-12 bg-hero-gradient border-b border-ink-700/70">
-      <div className="max-w-[1280px] mx-auto flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-2.5 max-w-3xl">
-          {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+    <div className="relative pt-4 pb-3 px-5 bg-ink-950 border-b border-ink-700">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-1 min-w-0">
+          {eyebrow && (
+            <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-brand-amber">
+              {eyebrow}
+            </span>
+          )}
           <h1 className="h-page">{title}</h1>
           {description && (
-            <p className="text-[14px] text-ink-300 leading-relaxed">{description}</p>
+            <p className="text-[12px] text-ink-400 leading-relaxed max-w-3xl">{description}</p>
           )}
-          {meta && <div className="mt-1 flex flex-wrap gap-2">{meta}</div>}
+          {meta && <div className="mt-1.5 flex flex-wrap gap-2 items-center">{meta}</div>}
         </div>
-        {actions && <div className="flex flex-wrap gap-2 shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-wrap gap-1.5 shrink-0">{actions}</div>}
       </div>
     </div>
   );

@@ -95,7 +95,7 @@ const V8Sherpa = () => {
         onError: (err) => {
           updateLast({
             text:
-              '⚠ 셰르파 응답 실패. 백엔드(/api/sherpa/chat/stream) 또는 KB 인덱스 확인이 필요합니다.\n' +
+              ' 셰르파 응답 실패. 백엔드(/api/sherpa/chat/stream) 또는 KB 인덱스 확인이 필요합니다.\n' +
               `(상세: ${err.message})`,
           });
           setIsStreaming(false);
@@ -111,12 +111,8 @@ const V8Sherpa = () => {
     <div className="flex flex-col h-full">
       <PageHeader
         eyebrow="Helper · sLLM"
-        title={
-          <>
-            AI <span className="grad-text">셰르파</span>
-          </>
-        }
-        description="오프라인 sLLM + KB RAG. AI는 판단·결정하지 않고 검색·요약·제안만 수행합니다."
+        title="AI Sherpa"
+        description="Offline sLLM + KB RAG. AI performs only search, summarization, and suggestion — no judgment or decisions."
         meta={
           <div className="flex items-center gap-2">
             <span className="chip">
@@ -144,7 +140,7 @@ const V8Sherpa = () => {
       {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">
         <div className="bg-ink-950/60 border border-ink-700/60 rounded-xl px-4 py-3 text-[11.5px] text-ink-300 flex items-center gap-4 flex-wrap">
-          <b className="text-brand-teal">백엔드 응답 ✓</b>
+          <b className="text-brand-teal">백엔드 응답 </b>
           <span>
             caseId: <code className="text-ink-400 font-mono">{caseId ?? '— (케이스 미선택)'}</code>
           </span>
@@ -169,7 +165,7 @@ const V8Sherpa = () => {
         <div className="lg:col-span-2 panel flex flex-col p-0 min-h-0">
           <div className="px-5 py-4 border-b border-ink-700/60 flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-sherpa-gradient flex items-center justify-center text-[18px]">
-              🤖
+              
             </span>
             <div>
               <b className="text-[14px]">AI 셰르파</b>
@@ -273,9 +269,9 @@ const V8Sherpa = () => {
           </div>
         </div>
 
-        {/* 우측: KB 인덱스 + 안내 */}
+        {/* 우측: KB 인덱스 + 안내 (V-8 사후 검증 카드는 본 영역 상단에 IncidentTypeReviewCard 로 별도 배치됨) */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-          <Card title={<>📚 KB 인덱스 (RAG 입력)</>}>
+          <Card title={<> KB 인덱스 (RAG 입력)</>}>
             {kbQuery.isLoading ? (
               <div className="text-[12px] text-ink-400 py-2">로딩 중…</div>
             ) : kbQuery.isError ? (
@@ -304,7 +300,7 @@ const V8Sherpa = () => {
             ) : null}
           </Card>
 
-          <Card title={<>🎯 활용 안내</>}>
+          <Card title={<> 활용 안내</>}>
             <div className="text-[11.5px] text-ink-300 leading-6 space-y-2">
               <p>
                 질문은 <b>ATT&CK 기법 ID</b>(예: <code>T1078.004</code>), <b>CSP 서비스명</b>(예:

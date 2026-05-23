@@ -1,3 +1,7 @@
+/**
+ * 카드 — 2026-05-22 블룸버그 스타일.
+ * 평탄한 패널·각진 모서리·상단 보더 헤더(터미널 위젯 헤더 느낌).
+ */
 import type { ReactNode } from 'react';
 
 interface CardProps {
@@ -12,9 +16,9 @@ interface CardProps {
 }
 
 const padMap: Record<NonNullable<CardProps['padding']>, string> = {
-  sm: 'p-4',
-  md: 'p-5',
-  lg: 'p-6',
+  sm: 'p-3',
+  md: 'p-3.5',
+  lg: 'p-4',
 };
 
 const Card = ({
@@ -27,19 +31,19 @@ const Card = ({
   padding = 'md',
   children,
 }: CardProps) => {
-  const borderStyle = borderColor ? { borderLeft: `3px solid ${borderColor}` } : undefined;
+  const borderStyle = borderColor ? { borderLeft: `2px solid ${borderColor}` } : undefined;
   return (
-    <div className={`panel ${padMap[padding]} ${className}`} style={borderStyle}>
+    <div className={`panel ${className}`} style={borderStyle}>
       {(title || action) && (
-        <div className="flex items-start justify-between mb-3.5 gap-3">
+        <div className="flex items-start justify-between gap-3 px-3 py-1.5 bg-ink-850 border-b border-ink-700">
           <div className="min-w-0">
             {title && <h3 className="panel-title">{title}</h3>}
-            {subtitle && <p className="text-[12px] text-ink-400 mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-[11px] text-ink-400 mt-0.5">{subtitle}</p>}
           </div>
           {action && <div className="shrink-0">{action}</div>}
         </div>
       )}
-      <div className={bodyClassName}>{children}</div>
+      <div className={`${padMap[padding]} ${bodyClassName}`}>{children}</div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
 import Badge from '@/components/Badge';
+import Pagination from '@/components/Pagination';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
@@ -107,11 +108,11 @@ const V2Logs = () => {
       <div>
         <PageHeader
           eyebrow="Layer 1 · M1-1"
-          title="로그 수집"
-          description="진행 중인 사고 케이스가 없습니다."
+          title="Log Collection"
+          description="No active incident case."
         />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 로그를 업로드할 수 있습니다.
             </p>
@@ -130,12 +131,12 @@ const V2Logs = () => {
     <div>
       <PageHeader
         eyebrow="Layer 1 · M1-1"
-        title="로그 수집"
+        title="Log Collection"
         description="CSP 로그 파일을 업로드하면 무결성(SHA-256) 검증 후 시드 카탈로그와 자동 매칭됩니다."
         actions={
           <>
             <button onClick={handleAddToBoard} className="btn-ghost">
-              📌 수사 보드에 추가
+               수사 보드에 추가
             </button>
             <button onClick={() => navigate('/ocsf')} className="btn-primary">
               OCSF 정규화 →
@@ -152,7 +153,7 @@ const V2Logs = () => {
               <span className="eyebrow">백엔드 응답</span>
               {logsQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
               {logsQuery.isError && <span className="tag-red">에러</span>}
-              {logsQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {logsQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
               {uploadMutation.isPending && <span className="tag-amber">업로드 중…</span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
@@ -211,7 +212,7 @@ const V2Logs = () => {
           <div className="lg:col-span-3">
             <DropZone onUpload={handleUpload} />
           </div>
-          <Card title={<>✅ 매칭 분포 (마지막 업로드)</>} className="lg:col-span-2">
+          <Card title={<> 매칭 분포 (마지막 업로드)</>} className="lg:col-span-2">
             {lastStats ? (
               Object.keys(lastStats.byTarget).length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-4">매칭된 항목 없음</div>
@@ -239,7 +240,7 @@ const V2Logs = () => {
         <Card
           title={
             <>
-              📋 적재된 raw_events (page {page} / {totalPages})
+               적재된 raw_events (page {page} / {totalPages})
             </>
           }
           subtitle="체크 후 '수사 보드에 추가' 버튼으로 보드로 보낼 수 있습니다"
@@ -257,25 +258,12 @@ const V2Logs = () => {
             onToggleAll={toggleAll}
           />
           {totalEvents > PAGE_SIZE && (
-            <div className="flex justify-end gap-2 mt-3">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                ← 이전
-              </button>
-              <span className="self-center text-[11.5px] text-ink-400">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                다음 →
-              </button>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mt-3"
+            />
           )}
         </Card>
       </PageBody>

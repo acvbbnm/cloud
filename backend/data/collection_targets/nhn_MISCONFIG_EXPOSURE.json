@@ -1,0 +1,46 @@
+[
+  {
+    "target_id": "CT-NHN-MISCONF-001",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Object Storage 컨테이너 메타데이터 변경",
+    "description": "event_id.object_storage.container.metadata.update — 공개 권한 노출 핵심 단서. MITRE T1190 Exploit Public-Facing Application.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-MISCONF-002",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Security Group·VPC 변경",
+    "description": "event_id.iaas.security_group.*, event_id.iaas.vpc.* — 과도 네트워크 노출 (0.0.0.0/0 ingress). MITRE T1580 Cloud Infrastructure Discovery.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-MISCONF-003",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 기본 계정·과도 권한",
+    "description": "event_id.iam.member.role.update — 과도 권한 부여·기본 계정 미변경 단서. MITRE T1078.001 Default Accounts.",
+    "evidence_role": "REQUIRED",
+    "priority": 8,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  },
+  {
+    "target_id": "CT-NHN-MISCONF-004",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Object Storage object 다운로드",
+    "description": "event_id.object_storage.object.download — 노출된 자원에서 데이터 수집 여부 확인. MITRE T1530 Data from Cloud Storage.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90
+  }
+]

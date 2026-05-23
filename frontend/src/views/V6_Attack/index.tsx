@@ -99,12 +99,12 @@ const V6Attack = () => {
     return (
       <div>
         <PageHeader
-          eyebrow="Layer 3 · M3-2"
-          title="ATT&CK 매핑"
-          description="진행 중인 사고 케이스가 없습니다."
+          eyebrow="Layer 2 · M2-3"
+          title="ATT&CK Mapping"
+          description="No active incident case."
         />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 매핑 결과를 볼 수 있습니다.
             </p>
@@ -151,13 +151,9 @@ const V6Attack = () => {
   return (
     <div>
       <PageHeader
-        eyebrow="Layer 3 · M3-2"
-        title={
-          <>
-            MITRE ATT&CK <span className="grad-text">매핑</span>
-          </>
-        }
-        description="attack_events 집계를 ATT&CK Cloud Matrix 전술×기법 히트맵으로 시각화합니다. 규칙 기반 JSON 매핑 결과라 환각이 없습니다."
+        eyebrow="Layer 2 · M2-3"
+        title="MITRE ATT&CK Mapping"
+        description="Aggregates attack_events into an ATT&CK Cloud Matrix tactic × technique heatmap. Deterministic JSON rule-based — no hallucinations."
         actions={
           <>
             <button
@@ -188,7 +184,7 @@ const V6Attack = () => {
               <span className="eyebrow">백엔드 응답</span>
               {attackQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
               {attackQuery.isError && <span className="tag-red">에러</span>}
-              {attackQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {attackQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
               {mapMutation.isPending && <span className="tag-amber">매핑 중…</span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
@@ -229,7 +225,7 @@ const V6Attack = () => {
         </div>
 
         {items.length === 0 && !attackQuery.isLoading && (
-          <Card title={<>📭 ATT&CK 매핑 결과 없음</>}>
+          <Card title={<>No ATT&CK Mapping</>}>
             <p className="text-[12.5px] text-ink-300 leading-6">
               아직 ATT&CK 매핑 결과가 없습니다. 상단의 <code className="text-brand-teal">↻ ATT&CK 매핑 실행</code> 버튼으로
               <code className="text-brand-teal mx-1">POST /api/analysis/map</code> 을 호출하세요.
@@ -241,7 +237,7 @@ const V6Attack = () => {
         {matrixByTactic.length > 0 && (
           <Card
             title={<>ATT&CK Cloud Matrix 히트맵</>}
-            subtitle="● = 탐지 · 색상 = 탐지 횟수 (≥4 red / ≥2 amber / 1 blue) · 정렬 = 전술 내 총 탐지 합산 내림차순"
+            subtitle=" = 탐지 · 색상 = 탐지 횟수 (≥4 red / ≥2 amber / 1 blue) · 정렬 = 전술 내 총 탐지 합산 내림차순"
           >
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               {matrixByTactic.map((col) => (
@@ -266,7 +262,7 @@ const V6Attack = () => {
                           <div className="truncate">{t.technique_name ?? '—'}</div>
                           <div className="text-[9.5px] opacity-75 mt-0.5">
                             탐지 {t.count}건
-                            {intensity === 'high' && <span className="ml-1">●</span>}
+                            {intensity === 'high' && <span className="ml-1"></span>}
                           </div>
                         </a>
                       );

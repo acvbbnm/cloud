@@ -138,23 +138,6 @@ const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
         </div>
       </div>
 
-      {/* 사고유형 (자동) */}
-      <div className="panel p-4 border border-brand-teal/30 bg-brand-teal/5">
-        <span className="eyebrow text-[10.5px] text-brand-teal">사고유형 (자동)</span>
-        <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
-          <code className="text-[13px] text-ink-100 font-mono bg-ink-900 px-2 py-1 rounded">
-            UNCLASSIFIED
-          </code>
-          <p className="text-[11.5px] text-ink-400 max-w-md">
-            Step 2 의 단서 입력 · 부분 로그 분석 · 결정 트리를 거쳐 자동 추정 → 수사관 확정합니다.
-            <br />
-            <span className="text-ink-500">
-              학술 근거: TheHive 5, DFIR-IRIS, NIST SP 800-61r2 §3.2 — 사고유형은 scope 파악 후행 분류.
-            </span>
-          </p>
-        </div>
-      </div>
-
       {/* 네비게이션 */}
       <div className="flex items-center justify-between">
         <button onClick={onPrev} className="btn-ghost">

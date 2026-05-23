@@ -160,11 +160,11 @@ const V5Board = () => {
       <div>
         <PageHeader
           eyebrow="Layer 4 · M4-1"
-          title="수사 보드"
-          description="진행 중인 사고 케이스가 없습니다."
+          title="Investigation Board"
+          description="No active incident case."
         />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 수사 보드를 사용할 수 있습니다.
             </p>
@@ -187,7 +187,7 @@ const V5Board = () => {
     <div className="flex flex-col h-full overflow-y-auto">
       <PageHeader
         eyebrow="Layer 4 · M4-1"
-        title="수사 보드"
+        title="Investigation Board"
         description="ATT&CK 매핑 결과를 후보로 보고, 보드 노드로 추가하여 공격 체인을 재구성합니다."
         actions={
           <>
@@ -215,17 +215,17 @@ const V5Board = () => {
               <span className="eyebrow">백엔드 응답</span>
               {boardQuery.isLoading && <span className="tag-blue">board 로딩…</span>}
               {boardQuery.isError && <span className="tag-red">board 에러</span>}
-              {boardQuery.isSuccess && <span className="tag-teal">board ✓</span>}
+              {boardQuery.isSuccess && <span className="tag-teal">board </span>}
               {attackQuery.isLoading && <span className="tag-blue">attack 로딩…</span>}
               {attackQuery.isError && <span className="tag-red">attack 에러</span>}
-              {attackQuery.isSuccess && <span className="tag-teal">attack ✓</span>}
+              {attackQuery.isSuccess && <span className="tag-teal">attack </span>}
               {addNodeMutation.isPending && <span className="tag-amber">노드 추가 중…</span>}
               {updateStatusMutation.isPending && (
                 <span className="tag-amber">상태 변경 중…</span>
               )}
               {briefQuery.isLoading && <span className="tag-blue">sherpa 로딩…</span>}
               {briefQuery.isError && <span className="tag-red">sherpa 에러</span>}
-              {briefQuery.isSuccess && <span className="tag-teal">sherpa ✓</span>}
+              {briefQuery.isSuccess && <span className="tag-teal">sherpa </span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
           </div>
@@ -247,7 +247,7 @@ const V5Board = () => {
 
             {/* 보드 노드 + 엣지 (SVG 그래프, UF-04) */}
             <Card
-              title={<>🎯 공격 체인 그래프 (chain_nodes + chain_edges)</>}
+              title={<> 공격 체인 그래프 (chain_nodes + chain_edges)</>}
               subtitle={
                 <span className="text-[10.5px] text-ink-400">
                   노드 클릭 = 상세 표시 · 엣지 모드에서 두 노드 연속 클릭 = 화살표 생성
@@ -271,7 +271,7 @@ const V5Board = () => {
                         : '엣지 모드 켜기'
                     }
                   >
-                    🔗 {edgeMode ? '엣지 모드 ON' : '엣지 모드'}
+                     {edgeMode ? '엣지 모드 ON' : '엣지 모드'}
                   </button>
                   {edgeMode && edgeStartId && (
                     <button
@@ -315,7 +315,7 @@ const V5Board = () => {
 
             {/* ATT&CK 매핑 결과 후보 */}
             <Card
-              title={<>🤖 ATT&CK 매핑 후보 (top {ATTACK_PAGE_SIZE})</>}
+              title={<> ATT&CK 매핑 후보 (top {ATTACK_PAGE_SIZE})</>}
               subtitle="최신 매핑 순. 카드 클릭 시 우측 상세 표시 + '보드 추가'"
               className="flex-shrink-0"
             >
@@ -368,7 +368,7 @@ const V5Board = () => {
                     </Badge>
                   </Row>
                   <Row label="유형">
-                    {activeBoardNode.is_ai_suggested ? '🧠 AI 제안' : '👤 수동 추가'}
+                    {activeBoardNode.is_ai_suggested ? ' AI 제안' : ' 수동 추가'}
                   </Row>
                   <Row label="attack_id">
                     <span className="font-mono text-[10.5px] text-ink-400">
@@ -389,7 +389,7 @@ const V5Board = () => {
                       }
                       className="btn-primary btn-sm flex-1 disabled:opacity-40"
                     >
-                      ✓ 수락
+                       수락
                     </button>
                     <button
                       onClick={() =>
@@ -404,7 +404,7 @@ const V5Board = () => {
                       }
                       className="btn-danger btn-sm flex-1 disabled:opacity-40"
                     >
-                      ✗ 거부
+                       거부
                     </button>
                   </div>
                 </div>
@@ -442,7 +442,7 @@ const V5Board = () => {
               )}
             </Card>
 
-            <Card title={<span className="text-brand-purple">🧠 AI 셰르파 브리핑</span>}>
+            <Card title={<span className="text-brand-purple"> AI 셰르파 브리핑</span>}>
               <BriefingPanel
                 isLoading={briefQuery.isLoading}
                 isError={briefQuery.isError}
@@ -452,7 +452,7 @@ const V5Board = () => {
               />
             </Card>
 
-            <Card title={<>📝 수사관 메모</>}>
+            <Card title={<> 수사관 메모</>}>
               <textarea
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}

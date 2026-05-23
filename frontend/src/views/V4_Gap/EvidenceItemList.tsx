@@ -37,7 +37,7 @@ const EvidenceItemList = ({ items }: EvidenceItemListProps) => {
                     item.collected ? 'text-brand-teal' : 'text-brand-red'
                   }`}
                 >
-                  {item.collected ? '✓ 확보' : '✗ 미수집'}
+                  {item.collected ? ' 확보' : ' 미수집'}
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex flex-wrap gap-1">

@@ -22,28 +22,28 @@ const GAP_META: Record<
     label: '갭 없음',
     color: 'text-brand-teal',
     bg: 'border-brand-teal/40 bg-brand-teal/[0.04]',
-    icon: '✅',
+    icon: '',
     cta: 'board',
   },
   COLLECTION: {
     label: '수집 갭',
     color: 'text-brand-red',
     bg: 'border-brand-red/40 bg-brand-red/[0.04]',
-    icon: '⛔',
+    icon: '',
     cta: 'setup',
   },
   EVIDENCE: {
     label: '증거 갭',
     color: 'text-brand-amber',
     bg: 'border-brand-amber/40 bg-brand-amber/[0.04]',
-    icon: '⚠️',
+    icon: '',
     cta: null,
   },
   INTERPRETATION: {
     label: '해석 갭',
     color: 'text-brand-purple',
     bg: 'border-brand-purple/40 bg-brand-purple/[0.04]',
-    icon: '🤖',
+    icon: '',
     cta: 'sherpa',
   },
 };
@@ -67,9 +67,9 @@ const V4Gap = () => {
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-2" title="갭 감지" description="진행 중인 사고 케이스가 없습니다." />
+        <PageHeader eyebrow="Layer 2 · M2-2" title="Gap Detection" description="No active incident case." />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>No Case</>}>
             <p className="text-[13px] text-ink-300 mb-3">V-1 사고 접수 위저드를 먼저 완료하세요.</p>
             <button onClick={() => navigate('/setup')} className="btn-primary">
               ← V-1 사고 접수
@@ -87,7 +87,7 @@ const V4Gap = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-2"
-        title="갭 감지"
+        title="Gap Detection"
         description="필수 증거 수집 + OCSF 정규화 + ATT&CK 매핑 결과를 종합하여 갭 유형을 자동 판정합니다."
         actions={
           <>
@@ -96,7 +96,7 @@ const V4Gap = () => {
               disabled={gapMutation.isPending}
               className="btn-ghost disabled:opacity-50"
             >
-              {gapMutation.isPending ? '판정 중…' : '🔁 갭 감지 실행'}
+              {gapMutation.isPending ? '판정 중…' : ' 갭 감지 실행'}
             </button>
             {result?.gap_type === 'COLLECTION' && (
               <button
@@ -146,7 +146,7 @@ const V4Gap = () => {
               )}
               {gapMutation.isPending && <span className="tag-amber">판정 중…</span>}
               {gapMutation.isError && <span className="tag-red">에러</span>}
-              {gapMutation.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
+              {gapMutation.isSuccess && <span className="tag-teal">연결됨 </span>}
             </div>
             <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
           </div>
@@ -171,7 +171,7 @@ const V4Gap = () => {
 
         {/* 결과 없음 — 초기 상태 */}
         {!result && !gapMutation.isPending && (
-          <Card title={<>갭 감지 미실행</>}>
+          <Card title={<>Gap Detection Not Run</>}>
             <p className="text-[13px] text-ink-400">
               상단의 「갭 감지 실행」을 눌러 케이스의 증거 완결성을 분석해주세요.
             </p>
@@ -214,7 +214,7 @@ const V4Gap = () => {
                 <Card
                   title={
                     <>
-                      ⛔ 미수집 필수 증거 — {result.missing.length}건
+                       미수집 필수 증거 — {result.missing.length}건
                     </>
                   }
                   borderColor="#FF4D6D"

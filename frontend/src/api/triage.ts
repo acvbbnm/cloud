@@ -18,6 +18,7 @@ import client from './client';
 
 import type {
   HypothesisScores,
+  Observable,
   TriageNextRequest,
   TriageNextResponse,
 } from '@/types';
@@ -50,10 +51,10 @@ export const nextTriage = async (
   return res.data.data;
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // 부분 로그 분석 — POST /api/triage/analyze-logs (multipart)
-// dev3 B-2 — Step 2 Discovery Loop ② 부분 로그 분석.
-// ─────────────────────────────────────────────────────────────
+// dev3 B-2 — Step 2 Discovery Loop  부분 로그 분석.
+// 
 
 export interface AnalyzeLogsResponse {
   caseId: string;
@@ -102,9 +103,9 @@ export const analyzeLogs = async (
   return res.data.data;
 };
 
-// ─────────────────────────────────────────────────────────────
+// 
 // 단서 입력 시 가설 점수 보강 — POST /api/triage/analyze (JSON)
-// ─────────────────────────────────────────────────────────────
+// 
 
 export interface AnalyzeClueResponse {
   caseId: string;
@@ -135,6 +136,67 @@ export const analyzeClue = async (
     caseId,
     hypothesis_scores: currentScores,
     clue,
+  });
+  return res.data.data;
+};
+
+// 
+// 출처 트레이스 — POST /api/triage/breakdown (JSON)
+//
+// HypothesisBreakdownChart "왜 이 가설인가" 출처 분해.
+// 5개 소스(environment / tree / combo / clues / techniques) × 8 사고유형.
+// 학술 변호: 결정성 100% — 같은 입력 시 같은 분해 (weights.json 단일 소스).
+// 
+
+export type BreakdownSource =
+  | 'environment'
+  | 'tree'
+  | 'combo'
+  | 'clue'
+  | 'technique';
+
+export interface BreakdownItem {
+  source: BreakdownSource;
+  /** weight_key / modifier id / technique_id 등 원본 키. */
+  key: string;
+  /** 화면 표시용 한국어 라벨 (질문+옵션 / 단서명 / 기법 등). */
+  label: string;
+  /** 사고유형별 기여 점수. */
+  weights: HypothesisScores;
+  /** weights.json 의 source 필드 (학술 인용·표준). */
+  rationale?: string | null;
+}
+
+export interface BreakdownResponse {
+  caseId: string;
+  totals: HypothesisScores;
+  by_source: {
+    environment: HypothesisScores;
+    tree: HypothesisScores;
+    combo: HypothesisScores;
+    clues: HypothesisScores;
+    techniques: HypothesisScores;
+  };
+  items: BreakdownItem[];
+}
+
+/**
+ * POST /api/triage/breakdown — 가설 점수 소스별·항목별 분해.
+ *
+ * `system_config` 는 caseId 로 백엔드가 DB 조회. 클라이언트는 누적 상태
+ * (tree_path + observables + technique_ids) 만 전달.
+ */
+export const getBreakdown = async (
+  caseId: string,
+  treePath: Array<{ node_id: string; selected_option_ids: string[] }>,
+  observables: Observable[],
+  techniqueIds: string[],
+): Promise<BreakdownResponse> => {
+  const res = await client.post('/api/triage/breakdown', {
+    caseId,
+    tree_path: treePath,
+    observables,
+    technique_ids: techniqueIds,
   });
   return res.data.data;
 };

@@ -52,7 +52,7 @@ const HypothesisScoreBar = ({
   return (
     <div>
       <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-2">
-        📊 가설 점수
+         가설 점수
       </div>
 
       <div className="space-y-1.5">
@@ -83,8 +83,8 @@ const HypothesisScoreBar = ({
                   }`}
                 >
                   {INCIDENT_TYPE_KO[type]}
-                  {isPrimary && ' ●'}
-                  {isSecondary && ' ○'}
+                  {isPrimary && ' '}
+                  {isSecondary && ' '}
                 </span>
                 <span className="font-mono text-ink-200 text-[10.5px]">
                   {score}

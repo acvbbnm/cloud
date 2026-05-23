@@ -1,21 +1,32 @@
 import { create } from 'zustand';
 
+export interface ToastItem {
+  id: number;
+  message: string;
+}
+
 interface ToastState {
-  message: string | null;
+  items: ToastItem[];
   show: (msg: string, durationMs?: number) => void;
+  dismiss: (id: number) => void;
   hide: () => void;
 }
 
-let timer: number | null = null;
+const MAX_VISIBLE = 3;
+let seq = 0;
 
-export const useToastStore = create<ToastState>((set) => ({
-  message: null,
+export const useToastStore = create<ToastState>((set, get) => ({
+  items: [],
   show: (msg, durationMs = 2200) => {
-    if (timer !== null) {
-      window.clearTimeout(timer);
-    }
-    set({ message: msg });
-    timer = window.setTimeout(() => set({ message: null }), durationMs);
+    seq += 1;
+    const id = seq;
+    set((s) => {
+      const next = [...s.items, { id, message: msg }];
+      // 동시 표시 상한 — 가장 오래된 것부터 폐기
+      return { items: next.slice(-MAX_VISIBLE) };
+    });
+    window.setTimeout(() => get().dismiss(id), durationMs);
   },
-  hide: () => set({ message: null }),
+  dismiss: (id) => set((s) => ({ items: s.items.filter((t) => t.id !== id) })),
+  hide: () => set({ items: [] }),
 }));

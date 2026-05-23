@@ -31,13 +31,14 @@ def _uuid() -> str:
     return str(uuid.uuid4())
 
 
-# ── 테이블 1: 사고 케이스 (설계서 Table 43, 8컬럼) ──
+# ── 테이블 1: 사고 케이스 (설계서 Table 43 + dev3 §5.2 신규 5컬럼) ──
 class IncidentCaseModel(Base):
     """사고 케이스 메타데이터.
 
     dev3 (2026-05-19) B-3: V-1 재설계 — Discovery Loop 기반 케이스 메타 확장.
       title, tlp, observables, secondary_incident_types, triage_state 5개 칼럼 추가.
       incident_type enum 에 UNCLASSIFIED 추가 (백엔드 Pydantic Literal 측).
+    기존 row 호환: 마이그레이션은 `db/init_db.py::_migrate_dev3_columns()` 가 수행.
     """
 
     __tablename__ = "incident_cases"

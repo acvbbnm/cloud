@@ -45,6 +45,13 @@ app.include_router(common_router)
 app.include_router(triage_router)  # dev3 B-1
 
 
+@app.on_event("startup")
+def on_startup() -> None:
+    """서버 시작 시 DB 테이블 생성 + 시드 데이터 로딩."""
+    from db.init_db import init
+    init()
+
+
 @app.get("/api/health", tags=["common"])
 async def health_check() -> dict:
     """서버 상태 확인."""

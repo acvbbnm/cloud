@@ -374,6 +374,23 @@ export interface GuideV2AppliedModifier {
   source: string;
 }
 
+// 2026-05-23 사이클 6 — v1 시드 풍부 메타 (V-1 Step 4 가이드 표시용)
+export interface SeedTarget {
+  target_id: string;
+  log_type: string | null;
+  description: string | null;
+  evidence_role: 'REQUIRED' | 'CORROBORATING' | string;
+  priority: number | null;
+  storage_path: string | null;
+  retention_days: number | null;
+  // 사이클 6 풍부화 필드
+  layer: 'cloud' | 'network' | 'endpoint' | string | null;
+  hint: string | null;
+  cmd: string | null;
+  auto_collectible: boolean | null;
+  mitre_techniques: string[];
+}
+
 export interface GuideV2Response {
   caseId: string;
   incidentType: string;
@@ -383,6 +400,8 @@ export interface GuideV2Response {
   environment_warnings: GuideV2EnvWarning[];
   applied_modifiers: GuideV2AppliedModifier[];
   source_standards: string[];
+  // 2026-05-23 사이클 6 — 사고유형별 v1 시드 (hint/cmd/mitre_techniques)
+  seed_targets?: SeedTarget[];
   version: 'v2';
 }
 

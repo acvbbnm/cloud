@@ -1011,11 +1011,174 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
         </div>
       </div>
 
+      {/* 2026-05-23 사이클 6 — 사고유형별 v1 시드 (hint/cmd/mitre_techniques) 노출 */}
+      {guide.seed_targets && guide.seed_targets.length > 0 && (
+        <SeedTargetsSection seeds={guide.seed_targets} csp={guide.csp} />
+      )}
+
       <div className="flex justify-between mt-4">
         <button onClick={onPrev} className="btn-ghost">← Step2</button>
         <button onClick={onComplete} className="btn-primary">V-2 로그 수집 진행 →</button>
       </div>
     </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Seed Targets 섹션 (2026-05-23 사이클 6)
+// ─────────────────────────────────────────────────────────────
+//
+// V-1 Step 4 하단에 표시. 사고유형 + CSP 에 매칭되는 v1 collection_targets
+// 시드의 hint·cmd·mitre_techniques 를 카드 리스트로 노출.
+// 사용자가 "어떤 로그를 어떻게 수집해야 하는지" 즉시 확인 가능.
+
+interface SeedTargetsSectionProps {
+  seeds: Array<{
+    target_id: string;
+    log_type: string | null;
+    description: string | null;
+    evidence_role: string;
+    priority: number | null;
+    storage_path: string | null;
+    layer: string | null;
+    hint: string | null;
+    cmd: string | null;
+    auto_collectible: boolean | null;
+    mitre_techniques: string[];
+  }>;
+  csp: string;
+}
+
+const SeedTargetsSection = ({ seeds, csp }: SeedTargetsSectionProps) => {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleCopyCmd = (cmd: string) => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopied(cmd);
+      window.setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  const required = seeds.filter((s) => s.evidence_role === 'REQUIRED');
+  const corroborating = seeds.filter((s) => s.evidence_role !== 'REQUIRED');
+
+  return (
+    <section className="mt-6 panel p-4 border-l-[3px] border-l-brand-purple">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
+            📋 사고유형별 수집 대상 (Seed Targets)
+          </div>
+          <div className="text-[11.5px] text-ink-500 mt-0.5">
+            현재 사고유형 + {csp.toUpperCase()} 기준 {seeds.length}개 시드 — MITRE 기법 + 콘솔 경로 + CLI 명령
+          </div>
+        </div>
+        <div className="flex gap-2 text-[10px]">
+          <span className="chip bg-brand-red/15 text-brand-red border border-brand-red/30">
+            REQUIRED {required.length}
+          </span>
+          {corroborating.length > 0 && (
+            <span className="chip bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              CORROBORATING {corroborating.length}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {[...required, ...corroborating].map((s) => {
+          const isRequired = s.evidence_role === 'REQUIRED';
+          return (
+            <div
+              key={s.target_id}
+              className={`rounded-xl border p-3 flex flex-col gap-2 ${
+                isRequired
+                  ? 'border-brand-red/40 bg-brand-red/[0.03]'
+                  : 'border-ink-700/70 bg-ink-900/40'
+              }`}
+            >
+              {/* 헤더 — target_id + 역할 + priority */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <code className="text-[10.5px] font-mono text-brand-purple bg-ink-950 px-1.5 py-0.5 rounded">
+                  {s.target_id}
+                </code>
+                <Badge tone={isRequired ? 'red' : 'amber'} size="sm">
+                  {s.evidence_role}
+                </Badge>
+                {s.priority != null && (
+                  <span className="text-[10px] text-ink-500">P{s.priority}</span>
+                )}
+                {s.layer && (
+                  <span className="chip text-[10px] bg-ink-950">
+                    {s.layer}
+                  </span>
+                )}
+                {s.auto_collectible === false && (
+                  <span className="chip text-[10px] bg-amber-500/15 text-amber-300">
+                    수동
+                  </span>
+                )}
+              </div>
+
+              {/* log_type + description */}
+              <div>
+                <div className="text-[12.5px] font-semibold text-ink-100 leading-5">
+                  {s.log_type || '—'}
+                </div>
+                {s.description && (
+                  <div className="text-[11px] text-ink-300 leading-5 mt-0.5">
+                    {s.description}
+                  </div>
+                )}
+              </div>
+
+              {/* hint — 수집 방법 가이드 */}
+              {s.hint && (
+                <div className="text-[11px] text-ink-300 bg-ink-950/60 rounded-lg px-2.5 py-1.5 border border-ink-700/40">
+                  <span className="text-ink-500 mr-1">💡 수집 방법:</span>
+                  {s.hint}
+                </div>
+              )}
+
+              {/* CLI cmd — copy 가능 */}
+              {s.cmd && (
+                <div className="flex items-start gap-1.5">
+                  <code className="flex-1 text-[10.5px] font-mono text-brand-teal bg-ink-950 px-2 py-1.5 rounded-lg overflow-x-auto whitespace-pre">
+                    $ {s.cmd}
+                  </code>
+                  <button
+                    onClick={() => handleCopyCmd(s.cmd!)}
+                    className="text-[10px] btn-ghost btn-sm shrink-0"
+                    title="명령 복사"
+                  >
+                    {copied === s.cmd ? '✓' : '📋'}
+                  </button>
+                </div>
+              )}
+
+              {/* mitre_techniques + storage_path */}
+              <div className="flex items-center gap-2 flex-wrap text-[10px] text-ink-500">
+                {s.mitre_techniques && s.mitre_techniques.length > 0 && (
+                  <>
+                    <span className="text-ink-400">🎯</span>
+                    {s.mitre_techniques.map((t) => (
+                      <code key={t} className="font-mono text-amber-300/90 bg-ink-950 px-1 py-0.5 rounded">
+                        {t}
+                      </code>
+                    ))}
+                  </>
+                )}
+                {s.storage_path && (
+                  <span className="ml-auto text-[10px] text-ink-500">
+                    📁 {s.storage_path.length > 50 ? s.storage_path.slice(0, 47) + '…' : s.storage_path}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 };
 

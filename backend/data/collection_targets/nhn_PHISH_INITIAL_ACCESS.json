@@ -8,7 +8,16 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NHN-PHISH-002",
@@ -19,7 +28,16 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NHN-PHISH-003",
@@ -30,7 +48,17 @@
     "evidence_role": "CORROBORATING",
     "priority": 7,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → iam.member.role.update 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
   },
   {
     "target_id": "CT-NHN-PHISH-004",
@@ -41,6 +69,15 @@
     "evidence_role": "CORROBORATING",
     "priority": 5,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "network",
+    "hint": "NHN Console → Compute → Instance / VPC → CloudTrail iaas.instance/vpc 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1485",
+      "T1489"
+    ]
   }
 ]

@@ -8,7 +8,17 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Object Storage → 버킷 → 접근 로그 + Activity Tracer Export 이벤트 필터",
+    "cmd": "ncloud storage getBucketList --output json > buckets.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
   },
   {
     "target_id": "CT-NCP-RANSOM-002",
@@ -19,7 +29,16 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "network",
+    "hint": "NCP Console → Server / VPC → Activity Tracer → instance/vpc.delete 이벤트",
+    "cmd": "ncloud server getServerInstanceList --output json > servers.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1485",
+      "T1489"
+    ]
   },
   {
     "target_id": "CT-NCP-RANSOM-003",
@@ -30,7 +49,17 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Object Storage → 버킷 → 접근 로그 + Activity Tracer Export 이벤트 필터",
+    "cmd": "ncloud storage getBucketList --output json > buckets.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
   },
   {
     "target_id": "CT-NCP-RANSOM-004",
@@ -41,7 +70,16 @@
     "evidence_role": "CORROBORATING",
     "priority": 6,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NCP-RANSOM-005",
@@ -52,6 +90,16 @@
     "evidence_role": "CORROBORATING",
     "priority": 5,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Object Storage → 버킷 → 접근 로그 + Activity Tracer Export 이벤트 필터",
+    "cmd": "ncloud storage getBucketList --output json > buckets.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
   }
 ]

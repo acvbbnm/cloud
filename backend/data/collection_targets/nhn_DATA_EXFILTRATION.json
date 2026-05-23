@@ -8,7 +8,17 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (오프라인 알림 권장)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Storage → Object Storage → 컨테이너 액세스 로그 + CloudTrail object 이벤트",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
   },
   {
     "target_id": "CT-NHN-DE-002",
@@ -19,7 +29,16 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (오프라인 알림 권장)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NHN-DE-003",
@@ -30,6 +49,15 @@
     "evidence_role": "CORROBORATING",
     "priority": 5,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (오프라인 알림 권장)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   }
 ]

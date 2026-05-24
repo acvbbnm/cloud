@@ -61,6 +61,30 @@ if [ -n "$STAGED_TS" ]; then
   fi
 fi
 
+# ── 4) backend/ 또는 tests/ 변경 시 pytest 회귀 검사 (2026-05-24 추가) ──
+# 매처/시드/룰/풍부화/통합 5 모듈 129 케이스. Ollama 미실행 시 LLM fallback 으로
+# recommend_playbook 테스트도 정상 통과. CI 와 동일한 안전망을 로컬에도 도입.
+STAGED_BACKEND=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^backend/(core|api|data|tests)/' || true)
+if [ -n "$STAGED_BACKEND" ]; then
+  echo "─── pytest 회귀 검사 (backend/tests/ 129 케이스) ───"
+  if [ -d backend/tests ] && [ -x backend/.venv/Scripts/python.exe -o -x backend/.venv/bin/python ]; then
+    PYTEST_PY=${PYTHON:-python}
+    if [ -x backend/.venv/Scripts/python.exe ]; then
+      PYTEST_PY=backend/.venv/Scripts/python.exe
+    elif [ -x backend/.venv/bin/python ]; then
+      PYTEST_PY=backend/.venv/bin/python
+    fi
+    if (cd backend && "$PYTEST_PY" -m pytest tests/ -q --tb=line -x 2>&1 | tail -20); then
+      echo "  ✓ pytest 통과"
+    else
+      echo "  ❌ pytest 실패 — 위 로그 확인"
+      errors=$((errors+1))
+    fi
+  else
+    echo "  ⚠ backend/tests 또는 venv 없음 — pytest 건너뜀"
+  fi
+fi
+
 if [ $errors -gt 0 ]; then
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

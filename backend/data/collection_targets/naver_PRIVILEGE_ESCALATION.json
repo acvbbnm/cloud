@@ -8,7 +8,17 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
   },
   {
     "target_id": "CT-NCP-PRIV-002",
@@ -19,7 +29,17 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
   },
   {
     "target_id": "CT-NCP-PRIV-003",
@@ -30,7 +50,16 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NCP-PRIV-004",
@@ -41,6 +70,15 @@
     "evidence_role": "CORROBORATING",
     "priority": 5,
     "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   }
 ]

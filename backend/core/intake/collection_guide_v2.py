@@ -678,6 +678,50 @@ def _compute_collection_status(
 
 
 # ─────────────────────────────────────────────────────────────
+# v1 시드 풍부 메타 로더 (2026-05-23 사이클 6)
+# ─────────────────────────────────────────────────────────────
+# v1 collection_targets/{csp}_{TYPE}.json 의 풍부 필드 (hint/cmd/layer/
+# mitre_techniques 등) 를 V-1 Step 4 가 활용할 수 있도록 응답에 포함.
+# v2 categories 와는 별도 데이터 — 사고유형별 구체 수집 방법·CLI 명령 노출용.
+
+
+def _load_v1_seed_targets(incident_type: str, csp: str) -> list[dict]:
+    """v1 collection_targets/{csp}_{incident_type}.json 로딩 (없으면 빈 리스트)."""
+    path = settings.DATA_DIR / "collection_targets" / f"{csp}_{incident_type}.json"
+    if not path.exists():
+        return []
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if not isinstance(rows, list):
+        return []
+    # 응답용 슬림화 — V-1 Step 4 가 표시할 필드만
+    out: list[dict] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        out.append({
+            "target_id": r.get("target_id"),
+            "log_type": r.get("log_type"),
+            "description": r.get("description"),
+            "evidence_role": r.get("evidence_role"),
+            "priority": r.get("priority"),
+            "storage_path": r.get("storage_path"),
+            "retention_days": r.get("retention_days"),
+            # 사이클 6 풍부화 필드
+            "layer": r.get("layer"),
+            "hint": r.get("hint"),
+            "cmd": r.get("cmd"),
+            "auto_collectible": r.get("auto_collectible"),
+            "mitre_techniques": r.get("mitre_techniques") or [],
+        })
+    # priority 내림차순 + evidence_role REQUIRED 우선
+    out.sort(key=lambda x: (x.get("evidence_role") != "REQUIRED", -(x.get("priority") or 0)))
+    return out
+
+
+# ─────────────────────────────────────────────────────────────
 # 공개 API
 # ─────────────────────────────────────────────────────────────
 
@@ -728,7 +772,10 @@ class CollectionGuideV2:
         # 5) phase 별 그룹화 + 정렬 (정렬은 _group_by_phase 내부에서 priority 기준)
         grouped = _group_by_phase(categories, phases, collected_map)
 
-        # 6) 응답 조립 — environment_warnings 는 phase 와 분리하여 별도 영역
+        # 6) 사이클 6 — v1 시드 풍부 메타 (hint/cmd/mitre_techniques) 추가 노출
+        seed_targets = _load_v1_seed_targets(incident_type, csp)
+
+        # 7) 응답 조립 — environment_warnings 는 phase 와 분리하여 별도 영역
         return {
             "caseId": case_id,
             "incidentType": incident_type,
@@ -738,5 +785,7 @@ class CollectionGuideV2:
             "environment_warnings": _format_env_warnings(extra_targets),
             "applied_modifiers": applied_modifiers,
             "source_standards": cls.SOURCE_STANDARDS,
+            # 2026-05-23 사이클 6 — v1 시드 풍부 메타 (V-1 Step 4 가이드 표시용)
+            "seed_targets": seed_targets,
             "version": "v2",
         }

@@ -8,7 +8,17 @@
     "evidence_role": "REQUIRED",
     "priority": 10,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Storage → Object Storage → 컨테이너 액세스 로그 + CloudTrail object 이벤트",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
   },
   {
     "target_id": "CT-NHN-INSIDER-002",
@@ -19,7 +29,17 @@
     "evidence_role": "REQUIRED",
     "priority": 9,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → iam.member.role.update 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
   },
   {
     "target_id": "CT-NHN-INSIDER-003",
@@ -30,7 +50,16 @@
     "evidence_role": "REQUIRED",
     "priority": 8,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NHN-INSIDER-004",
@@ -41,7 +70,16 @@
     "evidence_role": "CORROBORATING",
     "priority": 6,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
   },
   {
     "target_id": "CT-NHN-INSIDER-005",
@@ -52,6 +90,15 @@
     "evidence_role": "CORROBORATING",
     "priority": 5,
     "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
-    "retention_days": 90
+    "retention_days": 90,
+    "layer": "network",
+    "hint": "NHN Console → Compute → Instance / VPC → CloudTrail iaas.instance/vpc 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1485",
+      "T1489"
+    ]
   }
 ]

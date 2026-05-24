@@ -81,6 +81,7 @@ SECTION_KEYS = [
     "recommendation",
     "evidence",
     "comments",
+    "scope_disclaimer",
 ]
 
 SECTION_TITLES_KO = {
@@ -92,6 +93,7 @@ SECTION_TITLES_KO = {
     "recommendation": "6. 권고 사항",
     "evidence": "7. 증거 목록",
     "comments": "8. 수사관 코멘트",
+    "scope_disclaimer": "9. 분석 범위 및 권장 보조 도구 (PDF 4단계 책임 분할)",
 }
 
 
@@ -309,6 +311,23 @@ class ReportGenerator:
         # ── 섹션 8: 수사관 코멘트 (빈칸) ──
         comments = "(수사관이 직접 작성)"
 
+        # ── 섹션 9: 분석 범위 명시 (P4 — 2026-05-25, PDF 4단계 책임 분할) ──
+        # PDF 「클라우드 침해사고 대응(DFIR) 및 포렌식 방법론 심층 분석」 4단계
+        # (가상 컴퓨팅 자원 디스크/메모리 포렌식) 는 본 시스템의 범위 외임을 명시.
+        # 본 시스템은 제어평면 로그 분석 + ATT&CK 매핑 + 보고서 자동화에 집중하며,
+        # 호스트 디스크/메모리 분석은 별도 오픈소스 도구 권장 (PDF 5장).
+        scope_disclaimer = (
+            "※ 본 보고서는 클라우드 제어평면(Control Plane) 로그 + ATT&CK 매핑 + 갭 분석 결과입니다.\n"
+            "다음 영역은 본 시스템의 분석 범위가 아니므로 별도 도구를 권장합니다:\n"
+            "  · 가상머신 디스크 포렌식 — The Sleuth Kit (TSK) · Plaso (log2timeline)\n"
+            "  · 휘발성 메모리(RAM) 포렌식 — LiME (Linux Memory Extractor) · Volatility 3 · ssm-acquire\n"
+            "  · 컨테이너·런타임 위협 탐지 — Sysdig Falco · Stratoshark · OPA\n"
+            "  · Microsoft 365 / Entra ID 침해 — Hawk · DFIR-O365RC · Microsoft-Analyzer-Suite\n"
+            "  · 호스트 자동 증거 수집 — Google cloud-forensics-utils · Cado Host\n"
+            "근거: NIST SP 800-61r2 + Palo Alto Unit 42 + Mandiant 클라우드 DFIR 방법론 (책임 공유 모델).\n"
+            "본 시스템은 위 도구로 추출된 별도 아티팩트와 결합해 사용해 주세요."
+        )
+
         report = {
             "caseId": case_id,
             "sections": {
@@ -320,6 +339,7 @@ class ReportGenerator:
                 "recommendation": recommendation,
                 "evidence": evidence,
                 "comments": comments,
+                "scope_disclaimer": scope_disclaimer,
             },
             "status": "draft",
             "created_at": datetime.utcnow().isoformat(),

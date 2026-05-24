@@ -1,12 +1,13 @@
-"""recommend_playbook LLM 보강 회귀 테스트 (2026-05-24 마지막 깡통 해소).
+"""recommend_playbook 3-tier 라우팅 회귀 테스트 (2026-05-24 P2 머지 통합).
 
 검증:
-  · 빈 chain 입력 시 안전한 빈 응답 (예외 X)
-  · 정상 chain 입력 시 응답 스키마 정합 (playbooks/summary/summary_sources/chain)
+  · 빈 chain + incident_type 없음 → 빈 playbooks (예외 X)
+  · 정상 chain 입력 시 응답 스키마 정합 (playbooks/tier_summary/incident_type/message)
   · KB 검색이 작동하면 playbooks 반환 (PLAYBOOK 카테고리 한정)
+  · 각 playbook 에 match_score / match_tier 메타 포함 (G3 결정)
 
-LLM 호출 자체는 Ollama 미연결 시 fallback 으로 summary=None 반환되어 테스트 안정.
-실 LLM 응답 품질은 E2E 시 검증 (CI 환경에선 unit test 만).
+G2 결정 (2026-05-24, byungwoo+jingyu 머지): 결정론 3-tier 채택. 근형 안의
+RAG+LLM 결합 요약 (summary/summary_sources/chain) 은 chat 으로 중복 가능하므로 제거.
 """
 from __future__ import annotations
 
@@ -14,23 +15,25 @@ from core.sherpa.ai_sherpa import AISherpa
 
 
 def test_recommend_playbook_empty_chain_returns_empty():
-    """빈 chain 입력 → 빈 playbooks + summary=None (예외 X)."""
+    """빈 chain + incident_type 미지정 → 빈 playbooks (예외 X)."""
     result = AISherpa.recommend_playbook([])
     assert result["playbooks"] == []
-    assert result["summary"] is None
+    assert result["tier_summary"] == {}
 
 
 def test_recommend_playbook_response_schema():
-    """정상 chain 입력 시 응답 스키마 4 필드 (playbooks/summary/summary_sources/chain)."""
+    """정상 chain 입력 시 3-tier 응답 스키마: playbooks/tier_summary/incident_type/message."""
     result = AISherpa.recommend_playbook(["T1078.004", "T1098"])
     assert "playbooks" in result
-    assert "summary" in result
-    # chain 보존 — 빈 응답 시에도 추가됐는지 확인 (개선된 응답이 chain 키를 항상 보유해야 함)
-    # 빈 chain 케이스에선 chain 키 없을 수 있으므로 정상 chain 일 때만 검증
-    if result["playbooks"]:
-        assert "summary_sources" in result
-        assert "chain" in result
-        assert result["chain"] == ["T1078.004", "T1098"]
+    assert "tier_summary" in result
+    assert "incident_type" in result
+    assert "message" in result
+    # tier_summary 는 dict — tier1/tier2/tier3 카운트
+    ts = result["tier_summary"]
+    assert isinstance(ts, dict)
+    assert "tier1_exact" in ts
+    assert "tier2_common" in ts
+    assert "tier3_keyword" in ts
 
 
 def test_recommend_playbook_playbook_items_have_required_fields():

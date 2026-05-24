@@ -279,9 +279,22 @@ class AISherpa:
                 ensure_ascii=False,
             ) + "\n"
 
-        # 종료 마커 + ChatSession 누적 저장 (assistant 한 번에)
-        ChatSession.append(sess.session_id, "assistant", "".join(full_text_parts))
-        yield _json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
+        # Phase 2.5 — 종료 시점 sanitize: stream 으로 흘러간 raw 답변에 KB 외 T-id 가
+        # 섞였을 수 있으므로, 누적 텍스트를 한 번 더 검증하여 [KB외:T1234] 라벨링.
+        raw_text = "".join(full_text_parts)
+        from core.sherpa.llm_engine import _sanitize_response  # 순환 import 회피용 지연 임포트
+
+        sanitized = _sanitize_response(raw_text, context_chunks)
+
+        # ChatSession 에는 sanitized 버전 저장 (재조회 시 일관)
+        ChatSession.append(sess.session_id, "assistant", sanitized)
+
+        # done 메시지에 sanitized 텍스트 첨부 — 클라이언트가 raw 표시 직후
+        # sanitized 로 교체하면 환각 라벨이 사용자에게 노출됨.
+        yield _json.dumps(
+            {"type": "done", "sanitized": sanitized},
+            ensure_ascii=False,
+        ) + "\n"
 
     # ── suggest (후순위 깡통) ──
     @classmethod
@@ -406,55 +419,72 @@ class AISherpa:
             ),
         }
 
-    # ── playbook (RAG + LLM 결합, 2026-05-24 마지막 깡통 해소) ──
+    # ── playbook (Phase 2.5 — incident_type 3-tier 라우팅, P2) ──
     @classmethod
     def recommend_playbook(
         cls,
         chain: list[str],
         incident_type: Optional[str] = None,
+        csp: Optional[str] = None,
     ) -> dict:
-        """기법 chain 에 해당하는 플레이북 RAG 검색 + LLM 맥락화 요약.
+        """기법 chain 에 해당하는 플레이북 KB 검색 — 3-tier 사고유형 라우팅.
 
-        흐름:
-          1. chain (technique_id 리스트) → PLAYBOOK KB 청크 RAG 검색 (k=6, 확장)
-          2. incident_type 지정 시 lane 필터 — chunk.meta['incident_type'] ∈ {lane, 'ALL'} 만 유지 (KB audit 2026-05-24, B 지표 47.6% 개선)
-          3. 상위 3건만 LLM 컨텍스트로 사용
-          4. 각 청크에서 기본 steps 추출 (KB 원본)
-          5. LLM 호출로 chain 컨텍스트에 맞춰 우선순위·요약 추가
-             (기존 KB 검색 결과를 컨텍스트로 주입, AI 가 정렬·요약만 — 판단 X)
-          6. summary 필드를 응답에 첨부 (KB 출처 인용 + 수사관 판단 문구 포함)
+        외부 IR 도구 리서치 결과(AWS Customer Playbook Framework·Wiz·CrowdStrike·
+        D3 SOAR) 의 공통 패턴을 적용한다:
 
-        결정성: KB 검색은 결정성 100%. LLM 요약은 매번 다를 수 있어 출처 칩으로 검증 가능.
-        Fallback: LLM 호출 실패 시 summary 없이 KB 청크만 반환 (안전).
+          Tier 1 (직접): incident_type 정확 일치 PLAYBOOK chunk         score 1.0
+                  └ AWS aws-customer-playbook-framework 의 1:1 매핑 패턴
+          Tier 2 (공통): incident_type=="ALL" PLAYBOOK chunk            score 0.8
+                  └ Wiz·NIST 800-61r2·KISA 의 공통 IR 절차
+          Tier 3 (fallback): chain keyword 매칭 (기존 RAG)              score 0.5
+                  └ incident_type 미확정 케이스 (D3 SOAR fallback)
 
-        Args:
-            chain: 공격 체인의 technique_id 리스트 (예: ["T1078.004", "T1530"])
-            incident_type: 케이스의 사고유형 (선택). 지정 시 lane 필터 적용.
+        incident_type=None 이면 Tier 1 건너뛰고 Tier 2 + Tier 3 만 사용.
+        결과는 score 내림차순 정렬, 중복 chunk_id 제거, 최대 5건 반환.
+
+        G2/G3 결정 (회의 2026-05-24, 머지 통합): 결정론 3-tier 채택. 근형 안의
+        RAG+LLM 결합 요약은 chat 모드로 수사관이 별도 질의 가능하므로 제거 (중복).
+        LLM 환각 위험 회피 + 시연 결정성 보장.
         """
-        if not chain:
-            return {"playbooks": [], "summary": None}
+        if not chain and not incident_type:
+            return {"playbooks": [], "tier_summary": {}}
 
-        query = " ".join(chain)
-        # lane 필터 적용을 위해 retrieve k 를 크게 받음 — 필터 후 top-3 사용.
-        # k=20 권장 — PLAYBOOK KB 총 25청크 기준 lane 매칭 풀이 충분히 확보됨.
-        k_initial = 20 if incident_type else 3
-        scored = RAGRetriever.retrieve(query, k=k_initial, kb_filter=["PLAYBOOK"])
+        from core.sherpa.knowledge_base import load_all  # 지연 import (순환 회피)
 
-        # P1 lane 정합 — incident_type 이 지정되면 strict filter:
-        # 매칭되는 lane 또는 ALL 청크만 통과. 매칭 0건이면 빈 결과 반환.
-        # (KB audit 2026-05-24, B 지표 47.6% → 100% 목표. 잘못된 lane 추천보다 honest empty.)
+        all_chunks = [c for c in load_all() if c.kb_name == "PLAYBOOK"]
+        # chunk_id → (score, tier, chunk) — 같은 chunk 가 여러 tier 에서 잡히면 최고 score 유지
+        scored: dict[str, tuple[float, str, KBChunk]] = {}
+
+        def _add(chunk: KBChunk, score: float, tier: str) -> None:
+            existing = scored.get(chunk.chunk_id)
+            if existing is None or existing[0] < score:
+                scored[chunk.chunk_id] = (score, tier, chunk)
+
+        # Tier 1 — incident_type 정확 매칭
         if incident_type:
-            allowed_lanes = {incident_type, "ALL", None}  # None = lane 미지정 KB 호환
-            scored = [
-                (c, s) for (c, s) in scored
-                if c.meta.get("incident_type") in allowed_lanes
-            ][:3]
-        else:
-            scored = scored[:3]
+            for c in all_chunks:
+                if c.meta.get("incident_type") == incident_type:
+                    _add(c, 1.0, "tier1_exact")
+
+        # Tier 2 — 공통 playbook (incident_type == "ALL")
+        for c in all_chunks:
+            if c.meta.get("incident_type") == "ALL":
+                _add(c, 0.8, "tier2_common")
+
+        # Tier 3 — chain keyword fallback (incident_type 미확정 또는 매칭 보강)
+        if chain:
+            query = " ".join(chain)
+            for c, raw in RAGRetriever.retrieve(query, k=5, kb_filter=["PLAYBOOK"]):
+                # 키워드 score (0~수십) 를 0.5 base + 정규화로 변환
+                _add(c, 0.5 + min(raw / 100.0, 0.2), "tier3_keyword")
+
+        # score 내림차순 정렬, 최대 5건
+        ranked = sorted(scored.values(), key=lambda x: -x[0])[:5]
 
         playbooks: list[dict] = []
-        kb_chunks_for_llm = []
-        for c, _ in scored:
+        tier_count = {"tier1_exact": 0, "tier2_common": 0, "tier3_keyword": 0}
+        for score, tier, c in ranked:
+            tier_count[tier] += 1
             steps = [s.strip() for s in c.text.split("\n") if s.strip()]
             playbooks.append(
                 {
@@ -463,37 +493,20 @@ class AISherpa:
                     "steps": steps[:10],
                     "tactics_addressed": c.meta.get("tactics_addressed", []),
                     "incident_type": c.meta.get("incident_type"),
+                    "match_score": round(score, 2),
+                    "match_tier": tier,
                     "sources": [_source_dict(c)],
                 }
             )
-            kb_chunks_for_llm.append(c)
-
-        # LLM 맥락화 요약 — 사용자가 보고 있는 attack chain 에 맞춰
-        # 플레이북 우선순위·핵심 단계를 정리. KB 청크만 컨텍스트로 사용.
-        summary: Optional[str] = None
-        sources: list[dict] = []
-        if kb_chunks_for_llm:
-            chain_str = " → ".join(chain)
-            llm_prompt = (
-                f"수사관이 발견한 ATT&CK 공격 체인: {chain_str}\n\n"
-                f"위 KB 의 플레이북 {len(kb_chunks_for_llm)} 건을 분석해 다음을 해 주세요:\n"
-                f"1. 어떤 플레이북이 이 체인에 가장 적합한지 우선순위\n"
-                f"2. 즉시 수행해야 할 최우선 3 단계 추출 (출처 [1], [2] 형식 인용)\n"
-                f"3. 각 단계의 목적·기대 효과 한 줄"
-            )
-            try:
-                summary = LLMEngine.generate(prompt=llm_prompt, context=kb_chunks_for_llm)
-                sources = [_source_dict(c) for c in kb_chunks_for_llm]
-            except Exception:
-                # LLM 실패 — KB 결과만 반환 (graceful degrade)
-                summary = None
-                sources = []
 
         return {
             "playbooks": playbooks,
-            "summary": summary,
-            "summary_sources": sources,
-            "chain": chain,
+            "tier_summary": tier_count,
+            "incident_type": incident_type,
+            "message": (
+                f"{len(playbooks)}건 추천 (직접 {tier_count['tier1_exact']}·"
+                f"공통 {tier_count['tier2_common']}·키워드 {tier_count['tier3_keyword']})"
+            ),
         }
 
     # ── KB 인덱스 노출용 ──

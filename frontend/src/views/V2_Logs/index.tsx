@@ -257,15 +257,13 @@ const V2Logs = () => {
             onToggle={toggleOne}
             onToggleAll={toggleAll}
           />
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
           {totalEvents > PAGE_SIZE && (
-            <div className="text-[10.5px] text-ink-500 text-right mt-1">
-              총 {totalEvents.toLocaleString()}건 · {PAGE_SIZE}건씩 표시
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mt-3"
+            />
           )}
         </Card>
       </PageBody>

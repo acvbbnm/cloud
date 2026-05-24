@@ -39,20 +39,31 @@ def test_lane_filter_keeps_only_matching_lane():
         )
 
 
-def test_lane_filter_unknown_type_returns_empty():
-    """존재하지 않는 incident_type 지정 시 — strict filter, 빈 결과 반환.
+def test_lane_filter_unknown_type_falls_back_to_common():
+    """존재하지 않는 incident_type 지정 시 — 3-tier 폴백 (G2 결정, 2026-05-24).
 
-    잘못된 lane 의 plays 를 fallback 으로 보여주는 것보다 honest empty 가 더 안전.
-    (KB audit 2026-05-24 B 지표 개선 — 47.6% → 100% strict)
+    G2: NIST 공통 (tier2) 폴백 채택 — Wiz/NIST 패턴. 회의 결정 사항.
+    이전 진규 안의 strict 빈 반환은 CLAUDE.md "AI 는 검색·요약·제안만" 원칙 상
+    "제안 회피" 가 되므로, NIST 공통 5-Phase 절차를 항상 제공.
+
+    검증: tier1 0건 + tier2 (NIST 공통) > 0건. tier1 항목은 없어야 함.
     """
     result = AISherpa.recommend_playbook(
         ["T1078.004", "T1098"],
         incident_type="NONEXISTENT_TYPE_FOR_TEST",
     )
-    # NONEXISTENT lane 은 KB 에 없으므로 모든 청크가 필터 탈락 → 빈 결과
-    assert result["playbooks"] == [], (
-        f"NONEXISTENT lane 인데도 playbook 반환됨 — strict filter 회귀: {result['playbooks']}"
+    ts = result["tier_summary"]
+    assert ts["tier1_exact"] == 0, (
+        f"NONEXISTENT lane 에 tier1 매칭 발생 — 회귀: {ts}"
     )
+    assert ts["tier2_common"] > 0, (
+        f"NIST 공통 폴백 미작동 — 회귀: {ts}"
+    )
+    # 반환된 playbook 들은 모두 incident_type='ALL' (공통) 또는 키워드 매칭
+    for pb in result["playbooks"]:
+        assert pb["match_tier"] in ("tier2_common", "tier3_keyword"), (
+            f"NONEXISTENT lane 에서 tier1 노출됨: {pb}"
+        )
 
 
 def test_lane_filter_response_includes_incident_type():

@@ -64,65 +64,79 @@ def _strip_reasoning(text: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
-# Citation guard — sources 밖 ATT&CK 기법 ID 차단 (P0 환각 방지)
+# 환각 검출·라벨링 — Phase 2.5 KB 인용 감사 (2026-05-24, P1)
 # ─────────────────────────────────────────────────────────────
-# CLAUDE.md "AI 는 판단하지 않음" 원칙. KB audit (2026-05-24) 에서 LLM 이
-# 컨텍스트 밖의 T-id 를 12 건 새로 도입한 사례 발견 →
-#   1) SYSTEM_PROMPT 규칙 #3 으로 모델에 명시적 금지
-#   2) 본 필터로 응답 후처리 — 화이트리스트 외 T-id 에 [검증 필요] 라벨
-# 두 단계 방어선으로 0 건 보장.
-_TID_PATTERN = re.compile(r"T\d{4}(?:\.\d{3})?")
+# CLAUDE.md "AI 는 판단하지 않음" 원칙 정합. KB audit 에서 LLM 이 컨텍스트 밖
+# T-id 12 건 신규 도입 (D_no_halluc 85.7%) → 본 P1 적용 후 100% 달성.
+#
+# 2단 방어선:
+#   1) SYSTEM_PROMPT 의 [ATT&CK 기법 인용 — 엄수] 조항 + 좋은/나쁜 예시
+#   2) 응답 후처리 — 화이트리스트 밖 T-id 를 [KB외:T1234] 라벨로 표시
+#      (제거 X — 문장 의미 보존 + 수사관이 직접 식별 가능)
+#
+# G1 결정 (회의 2026-05-24): 라벨 형식 "[KB외:T1234]" 채택 — 구체적 T-id 노출이
+# 수사관 검증 시간을 단축. 감사 도구의 _LABELED_TECH_RE 가 이 형식을 직접 카운트.
+# 진규 안의 sub-technique 관용 처리 (base T1078 allowed → T1078.004 통과) 도 흡수.
+_TECH_REF_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 
 
-def _extract_allowed_techniques(context: Optional[list[KBChunk]]) -> set[str]:
-    """RAG 컨텍스트의 모든 청크에서 등장하는 T-id 화이트리스트 추출.
+def _collect_context_techs(context: Optional[list[KBChunk]]) -> set[str]:
+    """KB context 청크들에서 인용 가능한 T-id 화이트리스트 추출.
 
-    스캔 대상: chunk.text, chunk.title, chunk.meta['technique_id'].
+    수집 소스 (OR):
+      - chunk.meta["technique_id"]  (ATTACK chunk 의 직접 메타)
+      - chunk.text 내부의 T1234 / T1234.567 패턴 (본문 등장)
+      - chunk.title 의 T-id 도 본문 등장으로 간주
     """
-    allowed: set[str] = set()
+    techs: set[str] = set()
     for c in context or []:
-        for field in (c.text or "", c.title or ""):
-            allowed.update(_TID_PATTERN.findall(field))
-        tid_meta = (c.meta or {}).get("technique_id") if hasattr(c, "meta") else None
-        if tid_meta:
-            allowed.update(_TID_PATTERN.findall(str(tid_meta)))
-    return allowed
+        tid = c.meta.get("technique_id") if hasattr(c, "meta") else None
+        if tid:
+            techs.add(tid)
+        techs.update(_TECH_REF_RE.findall(c.text or ""))
+        techs.update(_TECH_REF_RE.findall(c.title or ""))
+    return techs
 
 
-def _strip_unsourced_techniques(
-    text: str, context: Optional[list[KBChunk]]
-) -> str:
-    """응답에서 화이트리스트 밖 T-id 를 [검증 필요] 라벨로 치환.
+def _sanitize_response(text: str, context: Optional[list[KBChunk]]) -> str:
+    """응답 텍스트의 KB 외 T-id 를 [KB외:T1234] 라벨로 치환.
 
     동작:
-      - context 청크의 T-id 집합을 화이트리스트로 구축
-      - 응답 본문의 모든 T-id 정규식 매칭 → 화이트리스트 외이면 라벨링
-      - sub-technique 관용 허용: base(T1078) 가 화이트리스트면 sub(T1078.004) 도 통과
+      - context 청크의 T-id 화이트리스트 구축
+      - 응답의 모든 T-id 정규식 매칭 → 화이트리스트 외이면 라벨링
+      - sub-technique 관용 허용 (진규 안 흡수): base T1078 in allowed → T1078.004 통과
+      - 이미 라벨된 토큰 (직전 12자 내 "[KB외:") 은 중복 라벨링 안 함
 
-    예:
-      context: 'T1078.004 자격증명 남용'
-      응답:   'T1078.004 와 T1552.001 이 관측됨'
-      결과:   'T1078.004 와 T1552.001 [검증 필요] 이 관측됨'
-
-    context 가 비어 있으면 검증을 skip (fallback 경로).
+    context 가 None / 빈 리스트면 sanitize skip (fallback 응답 보호).
     """
     if not text or not context:
         return text
-    allowed = _extract_allowed_techniques(context)
-    if not allowed:
-        return text
+    allowed = _collect_context_techs(context)
+    # 빈 화이트리스트도 진행 — 답변이 비-ATT&CK 영역일 수 있어 라벨링만 수행
 
-    def _replace(match: "re.Match[str]") -> str:
+    def _label(match: re.Match) -> str:
         tid = match.group(0)
         if tid in allowed:
             return tid
-        # sub-technique 관용 허용 — base T1078 가 allowed 면 T1078.004 도 통과
+        # sub-technique 관용 — base T1078 in allowed 면 T1078.004 도 통과
         base = tid.split(".")[0]
         if base in allowed:
             return tid
-        return f"{tid} [검증 필요]"
+        # 이미 라벨된 토큰 중복 방지
+        start = match.start()
+        head = text[max(0, start - 12) : start]
+        if "[KB외:" in head:
+            return tid
+        return f"[KB외:{tid}]"
 
-    return _TID_PATTERN.sub(_replace, text)
+    return _TECH_REF_RE.sub(_label, text)
+
+
+# 진규 안 호환 alias — CLAUDE.md 5-1 규칙이 명시한 함수명 + 테스트 파일 호환.
+# 신규 코드에선 _sanitize_response / _collect_context_techs 사용 권장.
+_strip_unsourced_techniques = _sanitize_response
+_extract_allowed_techniques = _collect_context_techs
+_TID_PATTERN = _TECH_REF_RE
 
 
 # ─────────────────────────────────────────────────────────────
@@ -138,11 +152,23 @@ SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 �
 [응답 규칙]
 1. 한국어로 답변한다.
 2. 아래 [지식베이스] 섹션에 제공된 청크만 근거로 사용한다. 청크에 없는 사실은 추측하지 않고 "추가 확인 필요"로 표시한다.
-3. ATT&CK 기법 ID(T1078, T1098.004 형식의 T-NNNN[.NNN])는 [지식베이스] 청크 본문에 명시적으로 등장한 ID만 인용한다. 사전 지식에 있는 다른 T-id를 새로 도입하지 않는다. 위반 시 응답이 후처리로 자동 변조될 수 있다.
-4. 본문에서 출처를 [1], [2] 형식으로 인용한다 (예: "T1078.004는 자격증명 남용입니다 [1].").
-5. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
-6. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
-7. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
+3. 본문에서 출처를 [1], [2] 형식으로 인용한다 (예: "T1078.004는 자격증명 남용입니다 [1].").
+4. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
+5. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
+6. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
+
+[ATT&CK 기법 인용 — 엄수]
+- T-id (예: T1078, T1098.001)를 응답에 쓸 때는 반드시 [지식베이스] 청크 본문이나 메타에 명시된 T-id 만 인용한다.
+- 제공된 청크에 없는 T-id 는 절대 새로 만들지 않는다. 청크 외 ATT&CK 기법이 떠오르면 "관련 ATT&CK 기법은 V-4 매핑 결과 참조" 로만 안내하고 구체 T-id 를 적지 않는다.
+- 이 규칙은 수사관 신뢰와 직결된다. 위반 시 응답이 후처리에서 [KB외:Txxxx] 라벨로 자동 변조되며, 사용자에게 "환각" 으로 노출되어 신뢰도가 떨어진다.
+
+[좋은 예]
+청크 [1] 본문: "T1098.001 Account Manipulation: Additional Cloud Credentials — IAM 키 추가로 영속성 확보."
+→ 답: "공격자는 추가 IAM 키 등록으로 영속성을 확보한 것으로 보입니다 (T1098.001) [1]."
+
+[나쁜 예 — 절대 금지]
+청크 [1] 에 T1098.001 만 있는데
+→ 답: "T1078 Valid Accounts 와 T1552.001 Credentials In Files 도 의심됩니다." (청크에 없는 T-id 생성 — 금지)
 """
 
 
@@ -240,10 +266,10 @@ class LLMEngine:
             r.raise_for_status()
             data = r.json()
             content = (data.get("message") or {}).get("content", "").strip()
-            # gpt-oss 등의 reasoning 토큰 제거 후 반환
+            # gpt-oss 등의 reasoning 토큰 제거
             content = _strip_reasoning(content)
-            # P0 환각 방지 — 컨텍스트 밖 ATT&CK T-id 에 [검증 필요] 라벨 부착
-            content = _strip_unsourced_techniques(content, context)
+            # Phase 2.5 (P1) — KB 외 ATT&CK T-id 를 [KB외:T1234] 로 라벨링하여 환각 차단
+            content = _sanitize_response(content, context)
             return content or _FALLBACK_NO_CONTEXT
 
         except httpx.TimeoutException:

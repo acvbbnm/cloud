@@ -15,7 +15,7 @@
 
 전략:
   llm_engine._strip_unsourced_techniques(text, context) 가
-  context 청크 밖 T-id 를 모두 [검증 필요] 라벨로 치환하는지 검증.
+  context 청크 밖 T-id 를 모두 [KB외:...] 라벨로 치환하는지 검증.
 """
 import pytest
 
@@ -79,14 +79,14 @@ class TestStripUnsourcedTechniques:
         chunks = [_make_chunk("T1078.004 는 자격증명 남용입니다.")]
         resp = "T1552.001 도 같이 확인해야 합니다."
         result = _strip_unsourced_techniques(resp, chunks)
-        assert "T1552.001 [검증 필요]" in result
+        assert "[KB외:T1552.001]" in result
 
     def test_subtechnique_allowed_when_base_in_chunks(self):
         """base T1098 이 화이트리스트면 sub T1098.001 도 통과 (관용 허용)."""
         chunks = [_make_chunk("T1098 은 계정 조작입니다.")]
         resp = "T1098.001 은 자격증명 변경입니다."
         result = _strip_unsourced_techniques(resp, chunks)
-        assert "[검증 필요]" not in result
+        assert "[KB외:" not in result
         assert "T1098.001" in result
 
     def test_mixed_response(self):
@@ -96,7 +96,7 @@ class TestStripUnsourcedTechniques:
         result = _strip_unsourced_techniques(resp, chunks)
         assert "T1078.004 와" in result  # 허용 통과
         assert "T1530 도" in result       # 허용 통과
-        assert "T1552.001 [검증 필요]" in result  # 금지 라벨
+        assert "[KB외:T1552.001]" in result  # 금지 라벨
 
     def test_empty_context_skips(self):
         """context 비면 검증 skip — fallback 경로 보호."""
@@ -140,12 +140,12 @@ def test_known_hallucination_labeled(incident_type, tid):
     """사용자 audit (2026-05-24) 12 환각 사례 — 모두 라벨링되는지 회귀 차단.
 
     context 에는 환각과 무관한 다른 T-id 만 두고, 환각 T-id 가 응답에 들어가면
-    [검증 필요] 라벨이 부착되어야 한다.
+    [KB외:...] 라벨이 부착되어야 한다.
     """
     # 환각과 다른 무관 T-id 만 context 에 둠 (sub 관용 허용에 걸리지 않도록 base 분리)
     chunks = [_make_chunk("T9999 는 테스트 전용 무관 기법입니다.")]
     resp = f"{incident_type} 케이스에서 {tid} 가 관찰되었습니다."
     result = _strip_unsourced_techniques(resp, chunks)
-    assert f"{tid} [검증 필요]" in result, (
+    assert f"[KB외:{tid}]" in result, (
         f"{incident_type} 의 환각 T-id {tid} 가 라벨링되지 않음 — 회귀 발생"
     )

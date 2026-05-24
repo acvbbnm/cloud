@@ -1,39 +1,29 @@
 /**
- * 결정 트리 단일 질문 컴포넌트 — V-1 Step 2 Discovery Loop 의 ③ 결정 트리.
+ * 결정 트리 단일 질문 — 세로 트리형 가능성 리스트 + 확정 시 잔여 옵션 소거.
  *
- * UX (2026-05-22 갱신):
- *   - 옵션 카드를 가능성(prospects)으로 노출. 각 옵션 아래에 "선택 시 다음 질문" 프리뷰.
- *   - 옵션을 선택하면 비채택 옵션이 페이드아웃 + 축소되고 선택 옵션이 강조됨.
- *   - "확정 →" 버튼으로 부모에게 답변 전달 → 부모는 next_node 로 이동.
- *   - multi_select 의 경우 다중 선택 가능 (페이드 동작은 미선택 옵션에만 적용).
+ * 동작:
+ *   1. 모든 옵션을 트리 가지(├─ └─)로 노출 — "가능성 항목"
+ *   2. 사용자가 옵션 클릭 → 미선택 옵션 흐려짐 (preview)
+ *   3. "확정 → 다음" 클릭 → 미선택 옵션 fade-out → parent.onSubmit
  *
- * 학술 근거 표시: kisa_field 가 있으면 우측 상단 칩으로 출처 명시.
+ * single_select / multi_select 자동 분기. 학술 근거 표시: kisa_field 칩.
  */
 import { useState } from 'react';
 
 import Badge from '@/components/Badge';
 
 import type { TriageTreeNode } from '@/types';
-import type { TreeVisualizationNode } from '@/api/triage';
 
 interface DecisionTreeQuestionProps {
   node: TriageTreeNode;
-  /** 진행 단계 표시 (예: 2 / 3) — 옵션 */
   step?: number;
   totalEstimated?: number;
-  /** 부모가 다음 노드로 진행. answer_ids 는 선택된 옵션 id 배열. */
   onSubmit: (answerIds: string[]) => void;
-  /** 트리 시작점으로 되돌리기 (옵션) */
   onReset?: () => void;
-  /** 로딩 표시 (백엔드 요청 중) */
   loading?: boolean;
-  /**
-   * 트리 전체 노드 라벨 맵 — `/api/triage/tree` 응답을 부모가 prefetch 해서 전달.
-   * 옵션의 next 노드 id 로 다음 질문 라벨을 조회해 옵션 카드 하단에 프리뷰 표시.
-   * 없으면 프리뷰 미표시 (안전한 fallback).
-   */
-  nodeLabelMap?: Record<string, TreeVisualizationNode>;
 }
+
+const FADE_MS = 280;
 
 const DecisionTreeQuestion = ({
   node,
@@ -42,38 +32,43 @@ const DecisionTreeQuestion = ({
   onSubmit,
   onReset,
   loading,
-  nodeLabelMap,
 }: DecisionTreeQuestionProps) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState(false);
   const multi = !!node.multi_select;
 
   const toggle = (id: string) => {
+    if (confirming || loading) return;
     if (multi) {
       setSelectedIds((prev) =>
         prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
       );
     } else {
-      setSelectedIds((prev) => (prev[0] === id ? [] : [id]));
+      setSelectedIds([id]);
     }
   };
 
-  const handleSubmit = () => {
-    if (selectedIds.length === 0 || loading) return;
-    onSubmit(selectedIds);
-    setSelectedIds([]); // 다음 질문 위해 초기화
+  const handleConfirm = () => {
+    if (selectedIds.length === 0 || loading || confirming) return;
+    setConfirming(true);
+    window.setTimeout(() => {
+      onSubmit(selectedIds);
+      setSelectedIds([]);
+      setConfirming(false);
+    }, FADE_MS);
   };
 
   if (node.type === 'terminal') {
     return (
       <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12.5px]">
-        <div className="eyebrow mb-2">🏁 트리 종료</div>
+        <div className="eyebrow mb-2">트리 종료</div>
         <p className="text-ink-200 leading-6 whitespace-pre-line">
-          {node.message ??
-            '결정 트리가 종료되었습니다. 우측 가설 점수를 확인하세요.'}
+          {node.message ?? '결정 트리가 종료되었습니다. 우측 가설 점수를 확인하세요.'}
         </p>
         {node.fallback_incident_type && (
           <p className="text-[11px] text-ink-400 mt-2">
-            기본 사고유형: <code className="text-amber-300">{node.fallback_incident_type}</code>
+            기본 사고유형:{' '}
+            <code className="text-brand-amber font-mono">{node.fallback_incident_type}</code>
           </p>
         )}
         {onReset && (
@@ -85,14 +80,15 @@ const DecisionTreeQuestion = ({
     );
   }
 
-  const hasAnySelection = selectedIds.length > 0;
+  const options = node.options ?? [];
+  const lastIdx = options.length - 1;
 
   return (
-    <div>
+    <div className="font-mono">
       {/* 헤더 — 진행 단계 + KISA 출처 */}
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-          📋 결정 트리 질문
+          결정 트리 질문
           {step && totalEstimated && (
             <span className="ml-2 text-ink-500">
               {step} / {totalEstimated}
@@ -107,101 +103,85 @@ const DecisionTreeQuestion = ({
       </div>
 
       {/* 질문 */}
-      <div className="text-[14px] text-ink-100 font-semibold mb-3 leading-7">
+      <div className="text-[13.5px] text-ink-100 font-semibold mb-2 leading-6">
         Q. {node.question}
         {multi && (
-          <span className="ml-2 text-[10.5px] text-amber-300 font-normal">
+          <span className="ml-2 text-[10.5px] text-brand-amber font-normal">
             (다중 선택 가능)
           </span>
         )}
       </div>
 
-      {/* 옵션 — 가능성 리스트 (비채택은 페이드, 선택은 강조 + next 프리뷰 확장) */}
-      <div className="space-y-1.5">
-        {(node.options ?? []).map((opt) => {
+      {/* 옵션 — 세로 트리 가지 (├─ └─)
+          다중 선택(multi) 시 미선택 옵션을 흐리지 않음 → 추가 선택 가능 시각화.
+          단일 선택일 때만 흐림 처리 (다른 옵션 클릭 = 교체 신호). */}
+      <div className="text-[12.5px] leading-5">
+        {options.map((opt, i) => {
           const selected = selectedIds.includes(opt.id);
-          const dimmed = hasAnySelection && !selected;
-          const nextNode = opt.next && nodeLabelMap ? nodeLabelMap[opt.next] : undefined;
-          const nextLabel = nextNode?.label;
-          const nextIsTerminal = nextNode?.type === 'terminal';
-
+          const dimmed =
+            !multi && selectedIds.length > 0 && !selected && !confirming;
+          const hidden = confirming && !selected;
+          const isLast = i === lastIdx;
           return (
-            <button
+            <div
               key={opt.id}
-              onClick={() => toggle(opt.id)}
-              disabled={loading}
-              className={`w-full text-left rounded-xl px-3.5 py-2.5 border flex flex-col gap-1.5 transition-all duration-300 ${
-                selected
-                  ? 'border-brand-teal/80 bg-brand-teal/10 text-ink-100 shadow-[0_0_0_1px_rgba(45,212,191,0.5)]'
+              style={{ transitionDuration: `${FADE_MS}ms` }}
+              className={`flex items-start transition-all ease-out ${
+                hidden
+                  ? 'opacity-0 max-h-0 my-0 overflow-hidden'
                   : dimmed
-                  ? 'border-ink-800/60 bg-ink-900/30 text-ink-500 opacity-50 scale-[0.98]'
-                  : 'border-ink-700/70 bg-ink-900/60 text-ink-200 hover:border-brand-blue/40 hover:bg-ink-900'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  ? 'opacity-40'
+                  : 'opacity-100'
+              }`}
             >
-              <div className="flex items-center gap-2.5">
+              <span className="select-none shrink-0 w-7 text-ink-500 text-[12px] leading-8 text-center">
+                {isLast ? '└─' : '├─'}
+              </span>
+              <button
+                onClick={() => toggle(opt.id)}
+                disabled={loading || confirming}
+                className={`flex-1 text-left px-2.5 py-1.5 border my-0.5 transition-colors flex items-start gap-2 ${
+                  selected
+                    ? 'border-brand-amber bg-brand-amber/10 text-ink-50'
+                    : 'border-ink-700 bg-ink-900 text-ink-200 hover:border-brand-amber/50 hover:text-ink-100'
+                } disabled:cursor-not-allowed`}
+              >
+                {/* 다중=네모 체크박스 / 단일=원형 라디오 — 클릭 가능 신호 명확히 */}
                 <span
-                  className={`flex-shrink-0 w-4 h-4 ${
-                    multi ? 'rounded' : 'rounded-full'
-                  } border-2 flex items-center justify-center text-[10px] transition-colors ${
+                  className={`shrink-0 mt-0.5 w-3.5 h-3.5 border flex items-center justify-center text-[9px] ${
+                    multi ? '' : 'rounded-full'
+                  } ${
                     selected
-                      ? 'bg-brand-teal/80 border-brand-teal text-white'
+                      ? 'bg-brand-amber border-brand-amber text-ink-975'
                       : 'border-ink-600'
                   }`}
                 >
-                  {selected && (multi ? '✓' : '●')}
+                  {selected ? '✓' : ''}
                 </span>
-                <span className="text-[12.5px] leading-5 flex-1">{opt.label}</span>
-              </div>
-
-              {/* "선택 시 다음 질문" 프리뷰 — 선택 안 한 상태에서만 가능성으로 표시
-                  선택된 옵션은 더 진한 색으로 "확정 시 진입" 안내 */}
-              {nextLabel && (
-                <div
-                  className={`ml-6 flex items-start gap-1.5 text-[10.5px] leading-4 transition-opacity duration-300 ${
-                    selected
-                      ? 'text-brand-teal/90 font-medium'
-                      : dimmed
-                      ? 'text-ink-600 opacity-50'
-                      : 'text-ink-500'
-                  }`}
-                >
-                  <span aria-hidden className="select-none">↳</span>
-                  <span className="flex-1">
-                    {nextIsTerminal ? (
-                      <>
-                        <span className="text-amber-300/80">🏁 종료</span>
-                        <span className="ml-1 opacity-70">— {nextLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        다음 질문: <span className="font-medium">{nextLabel}</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-              )}
-            </button>
+                <span className="flex-1 leading-5 whitespace-normal break-words">{opt.label}</span>
+              </button>
+            </div>
           );
         })}
       </div>
 
-      {/* 안내 + 확정 버튼 */}
-      <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
+      {/* 확정 액션 */}
+      <div className="flex items-center justify-between mt-2.5 flex-wrap gap-2">
         <span className="text-[10.5px] text-ink-500">
-          {hasAnySelection
+          {selectedIds.length > 0
             ? multi
-              ? `${selectedIds.length}개 선택 — 다른 가능성은 회색 처리됨`
-              : '선택됨 — 확정하면 다음 질문으로 이동합니다'
+              ? `${selectedIds.length}개 선택 — 다른 항목을 더 클릭해 추가하거나 확정`
+              : `${selectedIds.length}개 선택 — 확정 시 다른 가능성 항목 제거`
             : multi
-            ? '가능성 항목 중 최소 1개 이상 선택'
-            : '가능성 항목 중 하나를 선택하세요'}
+            ? '여러 항목을 클릭해 모두 선택 가능'
+            : '가능성 항목 중 하나를 선택해주세요'}
         </span>
         <button
-          onClick={handleSubmit}
-          disabled={!hasAnySelection || loading}
+          onClick={handleConfirm}
+          disabled={selectedIds.length === 0 || loading || confirming}
           className="btn-primary btn-sm disabled:opacity-40"
         >
-          {loading ? '진행 중…' : '확정 →'}
+          {loading ? '진행 중…' : confirming ? '확정 중…' : '확정 → 다음'}
         </button>
       </div>
     </div>

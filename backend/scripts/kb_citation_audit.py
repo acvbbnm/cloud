@@ -134,7 +134,7 @@ def metric_d_no_hallucination(chunks: list[KBChunk]) -> tuple[float, str]:
         "T1078.004", "T1078.004",  # 동일 T-id 다른 lane 사례 (PRIVESC + INSIDER)
     ]
     # PLAYBOOK 외 청크 1건만 context 로 두고 12 환각 T-id 를 응답에 삽입
-    # _strip_unsourced_techniques 가 모두 [검증 필요] 로 라벨링해야 함
+    # _strip_unsourced_techniques 가 모두 [KB외:Txxxx] 로 라벨링해야 함
     cred_chunks = [c for c in chunks if c.kb_name == "ATTACK"][:1]
     if not cred_chunks:
         return 0.0, "ATTACK KB 청크 없음 — 검증 불가"
@@ -155,7 +155,7 @@ def metric_d_no_hallucination(chunks: list[KBChunk]) -> tuple[float, str]:
     for tid in known_hallucinations:
         response = f"{tid} 가 관측되었습니다."
         filtered = _strip_unsourced_techniques(response, mock_context)
-        if f"{tid} [검증 필요]" in filtered:
+        if f"[KB외:{tid}]" in filtered:
             labeled += 1
     pct = (labeled / len(known_hallucinations)) * 100
     return pct, f"{labeled}/{len(known_hallucinations)} 환각 라벨링"

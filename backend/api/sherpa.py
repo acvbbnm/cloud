@@ -160,20 +160,29 @@ async def post_suggest(req: SuggestRequest, db: Session = Depends(get_db)) -> di
 
 @router.post("/playbook")
 async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> dict:
-    """공격 체인에 대한 플레이북 추천.
+    """공격 체인에 대한 플레이북 추천 — 3-tier incident_type 라우팅.
 
-    P1 lane 정합 (2026-05-24): incidentType 또는 caseId.incident_type 으로
-    KB 청크의 lane 필터링 — 다른 사고유형 plays 가 회수되는 문제(B 지표 47.6%) 차단.
+    Phase 2.5 (2026-05-24, P2 머지 통합): caseId 또는 incidentType 명시 → 3-tier
+    라우팅 (직접/공통/keyword) 으로 lane 정합도 향상.
+
+    우선순위:
+      1. req.incidentType 명시되면 그것을 사용 (진규 안 — 시연·비교 조회용)
+      2. caseId 지정 시 case.incident_type 자동 채움
+      3. UNCLASSIFIED 케이스는 incident_type 미확정 → Tier 1 skip
     """
-    incident_type = req.incidentType
+    incident_type: Optional[str] = req.incidentType  # 명시 지정 우선
+    csp: Optional[str] = None
     if req.caseId:
         case = IncidentCase.get_by_id(db, req.caseId)
         if case is None:
             raise _case_not_found()
-        # 명시 지정이 없으면 case.incident_type 으로 자동 채움
         if not incident_type:
             incident_type = case.incident_type
-    data = AISherpa.recommend_playbook(req.chain, incident_type=incident_type)
+        csp = case.csp
+    # UNCLASSIFIED 면 미확정으로 간주
+    if incident_type == "UNCLASSIFIED":
+        incident_type = None
+    data = AISherpa.recommend_playbook(req.chain, incident_type=incident_type, csp=csp)
     return {"status": "ok", "data": data}
 
 

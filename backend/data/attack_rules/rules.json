@@ -784,10 +784,71 @@
       "technique_id": "T1098.003",
       "tactic": "Privilege Escalation",
       "source": "MITRE T1098.003 Additional Cloud Roles (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-040",
+      "csp": "ncp",
+      "description": "DNS Application Layer Protocol — C2/Exfil 의심 DNS 쿼리",
+      "activity_name_pattern": "^(DNS Tunnel|DNS Query Suspicious|DNS Tunnel Exfil|DNS C2 Beacon)$",
+      "condition": {},
+      "technique_id": "T1071.004",
+      "tactic": "Command and Control",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1071.004 DNS. AWS GuardDuty DNS Logs 분석 패턴 차용. 비정상 도메인 쿼리·subdomain 인코딩 데이터·NXDOMAIN 폭증."
+    },
+    {
+      "rule_id": "R-NHN-039",
+      "csp": "nhn",
+      "description": "DNS Application Layer Protocol — C2/Exfil 의심 DNS 쿼리",
+      "activity_name_pattern": "^event_id\\.network\\.dns\\.(tunnel|suspicious_query|c2_beacon)$",
+      "condition": {},
+      "technique_id": "T1071.004",
+      "tactic": "Command and Control",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1071.004 DNS. NHN Cloud DNS 로그 분석 패턴."
+    },
+    {
+      "rule_id": "R-NCP-041",
+      "csp": "ncp",
+      "description": "비암호화 비C2 프로토콜 데이터 송신 — HTTP/FTP/SMTP 평문 업로드",
+      "activity_name_pattern": "^(HTTP Plain Upload|FTP Upload|SMTP Bulk Send|TFTP Transfer)$",
+      "condition": {},
+      "technique_id": "T1048.003",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1048.003. base T1048 의 sub-technique 추가. data access → outbound plain HTTP/FTP 시그니처."
+    },
+    {
+      "rule_id": "R-NHN-040",
+      "csp": "nhn",
+      "description": "비암호화 비C2 프로토콜 데이터 송신 — HTTP/FTP/SMTP 평문 업로드",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.(http_plain|ftp_upload|smtp_bulk|tftp)$",
+      "condition": {},
+      "technique_id": "T1048.003",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1048.003 (NHN 매핑)."
+    },
+    {
+      "rule_id": "R-NCP-042",
+      "csp": "ncp",
+      "description": "외부 클라우드 스토리지로 데이터 유출 — 타 계정 버킷 PutObject·Pre-signed URL 외부 발급",
+      "activity_name_pattern": "^(Put Object To External Bucket|Cross Account Put Object|Issue PreSigned URL External)$",
+      "condition": {},
+      "technique_id": "T1567.002",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1567.002. base T1567 의 sub-technique 추가. Imperva 2019·Capital One 2019 패턴 — 타 계정 S3 PutObject."
+    },
+    {
+      "rule_id": "R-NHN-041",
+      "csp": "nhn",
+      "description": "외부 클라우드 스토리지로 데이터 유출 — 타 계정 버킷·Pre-signed URL 외부 발급",
+      "activity_name_pattern": "^event_id\\.object_storage\\.(cross_account_put|presigned_url_external|external_bucket_upload)$",
+      "condition": {},
+      "technique_id": "T1567.002",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1567.002 (NHN 매핑)."
     }
   ],
   "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
   "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)",
   "_cycle3_2026_05_22": "사이클 3 보강 — DE (T1530, T1567) + MISCONFIG (T1580, T1190). NCP +4 룰. P1 attack_rules 갭 해소.",
-  "_cycle5_2026_05_23": "사이클 5 보강 — 8 기법(T1110/T1041/T1048/T1070/T1562.001/T1556/T1566/T1098.003) × NCP/NHN = +16 룰 (R-NCP-032~039 + R-NHN-024~032). CT/DE/AUDIT/PHISH/PE 모든 사고유형 attack_rules 갭 해소 목표."
+  "_cycle5_2026_05_23": "사이클 5 보강 — 8 기법(T1110/T1041/T1048/T1070/T1562.001/T1556/T1566/T1098.003) × NCP/NHN = +16 룰 (R-NCP-032~039 + R-NHN-024~032). CT/DE/AUDIT/PHISH/PE 모든 사고유형 attack_rules 갭 해소 목표.",
+  "_p3_2026_05_25": "P3 (PDF 5단계 매핑 격차 해소) — T1071.004 DNS·T1048.003 비C2 sub·T1567.002 Cloud Storage sub × NCP/NHN = +6 룰 (R-NCP-035~037 + R-NHN-036~038). 74 → 80 룰. 리서치 근거: MITRE ATT&CK Enterprise v14 + AWS GuardDuty DNS Logs 패턴."
 }

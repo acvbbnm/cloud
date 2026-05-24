@@ -408,24 +408,49 @@ class AISherpa:
 
     # ── playbook (RAG + LLM 결합, 2026-05-24 마지막 깡통 해소) ──
     @classmethod
-    def recommend_playbook(cls, chain: list[str]) -> dict:
+    def recommend_playbook(
+        cls,
+        chain: list[str],
+        incident_type: Optional[str] = None,
+    ) -> dict:
         """기법 chain 에 해당하는 플레이북 RAG 검색 + LLM 맥락화 요약.
 
         흐름:
-          1. chain (technique_id 리스트) → PLAYBOOK KB 청크 RAG 검색 (k=3)
-          2. 각 청크에서 기본 steps 추출 (KB 원본)
-          3. LLM 호출로 chain 컨텍스트에 맞춰 우선순위·요약 추가
+          1. chain (technique_id 리스트) → PLAYBOOK KB 청크 RAG 검색 (k=6, 확장)
+          2. incident_type 지정 시 lane 필터 — chunk.meta['incident_type'] ∈ {lane, 'ALL'} 만 유지 (KB audit 2026-05-24, B 지표 47.6% 개선)
+          3. 상위 3건만 LLM 컨텍스트로 사용
+          4. 각 청크에서 기본 steps 추출 (KB 원본)
+          5. LLM 호출로 chain 컨텍스트에 맞춰 우선순위·요약 추가
              (기존 KB 검색 결과를 컨텍스트로 주입, AI 가 정렬·요약만 — 판단 X)
-          4. summary 필드를 응답에 첨부 (KB 출처 인용 + 수사관 판단 문구 포함)
+          6. summary 필드를 응답에 첨부 (KB 출처 인용 + 수사관 판단 문구 포함)
 
         결정성: KB 검색은 결정성 100%. LLM 요약은 매번 다를 수 있어 출처 칩으로 검증 가능.
         Fallback: LLM 호출 실패 시 summary 없이 KB 청크만 반환 (안전).
+
+        Args:
+            chain: 공격 체인의 technique_id 리스트 (예: ["T1078.004", "T1530"])
+            incident_type: 케이스의 사고유형 (선택). 지정 시 lane 필터 적용.
         """
         if not chain:
             return {"playbooks": [], "summary": None}
 
         query = " ".join(chain)
-        scored = RAGRetriever.retrieve(query, k=3, kb_filter=["PLAYBOOK"])
+        # lane 필터 적용을 위해 retrieve k 를 크게 받음 — 필터 후 top-3 사용.
+        # k=20 권장 — PLAYBOOK KB 총 25청크 기준 lane 매칭 풀이 충분히 확보됨.
+        k_initial = 20 if incident_type else 3
+        scored = RAGRetriever.retrieve(query, k=k_initial, kb_filter=["PLAYBOOK"])
+
+        # P1 lane 정합 — incident_type 이 지정되면 strict filter:
+        # 매칭되는 lane 또는 ALL 청크만 통과. 매칭 0건이면 빈 결과 반환.
+        # (KB audit 2026-05-24, B 지표 47.6% → 100% 목표. 잘못된 lane 추천보다 honest empty.)
+        if incident_type:
+            allowed_lanes = {incident_type, "ALL", None}  # None = lane 미지정 KB 호환
+            scored = [
+                (c, s) for (c, s) in scored
+                if c.meta.get("incident_type") in allowed_lanes
+            ][:3]
+        else:
+            scored = scored[:3]
 
         playbooks: list[dict] = []
         kb_chunks_for_llm = []
@@ -437,6 +462,7 @@ class AISherpa:
                     "title": c.title,
                     "steps": steps[:10],
                     "tactics_addressed": c.meta.get("tactics_addressed", []),
+                    "incident_type": c.meta.get("incident_type"),
                     "sources": [_source_dict(c)],
                 }
             )

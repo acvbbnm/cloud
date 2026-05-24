@@ -352,11 +352,22 @@ export const getGuide = async (caseId: string) => {
 ## 타입 정의 (types/index.ts — 프론트엔드·백엔드 공유 기준)
 
 ```typescript
-// ── 사고 유형 (5종, 설계서 5.2절 incident_cases 테이블 기준) ──
-type IncidentType = 'CREDENTIAL_THEFT' | 'PRIVILEGE_ESCALATION' | 'DATA_EXFILTRATION' | 'AUDIT_LOG_TAMPERING' | 'MULTI_CSP_LATERAL';
+// ── 사고 유형 (dev3 C-1 사고유형 9종 확장, 2026-05-19) ──
+// MULTI_CSP_LATERAL 제거 (5.2.x), RANSOMWARE·MISCONFIG_EXPOSURE·PHISH_INITIAL_ACCESS·INSIDER_THREAT 추가,
+// UNCLASSIFIED 는 V-1 사고유형 미확정 케이스용 sentinel.
+type IncidentType =
+  | 'CREDENTIAL_THEFT'
+  | 'PRIVILEGE_ESCALATION'
+  | 'DATA_EXFILTRATION'
+  | 'AUDIT_LOG_TAMPERING'
+  | 'RANSOMWARE'
+  | 'MISCONFIG_EXPOSURE'
+  | 'PHISH_INITIAL_ACCESS'
+  | 'INSIDER_THREAT'
+  | 'UNCLASSIFIED';
 
-// ── CSP ──
-type CSP = 'naver' | 'nhn' | 'all';
+// ── CSP (dev3: 'all' 제거 — MULTI_CSP_LATERAL 제거와 동기) ──
+type CSP = 'naver' | 'nhn';
 
 // ── 심각도 ──
 type Severity = 'critical' | 'high' | 'medium' | 'low';
@@ -372,6 +383,23 @@ type NodeStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 // ── 액션 로그 동작 ──
 type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXPORT_REPORT';
+
+// ── TLP 정보 공유 등급 (dev3 B-3 incident_cases.tlp) ──
+type TLP = 'RED' | 'AMBER' | 'GREEN' | 'WHITE';
+
+// ── Discovery Loop Observable (dev3 B-3 incident_cases.observables JSON 배열 요소) ──
+// 검색 빈도 낮으면 별도 테이블 분리 불필요. type 값은 KB 매처 룰과 호환.
+type ObservableType = 'ip' | 'domain' | 'url' | 'hash' | 'email' | 'username' | 'cve' | 'other';
+interface Observable {
+  type: ObservableType;
+  value: string;
+  confidence?: 'low' | 'medium' | 'high';
+  source?: string;
+  first_seen?: string;  // ISO8601
+}
+
+// ── 단서 (dev3 E4 결정 트리 — Triage 입력. types/index.ts 단일 소스) ──
+type ClueType = 'ip' | 'user' | 'resource' | 'time' | 'action' | 'cve' | 'other';
 ```
 
 이 타입명과 값은 백엔드 DB enum과 정확히 일치해야 한다. 임의로 변경하지 않는다.
@@ -442,6 +470,7 @@ type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXP
 3. **main.py에 비즈니스 로직을 넣지 않는다** (라우터 등록만)
 4. **외부 CDN을 사용하지 않는다** (오프라인 동작 필수, SNF-01)
 5. **AI가 판단/결정하는 코드를 작성하지 않는다** (AI는 검색·요약·제안만, 수사관이 수락/거부)
+   - **5-1.** AI 셰르파(`LLMEngine`) 응답에 인용된 KB 청크 밖의 ATT&CK 기법 ID(T-NNNN[.NNN])를 새로 도입하지 않는다. `_strip_unsourced_techniques` 후처리로 자동 라벨링됨 (2026-05-24 KB audit P0). 새 LLM 사용처 추가 시 동일 후처리 필수.
 6. **console.log / print 디버깅을 커밋하지 않는다**
 7. **하드코딩된 절대 경로를 사용하지 않는다** (config.py에서 관리)
 8. **`.env` 파일을 커밋하지 않는다** (`.env.example`만 커밋)

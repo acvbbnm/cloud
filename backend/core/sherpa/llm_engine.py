@@ -64,6 +64,68 @@ def _strip_reasoning(text: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
+# Citation guard — sources 밖 ATT&CK 기법 ID 차단 (P0 환각 방지)
+# ─────────────────────────────────────────────────────────────
+# CLAUDE.md "AI 는 판단하지 않음" 원칙. KB audit (2026-05-24) 에서 LLM 이
+# 컨텍스트 밖의 T-id 를 12 건 새로 도입한 사례 발견 →
+#   1) SYSTEM_PROMPT 규칙 #3 으로 모델에 명시적 금지
+#   2) 본 필터로 응답 후처리 — 화이트리스트 외 T-id 에 [검증 필요] 라벨
+# 두 단계 방어선으로 0 건 보장.
+_TID_PATTERN = re.compile(r"T\d{4}(?:\.\d{3})?")
+
+
+def _extract_allowed_techniques(context: Optional[list[KBChunk]]) -> set[str]:
+    """RAG 컨텍스트의 모든 청크에서 등장하는 T-id 화이트리스트 추출.
+
+    스캔 대상: chunk.text, chunk.title, chunk.meta['technique_id'].
+    """
+    allowed: set[str] = set()
+    for c in context or []:
+        for field in (c.text or "", c.title or ""):
+            allowed.update(_TID_PATTERN.findall(field))
+        tid_meta = (c.meta or {}).get("technique_id") if hasattr(c, "meta") else None
+        if tid_meta:
+            allowed.update(_TID_PATTERN.findall(str(tid_meta)))
+    return allowed
+
+
+def _strip_unsourced_techniques(
+    text: str, context: Optional[list[KBChunk]]
+) -> str:
+    """응답에서 화이트리스트 밖 T-id 를 [검증 필요] 라벨로 치환.
+
+    동작:
+      - context 청크의 T-id 집합을 화이트리스트로 구축
+      - 응답 본문의 모든 T-id 정규식 매칭 → 화이트리스트 외이면 라벨링
+      - sub-technique 관용 허용: base(T1078) 가 화이트리스트면 sub(T1078.004) 도 통과
+
+    예:
+      context: 'T1078.004 자격증명 남용'
+      응답:   'T1078.004 와 T1552.001 이 관측됨'
+      결과:   'T1078.004 와 T1552.001 [검증 필요] 이 관측됨'
+
+    context 가 비어 있으면 검증을 skip (fallback 경로).
+    """
+    if not text or not context:
+        return text
+    allowed = _extract_allowed_techniques(context)
+    if not allowed:
+        return text
+
+    def _replace(match: "re.Match[str]") -> str:
+        tid = match.group(0)
+        if tid in allowed:
+            return tid
+        # sub-technique 관용 허용 — base T1078 가 allowed 면 T1078.004 도 통과
+        base = tid.split(".")[0]
+        if base in allowed:
+            return tid
+        return f"{tid} [검증 필요]"
+
+    return _TID_PATTERN.sub(_replace, text)
+
+
+# ─────────────────────────────────────────────────────────────
 # System prompt — AI 셰르파 역할·규칙·출력형식
 # ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 분석을 보조하는 AI 셰르파입니다.
@@ -76,10 +138,11 @@ SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 �
 [응답 규칙]
 1. 한국어로 답변한다.
 2. 아래 [지식베이스] 섹션에 제공된 청크만 근거로 사용한다. 청크에 없는 사실은 추측하지 않고 "추가 확인 필요"로 표시한다.
-3. 본문에서 출처를 [1], [2] 형식으로 인용한다 (예: "T1078.004는 자격증명 남용입니다 [1].").
-4. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
-5. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
-6. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
+3. ATT&CK 기법 ID(T1078, T1098.004 형식의 T-NNNN[.NNN])는 [지식베이스] 청크 본문에 명시적으로 등장한 ID만 인용한다. 사전 지식에 있는 다른 T-id를 새로 도입하지 않는다. 위반 시 응답이 후처리로 자동 변조될 수 있다.
+4. 본문에서 출처를 [1], [2] 형식으로 인용한다 (예: "T1078.004는 자격증명 남용입니다 [1].").
+5. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
+6. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
+7. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
 """
 
 
@@ -179,6 +242,8 @@ class LLMEngine:
             content = (data.get("message") or {}).get("content", "").strip()
             # gpt-oss 등의 reasoning 토큰 제거 후 반환
             content = _strip_reasoning(content)
+            # P0 환각 방지 — 컨텍스트 밖 ATT&CK T-id 에 [검증 필요] 라벨 부착
+            content = _strip_unsourced_techniques(content, context)
             return content or _FALLBACK_NO_CONTEXT
 
         except httpx.TimeoutException:
@@ -309,9 +374,10 @@ class LLMEngine:
                             in_thinking = False
 
                     # 안전 emit — 마커 매칭 후 남은 텍스트가 길어지면 보냄
-                    # (마지막 32자는 마커 분할 대비 유지)
+                    # (마지막 32자는 마커 분할 대비 유지 — T-id 최대 9자 < 32자 보호)
                     if not in_thinking and len(buffer) > 32:
-                        yield buffer[:-32]
+                        # P0 환각 방지 — 컨텍스트 밖 T-id 라벨링 후 emit
+                        yield _strip_unsourced_techniques(buffer[:-32], context)
                         buffer = buffer[-32:]
                         emitted_any = True
 
@@ -320,7 +386,7 @@ class LLMEngine:
 
                 # 잔여 버퍼 정리
                 if not in_thinking and buffer:
-                    yield buffer
+                    yield _strip_unsourced_techniques(buffer, context)
                     emitted_any = True
 
                 if not emitted_any:

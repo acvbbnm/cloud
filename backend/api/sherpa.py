@@ -69,6 +69,9 @@ class SuggestRequest(BaseModel):
 class PlaybookRequest(BaseModel):
     caseId: Optional[str] = None
     chain: list[str]
+    # P1 lane 정합 (2026-05-24 KB audit) — 명시 지정 시 lane 필터 적용.
+    # 미지정이고 caseId 있으면 라우터가 case.incident_type 으로 자동 채움.
+    incidentType: Optional[str] = None
 
 
 # ── 엔드포인트 ────────────────────────────────────────────
@@ -157,12 +160,20 @@ async def post_suggest(req: SuggestRequest, db: Session = Depends(get_db)) -> di
 
 @router.post("/playbook")
 async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> dict:
-    """공격 체인에 대한 플레이북 추천 (후순위 깡통)."""
+    """공격 체인에 대한 플레이북 추천.
+
+    P1 lane 정합 (2026-05-24): incidentType 또는 caseId.incident_type 으로
+    KB 청크의 lane 필터링 — 다른 사고유형 plays 가 회수되는 문제(B 지표 47.6%) 차단.
+    """
+    incident_type = req.incidentType
     if req.caseId:
         case = IncidentCase.get_by_id(db, req.caseId)
         if case is None:
             raise _case_not_found()
-    data = AISherpa.recommend_playbook(req.chain)
+        # 명시 지정이 없으면 case.incident_type 으로 자동 채움
+        if not incident_type:
+            incident_type = case.incident_type
+    data = AISherpa.recommend_playbook(req.chain, incident_type=incident_type)
     return {"status": "ok", "data": data}
 
 

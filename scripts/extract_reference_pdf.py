@@ -11,7 +11,7 @@ import docx
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 PDF = Path(r"C:\Users\User\Downloads\참고 자료 (1)\정보보호학과_3조_세종NFT미술관_최종보고서.pdf")
-DOCX = Path(r"C:\Users\User\Downloads\최종보고서_로그아웃_AI_Sherpa_v2.docx")
+DOCX = Path(r"C:\Users\User\Desktop\세종대\2026-1학기\Capstone\경진대회 최종발표\최종보고서_로그아웃_AI_Sherpa.docx")
 
 
 def extract_pdf_outline(page_range: tuple[int, int] | None = None) -> None:

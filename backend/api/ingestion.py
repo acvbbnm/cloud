@@ -107,7 +107,36 @@ async def upload_log(
             },
         )
 
-    return {"status": "ok", "data": stats.to_dict()}
+    # P0 (2026-05-24 walkthrough): UNCLASSIFIED 케이스는 collection_targets 카탈로그가
+    # 비어있어 항상 matched=0 — silent failure 방지 위해 응답에 경고 필드 첨부.
+    # 시연 대본 워크플로우(V-1 Step 3 결정트리 → incident_type 확정 → V-2 업로드) 우회 시
+    # 수사관이 매칭 0건 사실을 놓치지 않도록 명시.
+    data = stats.to_dict()
+    warnings: list[dict] = []
+    if case.incident_type == "UNCLASSIFIED":
+        warnings.append({
+            "code": "UNCLASSIFIED_CASE",
+            "message": (
+                "사고 유형이 UNCLASSIFIED 상태라 collection_targets 카탈로그가 비어있어 "
+                "모든 이벤트가 미매칭 처리됩니다. V-1 Discovery Loop(결정 트리)에서 "
+                "사고 유형을 확정한 뒤 다시 업로드하거나 PATCH /api/cases 로 incident_type 을 "
+                "지정해 주세요."
+            ),
+        })
+    if data.get("matched", 0) == 0 and data.get("totalEvents", 0) > 0 and not warnings:
+        # incident_type 은 확정인데도 매칭 0 — 매처 룰 미보유 또는 로그 포맷 mismatch
+        warnings.append({
+            "code": "NO_MATCH",
+            "message": (
+                f"전체 {data['totalEvents']}건 모두 매처에 매칭되지 않았습니다. "
+                f"사고 유형({case.incident_type}) × CSP({case.csp}) 의 collection_targets "
+                "카탈로그 또는 로그 포맷을 확인해 주세요."
+            ),
+        })
+    if warnings:
+        data["warnings"] = warnings
+
+    return {"status": "ok", "data": data}
 
 
 @router.get("")

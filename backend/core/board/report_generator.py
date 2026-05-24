@@ -280,16 +280,31 @@ class ReportGenerator:
             recommendation = "갭 감지 후 결과에 따라 권고 사항 보강 필요."
 
         # ── 섹션 7: 증거 목록 ──
-        evid_lines = []
-        for t in sorted(targets, key=lambda x: -x.priority):
-            collected = "✓" if t.target_id in collected_target_ids else "✗"
-            evid_lines.append(
-                f"  [{collected}] {t.target_id} · {t.log_type} ({t.evidence_role}, priority {t.priority})"
+        # 2026-05-24 walkthrough: UNCLASSIFIED 케이스는 카탈로그가 비어 "(대상 카탈로그
+        # 비어 있음)" placeholder 가 DOCX 보고서로 그대로 노출되는 문제 발견.
+        # 보고서 외부 공유 시 부적절하므로 명시적 경고 문구로 교체.
+        if not targets:
+            if case.incident_type == "UNCLASSIFIED":
+                evidence = (
+                    "※ 사고 유형이 UNCLASSIFIED 상태로 수집 대상 카탈로그가 정의되지 않았습니다.\n"
+                    "V-1 Discovery Loop(결정 트리)에서 사고 유형을 확정한 뒤 보고서를 재생성해 주세요."
+                )
+            else:
+                evidence = (
+                    f"※ 사고 유형 {case.incident_type} × CSP {case.csp} 의 수집 대상 카탈로그가 "
+                    "본 시스템에 등록되어 있지 않습니다. 운영자에게 collection_targets 시드 보강을 요청해 주세요."
+                )
+        else:
+            evid_lines = []
+            for t in sorted(targets, key=lambda x: -x.priority):
+                collected = "✓" if t.target_id in collected_target_ids else "✗"
+                evid_lines.append(
+                    f"  [{collected}] {t.target_id} · {t.log_type} ({t.evidence_role}, priority {t.priority})"
+                )
+            evidence = (
+                f"사고 유형 {case.incident_type} × CSP {case.csp} 의 수집 대상 카탈로그:\n"
+                + "\n".join(evid_lines)
             )
-        evidence = (
-            f"사고 유형 {case.incident_type} × CSP {case.csp} 의 수집 대상 카탈로그:\n"
-            + ("\n".join(evid_lines) if evid_lines else "  (대상 카탈로그 비어 있음)")
-        )
 
         # ── 섹션 8: 수사관 코멘트 (빈칸) ──
         comments = "(수사관이 직접 작성)"

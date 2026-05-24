@@ -54,14 +54,45 @@ def on_startup() -> None:
 
 @app.get("/api/health", tags=["common"])
 async def health_check() -> dict:
-    """서버 상태 확인."""
+    """서버 상태 + 외부 의존성(ollama·chromadb) 실측 health.
+
+    2026-05-24 walkthrough 보강: 기존엔 ollama/chromadb 가 항상 "unknown" 반환되어
+    시연 사전 헬스 체크 의미가 없었음. LLMEngine.health() / RAGRetriever.backend_info()
+    실호출로 교체. 의존성 import 는 함수 내 lazy 로 진행 (CI 경량 의존성 셋업 호환).
+    """
+    # ollama 실측 — LLMEngine.health() 가 /api/tags 호출 후 모델 존재까지 검증
+    try:
+        from core.sherpa.llm_engine import LLMEngine
+        engine = LLMEngine.health()
+        ollama_status = engine.get("engine", "unknown")  # 'ollama' | 'ollama-no-model' | 'stub'
+        ollama_detail = {
+            "connected": engine.get("connected", False),
+            "model": engine.get("model"),
+            "available_models": engine.get("available_models", []),
+        }
+    except Exception as e:
+        ollama_status = "error"
+        ollama_detail = {"error": str(e)}
+
+    # chromadb 실측 — RAGRetriever.backend_info() 가 'chromadb' | 'keyword' 분기
+    try:
+        from core.sherpa.rag_retriever import RAGRetriever
+        rag = RAGRetriever.backend_info()
+        chromadb_status = rag.get("backend", "unknown")  # 'chromadb' | 'keyword'
+        chromadb_detail = {k: v for k, v in rag.items() if k != "backend"}
+    except Exception as e:
+        chromadb_status = "error"
+        chromadb_detail = {"error": str(e)}
+
     return {
         "status": "ok",
         "data": {
             "server": "running",
             "db": "connected",
-            "ollama": "unknown",
-            "chromadb": "unknown",
+            "ollama": ollama_status,
+            "ollama_detail": ollama_detail,
+            "chromadb": chromadb_status,
+            "chromadb_detail": chromadb_detail,
             "version": settings.VERSION,
         },
     }
@@ -69,3 +100,4 @@ async def health_check() -> dict:
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+

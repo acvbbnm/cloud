@@ -75,10 +75,12 @@ class GapDetector:
         )
 
         missing_ids = required_ids - collected_ids
+        # 필수 증거가 정의된 경우만 비율 계산 — 미정의 (예: UNCLASSIFIED 케이스) 면 None.
+        # 0.0 으로 채우면 "0% 완수" 와 "요구사항 미정의" 가 혼동되어 V-4 KPI 깨짐 (2026-05-24 walkthrough).
         completion_rate = (
             round((len(required_ids) - len(missing_ids)) / len(required_ids) * 100, 2)
             if required_ids
-            else 0.0
+            else None
         )
 
         # 4) 분류

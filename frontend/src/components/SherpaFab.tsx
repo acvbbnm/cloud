@@ -61,7 +61,14 @@ const SherpaFab = () => {
           updateLast({ sources, source: formatSourceSummary(sources) });
         },
         onDelta: (delta) => appendDelta(delta),
-        onDone: () => setIsStreaming(false),
+        onDone: (sanitized) => {
+          // Phase 2.5 — sanitized 가 있으면 KB 외 T-id 가 [KB외:T1234] 로 라벨링된
+          // 버전. raw stream 텍스트를 sanitized 로 교체하여 환각 라벨 노출.
+          if (sanitized) {
+            updateLast({ text: sanitized });
+          }
+          setIsStreaming(false);
+        },
         onError: (err) => {
           updateLast({
             text:

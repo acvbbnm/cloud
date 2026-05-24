@@ -57,6 +57,10 @@ LANE_FIXTURES = [
 
 _MITRE_ID_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
 _TECH_REF_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")  # raw string — KB 본문/응답 T-id 추출
+# Phase 2.5 (2026-05-24) — sanitize 가 KB 외 T-id 를 "[KB외:T1234]" 로 라벨링한다.
+# 라벨링된 토큰은 LLM 의 답변에 그대로 노출되어 수사관이 "신뢰 안 됨"으로 식별 가능하므로,
+# 환각 차단 측면에서는 PASS 로 간주. 단, 라벨 발생 자체는 별도 카운트 (모델 개선 추적용).
+_LABELED_TECH_RE = re.compile(r"\[KB외:(T\d{4}(?:\.\d{3})?)\]")
 _OFFICIAL_HOSTS = (
     "attack.mitre.org",
     "guide.ncloud-docs.com",
@@ -203,8 +207,12 @@ def _audit_lane(lane_fx: dict, kb_index: dict) -> dict:
             _absorb("chat", d.get("sources", []))
             chat_text = d.get("response") or ""
             out["chat_chars"] = len(chat_text)
-            # 환각: 응답에 등장한 T-id 중 인용 sources 에 없는 것
-            techs_in_text = set(_TECH_REF_RE.findall(chat_text))
+            # Phase 2.5 — sanitize 가 라벨링한 [KB외:T1234] 토큰 추출 → 별도 추적
+            labeled_techs = set(_LABELED_TECH_RE.findall(chat_text))
+            # 라벨링된 토큰을 제거한 텍스트에서 raw T-id 추출 (환각 검출용)
+            text_unlabeled = _LABELED_TECH_RE.sub("", chat_text)
+            techs_in_text = set(_TECH_REF_RE.findall(text_unlabeled))
+
             cited_techs: set[str] = set()
             for cid_chunk, _ in cited.items():
                 k = kb_index.get(cid_chunk)
@@ -212,7 +220,10 @@ def _audit_lane(lane_fx: dict, kb_index: dict) -> dict:
                     cited_techs.add(k.meta["technique_id"])
                 if k:
                     cited_techs.update(_TECH_REF_RE.findall(k.text))
+            # 진짜 환각: 라벨링 안 되고 KB 안에도 없는 T-id (sanitize 통과한 것 — 시스템 버그)
             out["halluc_techs"] = sorted(techs_in_text - cited_techs)
+            # 라벨링된 환각: sanitize 가 잡아낸 KB 외 T-id (PASS 로 간주, 추적용)
+            out["labeled_halluc_techs"] = sorted(labeled_techs - cited_techs)
             out["chat_status"] = "ok"
         else:
             out["issues"].append(f"chat {r.status_code}")
@@ -356,8 +367,11 @@ def main() -> int:
         if result.get("brief_technique"):
             print(f"   brief: {result['brief_technique']} — {result.get('brief_name','')[:60]}")
         if result.get("halluc_techs"):
-            print(f"   [!] chat hallucination T-ids: {result['halluc_techs']}")
+            print(f"   [!] chat hallucination T-ids (sanitize 미차단): {result['halluc_techs']}")
             halluc_lanes.append((result["lane"], result["halluc_techs"]))
+        if result.get("labeled_halluc_techs"):
+            # sanitize 가 라벨링으로 차단한 환각 — PASS 지만 모델 개선 신호로 표시
+            print(f"   [✓] sanitize 라벨링 차단 T-ids: {result['labeled_halluc_techs']}")
         for s in result.get("samples", []):
             print(f"     - {s['kb']:<8} {s['chunk_id']:<28} {s['title'][:55]}")
             print(f"                                       └─ src: {s['source']}")

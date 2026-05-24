@@ -32,15 +32,19 @@ export const postChat = async (req: ChatRequest): Promise<ChatResponse> => {
 /** POST /api/sherpa/chat/stream — 스트리밍 자연어 질의 (Phase 2.3).
  *
  *  ndjson 응답을 토큰 단위로 콜백에 전달:
- *    {type:"start", sessionId, sources[]}     → onStart
- *    {type:"delta", content}                   → onDelta (반복)
- *    {type:"done"}                             → onDone
+ *    {type:"start", sessionId, sources[]}                  → onStart
+ *    {type:"delta", content}                                → onDelta (반복)
+ *    {type:"done", sanitized?}                              → onDone
+ *
+ *  Phase 2.5 (2026-05-24): done 에 sanitized 첨부 — KB 외 ATT&CK T-id 가 답변에
+ *  섞였을 경우 "[KB외:T1234]" 형식으로 라벨링된 버전. 클라이언트는 raw 표시 직후
+ *  sanitized 로 교체하여 환각 라벨을 사용자에게 노출한다.
  *
  *  UX: 100초 대기 → 첫 토큰 ~5초 + 점진 표시. fetch + ReadableStream 사용. */
 export interface StreamChatHandlers {
   onStart?: (sessionId: string, sources: ChatResponse['sources']) => void;
   onDelta?: (delta: string) => void;
-  onDone?: () => void;
+  onDone?: (sanitized?: string) => void;
   onError?: (err: Error) => void;
 }
 
@@ -79,13 +83,13 @@ export async function streamChat(
           const event = JSON.parse(line) as
             | { type: 'start'; sessionId: string; sources: ChatResponse['sources'] }
             | { type: 'delta'; content: string }
-            | { type: 'done' };
+            | { type: 'done'; sanitized?: string };
           if (event.type === 'start') {
             handlers.onStart?.(event.sessionId, event.sources);
           } else if (event.type === 'delta') {
             handlers.onDelta?.(event.content);
           } else if (event.type === 'done') {
-            handlers.onDone?.();
+            handlers.onDone?.(event.sanitized);
           }
         } catch {
           // ndjson 파싱 실패 라인은 무시
@@ -98,7 +102,7 @@ export async function streamChat(
       try {
         const event = JSON.parse(tail);
         if (event.type === 'delta') handlers.onDelta?.(event.content);
-        if (event.type === 'done') handlers.onDone?.();
+        if (event.type === 'done') handlers.onDone?.(event.sanitized);
       } catch {
         // ignore
       }

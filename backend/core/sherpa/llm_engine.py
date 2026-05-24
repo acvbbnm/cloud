@@ -64,6 +64,67 @@ def _strip_reasoning(text: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
+# 환각 검출·라벨링 — Phase 2.5 KB 인용 감사 (2026-05-24)
+# ─────────────────────────────────────────────────────────────
+# LLM 이 시스템 프롬프트의 "청크 안 T-id 만 인용" 규칙을 위반하고 자체 사전
+# 지식의 ATT&CK 기법을 답변에 주입하는 사례가 KB 감사에서 12건 발견됨
+# (kb_citation_audit.py 결과 D_no_halluc 72/84 = 85.7%).
+#
+# 응답 후처리에서 다음을 수행:
+#   1) 응답 텍스트에서 모든 T-id 추출 (T1234 / T1234.567 형식)
+#   2) KB 청크 본문·메타 안에 그 T-id 가 있는지 검증
+#   3) 청크 밖 T-id 는 "[KB외:T1234]" 형식으로 라벨링 — 제거하지 않음
+#      (문장 의미 파괴 방지 + 수사관이 직접 판단 가능)
+_TECH_REF_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
+
+
+def _collect_context_techs(context: list[KBChunk]) -> set[str]:
+    """KB context 청크들에서 인용 가능한 T-id 집합 추출.
+
+    수집 소스 (모두 OR):
+      - chunk.meta["technique_id"]  (ATTACK chunk 의 직접 메타)
+      - chunk.text 내부의 T1234 / T1234.567 패턴 (본문에 등장)
+      - chunk.title 의 T-id 도 본문 등장으로 간주
+    """
+    techs: set[str] = set()
+    for c in context:
+        tid = c.meta.get("technique_id")
+        if tid:
+            techs.add(tid)
+        techs.update(_TECH_REF_RE.findall(c.text or ""))
+        techs.update(_TECH_REF_RE.findall(c.title or ""))
+    return techs
+
+
+def _sanitize_response(text: str, context: Optional[list[KBChunk]]) -> str:
+    """응답 텍스트의 KB 외 T-id 를 라벨링한다.
+
+    이미 "[KB외:..." 로 라벨된 T-id 는 중복 라벨링하지 않는다.
+    context 가 None 이면 sanitize 를 건너뜀 (fallback 응답 등).
+    """
+    if not text or not context:
+        return text
+    allowed = _collect_context_techs(context)
+    if not allowed:
+        # 컨텍스트에 T-id 가 전혀 없으면 응답의 모든 T-id 가 환각이라 판단되지만,
+        # 답변이 비ATT&CK 영역(예: 일반 절차) 일 수 있으므로 라벨링만 수행.
+        pass
+
+    def _label(match: re.Match) -> str:
+        tid = match.group(0)
+        if tid in allowed:
+            return tid
+        # 이미 라벨된 토큰 (앞쪽 30자 내 "[KB외:") 은 다시 감싸지 않음
+        start = match.start()
+        head = text[max(0, start - 12) : start]
+        if "[KB외:" in head:
+            return tid
+        return f"[KB외:{tid}]"
+
+    return _TECH_REF_RE.sub(_label, text)
+
+
+# ─────────────────────────────────────────────────────────────
 # System prompt — AI 셰르파 역할·규칙·출력형식
 # ─────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 분석을 보조하는 AI 셰르파입니다.
@@ -80,6 +141,19 @@ SYSTEM_PROMPT = """당신은 한국 멀티 클라우드(NCP/NHN) 침해사고 �
 4. 답할 수 없으면 "제공된 정보로는 답변할 수 없습니다"로 명시한다.
 5. 응답은 핵심 포인트 3~5개를 글머리표(-)로 구조화한다.
 6. 마지막 줄에 정확히 다음 문구를 추가한다: "※ 최종 판단은 수사관께서 직접 수행해 주세요."
+
+[ATT&CK 기법 인용 — 엄수]
+- T-id (예: T1078, T1098.001)를 응답에 쓸 때는 반드시 [지식베이스] 청크 본문이나 메타에 명시된 T-id 만 인용한다.
+- 제공된 청크에 없는 T-id 는 절대 새로 만들지 않는다. 청크 외 ATT&CK 기법이 떠오르면 "관련 ATT&CK 기법은 V-4 매핑 결과 참조" 로만 안내하고 구체 T-id 를 적지 않는다.
+- 이 규칙은 사용자 신뢰와 직결되며, 위반 시 응답이 [KB 외] 라벨로 표시되어 신뢰도가 떨어진다.
+
+[좋은 예]
+청크 [1] 본문: "T1098.001 Account Manipulation: Additional Cloud Credentials — IAM 키 추가로 영속성 확보."
+→ 답: "공격자는 추가 IAM 키 등록으로 영속성을 확보한 것으로 보입니다 (T1098.001) [1]."
+
+[나쁜 예 — 절대 금지]
+청크 [1] 에 T1098.001 만 있는데
+→ 답: "T1078 Valid Accounts 와 T1552.001 Credentials In Files 도 의심됩니다." (청크에 없는 T-id 생성 — 금지)
 """
 
 
@@ -177,8 +251,10 @@ class LLMEngine:
             r.raise_for_status()
             data = r.json()
             content = (data.get("message") or {}).get("content", "").strip()
-            # gpt-oss 등의 reasoning 토큰 제거 후 반환
+            # gpt-oss 등의 reasoning 토큰 제거
             content = _strip_reasoning(content)
+            # Phase 2.5 — KB 외 T-id 라벨링 (환각 차단)
+            content = _sanitize_response(content, context)
             return content or _FALLBACK_NO_CONTEXT
 
         except httpx.TimeoutException:

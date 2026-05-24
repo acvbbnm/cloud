@@ -279,9 +279,22 @@ class AISherpa:
                 ensure_ascii=False,
             ) + "\n"
 
-        # 종료 마커 + ChatSession 누적 저장 (assistant 한 번에)
-        ChatSession.append(sess.session_id, "assistant", "".join(full_text_parts))
-        yield _json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
+        # Phase 2.5 — 종료 시점 sanitize: stream 으로 흘러간 raw 답변에 KB 외 T-id 가
+        # 섞였을 수 있으므로, 누적 텍스트를 한 번 더 검증하여 [KB외:T1234] 라벨링.
+        raw_text = "".join(full_text_parts)
+        from core.sherpa.llm_engine import _sanitize_response  # 순환 import 회피용 지연 임포트
+
+        sanitized = _sanitize_response(raw_text, context_chunks)
+
+        # ChatSession 에는 sanitized 버전 저장 (재조회 시 일관)
+        ChatSession.append(sess.session_id, "assistant", sanitized)
+
+        # done 메시지에 sanitized 텍스트 첨부 — 클라이언트가 raw 표시 직후
+        # sanitized 로 교체하면 환각 라벨이 사용자에게 노출됨.
+        yield _json.dumps(
+            {"type": "done", "sanitized": sanitized},
+            ensure_ascii=False,
+        ) + "\n"
 
     # ── suggest (후순위 깡통) ──
     @classmethod

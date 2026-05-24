@@ -706,34 +706,34 @@
     },
 
     {
-      "rule_id": "R-NHN-024",
+      "rule_id": "R-NHN-033",
       "csp": "nhn",
       "description": "다중 로그인 실패 — Brute Force",
       "activity_name_pattern": "^event_id\\.iam\\.login$",
       "condition": {"result": "FAIL"},
       "technique_id": "T1110",
       "tactic": "Credential Access",
-      "source": "MITRE T1110 Brute Force (2026-05-23)"
+      "source": "MITRE T1110 Brute Force (2026-05-23) — 사이클 5; ID conflict 해결로 -033 재번호 (2026-05-24)"
     },
     {
-      "rule_id": "R-NHN-025",
+      "rule_id": "R-NHN-034",
       "csp": "nhn",
       "description": "C2 채널 데이터 송신",
       "activity_name_pattern": "^event_id\\.network\\.outbound\\.c2$",
       "condition": {},
       "technique_id": "T1041",
       "tactic": "Exfiltration",
-      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23)"
+      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23) — ID 재번호"
     },
     {
-      "rule_id": "R-NHN-026",
+      "rule_id": "R-NHN-035",
       "csp": "nhn",
       "description": "대체 프로토콜 데이터 송신 (DNS·FTP)",
       "activity_name_pattern": "^event_id\\.network\\.outbound\\.(dns_tunnel|ftp)$",
       "condition": {},
       "technique_id": "T1048",
       "tactic": "Exfiltration",
-      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23)"
+      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23) — ID 재번호"
     },
     {
       "rule_id": "R-NHN-028",

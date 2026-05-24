@@ -821,6 +821,18 @@
       "source": "행위자 미상 — 약한 시그널 처리 [ISO 27035-1:2023 Assess & Decide]",
       "UNCLASSIFIED": 0
     },
+    "Q5-CRED:baseline_deviation": {
+      "CREDENTIAL_THEFT": 20,
+      "PRIVILEGE_ESCALATION": 5,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 10,
+      "source": "P5 (2026-05-25) PDF 3단계 LotL/MtL. Exabeam UEBA + Darktrace anomaly + CISA Identifying LotL. 평소 패턴 일탈 → CRED 강한 시그널, INSIDER 약한 시그널 [ISO 27035-1:2023 Assess & Decide]",
+      "UNCLASSIFIED": 0
+    },
     "Q5-RANSOM:single_instance": {
       "CREDENTIAL_THEFT": 0,
       "PRIVILEGE_ESCALATION": 0,
@@ -927,6 +939,18 @@
       "PHISH_INITIAL_ACCESS": 0,
       "INSIDER_THREAT": 35,
       "source": "MITRE T1070 Indicator Removal + T1562.008 + CERT Insider Threat Guide §4.5 anti-forensics [ISO 27035-1:2023 Assess & Decide]",
+      "UNCLASSIFIED": 0
+    },
+    "Q5-INSIDER:baseline_deviation": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 15,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 25,
+      "source": "P5 (2026-05-25) PDF 3단계 MtL Modify-the-Land. Unit 42 Cloud IR + CERT Insider Threat §4.3 anomalous-permission. 평소 안 쓰던 IAM API → INSIDER 강한 시그널, PRIVESC 보조 시그널 [ISO 27035-1:2023 Assess & Decide]",
       "UNCLASSIFIED": 0
     },
     "Q6-CRED:priv_change": {

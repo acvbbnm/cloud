@@ -528,6 +528,12 @@
           "label": "행위자 출처 불명",
           "weight_key": "Q5-CRED:actor_unknown",
           "next": "Q6_CRED"
+        },
+        {
+          "id": "baseline_deviation",
+          "label": "Baseline 일탈 — 평소 IP/시간대 외 + 평소 안 쓰던 API (LotL)",
+          "weight_key": "Q5-CRED:baseline_deviation",
+          "next": "Q6_CRED"
         }
       ]
     },
@@ -602,6 +608,12 @@
           "id": "trace_deletion",
           "label": "자기 흔적 삭제 (s3:DeleteObject·log clear)",
           "weight_key": "Q5-INSIDER:trace_deletion",
+          "next": "Q6_INSIDER"
+        },
+        {
+          "id": "baseline_deviation",
+          "label": "Baseline 일탈 — 평소 안 쓰던 IAM API · 권한 부여 패턴 변화 (MtL)",
+          "weight_key": "Q5-INSIDER:baseline_deviation",
           "next": "Q6_INSIDER"
         }
       ]

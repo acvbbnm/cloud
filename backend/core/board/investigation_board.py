@@ -3,15 +3,22 @@
 설계서 5.4.6절 + UC-06 시퀀스. case 단위로 chain_nodes + chain_edges 를 조회·집계한다.
 
 API 응답 형식(frontend types/index.ts `BoardResponse`):
-  { caseId, nodes: BoardNode[], edges: BoardEdge[] }
+  { caseId, nodes: BoardNode[], edges: BoardEdge[], kpi: { dwellTime, ... } }
 """
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.board.chain import ChainEdge, ChainNode
-from db.models import ChainEdgeModel, ChainNodeModel, IncidentCaseModel
+from db.models import (
+    ChainEdgeModel,
+    ChainNodeModel,
+    IncidentCaseModel,
+    OCSFEventModel,
+    RawEventModel,
+)
 
 
 class InvestigationBoard:
@@ -46,6 +53,55 @@ class InvestigationBoard:
             "caseId": case_id,
             "nodes": [ChainNode.serialize(n) for n in nodes],
             "edges": [ChainEdge.serialize(e) for e in edges],
+            "kpi": cls.compute_kpi(db, case_id, case),
+        }
+
+    @classmethod
+    def compute_kpi(
+        cls,
+        db: Session,
+        case_id: str,
+        case: Optional[IncidentCaseModel] = None,
+    ) -> dict:
+        """Phase 2.5 (P6, 2026-05-25) — Dwell Time KPI.
+
+        PDF 결론 (Mandiant Median Dwell Time 10일 → 7일 단축) 정합 지표:
+          · earliestEventTime  : min(raw_events.event_time) — 최초 침해 발생 추정
+          · caseCreatedAt      : case.created_at — 수사 접수 (탐지 시각 proxy)
+          · caseClosedAt       : case.closed_at — 격리 완료 (None 이면 진행 중)
+          · dwellTimeSeconds   : 탐지 - 최초침해 (None 면 raw 이벤트 없음)
+          · containmentSeconds : 격리완료 - 탐지 (closed_at 있을 때만)
+          · totalSeconds       : 격리완료 - 최초침해 (전체 incident span)
+
+        시연 메시징: Mandiant 7일 기준 비교 → 본 시스템이 즉시 탐지·격리 가이드 제공.
+        """
+        if case is None:
+            case = db.get(IncidentCaseModel, case_id)
+        if case is None:
+            return {}
+
+        # 최초 침해 발생 시각 — OCSF 정규화된 이벤트의 time 컬럼 (raw_events 자체는
+        # 시간 컬럼이 없음 → OCSFEventModel.time JOIN). 정규화 안 되어 있으면 None.
+        earliest = db.execute(
+            select(func.min(OCSFEventModel.time))
+            .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+            .where(RawEventModel.case_id == case_id)
+        ).scalar_one_or_none()
+
+        def _secs(later: Optional[datetime], earlier: Optional[datetime]) -> Optional[int]:
+            if later is None or earlier is None:
+                return None
+            return max(0, int((later - earlier).total_seconds()))
+
+        return {
+            "earliestEventTime": earliest.isoformat() if earliest else None,
+            "caseCreatedAt": case.created_at.isoformat() if case.created_at else None,
+            "caseClosedAt": case.closed_at.isoformat() if case.closed_at else None,
+            "dwellTimeSeconds": _secs(case.created_at, earliest),
+            "containmentSeconds": _secs(case.closed_at, case.created_at),
+            "totalSeconds": _secs(case.closed_at, earliest),
+            "benchmarkSeconds": 7 * 24 * 60 * 60,  # Mandiant M-Trends 2024 median 7일
+            "benchmarkSource": "Mandiant M-Trends 2024 — median dwell time 7d (PDF 결론)",
         }
 
     @classmethod

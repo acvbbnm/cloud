@@ -406,18 +406,29 @@ class AISherpa:
             ),
         }
 
-    # ── playbook (후순위 깡통) ──
+    # ── playbook (RAG + LLM 결합, 2026-05-24 마지막 깡통 해소) ──
     @classmethod
     def recommend_playbook(cls, chain: list[str]) -> dict:
-        """기법 chain 에 해당하는 플레이북 KB 검색."""
-        if not chain:
-            return {"playbooks": []}
+        """기법 chain 에 해당하는 플레이북 RAG 검색 + LLM 맥락화 요약.
 
-        # chain 의 모든 기법을 합쳐서 키워드 검색 (PLAYBOOK 카테고리만)
+        흐름:
+          1. chain (technique_id 리스트) → PLAYBOOK KB 청크 RAG 검색 (k=3)
+          2. 각 청크에서 기본 steps 추출 (KB 원본)
+          3. LLM 호출로 chain 컨텍스트에 맞춰 우선순위·요약 추가
+             (기존 KB 검색 결과를 컨텍스트로 주입, AI 가 정렬·요약만 — 판단 X)
+          4. summary 필드를 응답에 첨부 (KB 출처 인용 + 수사관 판단 문구 포함)
+
+        결정성: KB 검색은 결정성 100%. LLM 요약은 매번 다를 수 있어 출처 칩으로 검증 가능.
+        Fallback: LLM 호출 실패 시 summary 없이 KB 청크만 반환 (안전).
+        """
+        if not chain:
+            return {"playbooks": [], "summary": None}
+
         query = " ".join(chain)
         scored = RAGRetriever.retrieve(query, k=3, kb_filter=["PLAYBOOK"])
 
-        playbooks = []
+        playbooks: list[dict] = []
+        kb_chunks_for_llm = []
         for c, _ in scored:
             steps = [s.strip() for s in c.text.split("\n") if s.strip()]
             playbooks.append(
@@ -429,8 +440,35 @@ class AISherpa:
                     "sources": [_source_dict(c)],
                 }
             )
+            kb_chunks_for_llm.append(c)
 
-        return {"playbooks": playbooks}
+        # LLM 맥락화 요약 — 사용자가 보고 있는 attack chain 에 맞춰
+        # 플레이북 우선순위·핵심 단계를 정리. KB 청크만 컨텍스트로 사용.
+        summary: Optional[str] = None
+        sources: list[dict] = []
+        if kb_chunks_for_llm:
+            chain_str = " → ".join(chain)
+            llm_prompt = (
+                f"수사관이 발견한 ATT&CK 공격 체인: {chain_str}\n\n"
+                f"위 KB 의 플레이북 {len(kb_chunks_for_llm)} 건을 분석해 다음을 해 주세요:\n"
+                f"1. 어떤 플레이북이 이 체인에 가장 적합한지 우선순위\n"
+                f"2. 즉시 수행해야 할 최우선 3 단계 추출 (출처 [1], [2] 형식 인용)\n"
+                f"3. 각 단계의 목적·기대 효과 한 줄"
+            )
+            try:
+                summary = LLMEngine.generate(prompt=llm_prompt, context=kb_chunks_for_llm)
+                sources = [_source_dict(c) for c in kb_chunks_for_llm]
+            except Exception:
+                # LLM 실패 — KB 결과만 반환 (graceful degrade)
+                summary = None
+                sources = []
+
+        return {
+            "playbooks": playbooks,
+            "summary": summary,
+            "summary_sources": sources,
+            "chain": chain,
+        }
 
     # ── KB 인덱스 노출용 ──
     @classmethod

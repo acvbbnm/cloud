@@ -419,19 +419,68 @@ class AISherpa:
             ),
         }
 
-    # ── playbook (후순위 깡통) ──
+    # ── playbook (Phase 2.5 — incident_type 라우팅, P2) ──
     @classmethod
-    def recommend_playbook(cls, chain: list[str]) -> dict:
-        """기법 chain 에 해당하는 플레이북 KB 검색."""
-        if not chain:
-            return {"playbooks": []}
+    def recommend_playbook(
+        cls,
+        chain: list[str],
+        incident_type: Optional[str] = None,
+        csp: Optional[str] = None,
+    ) -> dict:
+        """기법 chain 에 해당하는 플레이북 KB 검색 — 3-tier 사고유형 라우팅.
 
-        # chain 의 모든 기법을 합쳐서 키워드 검색 (PLAYBOOK 카테고리만)
-        query = " ".join(chain)
-        scored = RAGRetriever.retrieve(query, k=3, kb_filter=["PLAYBOOK"])
+        외부 IR 도구 리서치 결과(AWS Customer Playbook Framework·Wiz·CrowdStrike·
+        D3 SOAR) 의 공통 패턴을 적용한다:
+
+          Tier 1 (직접): incident_type 정확 일치 PLAYBOOK chunk         score 1.0
+                  └ AWS aws-customer-playbook-framework 의 1:1 매핑 패턴
+          Tier 2 (공통): incident_type=="ALL" PLAYBOOK chunk            score 0.8
+                  └ Wiz·NIST 800-61r2·KISA 의 공통 IR 절차
+          Tier 3 (fallback): chain keyword 매칭 (기존 RAG)              score 0.5
+                  └ incident_type 미확정 케이스 (D3 SOAR fallback)
+
+        incident_type=None 이면 Tier 1 건너뛰고 Tier 2 + Tier 3 만 사용.
+        결과는 score 내림차순 정렬, 중복 chunk_id 제거, 최대 5건 반환.
+        """
+        if not chain and not incident_type:
+            return {"playbooks": [], "tier_summary": {}}
+
+        from core.sherpa.knowledge_base import load_all  # 지연 import (순환 회피)
+
+        all_chunks = [c for c in load_all() if c.kb_name == "PLAYBOOK"]
+        # chunk_id → (score, tier) 누적 — 같은 chunk 가 여러 tier 에서 잡히면 최고 score 유지
+        scored: dict[str, tuple[float, str, KBChunk]] = {}
+
+        def _add(chunk: KBChunk, score: float, tier: str) -> None:
+            existing = scored.get(chunk.chunk_id)
+            if existing is None or existing[0] < score:
+                scored[chunk.chunk_id] = (score, tier, chunk)
+
+        # Tier 1 — incident_type 정확 매칭
+        if incident_type:
+            for c in all_chunks:
+                if c.meta.get("incident_type") == incident_type:
+                    _add(c, 1.0, "tier1_exact")
+
+        # Tier 2 — 공통 playbook (incident_type == "ALL")
+        for c in all_chunks:
+            if c.meta.get("incident_type") == "ALL":
+                _add(c, 0.8, "tier2_common")
+
+        # Tier 3 — chain keyword fallback (incident_type 미확정 또는 매칭 보강)
+        if chain:
+            query = " ".join(chain)
+            for c, raw in RAGRetriever.retrieve(query, k=5, kb_filter=["PLAYBOOK"]):
+                # 키워드 score (0~수십) 를 0.5 base + 정규화로 변환
+                _add(c, 0.5 + min(raw / 100.0, 0.2), "tier3_keyword")
+
+        # score 내림차순 정렬, 최대 5건
+        ranked = sorted(scored.values(), key=lambda x: -x[0])[:5]
 
         playbooks = []
-        for c, _ in scored:
+        tier_count = {"tier1_exact": 0, "tier2_common": 0, "tier3_keyword": 0}
+        for score, tier, c in ranked:
+            tier_count[tier] += 1
             steps = [s.strip() for s in c.text.split("\n") if s.strip()]
             playbooks.append(
                 {
@@ -439,11 +488,22 @@ class AISherpa:
                     "title": c.title,
                     "steps": steps[:10],
                     "tactics_addressed": c.meta.get("tactics_addressed", []),
+                    "incident_type": c.meta.get("incident_type"),
+                    "match_score": round(score, 2),
+                    "match_tier": tier,
                     "sources": [_source_dict(c)],
                 }
             )
 
-        return {"playbooks": playbooks}
+        return {
+            "playbooks": playbooks,
+            "tier_summary": tier_count,
+            "incident_type": incident_type,
+            "message": (
+                f"{len(playbooks)}건 추천 (직접 {tier_count['tier1_exact']}·"
+                f"공통 {tier_count['tier2_common']}·키워드 {tier_count['tier3_keyword']})"
+            ),
+        }
 
     # ── KB 인덱스 노출용 ──
     @classmethod

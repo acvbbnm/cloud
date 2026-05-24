@@ -264,8 +264,8 @@ def _audit_lane(lane_fx: dict, kb_index: dict) -> dict:
                 out["issues"].append(f"ATTACK chunk {cid_chunk} technique_id 형식 오류: {tid!r}")
         elif kb.kb_name in ("CASE_DB", "PLAYBOOK"):
             kb_it = kb.meta.get("incident_type")
-            if kb_it and kb_it != lane_fx["incident_type"]:
-                # 사고유형 lane 과 다른 chunk 가 인용된 경우 — 약한 경고
+            # P2 (2026-05-24): "ALL" 공통 playbook 은 정합 위반 아님 (Wiz·NIST 패턴)
+            if kb_it and kb_it != "ALL" and kb_it != lane_fx["incident_type"]:
                 out["issues"].append(
                     f"{kb.kb_name} chunk {cid_chunk} incident_type={kb_it} (lane={lane_fx['incident_type']})"
                 )

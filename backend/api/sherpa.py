@@ -157,12 +157,21 @@ async def post_suggest(req: SuggestRequest, db: Session = Depends(get_db)) -> di
 
 @router.post("/playbook")
 async def post_playbook(req: PlaybookRequest, db: Session = Depends(get_db)) -> dict:
-    """공격 체인에 대한 플레이북 추천 (후순위 깡통)."""
+    """공격 체인에 대한 플레이북 추천.
+
+    Phase 2.5 (2026-05-24, P2): caseId 가 주어지면 case 의 incident_type·csp 도
+    같이 전달하여 3-tier 라우팅 (직접/공통/keyword) 으로 lane 정합도 향상.
+    UNCLASSIFIED 케이스는 incident_type 미확정으로 간주 (Tier 1 skip).
+    """
+    incident_type: Optional[str] = None
+    csp: Optional[str] = None
     if req.caseId:
         case = IncidentCase.get_by_id(db, req.caseId)
         if case is None:
             raise _case_not_found()
-    data = AISherpa.recommend_playbook(req.chain)
+        incident_type = case.incident_type if case.incident_type != "UNCLASSIFIED" else None
+        csp = case.csp
+    data = AISherpa.recommend_playbook(req.chain, incident_type=incident_type, csp=csp)
     return {"status": "ok", "data": data}
 
 

@@ -225,9 +225,14 @@ const NextCluePanel = ({
         </div>
 
         {igCandidates.length === 0 ? (
-          <p className="text-[10.5px] text-ink-500 italic leading-5">
-            추가 후보 없음 — 트리에서 직접 입력하세요.
-          </p>
+          <div className="bg-amber-900/15 border border-amber-700/40 rounded px-2.5 py-2 text-[10.5px] text-amber-200 leading-5">
+            🔦 <span className="font-semibold">첫 단서 입력 대기 중</span>
+            <div className="text-[9.5px] text-ink-400 mt-1 leading-4">
+              Uniform prior 상태 — 좌측 <span className="text-brand-teal">단서 직접 입력</span>{' '}
+              또는 <span className="text-brand-teal">부분 로그 분석</span> 으로
+              시작하면 변별력 있는 IG 후보가 등장합니다.
+            </div>
+          </div>
         ) : (
           <p className="text-[9.5px] text-ink-500 leading-4 mb-2">
             Information Gain (Shannon 1948 + Pearl marginalization) 큰 순.

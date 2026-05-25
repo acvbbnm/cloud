@@ -273,10 +273,10 @@ const Step3_EvidenceTreeDiscovery = ({
     <div className="grid grid-cols-12 gap-3">
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
-        <Card title="Evidence Tree — 단서로 맵 밝히기" subtitle="후보 노드 클릭 → 단서 채택 → 트리 자라기">
+        <Card title="Evidence Tree — 단서로 맵 밝히기" subtitle="현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기">
           <ClueTreeView
-            path={treeState.path}
-            candidates={treeState.candidates}
+            tree={treeState.tree}
+            currentLeafId={treeState.current_leaf_id}
             entropyBits={treeState.confidence.entropy_bits}
             onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
             disabled={loading || isSubmitting}

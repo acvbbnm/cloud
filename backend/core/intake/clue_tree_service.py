@@ -151,7 +151,17 @@ def _collect_accepted_keys(tree: ClueTree) -> set[str]:
 
 
 def start_tree(db: Session, case_id: str) -> dict:
-    """케이스에 빈 ClueTree 생성 + 초기 후보 5개.
+    """케이스에 빈 ClueTree 생성. **Cold-start 정책 (2026-05-25, byungwoo)**:
+    root 만 만들고 후보는 비움 — 첫 단서가 입력되어야 IG 후보 풀이 등장한다.
+
+    비유 정합 (paradigm §1): "어두운 맵" 은 시작 시 아무것도 안 보이는 게 정상.
+    첫 단서가 횃불을 켠다.
+
+    학술 정합: uniform prior 에서 모든 단서의 IG 가 사실상 균등 → 추천 의미 미약.
+    첫 단서가 들어와야 posterior 가 기울고, 그때부터 변별력 있는 후보 산출 가능.
+
+    사용자는 CluesInput 직접 입력 또는 PartialLogAnalysis 로그 분석으로
+    첫 단서를 채택 → 이후 트리 후보 자라기 시작.
 
     이미 시작된 경우 기존 트리 반환 (idempotent — 재호출 안전).
     """
@@ -162,15 +172,10 @@ def start_tree(db: Session, case_id: str) -> dict:
         return _build_response(existing)
 
     tree = make_root(case_id, initial_posterior())
-    # uniform prior → entropy 3.0 → 5 후보
-    candidates = _build_candidates(
-        tree.posterior_current, accepted_clue_keys=set()
-    )
-    set_candidates(tree, tree.root_id, candidates)
+    # Cold-start: 후보 0개 — 첫 단서 입력 후 expand_tree 가 채움
+    set_candidates(tree, tree.root_id, [])
     _save_tree_to_case(db, case, tree)
-    logger.info(
-        "clue-tree started for %s — %d initial candidates", case_id, len(candidates)
-    )
+    logger.info("clue-tree started for %s — cold-start (no candidates)", case_id)
     return _build_response(tree)
 
 

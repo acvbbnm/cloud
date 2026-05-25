@@ -1,26 +1,26 @@
 /**
  * ClueTreeView — Evidence Tree 시각화 (Phase C, 2026-05-25, byungwoo).
+ * Rev 2 (2026-05-25): TriageTreeMinimap 드리프트 anchor 패턴으로 재설계.
  *
  * 설계서: `docs/evidence_tree_paradigm.md` §4·§8
  *
- * 구조:
- *   root (uniform prior, 시스템 노드)
- *     ↓ 채택된 단서 1
- *     ↓ 채택된 단서 2
- *     ↓ ...
- *     ↓ current leaf
- *     ├─ 후보 1 (점선, IG=…)
- *     ├─ 후보 2 (점선, IG=…)
- *     └─ ... K 개 (entropy 기반 동적, 사용자 결정 §16)
+ * 트리 구조 (legacy TriageTreeMinimap 정합):
+ *   ROOT (◆ 수사 시작, anchor X=0)
+ *    │
+ *    ├─ cand1  cand2  cand3*  cand4  cand5    ← root 의 children_candidates fan-out
+ *    │           ↓ (chosen* drifts anchor)
+ *    │      cand3 (실선 — 채택된 단서)
+ *    │       │
+ *    │       ├─ cand6  cand7*  cand8          ← depth 1 fan-out
+ *    │       │           ↓
+ *    │       │      cand7 (실선)
+ *    │       │       ├─ cand9*  cand10        ← depth 2 fan-out (CURRENT LEAF)
+ *    │       │       ↑ 클릭 가능 (점선)
  *
- * 클릭 동작:
- *   - 후보 클릭 → onAdoptCandidate(candidate) — Step3_Discovery 가 expand 호출
- *   - 채택 노드 클릭 → onClickNode(node) — 상세 패널 토글 (optional)
- *
- * 비주얼:
- *   - 채택 단서: 실선 brand-teal (TriageTreeMinimap 의 selected 옵션 스타일)
- *   - 후보:     점선 회색 + IG 게이지 (paradigm §8)
- *   - 루트:     얇은 점선 amber (uniform prior 표시)
+ * - 채택 단서: 실선 brand-teal
+ * - 선택된 후보 (= 다음 채택 단서): 후보 row 와 채택 노드 동시에 노출 + 실선 연결
+ * - 미선택 후보 (siblings): 점선 회색, 클릭 불가 (과거 분기점이라 채택 불가)
+ * - 현재 leaf 의 후보: 점선 회색 + 클릭 가능 (IG 게이지 표시)
  */
 import { useMemo } from 'react';
 
@@ -34,22 +34,21 @@ import 'reactflow/dist/style.css';
 
 import type {
   ClueCandidate,
-  ClueTreePathNode,
+  SerializedClueTree,
+  SerializedClueTreeNode,
 } from '@/types/clueTree';
 
 interface ClueTreeViewProps {
-  /** root → current leaf 까지 채택 단서 경로. */
-  path: ClueTreePathNode[];
-  /** 현 leaf 의 다음 후보 (Information Gain 정렬). */
-  candidates: ClueCandidate[];
+  /** 전체 트리 (백엔드 ClueTreeResponse.tree). */
+  tree: SerializedClueTree;
+  /** 현재 leaf 노드 ID (트리 자라기 위치). */
+  currentLeafId: string;
   /** confidence 정보 — entropy_bits 게이지 표시용. */
   entropyBits: number;
-  /** 후보 클릭 → 단서 채택 핸들러. */
+  /** 후보 클릭 → 단서 채택 핸들러. 현재 leaf 의 후보에서만 트리거. */
   onAdoptCandidate: (candidate: ClueCandidate) => void;
   /** 채택된 단서 노드 클릭 (optional, 상세 보기). */
-  onClickNode?: (node: ClueTreePathNode) => void;
-  /** 후보 IG 표시 단위 — bits (기본) | percent (entropy 비). */
-  igDisplay?: 'bits' | 'percent';
+  onClickNode?: (node: SerializedClueTreeNode) => void;
   /** 비활성 (loading 중 클릭 방지). */
   disabled?: boolean;
   /** ⛶ 확대 — 부모가 큰 오버레이로 띄울 때. */
@@ -60,39 +59,63 @@ interface ClueTreeViewProps {
   height?: number;
 }
 
-// 레이아웃 상수 — TriageTreeMinimap 스타일 정합
-const LEVEL_H = 70;
-const NODE_W = 168;
-const CAND_W = 152;
-const CAND_X_SPACING = 168;
+// 레이아웃 상수 — TriageTreeMinimap 스타일 정합 (단서가 길어서 약간 크게)
+const LEVEL_H = 110;            // 채택 노드 간 세로 간격
+const OPT_Y_OFFSET = 56;        // 채택 노드 → 후보 row 세로 간격
+const OPT_W = 122;              // 후보 간 수평 간격
+const NODE_WIDTH = 168;         // 채택 노드 폭
+const CAND_WIDTH = 110;         // 후보 노드 폭
+const MAX_STEP_DRIFT = 80;      // 선택된 후보의 X 드리프트 클램프 (anchor 이동 한계)
 
 const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** root → currentLeaf 까지 채택 노드 시퀀스를 depth 순서로 추출. */
+const collectPath = (
+  nodes: Record<string, SerializedClueTreeNode>,
+  rootId: string,
+  leafId: string,
+): SerializedClueTreeNode[] => {
+  if (!nodes[leafId]) return nodes[rootId] ? [nodes[rootId]] : [];
+  const chain: SerializedClueTreeNode[] = [];
+  let cur: string | null = leafId;
+  while (cur && nodes[cur]) {
+    chain.push(nodes[cur]);
+    cur = nodes[cur].parent_id;
+  }
+  return chain.reverse();
+};
+
+interface BuildResult {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 const buildLayout = (
-  path: ClueTreePathNode[],
-  candidates: ClueCandidate[],
-  entropyBits: number,
-  igDisplay: 'bits' | 'percent',
-): { nodes: Node[]; edges: Edge[] } => {
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
+  tree: SerializedClueTree,
+  currentLeafId: string,
+): BuildResult => {
+  const rfNodes: Node[] = [];
+  const rfEdges: Edge[] = [];
 
-  let centerX = 0;
-  let leafId: string | null = null;
+  const path = collectPath(tree.nodes, tree.root_id, currentLeafId);
+  if (path.length === 0) return { nodes: rfNodes, edges: rfEdges };
 
-  // 1. 채택된 단서 경로 (root → leaf)
-  path.forEach((p, lvl) => {
-    const isRoot = p.clue_key === '__ROOT__';
-    const id = `node-${p.node_id}`;
-    leafId = id;
+  let anchorX = 0;
 
-    nodes.push({
-      id,
-      position: { x: centerX, y: lvl * LEVEL_H },
+  path.forEach((adopted, depth) => {
+    const isRoot = adopted.clue_key === '__ROOT__';
+    const isCurrentLeaf = adopted.node_id === currentLeafId;
+    const adoptedNodeId = `adopted-${adopted.node_id}`;
+    const adoptedY = depth * LEVEL_H;
+
+    // ── 채택 노드 (실선 또는 root 점선 amber) ──
+    rfNodes.push({
+      id: adoptedNodeId,
+      position: { x: anchorX, y: adoptedY },
       data: {
         label: isRoot
           ? '◆ 수사 시작 (Uniform 1/8)'
-          : `${trunc(p.label, 22)}`,
+          : trunc(adopted.label, 22),
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
@@ -111,138 +134,187 @@ const buildLayout = (
         fontWeight: 700,
         padding: '4px 6px',
         borderRadius: '0',
-        width: NODE_W,
+        width: NODE_WIDTH,
         textAlign: 'center' as const,
       },
     });
 
-    if (lvl > 0) {
-      const prev = path[lvl - 1];
-      edges.push({
-        id: `e-${prev.node_id}-${p.node_id}`,
-        source: `node-${prev.node_id}`,
-        target: id,
-        style: { stroke: '#26C281', strokeWidth: 1.6 },
-        animated: true,
-      });
-    }
-  });
-
-  // 2. 현 leaf 의 children candidates (점선)
-  if (leafId && candidates.length > 0) {
-    const baseY = path.length * LEVEL_H;
+    // ── children_candidates fan-out (이 채택 노드 아래) ──
+    // 결정 시점에 보였던 모든 후보를 dashed 로 표시. 그 중 실제 채택된 다음 노드는
+    // "다음 채택 노드의 clue_key" 와 매칭하여 실선·brand-teal 로 강조.
+    const candidates = adopted.children_candidates ?? [];
     const total = candidates.length;
-    // entropy ≥ 2.5 → 5 / 1.5–2.5 → 3 / <1.5 → 2 (paradigm §16)
-    // 최대 IG 값으로 게이지 정규화
+    if (total === 0) return;
+
+    // 다음 채택 노드의 clue_key (있으면 → 선택된 후보 식별)
+    const nextAdopted = path[depth + 1];
+    const chosenClueKey = nextAdopted?.clue_key;
+    const isLeafCandidates = isCurrentLeaf; // 현재 leaf 의 후보만 클릭 가능
+
+    // 후보별 max IG (게이지 정규화)
     const maxIG = Math.max(...candidates.map((c) => c.expected_info_gain), 0.0001);
 
+    let chosenAbsX = anchorX; // 선택된 후보의 절대 X (다음 anchor 계산용)
     candidates.forEach((cand, i) => {
-      const offset = (i - (total - 1) / 2) * CAND_X_SPACING;
-      const x = centerX + offset;
-      const y = baseY;
-      const cid = `cand-${cand.candidate_id}`;
+      const offset = (i - (total - 1) / 2) * OPT_W;
+      const x = anchorX + offset;
+      const y = adoptedY + OPT_Y_OFFSET;
+      const cid = `cand-${adopted.node_id}-${cand.candidate_id}`;
+      const isChosen = chosenClueKey === cand.clue_key;
+      if (isChosen) chosenAbsX = x;
+
+      // 선택된 후보는 dashed 가 아니라 solid + brand-teal 로 표시
+      const border = isChosen
+        ? '1.5px solid rgba(38, 194, 129, 0.85)'
+        : '1px dashed rgba(112, 158, 200, 0.5)';
+      const background = isChosen
+        ? 'rgba(38, 194, 129, 0.12)'
+        : 'rgba(28, 32, 48, 0.45)';
+      const color = isChosen ? '#26C281' : 'rgba(195, 205, 220, 0.75)';
+
+      // 현재 leaf 후보만 클릭 가능
+      const clickable = isLeafCandidates && !isChosen;
 
       const ig = cand.expected_info_gain;
-      // bits 또는 percent (entropy 대비) 표시
-      const igLabel =
-        igDisplay === 'percent'
-          ? `${((ig / Math.max(entropyBits, 0.01)) * 100).toFixed(0)}% IG`
-          : `IG ${ig.toFixed(3)}b`;
-      // 막대 길이 (0~100%, IG / maxIG 정규화)
-      const barPct = Math.max(6, Math.min(100, (ig / maxIG) * 100));
-
-      // ReactFlow 의 data.label 은 string | ReactNode — 막대까지 그릴 수 있도록 ReactNode 로
+      const igPct = Math.max(6, Math.min(100, (ig / maxIG) * 100));
+      const igText = `IG ${ig.toFixed(3)}b`;
       const labelNode = (
         <div className="flex flex-col items-stretch gap-0.5 leading-tight">
-          <div className="text-[10px] text-ink-200 font-semibold text-center">
-            {trunc(cand.label, 22)}
+          <div
+            className="text-[9.5px] font-semibold text-center"
+            style={{ color }}
+          >
+            {trunc(cand.label, 14)}
           </div>
-          <div className="relative h-1.5 rounded-full bg-ink-900/70 overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 bg-brand-teal/60"
-              style={{ width: `${barPct}%` }}
-            />
-          </div>
-          <div className="text-[8.5px] text-ink-400 text-center font-mono">
-            {igLabel}
-          </div>
+          {isLeafCandidates && (
+            <>
+              <div className="relative h-1 rounded-full bg-ink-900/70 overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-brand-teal/60"
+                  style={{ width: `${igPct}%` }}
+                />
+              </div>
+              <div className="text-[8px] text-ink-500 text-center font-mono">
+                {igText}
+              </div>
+            </>
+          )}
         </div>
       );
 
-      nodes.push({
+      rfNodes.push({
         id: cid,
         position: { x, y },
         data: { label: labelNode, candidate: cand },
         targetPosition: Position.Top,
+        sourcePosition: Position.Bottom,
         draggable: false,
         connectable: false,
-        selectable: true,
+        selectable: clickable,
         style: {
-          background: 'rgba(28, 32, 48, 0.55)',
-          border: '1px dashed rgba(112, 158, 200, 0.7)',
-          color: '#C8D1E0',
-          fontSize: '10px',
-          fontWeight: 500,
-          padding: '4px 6px',
+          background,
+          border,
+          color,
+          fontSize: '9.5px',
+          fontWeight: isChosen ? 700 : 500,
+          padding: '3px 5px',
           borderRadius: '0',
-          width: CAND_W,
+          width: CAND_WIDTH,
           textAlign: 'center' as const,
-          cursor: 'pointer',
+          cursor: clickable ? 'pointer' : 'default',
+          opacity: clickable || isChosen ? 1 : 0.65,
         },
       });
 
-      edges.push({
-        id: `e-${leafId}-${cid}`,
-        source: leafId as string,
+      // 채택 노드 → 후보 edge
+      rfEdges.push({
+        id: `e-${adoptedNodeId}-${cid}`,
+        source: adoptedNodeId,
         target: cid,
         style: {
-          stroke: 'rgba(112, 158, 200, 0.55)',
-          strokeWidth: 1,
-          strokeDasharray: '4 3',
+          stroke: isChosen
+            ? 'rgba(38, 194, 129, 0.85)'
+            : 'rgba(80, 90, 105, 0.55)',
+          strokeWidth: isChosen ? 1.5 : 1,
+          strokeDasharray: isChosen ? undefined : '3 3',
         },
       });
-    });
-  }
 
-  return { nodes, edges };
+      // 선택된 후보 → 다음 채택 노드 edge (실선)
+      if (isChosen && nextAdopted) {
+        rfEdges.push({
+          id: `e-${cid}-adopted-${nextAdopted.node_id}`,
+          source: cid,
+          target: `adopted-${nextAdopted.node_id}`,
+          style: { stroke: '#26C281', strokeWidth: 1.5 },
+          animated: true,
+        });
+      }
+    });
+
+    // 다음 anchor 드리프트 — 선택된 후보의 X 로 이동 (클램프)
+    if (chosenClueKey) {
+      const rawShift = chosenAbsX - anchorX;
+      const clamped = Math.max(-MAX_STEP_DRIFT, Math.min(MAX_STEP_DRIFT, rawShift));
+      anchorX += clamped;
+    }
+  });
+
+  return { nodes: rfNodes, edges: rfEdges };
 };
 
 const ClueTreeView = ({
-  path,
-  candidates,
+  tree,
+  currentLeafId,
   entropyBits,
   onAdoptCandidate,
   onClickNode,
-  igDisplay = 'bits',
   disabled = false,
   onExpand,
   title = '단서 트리',
   height = 460,
 }: ClueTreeViewProps) => {
   const { nodes, edges } = useMemo(
-    () => buildLayout(path, candidates, entropyBits, igDisplay),
-    [path, candidates, entropyBits, igDisplay],
+    () => buildLayout(tree, currentLeafId),
+    [tree, currentLeafId],
   );
   const hasContent = nodes.length > 0;
-  const stableKey = useMemo(
-    () =>
-      [
-        ...path.map((p) => p.node_id),
-        ...candidates.map((c) => c.candidate_id),
-      ].join('|'),
-    [path, candidates],
-  );
+
+  const stableKey = useMemo(() => {
+    const nodeIds = Object.keys(tree.nodes).sort();
+    return `${currentLeafId}|${nodeIds.join(',')}`;
+  }, [tree.nodes, currentLeafId]);
+
+  const depth = (() => {
+    let d = 0;
+    let cur: string | null = currentLeafId;
+    while (cur && tree.nodes[cur]) {
+      const n: SerializedClueTreeNode = tree.nodes[cur];
+      if (n.clue_key === '__ROOT__') break;
+      d += 1;
+      cur = n.parent_id;
+    }
+    return d;
+  })();
+  const leafCands = tree.nodes[currentLeafId]?.children_candidates?.length ?? 0;
 
   const handleNodeClick = (_evt: React.MouseEvent, node: Node) => {
     if (disabled) return;
     if (node.id.startsWith('cand-')) {
       const cand = (node.data as { candidate?: ClueCandidate }).candidate;
-      if (cand) onAdoptCandidate(cand);
-    } else if (node.id.startsWith('node-') && onClickNode) {
-      // path node 클릭
-      const nodeIdRaw = node.id.replace('node-', '');
-      const pathNode = path.find((p) => p.node_id === nodeIdRaw);
-      if (pathNode) onClickNode(pathNode);
+      // 현재 leaf 의 후보만 채택 가능 — 과거 분기점 후보는 클릭 무시
+      const leafCandIds = new Set(
+        (tree.nodes[currentLeafId]?.children_candidates ?? []).map(
+          (c) => c.candidate_id,
+        ),
+      );
+      if (cand && leafCandIds.has(cand.candidate_id)) {
+        onAdoptCandidate(cand);
+      }
+    } else if (node.id.startsWith('adopted-') && onClickNode) {
+      const nodeIdRaw = node.id.replace('adopted-', '');
+      const adopted = tree.nodes[nodeIdRaw];
+      if (adopted) onClickNode(adopted);
     }
   };
 
@@ -252,7 +324,7 @@ const ClueTreeView = ({
         <span className="text-[10px] text-ink-400 font-mono font-semibold uppercase tracking-[0.14em]">
           {title}
           <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
-            depth {Math.max(0, path.length - 1)} · 후보 {candidates.length}개 · entropy {entropyBits.toFixed(2)} bits
+            depth {depth} · 후보 {leafCands}개 · entropy {entropyBits.toFixed(2)} bits
           </span>
         </span>
         {onExpand && (
@@ -269,7 +341,26 @@ const ClueTreeView = ({
       <div style={{ height }}>
         {!hasContent ? (
           <div className="h-full flex items-center justify-center text-ink-500 text-[10.5px] italic font-mono">
-            아직 채택된 단서 없음 — 후보를 클릭하거나 직접 입력하세요
+            아직 채택된 단서 없음 — 직접 입력 또는 로그 분석으로 시작하세요
+          </div>
+        ) : depth === 0 && leafCands === 0 ? (
+          /* Cold-start — root 만 있고 후보 0개 */
+          <div className="h-full flex flex-col items-center justify-center gap-3 px-6">
+            <div className="text-[16px]">🔦</div>
+            <div className="text-[12px] text-brand-amber font-semibold text-center">
+              어두운 맵 — 첫 단서를 입력하세요
+            </div>
+            <div className="text-[10.5px] text-ink-400 text-center leading-5 max-w-md">
+              결정 트리는 단서로부터 자라납니다.
+              <br />
+              아래 <span className="text-brand-teal">단서 직접 입력</span> 또는{' '}
+              <span className="text-brand-teal">부분 로그 분석</span> 으로 첫 단서를 채택하면
+              <br />
+              그때부터 가능성의 트리와 다음 단서 후보가 등장합니다.
+            </div>
+            <div className="text-[9.5px] text-ink-500 italic mt-2">
+              ※ Uniform prior (1/8) 상태에서는 모든 단서의 변별력이 균등 — 의미 있는 추천 불가
+            </div>
           </div>
         ) : (
           <ReactFlow
@@ -287,7 +378,7 @@ const ClueTreeView = ({
             panOnDrag={true}
             zoomOnDoubleClick={false}
             minZoom={0.2}
-            maxZoom={1.5}
+            maxZoom={1.6}
           >
             <Background gap={14} color="rgba(120, 130, 150, 0.08)" />
           </ReactFlow>

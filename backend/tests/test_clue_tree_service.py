@@ -71,27 +71,34 @@ def case(db_session):
 # ─────────────────────────────────────────────────────────────
 
 
-def test_start_tree_returns_uniform_with_5_candidates(db_session, case) -> None:
+def test_start_tree_returns_cold_start_empty_candidates(db_session, case) -> None:
+    """Cold-start 정책 (2026-05-25): start_tree 는 root 만, 후보 0개.
+
+    첫 단서 입력 후 expand_tree 가 IG 후보를 산출한다 (paradigm §1·§4 정합).
+    """
     data = start_tree(db_session, case.case_id)
     assert data["confidence"]["entropy_bits"] > 2.9  # uniform ≈ 3.0
-    assert len(data["candidates"]) == 5  # H≥2.5 → 5
+    assert len(data["candidates"]) == 0  # cold-start
     assert data["confidence"]["confidence_reached"] is False
     assert data["confidence"]["recommended_action"] == "continue_collecting"
     assert len(data["path"]) == 1  # root only
     assert data["path"][0]["clue_key"] == "__ROOT__"
 
 
-def test_start_tree_candidates_carry_outcome_flags(db_session, case) -> None:
-    """Phase D — 후보 응답에 outcome_flags 전파 (PDF §17.A Google Chronicle)."""
-    data = start_tree(db_session, case.case_id)
-    # 모든 후보가 outcome_flags 키를 가져야 함 (빈 dict 라도 OK)
-    for c in data["candidates"]:
-        assert "outcome_flags" in c
-        assert isinstance(c["outcome_flags"], dict)
-    # 최소 1개 후보는 비어있지 않은 outcome_flags 를 가져야 함
-    # (Phase A 추출 시 94/143 단서가 flags 있음)
-    has_any = any(bool(c["outcome_flags"]) for c in data["candidates"])
-    assert has_any, "Top-5 IG 후보 중 outcome_flags 가진 단서 0 — 카탈로그 전파 실패"
+def test_expand_tree_first_clue_populates_candidates(db_session, case) -> None:
+    """첫 expand_tree 후부터 IG 후보 등장 (cold-start 해제)."""
+    start_tree(db_session, case.case_id)
+    # 직접 카탈로그에서 강한 단서 1개 골라 채택
+    expanded = expand_tree(
+        db_session,
+        case.case_id,
+        parent_node_id=case.triage_state["evidence_tree"]["current_leaf_id"],
+        clue_key="IP_ADDRESS:tor_vpn",
+    )
+    assert len(expanded["candidates"]) > 0
+    # outcome_flags 전파 회귀 (Phase D)
+    has_any_flag = any(bool(c["outcome_flags"]) for c in expanded["candidates"])
+    assert has_any_flag, "expand 직후 IG 후보 중 outcome_flags 가진 단서 0"
 
 
 def test_start_tree_idempotent(db_session, case) -> None:
@@ -120,28 +127,28 @@ def test_start_tree_unknown_case_raises(db_session) -> None:
 
 def test_expand_tree_grows_tree(db_session, case) -> None:
     started = start_tree(db_session, case.case_id)
-    candidate = started["candidates"][0]
+    # Cold-start: started["candidates"] 는 비어있음. 첫 단서는 직접 카탈로그에서 선택.
+    first_clue = "IP_ADDRESS:tor_vpn"
 
     expanded = expand_tree(
         db_session,
         case.case_id,
         parent_node_id=started["current_leaf_id"],
-        clue_key=candidate["clue_key"],
-        source="tree_candidate",
+        clue_key=first_clue,
+        source="direct_input",
     )
     assert expanded["current_leaf_id"] != started["current_leaf_id"]
     assert len(expanded["path"]) == 2  # root + 단서 1
-    assert expanded["path"][-1]["clue_key"] == candidate["clue_key"]
+    assert expanded["path"][-1]["clue_key"] == first_clue
 
 
 def test_expand_tree_updates_posterior(db_session, case) -> None:
     started = start_tree(db_session, case.case_id)
-    candidate = started["candidates"][0]
     expanded = expand_tree(
         db_session,
         case.case_id,
         parent_node_id=started["current_leaf_id"],
-        clue_key=candidate["clue_key"],
+        clue_key="IP_ADDRESS:tor_vpn",
     )
     # 더 이상 uniform 이 아님
     posteriors = [v for k, v in expanded["posterior_current"].items() if k != "UNCLASSIFIED"]
@@ -149,13 +156,26 @@ def test_expand_tree_updates_posterior(db_session, case) -> None:
 
 
 def test_expand_tree_candidate_count_shrinks_as_entropy_drops(db_session, case) -> None:
-    """단서 누적 → entropy 감소 → 후보 개수 감소 (5 → 3 → 2 동적)."""
+    """단서 누적 → entropy 감소 → 후보 개수 감소 (5 → 3 → 2 동적).
+
+    Cold-start: 첫 단서는 강한 후보 (IP_ADDRESS:tor_vpn) 직접 입력 → 후속은
+    IG 최상위 자동 추천 활용.
+    """
     started = start_tree(db_session, case.case_id)
     parent = started["current_leaf_id"]
-    last = started
-    # 강한 변별 단서 5개 누적
-    for _ in range(5):
-        # 매번 IG 최상위 후보 채택
+    # 첫 단서 — 직접 입력
+    last = expand_tree(
+        db_session,
+        case.case_id,
+        parent_node_id=parent,
+        clue_key="IP_ADDRESS:tor_vpn",
+        source="direct_input",
+    )
+    parent = last["current_leaf_id"]
+    # 이후 4개는 IG 최상위 추천 따라가기
+    for _ in range(4):
+        if not last["candidates"]:
+            break
         c = last["candidates"][0]
         last = expand_tree(
             db_session,
@@ -207,10 +227,13 @@ def test_expand_tree_before_start_raises(db_session, case) -> None:
 
 
 def test_suggest_candidates_returns_fresh_set(db_session, case) -> None:
+    """suggest 는 trigger 트리는 그대로 + 후보 재계산. cold-start 상태에서도
+    IG 후보 풀을 강제 생성한다 (사용자가 "추천 보기" 클릭 시)."""
     started = start_tree(db_session, case.case_id)
     suggested = suggest_candidates(db_session, case.case_id)
     # 트리 변하지 않음
     assert started["current_leaf_id"] == suggested["current_leaf_id"]
+    # suggest 는 cold-start 시에도 후보 풀 강제 생성
     assert len(suggested["candidates"]) > 0
 
 
@@ -221,15 +244,15 @@ def test_suggest_candidates_returns_fresh_set(db_session, case) -> None:
 
 def test_get_tree_roundtrip(db_session, case) -> None:
     started = start_tree(db_session, case.case_id)
-    c = started["candidates"][0]
+    first_clue = "IP_ADDRESS:tor_vpn"
     expand_tree(
         db_session,
         case.case_id,
         parent_node_id=started["current_leaf_id"],
-        clue_key=c["clue_key"],
+        clue_key=first_clue,
     )
     fetched = get_tree(db_session, case.case_id)
-    assert fetched["path"][-1]["clue_key"] == c["clue_key"]
+    assert fetched["path"][-1]["clue_key"] == first_clue
     assert len(fetched["path"]) == 2
 
 
@@ -240,16 +263,16 @@ def test_get_tree_roundtrip(db_session, case) -> None:
 
 def test_reset_tree_returns_fresh_uniform(db_session, case) -> None:
     started = start_tree(db_session, case.case_id)
-    c = started["candidates"][0]
     expand_tree(
         db_session,
         case.case_id,
         parent_node_id=started["current_leaf_id"],
-        clue_key=c["clue_key"],
+        clue_key="IP_ADDRESS:tor_vpn",
     )
     fresh = reset_tree(db_session, case.case_id)
     assert len(fresh["path"]) == 1  # root only
     assert fresh["path"][0]["clue_key"] == "__ROOT__"
+    assert len(fresh["candidates"]) == 0  # cold-start
 
 
 # ─────────────────────────────────────────────────────────────

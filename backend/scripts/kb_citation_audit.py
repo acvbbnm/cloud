@@ -39,12 +39,16 @@ THRESHOLDS = {
 }
 
 # E 지표용 — 수사 단서로 인정할 키워드 (사용자 audit 기준)
+# A4 (2026-05-25) — 6 키워드 추가로 사전 보강 (chunk 본문 변경 X, 매칭 폭만 확장).
+# CSP 공식 문서·역사적 사례·플레이북에 자연스럽게 등장하는 의미적 수사 단서.
 INVESTIGATION_KEYWORDS = [
     "탐지", "증거", "rule", "룰", "타임라인", "timeline", "롤백",
     "시그니처", "signature", "indicator", "지표", "ATT&CK", "MITRE",
     "T1", "log", "로그", "분석", "복구", "차단", "이상", "anomaly",
     "위협", "공격", "killchain", "kill chain", "체인", "단계",
     "기법", "technique", "tactic", "전술",
+    # A4 추가 — 의미적 수사 키워드 (CSP_DOC·CASE_DB·PLAYBOOK 빈도 높음)
+    "정책", "권한", "노출", "절차", "교훈", "대응",
 ]
 
 

@@ -24,6 +24,9 @@ import httpx
 BASE = "http://127.0.0.1:8000"
 SCENARIO = Path(__file__).resolve().parent.parent / "data" / "synthetic" / "ncp_sysdig_8min_killchain.json"
 TIMEOUT = 30.0
+# 2026-05-25 — LLM cold-start (첫 chat / sherpa-kb 호출) 대응. chat 첫 호출 시 Ollama
+# 모델 로드 + ChromaDB 임베더 초기화로 60~120s 까지 갈 수 있어 별도 큰 timeout.
+TIMEOUT_LLM = 180.0
 
 # 검증 결과 누적
 issues: list[str] = []
@@ -77,13 +80,15 @@ def main() -> int:
     _log("=" * 70)
 
     # ── 0. health check ──
-    _log("\n[0] 사전 헬스 체크")
-    status, body = _get("/api/health")
+    # 2026-05-25: /api/health 가 가벼운 ping 으로 분리됨 (server/db 만).
+    # ollama/chromadb 실측은 /api/health?deep=true 명시적 호출.
+    _log("\n[0] 사전 헬스 체크 (deep=true 로 ollama·chromadb 실측)")
+    status, body = _get("/api/health?deep=true")
     _check(status == 200, f"backend /api/health 응답 {status}", f"backend 죽음 (status={status})")
     if isinstance(body, dict):
         _log(f"  data: {json.dumps(body.get('data', {}), ensure_ascii=False)}")
         ollama_status = body.get("data", {}).get("ollama")
-        if ollama_status != "running":
+        if ollama_status not in ("ollama", "running"):
             issues.append(f"ℹ health 엔드포인트가 ollama 실측 안 함 (현재 '{ollama_status}')")
 
     # ── 1. V-1 Step 0~1: case 생성 ──
@@ -180,13 +185,18 @@ def main() -> int:
                 status, body = r.status_code, r.json() if "application/json" in r.headers.get("content-type", "") else r.text
             except Exception as e:
                 status, body = -1, str(e)
-        _check(status == 200, f"업로드 응답 {status}", f"업로드 실패 (status={status}, body={body})")
+        # /api/logs/upload 는 신규 raw_events 생성이라 201 정상
+        _check(status in (200, 201), f"업로드 응답 {status}", f"업로드 실패 (status={status}, body={body})")
         if isinstance(body, dict):
             d = body.get("data", {})
-            uploaded = d.get("uploaded", d.get("total", 0))
+            # 실제 응답 키: totalEvents (raw 전체) / matched (카탈로그 매칭)
+            uploaded = d.get("totalEvents", d.get("uploaded", d.get("total", 0)))
             matched = d.get("matched", 0)
-            _log(f"  업로드: {uploaded}건, 매칭: {matched}건 (기대: 13건 / 매칭 ≥6)")
+            _log(f"  업로드: {uploaded}건, 매칭: {matched}건 (기대: 13건 / UNCLASSIFIED 면 matched=0 정상)")
             _check(uploaded == 13, f"uploaded={uploaded}", f"uploaded 기대 13 ≠ 실제 {uploaded}")
+            # UNCLASSIFIED 케이스의 matched=0 은 P5 walkthrough fix 가 의도한 경고 동작
+            if matched == 0 and any(w.get("code") == "UNCLASSIFIED_CASE" for w in d.get("warnings", [])):
+                _log("  ℹ matched=0 은 UNCLASSIFIED 의 의도된 경고 — 회귀 아님")
 
     # ── 5. V-3 OCSF 정규화 ──
     _log("\n[V-3] POST /api/analysis/normalize")
@@ -257,13 +267,19 @@ def main() -> int:
     # ── 9. V-7 보고서 생성 ──
     _log("\n[V-7] POST /api/report")
     status, body = _post("/api/report", {"caseId": case_id})
-    _check(status == 200, f"report 응답 {status}", f"report 실패 (status={status}, body={body})")
+    # POST /api/report 는 신규 보고서 생성이라 201 정상
+    _check(
+        status in (200, 201),
+        f"report 응답 {status}",
+        f"report 실패 (status={status}, body={body})",
+    )
     if isinstance(body, dict):
         d = body.get("data", {})
         sections = d.get("sections", {})
         section_count = len(sections) if isinstance(sections, dict) else len(sections or [])
-        _log(f"  sections: {section_count} (기대 8)")
-        _check(section_count >= 8, f"sections={section_count}", f"sections={section_count} (8 미만)")
+        # 2026-05-25 P4: 9번째 섹션 (scope_disclaimer) 추가됨.
+        _log(f"  sections: {section_count} (기대 ≥9, P4 scope_disclaimer 포함)")
+        _check(section_count >= 9, f"sections={section_count}", f"sections={section_count} (9 미만)")
 
     # ── 10. V-8 사후 검증 ──
     _log("\n[V-8] GET /api/sherpa/validate-incident-type?caseId=")
@@ -278,12 +294,17 @@ def main() -> int:
         _log(f"  message: {message[:100]}")
 
     # ── 11. V-8 chat (Ollama 미연결 시 fallback 메시지) ──
-    _log("\n[V-8] POST /api/sherpa/chat (간단 쿼리)")
+    # 2026-05-25 — chat 첫 호출은 LLM cold-start 60~120s 가능. TIMEOUT_LLM 사용.
+    _log("\n[V-8] POST /api/sherpa/chat (간단 쿼리, LLM cold-start 시 최대 180s 대기)")
     chat_payload = {
         "caseId": case_id,
         "query": "T1078.004 자격증명 남용에 대해 알려주세요",
     }
-    status, body = _post("/api/sherpa/chat", chat_payload)
+    try:
+        r = httpx.post(f"{BASE}/api/sherpa/chat", json=chat_payload, timeout=TIMEOUT_LLM)
+        status, body = r.status_code, r.json() if "application/json" in r.headers.get("content-type", "") else r.text
+    except Exception as e:
+        status, body = -1, str(e)
     _check(status == 200, f"chat 응답 {status}", f"chat 실패 (status={status})")
     if isinstance(body, dict):
         d = body.get("data", {})
@@ -295,8 +316,13 @@ def main() -> int:
             issues.append("ℹ Ollama 미연결 — chat 응답이 fallback 텍스트 (실 LLM 검증 불가)")
 
     # ── 12. V-8 KB stats ──
-    _log("\n[V-8] GET /api/sherpa/kb")
-    status, body = _get("/api/sherpa/kb")
+    # 2026-05-25 — kb 첫 호출 시 ChromaDB embedder cold-start 가능 (TIMEOUT_LLM).
+    _log("\n[V-8] GET /api/sherpa/kb (ChromaDB cold-start 시 최대 180s 대기)")
+    try:
+        r = httpx.get(f"{BASE}/api/sherpa/kb", timeout=TIMEOUT_LLM)
+        status, body = r.status_code, r.json() if "application/json" in r.headers.get("content-type", "") else r.text
+    except Exception as e:
+        status, body = -1, str(e)
     _check(status == 200, f"sherpa/kb 응답 {status}", f"sherpa/kb 실패 (status={status})")
     if isinstance(body, dict):
         d = body.get("data", {})

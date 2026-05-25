@@ -498,7 +498,10 @@ const Step3_Discovery = ({
         <div className="min-w-0">
           <div className="panel p-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4">
             {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
-            <ConfidenceGauge scores={hypothesisScores} />
+            <ConfidenceGauge
+              scores={hypothesisScores}
+              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
+            />
 
             {/* 사용자 요청 (2026-05-25) — 클릭 시 8종 비교 오버레이 토글 */}
             {/* Phase 4 (2026-05-25) — 백엔드 recommendation.scoring_mode 가 'bayesian' 이면 % 표시 */}
@@ -558,6 +561,7 @@ const Step3_Discovery = ({
               inlineHidden
               externalOpen={breakdownOverlayOpen}
               onClose={() => setBreakdownOverlayOpen(false)}
+              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
             />
 
             {/* 단서 누적 요약 */}

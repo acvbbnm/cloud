@@ -88,7 +88,8 @@ const HypothesisScoreBar = ({
     >
       <div className="flex items-baseline justify-between mb-2">
         <span className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
-           가설 점수 {limit > 0 && allRows.length > 0 && ` · 상위 ${rows.length}`}
+          {isBayesian ? '사고유형 신뢰도' : '가설 점수'}
+          {limit > 0 && allRows.length > 0 && ` · 상위 ${rows.length}`}
         </span>
         {onExpand ? (
           <span className="text-[9.5px] text-brand-teal hover:underline">

@@ -21,6 +21,8 @@ interface ConfidenceGaugeProps {
   autoSkip?: number;
   /** gap_to_2nd threshold (default 30) */
   gapTo2nd?: number;
+  /** Phase 4 (2026-05-25) — 베이지안 모드 시 % 정규화 + 임계값 분기 */
+  scoringMode?: 'additive' | 'bayesian';
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -39,17 +41,30 @@ const ConfidenceGauge = ({
   scores,
   autoSkip = 130,
   gapTo2nd = 30,
+  scoringMode = 'additive',
 }: ConfidenceGaugeProps) => {
+  // Phase 4 — 베이지안 모드: 점수 0~1 → 0~100 정규화, 임계값 65%/gap 20%p
+  const isBayesian = scoringMode === 'bayesian';
+  const normalize = (s: number) => (isBayesian ? Math.round(s * 100) : s);
+  const effAutoSkip = isBayesian ? 65 : autoSkip;
+  const effGapTo2nd = isBayesian ? 20 : gapTo2nd;
+  const formatScore = (s: number) => (isBayesian ? `${s}%` : `${s}점`);
+
   const sorted = (Object.keys(scores) as IncidentType[])
     .filter((t) => t !== 'UNCLASSIFIED')
-    .map((type) => ({ type, score: scores[type] }))
+    .map((type) => ({ type, score: normalize(scores[type]) }))
     .sort((a, b) => b.score - a.score);
 
   const primary = sorted[0];
   const secondary = sorted[1];
   const gap = primary && secondary ? primary.score - secondary.score : 0;
 
-  const ratio = primary ? Math.min(100, (primary.score / autoSkip) * 100) : 0;
+  // 베이지안 모드: 사후확률(0~100) 그대로 게이지 % 로. additive: 130점 만점 대비.
+  const ratio = primary
+    ? isBayesian
+      ? Math.min(100, primary.score)
+      : Math.min(100, (primary.score / effAutoSkip) * 100)
+    : 0;
 
   // 색상 단계
   let tone: 'gray' | 'blue' | 'green' | 'pulse';
@@ -83,7 +98,7 @@ const ConfidenceGauge = ({
   }[tone];
 
   // gap hint
-  const isComposite = primary && primary.score >= autoSkip * 0.7 && gap < gapTo2nd;
+  const isComposite = primary && primary.score >= effAutoSkip * 0.7 && gap < effGapTo2nd;
 
   return (
     <div>
@@ -116,7 +131,9 @@ const ConfidenceGauge = ({
                 <b className={ratioColor}>{INCIDENT_TYPE_KO[primary.type]}</b>
               </div>
               <div className="text-[10.5px] font-mono text-ink-400 mt-0.5">
-                {primary.score} / {autoSkip}점
+                {isBayesian
+                  ? `사후확률 ${formatScore(primary.score)}`
+                  : `${primary.score} / ${effAutoSkip}점`}
               </div>
               <div className={`text-[10.5px] mt-0.5 font-semibold ${ratioColor}`}>
                 {label}
@@ -130,7 +147,7 @@ const ConfidenceGauge = ({
               className={`text-[10.5px] leading-4 rounded-md px-2 py-1.5 border ${
                 isComposite
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                  : gap >= gapTo2nd
+                  : gap >= effGapTo2nd
                   ? 'bg-brand-teal/10 border-brand-teal/30 text-ink-300'
                   : 'bg-ink-900/40 border-ink-700/40 text-ink-400'
               }`}
@@ -138,19 +155,23 @@ const ConfidenceGauge = ({
               {isComposite ? (
                 <>
                    1위 <b>{INCIDENT_TYPE_KO[primary.type]}</b> 과 2위{' '}
-                  <b>{INCIDENT_TYPE_KO[secondary.type]}</b> 격차 <b>{gap}</b>점 —
-                  복합 사고 의심
+                  <b>{INCIDENT_TYPE_KO[secondary.type]}</b> 격차{' '}
+                  <b>{formatScore(gap).replace('점', '')}{isBayesian ? 'p' : '점'}</b> — 복합 사고 의심
                 </>
-              ) : gap >= gapTo2nd ? (
+              ) : gap >= effGapTo2nd ? (
                 <>
-                   1위와 2위 격차 <b>{gap}</b>점 — 명확
+                   1위와 2위 격차 <b>{formatScore(gap).replace('점', '')}{isBayesian ? 'p' : '점'}</b> — 명확
                 </>
-              ) : gap >= 10 ? (
+              ) : gap >= (isBayesian ? 5 : 10) ? (
                 <>
-                  가설 형성 중 — 1위·2위 격차 {gap}점 (Q5·Q6 진행 권장)
+                  가설 형성 중 — 1위·2위 격차 {formatScore(gap).replace('점', '')}
+                  {isBayesian ? 'p' : '점'} (Q5·Q6 진행 권장)
                 </>
               ) : (
-                <>여전히 모호 — 격차 {gap}점 (추가 단서 권장)</>
+                <>
+                  여전히 모호 — 격차 {formatScore(gap).replace('점', '')}
+                  {isBayesian ? 'p' : '점'} (추가 단서 권장)
+                </>
               )}
             </div>
           )}

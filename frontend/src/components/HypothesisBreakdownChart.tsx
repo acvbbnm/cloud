@@ -43,6 +43,8 @@ interface HypothesisBreakdownChartProps {
   externalOpen?: boolean;
   /** 외부 컨트롤 — 오버레이 닫기 콜백 */
   onClose?: () => void;
+  /** Phase 4 (2026-05-25) — 베이지안 모드 시 % 표시 + max 100 */
+  scoringMode?: 'additive' | 'bayesian';
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -96,7 +98,13 @@ const HypothesisBreakdownChart = ({
   inlineHidden = false,
   externalOpen,
   onClose,
+  scoringMode = 'additive',
 }: HypothesisBreakdownChartProps) => {
+  // Phase 4 — 베이지안 모드: 점수 0~1 → 0~100 정규화, max 100, "%" 표시
+  const isBayesian = scoringMode === 'bayesian';
+  const normalize = (s: number) => (isBayesian ? Math.round(s * 100) : s);
+  const formatScore = (s: number) => (isBayesian ? `${s}%` : `${s}`);
+  const effAutoSkip = isBayesian ? 65 : autoSkip;
   const [expanded, setExpanded] = useState<IncidentType | null>(null);
   const [internalOpen, setInternalOpen] = useState(false);
   // 외부 컨트롤이 있으면 그것을 우선, 없으면 내부 state 사용
@@ -111,7 +119,7 @@ const HypothesisBreakdownChart = ({
 
   const sorted = (Object.keys(scores) as IncidentType[])
     .filter((t) => t !== 'UNCLASSIFIED')
-    .map((type) => ({ type, score: scores[type] }))
+    .map((type) => ({ type, score: normalize(scores[type]) }))
     .sort((a, b) => b.score - a.score);
 
   const totalNonZero = sorted.filter((r) => r.score > 0).length;
@@ -121,7 +129,7 @@ const HypothesisBreakdownChart = ({
   const renderList = () => (
     <div className="space-y-0.5">
       {sorted.map((row, i) => {
-        const pct = max > 0 ? (row.score / Math.max(autoSkip, max)) * 100 : 0;
+        const pct = max > 0 ? (row.score / Math.max(effAutoSkip, max)) * 100 : 0;
         const isPrimary = i === 0 && row.score > 0;
         const isSecondary = i === 1 && row.score > 0;
         const isExpanded = expanded === row.type;
@@ -162,7 +170,7 @@ const HypothesisBreakdownChart = ({
                     {INCIDENT_TYPE_KO[row.type]}
                   </span>
                   <span className="text-[10px] font-mono text-ink-300 ml-2 shrink-0">
-                    {row.score}
+                    {formatScore(row.score)}
                   </span>
                 </div>
                 <div className="relative h-1.5 bg-ink-900 rounded-full overflow-hidden">

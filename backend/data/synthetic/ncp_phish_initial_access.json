@@ -12,7 +12,14 @@
     "action": "Login",
     "actionResultType": "FAIL",
     "eventTime": "2026-05-20 14:00:00 UTC",
-    "content": {"actionUserName": "finance-mgr", "sourceIp": "203.0.113.45", "productData": {"reason": "invalid_password", "note": "피싱 직후 1차 실패"}}
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "productData": {
+        "reason": "invalid_password",
+        "note": "피싱 직후 1차 실패"
+      }
+    }
   },
   {
     "historyId": "h-ph-002",
@@ -27,7 +34,14 @@
     "action": "Login",
     "actionResultType": "SUCCESS",
     "eventTime": "2026-05-20 14:00:30 UTC",
-    "content": {"actionUserName": "finance-mgr", "sourceIp": "203.0.113.45", "userAgent": "curl/7.88.1", "productData": {"note": "피싱으로 얻은 자격증명 사용 — 비국내 IP"}}
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "userAgent": "curl/7.88.1",
+      "productData": {
+        "note": "피싱으로 얻은 자격증명 사용 — 비국내 IP"
+      }
+    }
   },
   {
     "historyId": "h-ph-003",
@@ -42,7 +56,13 @@
     "action": "Change password",
     "actionResultType": "SUCCESS",
     "eventTime": "2026-05-20 14:02:00 UTC",
-    "content": {"actionUserName": "finance-mgr", "sourceIp": "203.0.113.45", "productData": {"note": "공격자가 비밀번호 변경 → 정상 사용자 잠금"}}
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "productData": {
+        "note": "공격자가 비밀번호 변경 → 정상 사용자 잠금"
+      }
+    }
   },
   {
     "historyId": "h-ph-004",
@@ -57,7 +77,14 @@
     "action": "Create AccessKey",
     "actionResultType": "SUCCESS",
     "eventTime": "2026-05-20 14:03:00 UTC",
-    "content": {"actionUserName": "finance-mgr", "sourceIp": "203.0.113.45", "productData": {"accessKeyId": "NCPPHISH001", "note": "백도어 자격증명"}}
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "productData": {
+        "accessKeyId": "NCPPHISH001",
+        "note": "백도어 자격증명"
+      }
+    }
   },
   {
     "historyId": "h-ph-005",
@@ -72,6 +99,35 @@
     "action": "Create sub account",
     "actionResultType": "SUCCESS",
     "eventTime": "2026-05-20 14:05:00 UTC",
-    "content": {"actionUserName": "finance-mgr", "sourceIp": "203.0.113.45", "productData": {"newSubAccount": "system-bg-svc", "note": "잘 숨겨진 백도어 계정명"}}
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "productData": {
+        "newSubAccount": "system-bg-svc",
+        "note": "잘 숨겨진 백도어 계정명"
+      }
+    }
+  },
+  {
+    "historyId": "h-p3-dns-001",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/finance-mgr",
+    "regionCode": "KR",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942900",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "DNS Tunnel",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-20 14:05:00 UTC",
+    "content": {
+      "actionUserName": "finance-mgr",
+      "sourceIp": "203.0.113.45",
+      "productData": {
+        "newSubAccount": "system-bg-svc",
+        "note": "잘 숨겨진 백도어 계정명"
+      }
+    }
   }
 ]

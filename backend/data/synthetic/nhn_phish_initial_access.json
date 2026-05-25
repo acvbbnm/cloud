@@ -88,5 +88,23 @@
     "tenantId": "tenant-001",
     "request": "{\"newMember\":\"system-bg-svc@victim.kr\",\"role\":\"AdminRole\"}",
     "response": "{\"note\":\"잘 숨겨진 백도어 계정\"}"
+  },
+  {
+    "eventLogUuid": "p3-dns-001",
+    "eventTime": "2026-05-20T14:05:00.000+0000",
+    "eventId": "event_id.network.dns.tunnel",
+    "result": "SUCCESS",
+    "userName": "finance-mgr",
+    "userIp": "203.0.113.45",
+    "userId": "finance-mgr@victim.kr",
+    "userAgent": "python-requests/2.31.0",
+    "eventSourceType": "API",
+    "orgId": "org-001",
+    "projectId": "p-prod",
+    "projectName": "production",
+    "appKey": "appkey-001",
+    "tenantId": "tenant-001",
+    "request": "{\"newMember\":\"system-bg-svc@victim.kr\",\"role\":\"AdminRole\"}",
+    "response": "{\"note\":\"잘 숨겨진 백도어 계정\"}"
   }
 ]

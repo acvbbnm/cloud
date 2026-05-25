@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
+import DwellTimeKpi from '@/components/DwellTimeKpi';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
@@ -240,6 +241,9 @@ const V5Board = () => {
             </div>
           )}
         </div>
+
+        {/* Phase 2.5 P6 — Dwell Time KPI 카드 (Mandiant 7d 벤치마크 비교) */}
+        <DwellTimeKpi kpi={boardQuery.data?.kpi} />
 
         <div className="flex gap-4">
           <div className="flex-1 min-w-0 flex flex-col gap-3">

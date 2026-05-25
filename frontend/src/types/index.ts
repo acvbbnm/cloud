@@ -185,10 +185,27 @@ export interface BoardEdge {
   label: string;
 }
 
+/**
+ * Phase 2.5 (P6, 2026-05-25) — Dwell Time KPI.
+ * PDF 결론 (Mandiant M-Trends 2024 median dwell 7d) 벤치마크 비교용.
+ * 백엔드 InvestigationBoard.compute_kpi 와 동기.
+ */
+export interface BoardKpi {
+  earliestEventTime: string | null;
+  caseCreatedAt: string | null;
+  caseClosedAt: string | null;
+  dwellTimeSeconds: number | null;
+  containmentSeconds: number | null;
+  totalSeconds: number | null;
+  benchmarkSeconds: number;
+  benchmarkSource: string;
+}
+
 export interface BoardResponse {
   caseId: string;
   nodes: BoardNode[];
   edges: BoardEdge[];
+  kpi?: BoardKpi;
 }
 
 export interface ReportSections {

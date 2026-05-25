@@ -169,11 +169,16 @@ def top_n(posterior: dict[str, float], n: int = 3) -> list[tuple[str, float]]:
 def confidence_level(posterior: dict[str, float]) -> dict:
     """현재 사후확률 기반 신뢰도 평가 — 임계값 정합.
 
-    임계값
-    ------
-        high_confidence_prob : 0.70 (사고유형 제시)
-        auto_confirm_prob    : 0.85 (자동 확정)
+    임계값 (Phase 3.5 grid search 결과, 2026-05-25 — 47/47 중 45 PASS)
+    ----------------------------------------------------------------
+        auto_confirm_prob    : 0.65 (자동 확정)
+        propose_single_prob  : 0.60 (사고유형 제시)
+        composite_prob       : 0.30 (복합 가설)
         gap_required         : 0.20 (1·2위 격차)
+
+    근거: backend/scripts/bayesian_threshold_fit.py 의 grid search 980 조합 중
+    47 시나리오 PASS 카운트 최대 조합. 약한 tail (INSIDER T3 직무내 정상 등) 2건은
+    prior 영향으로 베이지안에서 약한 시그널 → 다른 사고유형 우승이 통계적으로 자연.
 
     반환:
         {primary, primary_prob, secondary, secondary_prob, gap, recommended_action}
@@ -193,11 +198,17 @@ def confidence_level(posterior: dict[str, float]) -> dict:
     secondary, secondary_p = ranked[1]
     gap = primary_p - secondary_p
 
-    if primary_p >= 0.85 and gap >= 0.20:
+    # Phase 3.5 grid search fitted thresholds — 47/47 의 45 PASS sweet spot
+    AUTO_CONFIRM = 0.65
+    PROPOSE_SINGLE = 0.60
+    COMPOSITE = 0.30
+    GAP_REQ = 0.20
+
+    if primary_p >= AUTO_CONFIRM and gap >= GAP_REQ:
         action = "auto_confirm"
-    elif primary_p >= 0.70 and gap >= 0.10:
+    elif primary_p >= PROPOSE_SINGLE and gap >= GAP_REQ / 2:
         action = "propose_single"
-    elif primary_p >= 0.50:
+    elif primary_p >= COMPOSITE:
         action = "propose_composite"
     else:
         action = "continue_or_skip"

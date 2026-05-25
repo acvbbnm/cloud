@@ -70,6 +70,13 @@ class Settings:
         "EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"
     )
 
+    # ── Triage 분류 모드 (Phase 2.5 실험, 2026-05-25) ──
+    # "additive" (기본) — 누적 합산: 절대 점수 0~180, 임계값 90/130/gap30
+    # "bayesian"        — 베이즈 갱신: 확률 0~1, 임계값 0.70/0.85/gap0.20
+    #                     Verizon DBIR 2024 prior + Laplace smoothing likelihood
+    # 두 모드 모두 결정성 100% (같은 입력 → 같은 출력). 환경변수로 안전 토글.
+    TRIAGE_MODE: str = os.getenv("TRIAGE_MODE", "additive")
+
     # ── 페이지네이션 ──
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100

@@ -52,8 +52,16 @@ INCIDENT_TYPES_5 = INCIDENT_TYPES_8
 INCIDENT_TYPES_9 = INCIDENT_TYPES_8
 
 
-def _initial_scores() -> dict[str, int]:
-    """8 사고유형 + UNCLASSIFIED 모두 0 인 점수 초기값 (2026-05-19)."""
+def _initial_scores() -> dict[str, float]:
+    """초기 점수 — TRIAGE_MODE 에 따라 분기 (Phase 2.5, 2026-05-25).
+
+    - additive (기본): 8 사고유형 + UNCLASSIFIED 모두 0
+    - bayesian       : Verizon DBIR 2024 prior + UNCLASSIFIED=0 (priors.json)
+    """
+    if settings.TRIAGE_MODE == "bayesian":
+        from core.intake.bayesian import initial_posterior
+
+        return initial_posterior()
     return {t: 0 for t in INCIDENT_TYPES_8} | {"UNCLASSIFIED": 0}
 
 
@@ -98,16 +106,30 @@ def invalidate_cache() -> None:
 
 
 def _accumulate(
-    base: dict[str, int],
+    base: dict[str, float],
     delta: Optional[dict[str, int | str]],
-) -> dict[str, int]:
-    """가중치 dict 의 5 사고유형 키만 base 에 누적. source 등 메타 키는 무시.
+) -> dict[str, float]:
+    """가중치 dict 를 base 에 적용 — TRIAGE_MODE 분기.
+
+    - additive (기본): 정수 가중치 누적 합산 (0~180 절대 점수)
+    - bayesian       : 정수 → likelihood 변환 후 베이즈 갱신 (0~1 확률)
 
     빈 dict 또는 None 이면 base 사본 그대로 반환.
+    source 등 메타 키는 무시 (양 모드 공통).
     """
-    out = dict(base)
     if not delta:
-        return out
+        return dict(base)
+
+    if settings.TRIAGE_MODE == "bayesian":
+        from core.intake.bayesian import bayes_update, weights_to_likelihood
+
+        lk = weights_to_likelihood(delta)
+        if not lk:
+            return dict(base)
+        return bayes_update(base, lk)
+
+    # additive (기존 누적 합산)
+    out = dict(base)
     for k in INCIDENT_TYPES_5:
         v = delta.get(k)
         if isinstance(v, (int, float)):
@@ -195,15 +217,64 @@ def _thresholds() -> dict[str, int]:
     }
 
 
-def evaluate_recommendation(scores: dict[str, int]) -> dict:
-    """현재 가설 점수 → recommendation.
+def evaluate_recommendation(scores: dict[str, float]) -> dict:
+    """현재 가설 점수 → recommendation. TRIAGE_MODE 에 따라 분기.
+
+    - additive (기본): 절대 점수 기반 — auto_skip 90 / high_conf 70 / gap 20
+    - bayesian       : 확률 기반 — auto 0.85 / high 0.70 / gap 0.20
 
     outcome:
-      auto_confirm       : primary >= auto_skip_tree(90) AND gap >= gap_to_2nd(20)
-      propose_composite  : primary >= high_confidence(70) AND gap < gap_to_2nd(20)
-      propose_single     : primary >= high_confidence(70)
+      auto_confirm       : primary 높음 + gap 큼
+      propose_composite  : primary 적당 + gap 작음 (두 가설 근접)
+      propose_single     : primary 적당
       continue_or_skip   : 그 외 — 추가 단서 또는 UNCLASSIFIED 진행
     """
+    if settings.TRIAGE_MODE == "bayesian":
+        from core.intake.bayesian import confidence_level
+
+        cl = confidence_level(scores)
+        primary_prob = cl["primary_prob"]
+        gap = cl["gap"]
+        # 응답 호환성을 위해 score 필드도 0~100 정수로 변환 (% 단위)
+        return {
+            "outcome": cl["recommended_action"],
+            "primary": {
+                "incident_type": cl["primary"],
+                "score": int(primary_prob * 100),
+                "probability": round(primary_prob, 3),
+            },
+            "secondary": (
+                {
+                    "incident_type": cl["secondary"],
+                    "score": int(cl["secondary_prob"] * 100),
+                    "probability": round(cl["secondary_prob"], 3),
+                }
+                if cl["secondary"]
+                else None
+            ),
+            "rationale": [
+                f"{cl['primary']} {primary_prob*100:.1f}% (Bayesian posterior)",
+                (
+                    f"{cl['secondary']} {cl['secondary_prob']*100:.1f}% (gap {gap*100:.1f}%p)"
+                    if cl["secondary"]
+                    else "사후확률 분포 단일"
+                ),
+            ],
+            "scoring_mode": "bayesian",
+            "thresholds": {
+                "auto_confirm": 0.65,
+                "propose_single": 0.60,
+                "composite": 0.30,
+                "gap": 0.20,
+            },
+            "message": {
+                "auto_confirm": "단일 사고유형 자동 확정 (사후확률 ≥65%)",
+                "propose_single": "사고유형 제시 (사후확률 ≥60%)",
+                "propose_composite": "복합 사고유형 제시 — 두 가설 근접",
+                "continue_or_skip": "추가 단서 필요 — 사후확률 미달",
+            }.get(cl["recommended_action"], ""),
+        }
+
     th = _thresholds()
     sorted_pairs = sorted(
         [(t, scores.get(t, 0)) for t in INCIDENT_TYPES_5],

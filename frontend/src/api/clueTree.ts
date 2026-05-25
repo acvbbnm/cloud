@@ -58,3 +58,11 @@ export const getClueTree = async (
   const res = await client.get('/api/clue-tree', { params: { caseId } });
   return res.data.data;
 };
+
+/** POST /api/clue-tree/reset — 기존 트리 폐기 + cold-start 로 재시작. */
+export const resetClueTree = async (
+  caseId: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/reset', { caseId });
+  return res.data.data;
+};

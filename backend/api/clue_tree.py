@@ -34,6 +34,7 @@ from core.intake.clue_tree_service import (
     ClueTreeNotFound,
     expand_tree,
     get_tree,
+    reset_tree,
     start_tree,
     suggest_candidates,
 )
@@ -85,6 +86,10 @@ class CueTreeExpandRequest(BaseModel):
 
 
 class CueTreeSuggestRequest(BaseModel):
+    caseId: str
+
+
+class CueTreeResetRequest(BaseModel):
     caseId: str
 
 
@@ -159,4 +164,19 @@ async def get(caseId: str = Query(...), db: Session = Depends(get_db)) -> dict:
         raise _case_not_found(caseId)
     except ClueTreeNotFound:
         raise _tree_not_started(caseId)
+    return {"status": "ok", "data": data}
+
+
+@router.post("/reset")
+async def reset(req: CueTreeResetRequest, db: Session = Depends(get_db)) -> dict:
+    """트리 초기화 — 기존 트리 폐기 후 cold-start 로 새 트리 생성.
+
+    사용자가 잘못된 단서 시퀀스를 시작했거나 처음부터 다시 보고 싶을 때 사용.
+    Phase A~F 데이터 모델 변경 (cold-start 정책 도입 등) 시에도 기존 케이스의
+    오래된 트리를 초기화하는 용도.
+    """
+    try:
+        data = reset_tree(db, req.caseId)
+    except CaseNotFound:
+        raise _case_not_found(req.caseId)
     return {"status": "ok", "data": data}

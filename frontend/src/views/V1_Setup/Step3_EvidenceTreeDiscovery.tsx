@@ -27,12 +27,15 @@
  *   │   confidence_reached 시 [확정하고 다음 단계로] 카드          │
  *   └────────────────────────────────────────────────────────────┘
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
 import CluesInput from '@/components/CluesInput';
 import ConfidenceGauge from '@/components/ConfidenceGauge';
+import DiscoveryIntroModal, {
+  hasDismissedDiscoveryIntro,
+} from '@/components/DiscoveryIntroModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
@@ -84,6 +87,15 @@ const Step3_EvidenceTreeDiscovery = ({
   const expandTree = useClueTreeStore((s) => s.expand);
   const refreshCandidates = useClueTreeStore((s) => s.refreshCandidates);
   const hydrate = useClueTreeStore((s) => s.hydrate);
+  const resetServer = useClueTreeStore((s) => s.resetServer);
+
+  // Phase G — 첫 진입 시 evidence_tree 패러다임 안내 모달
+  const [introOpen, setIntroOpen] = useState(false);
+  useEffect(() => {
+    if (!hasDismissedDiscoveryIntro('evidence_tree')) {
+      setIntroOpen(true);
+    }
+  }, []);
 
   // ClueCatalog 가 단서 키 ↔ outcome_flags 룩업이 필요할 때 — 일단은 응답 candidate 가 모두 가지고 옴
 
@@ -271,14 +283,39 @@ const Step3_EvidenceTreeDiscovery = ({
 
   return (
     <div className="grid grid-cols-12 gap-3">
+      {/* Phase G — 첫 진입 사전 안내 (evidence_tree 패러다임) */}
+      <DiscoveryIntroModal
+        open={introOpen}
+        onClose={() => setIntroOpen(false)}
+        mode="evidence_tree"
+      />
+
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
-        <Card title="Evidence Tree — 단서로 맵 밝히기" subtitle="현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기">
+        <Card
+          title="Evidence Tree — 단서로 맵 밝히기"
+          subtitle="현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기"
+        >
           <ClueTreeView
             tree={treeState.tree}
             currentLeafId={treeState.current_leaf_id}
             entropyBits={treeState.confidence.entropy_bits}
             onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
+            onReset={async () => {
+              if (!caseId) return;
+              if (
+                !window.confirm(
+                  '현재 트리를 초기화하고 cold-start 로 다시 시작합니다.\n계속하시겠습니까?',
+                )
+              ) return;
+              try {
+                await resetServer(caseId);
+                showToast('단서 트리 초기화 완료 — 첫 단서를 입력하세요', 3500);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                showToast(`초기화 실패: ${msg}`, 4500);
+              }
+            }}
             disabled={loading || isSubmitting}
             height={460}
           />

@@ -14,6 +14,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   expandClueTree,
   getClueTree,
+  resetClueTree,
   startClueTree,
   suggestClueCandidates,
 } from '@/api/clueTree';
@@ -39,10 +40,12 @@ interface ClueTreeStoreState {
   refreshCandidates: (caseId: string) => Promise<ClueTreeResponse>;
   /** DB 저장된 트리 로드 (새로고침·복귀). */
   hydrate: (caseId: string) => Promise<ClueTreeResponse | null>;
+  /** 백엔드 트리 폐기 + cold-start 로 재시작 (Phase A→D 호환성 reset 용). */
+  resetServer: (caseId: string) => Promise<ClueTreeResponse>;
 
   /** 응답으로 스토어 갱신 — 외부에서 직접 주입 시. */
   setResponse: (caseId: string, res: ClueTreeResponse) => void;
-  /** 트리 상태 초기화. */
+  /** 클라이언트 트리 상태 초기화 (서버 폐기 X). */
   reset: () => void;
 }
 
@@ -107,6 +110,19 @@ export const useClueTreeStore = create<ClueTreeStoreState>()(
           // 404/409 = 트리 미시작 — 정상 흐름
           set({ loading: false, error: null });
           return null;
+        }
+      },
+
+      resetServer: async (caseId: string) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await resetClueTree(caseId);
+          set({ caseId, response: res, loading: false });
+          return res;
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          set({ loading: false, error: message });
+          throw e;
         }
       },
 

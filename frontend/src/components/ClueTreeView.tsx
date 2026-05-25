@@ -53,6 +53,8 @@ interface ClueTreeViewProps {
   disabled?: boolean;
   /** ⛶ 확대 — 부모가 큰 오버레이로 띄울 때. */
   onExpand?: () => void;
+  /** ⟲ 초기화 — 기존 트리 폐기 + cold-start (2026-05-25 이전 트리 마이그레이션용). */
+  onReset?: () => void;
   /** 헤더 텍스트 — 기본 "단서 트리". */
   title?: string;
   /** 그래프 영역 높이 (기본 460). */
@@ -271,6 +273,7 @@ const ClueTreeView = ({
   onClickNode,
   disabled = false,
   onExpand,
+  onReset,
   title = '단서 트리',
   height = 460,
 }: ClueTreeViewProps) => {
@@ -327,16 +330,29 @@ const ClueTreeView = ({
             depth {depth} · 후보 {leafCands}개 · entropy {entropyBits.toFixed(2)} bits
           </span>
         </span>
-        {onExpand && (
-          <button
-            type="button"
-            onClick={onExpand}
-            title="전체 트리 보기"
-            className="text-[10px] font-mono text-brand-teal hover:text-brand-tealDark border border-brand-teal/40 hover:border-brand-tealDark px-1.5 py-0.5 transition-colors"
-          >
-            ⛶ 확대
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={disabled}
+              title="기존 트리 폐기 + cold-start 재시작"
+              className="text-[10px] font-mono text-ink-400 hover:text-red-300 border border-ink-700 hover:border-red-500/60 px-1.5 py-0.5 transition-colors disabled:opacity-40"
+            >
+              ⟲ 초기화
+            </button>
+          )}
+          {onExpand && (
+            <button
+              type="button"
+              onClick={onExpand}
+              title="전체 트리 보기"
+              className="text-[10px] font-mono text-brand-teal hover:text-brand-tealDark border border-brand-teal/40 hover:border-brand-tealDark px-1.5 py-0.5 transition-colors"
+            >
+              ⛶ 확대
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ height }}>
         {!hasContent ? (

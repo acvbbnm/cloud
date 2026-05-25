@@ -22,6 +22,9 @@ interface HypothesisScoreBarProps {
   limit?: number;
   /** 카드 클릭 시 호출 — 사고유형 비교 풀 오버레이 토글용 (2026-05-25) */
   onExpand?: () => void;
+  /** Phase 2.5 (2026-05-25) — 백엔드 응답의 scoring_mode.
+   *  'bayesian' 이면 점수를 확률 (0~1 또는 0~100%) 로 해석, 막대 100% 만점. */
+  scoringMode?: 'additive' | 'bayesian';
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -46,16 +49,28 @@ const HypothesisScoreBar = ({
   highlightSecondary,
   limit = 2,
   onExpand,
+  scoringMode = 'additive',
 }: HypothesisScoreBarProps) => {
-  // UNCLASSIFIED 제외, 점수 내림차순 — 사용자 요청 2026-05-25: 상위 N개만 (기본 2)
+  // Phase 2.5 (P4) — 베이지안 모드: 점수가 사후확률 (0~1 또는 0~100) — 백분율 표시
+  const isBayesian = scoringMode === 'bayesian';
+  // 베이지안 모드 임계값: high_conf 60%, auto 65%, max 100% (Phase 3.5 fitted)
+  const effHighConf = isBayesian ? 60 : highConfidence;
+  const effAutoSkip = isBayesian ? 65 : autoSkip;
+  const effMaxScale = isBayesian ? 100 : maxScale;
+
+  // UNCLASSIFIED 제외, 점수 내림차순
+  // 베이지안 모드: 백엔드 hypothesis_scores 가 0~1 확률 → 0~100 으로 정규화
+  const normalize = (s: number) => (isBayesian ? Math.round(s * 100) : s);
   const allRows = (Object.keys(scores) as IncidentType[])
     .filter((t) => t !== 'UNCLASSIFIED')
-    .map((type) => ({ type, score: scores[type] }))
+    .map((type) => ({ type, score: normalize(scores[type]) }))
     .sort((a, b) => b.score - a.score);
   const rows = limit > 0 ? allRows.slice(0, limit) : allRows;
   const hiddenCount = allRows.length - rows.length;
 
-  const pct = (s: number) => Math.min(100, (s / maxScale) * 100);
+  const pct = (s: number) => Math.min(100, (s / effMaxScale) * 100);
+  // 점수 표시 — bayesian 은 "84%" 형식, additive 는 정수
+  const formatScore = (s: number) => (isBayesian ? `${s}%` : `${s}`);
 
   return (
     <div
@@ -90,8 +105,8 @@ const HypothesisScoreBar = ({
         {rows.map(({ type, score }) => {
           const isPrimary = type === highlightPrimary;
           const isSecondary = type === highlightSecondary;
-          const isHigh = score >= autoSkip;
-          const isMedium = score >= highConfidence && !isHigh;
+          const isHigh = score >= effAutoSkip;
+          const isMedium = score >= effHighConf && !isHigh;
           const color = isPrimary
             ? 'bg-brand-teal'
             : isSecondary
@@ -118,7 +133,7 @@ const HypothesisScoreBar = ({
                   {isSecondary && ' '}
                 </span>
                 <span className="font-mono text-ink-200 text-[10.5px]">
-                  {score}
+                  {formatScore(score)}
                 </span>
               </div>
               <div className="relative h-2 rounded-full bg-ink-900 overflow-hidden">
@@ -129,14 +144,22 @@ const HypothesisScoreBar = ({
                 {/* 임계선 — high_confidence */}
                 <div
                   className="absolute top-0 bottom-0 w-px bg-amber-400/40"
-                  style={{ left: `${pct(highConfidence)}%` }}
-                  title={`high_confidence ${highConfidence}점`}
+                  style={{ left: `${pct(effHighConf)}%` }}
+                  title={
+                    isBayesian
+                      ? `사고유형 제시 ${effHighConf}%`
+                      : `high_confidence ${effHighConf}점`
+                  }
                 />
                 {/* 임계선 — auto_skip */}
                 <div
                   className="absolute top-0 bottom-0 w-px bg-red-400/40"
-                  style={{ left: `${pct(autoSkip)}%` }}
-                  title={`auto_skip ${autoSkip}점`}
+                  style={{ left: `${pct(effAutoSkip)}%` }}
+                  title={
+                    isBayesian
+                      ? `자동 확정 ${effAutoSkip}%`
+                      : `auto_skip ${effAutoSkip}점`
+                  }
                 />
               </div>
             </div>
@@ -144,16 +167,25 @@ const HypothesisScoreBar = ({
         })}
       </div>
 
-      {/* 임계값 범례 */}
+      {/* 임계값 범례 — 모드별 라벨 */}
       <div className="mt-2.5 text-[9.5px] text-ink-500 leading-4">
         <div>
           <span className="inline-block w-2 h-2 rounded-full bg-amber-400/60 mr-1" />
-          high_confidence {highConfidence}점 — 사고유형 제시
+          {isBayesian
+            ? `사고유형 제시 ${effHighConf}% — 사후확률 도달`
+            : `high_confidence ${effHighConf}점 — 사고유형 제시`}
         </div>
         <div>
           <span className="inline-block w-2 h-2 rounded-full bg-red-400/60 mr-1" />
-          auto_skip {autoSkip}점 + gap 30 — 자동 확정
+          {isBayesian
+            ? `자동 확정 ${effAutoSkip}% + gap 20%p`
+            : `auto_skip ${effAutoSkip}점 + gap 30 — 자동 확정`}
         </div>
+        {isBayesian && (
+          <div className="text-[9px] text-ink-600 mt-1">
+            베이즈 모드 — Verizon DBIR prior + Laplace smoothing likelihood
+          </div>
+        )}
       </div>
     </div>
   );

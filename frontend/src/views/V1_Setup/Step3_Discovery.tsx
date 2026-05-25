@@ -501,11 +501,13 @@ const Step3_Discovery = ({
             <ConfidenceGauge scores={hypothesisScores} />
 
             {/* 사용자 요청 (2026-05-25) — 클릭 시 8종 비교 오버레이 토글 */}
+            {/* Phase 4 (2026-05-25) — 백엔드 recommendation.scoring_mode 가 'bayesian' 이면 % 표시 */}
             <HypothesisScoreBar
               scores={hypothesisScores}
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
               onExpand={() => setBreakdownOverlayOpen(true)}
+              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
             />
 
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}

@@ -350,7 +350,7 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
 - [x] **Phase H** (재정의 2026-05-25, byungwoo) — Bayesian Network + Noisy-OR 단서 추천. PDF §17.B BAN paper 의 단순화 정합 구현. 상세 §18.
   - [x] **H.2** clue_to_attack 매핑 (143 단서 100% 커버, 45 unique 기법, 46 multi-target). commit `5977a20`
   - [x] **H.3** Bayesian Network DAG + Noisy-OR 추론. **e2e 47/47 PASS** (INSIDER T3 약한 시그널 정합 향상). commit `6ed8459`
-  - [x] **H.4** TRIAGE_MODE=bayes_net 통합 — config + clue_tree_service 분기 + info_gain.likelihood_fn 주입 + ClueCandidate.techniques 응답 + `/api/clue-tree/explain/{clue_key}` API + 프론트 ATT&CK badge UI + NextCluePanel BN hint. commit TBD
+  - [x] **H.4** TRIAGE_MODE=bayes_net 통합 — config + clue_tree_service 분기 + info_gain.likelihood_fn 주입 + ClueCandidate.techniques 응답 + `/api/clue-tree/explain/{clue_key}` API + 프론트 ATT&CK badge UI + NextCluePanel BN hint. commit `17589eb`
 - [ ] **Phase I** (이전 Phase H, 보류) — V-7 보드 networkx GDS (PageRank·Label Propagation) — Evidence Tree 완성 후 별도
 
 각 Phase 완료 시 이 체크리스트 갱신 + 동일 커밋에 push.

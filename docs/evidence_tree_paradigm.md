@@ -559,9 +559,20 @@ PDF 청사진 (BAN paper IEEE 2023) 의 **Bayesian Network DAG + CPT** 패러다
 - **pgmpy** 추가 (~5MB) — `requirements.txt` 갱신 필요
 - byungwoo 브랜치 개발 단계 — 팀원 머지 시 PR 본문에 학술 변호 포함
 
-### 18.7 진행 체크리스트
+### 18.7 H.1 직전 의논 결정 (2026-05-25, byungwoo)
 
-- [ ] **H.1** — 외부 데이터 수집 (Atomic Red Team + ATT&CK Flow + Groups)
+**① 데이터 저장 방식**: **정적 zip + .gitignore** — 데이터 자체는 git 외부, 팀원에게 zip 따로 전달.
+**② 데이터 소스 우선순위**: **Atomic Red Team → ATT&CK Flow corpus → ATT&CK STIX** (Atomic 먼저, 시퀀스 prerequisite 직접 추출 위해)
+**③ Atomic Red Team 추출 대상**:
+  - `attack_technique` (T-id)
+  - `prerequisite_techniques` (있으면 transition edge 직접 학습)
+  - `display_name` (디버그·발표 자료용)
+  - 실행 명령·로그 패턴은 미사용 (실행 안 함)
+**④ pgmpy 설치 시점**: **H.1 시작 시 미리** (requirements.txt 갱신 + venv 설치)
+
+### 18.8 진행 체크리스트
+
+- [ ] **H.1** — 외부 데이터 수집 (Atomic Red Team 우선 → ATT&CK Flow → STIX)
 - [ ] **H.2** — 우리 143 단서 → ATT&CK 매핑 (`clue_to_attack.json`)
 - [ ] **H.3** — DAG 구조 학습 (`clue_dag.json`)
 - [ ] **H.4** — Noisy-OR 파라미터 추출 (`clue_cpt_noisyor.json`)

@@ -85,3 +85,9 @@ htmlcov/
 
 # ── 팀장 전용 가이드 (팀원에게 공유하지 않음) ──
 GIT_SETUP_가이드.md
+
+# ── Phase H 외부 학습 데이터 (2026-05-25, byungwoo) ──
+# MITRE Atomic Red Team + ATT&CK Flow + ATT&CK STIX. 용량 큼·라이선스·재현성 이유로
+# git 외부. 팀원에게는 zip 으로 별도 전달. 학습 산출물 (clue_dag.json,
+# clue_cpt_noisyor.json) 은 data/triage/ 에 별도 commit.
+backend/data/triage/external_sources/

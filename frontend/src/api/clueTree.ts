@@ -1,0 +1,60 @@
+/**
+ * Evidence Tree API wrapper — Phase C (2026-05-25, byungwoo).
+ *
+ * 백엔드 라우터 `backend/api/clue_tree.py` 와 1:1 정합:
+ *   POST /api/clue-tree/start    — uniform prior + 초기 5 후보 (idempotent)
+ *   POST /api/clue-tree/expand   — 단서 채택 → 베이즈 갱신 + 다음 후보 (entropy 동적 K)
+ *   POST /api/clue-tree/suggest  — 현 leaf 후보 재계산 (트리는 그대로)
+ *   GET  /api/clue-tree?caseId=  — 트리 상태 조회
+ *
+ * 설계 원칙 (docs/evidence_tree_paradigm.md §6):
+ *   - 모든 베이즈 산술은 서버. 클라이언트는 시각화 + 상태 동기화만.
+ *   - 영속화는 DB (`incident_cases.triage_state.evidence_tree`) + sessionStorage 캐시.
+ *   - `outcome_flags` 정형 Boolean (Google Chronicle Rule-to-Outcome, PDF §17.A)
+ *     은 응답에 동봉됨 — Phase D 의 NextCluePanel 강조 UI 에서 활용.
+ */
+import client from './client';
+
+import type {
+  ClueTreeResponse,
+  ClueExpandRequest,
+} from '@/types/clueTree';
+
+/** POST /api/clue-tree/start — 빈 트리 시작 (idempotent). */
+export const startClueTree = async (
+  caseId: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/start', { caseId });
+  return res.data.data;
+};
+
+/**
+ * POST /api/clue-tree/expand — 단서 채택 → 트리 자라기.
+ *
+ * source:
+ *   - 'tree_candidate' (기본) : 현 leaf 의 children_candidates 중 클릭
+ *   - 'direct_input'          : 좌측 CluesInput 자유 입력
+ *   - 'log_analysis'          : PartialLogAnalysis 결과로 추가된 후보
+ */
+export const expandClueTree = async (
+  req: ClueExpandRequest,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/expand', req);
+  return res.data.data;
+};
+
+/** POST /api/clue-tree/suggest — 현 leaf 의 후보를 재계산. */
+export const suggestClueCandidates = async (
+  caseId: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/suggest', { caseId });
+  return res.data.data;
+};
+
+/** GET /api/clue-tree?caseId= — 영속화된 트리 로드. */
+export const getClueTree = async (
+  caseId: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.get('/api/clue-tree', { params: { caseId } });
+  return res.data.data;
+};

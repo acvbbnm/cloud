@@ -37,6 +37,7 @@ import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
+import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 
@@ -84,6 +85,21 @@ const Step3_EvidenceTreeDiscovery = ({
   const treeState = useClueTreeStore((s) => s.response);
   const loading = useClueTreeStore((s) => s.loading);
   const startTree = useClueTreeStore((s) => s.start);
+
+  // Phase I — 메인 시각화 탭 (tree / compass). sessionStorage 영속화.
+  const [mainView, setMainView] = useState<'tree' | 'compass'>(() => {
+    if (typeof window === 'undefined') return 'tree';
+    const stored = window.sessionStorage.getItem('aisherpa.evidenceTree.mainView');
+    return stored === 'compass' ? 'compass' : 'tree';
+  });
+  const switchMainView = (v: 'tree' | 'compass') => {
+    setMainView(v);
+    try {
+      window.sessionStorage.setItem('aisherpa.evidenceTree.mainView', v);
+    } catch {
+      /* ignore */
+    }
+  };
   const expandTree = useClueTreeStore((s) => s.expand);
   const refreshCandidates = useClueTreeStore((s) => s.refreshCandidates);
   const hydrate = useClueTreeStore((s) => s.hydrate);
@@ -122,15 +138,18 @@ const Step3_EvidenceTreeDiscovery = ({
   }, [caseId]);
 
   // ── 단서 채택 핸들러 (트리 후보 / IG 후보 클릭) ──
+  // ⚠ closure stale 방지 — getState() 로 최신 current_leaf_id 직접 조회
   const handleAdoptCandidate = async (
     candidate: ClueCandidate,
     source: 'tree_candidate' | 'direct_input' | 'log_analysis' = 'tree_candidate',
   ) => {
-    if (!caseId || !treeState) return;
+    if (!caseId) return;
+    const current = useClueTreeStore.getState().response;
+    if (!current) return;
     try {
       const res = await expandTree({
         caseId,
-        parent_node_id: treeState.current_leaf_id,
+        parent_node_id: current.current_leaf_id,
         clue_key: candidate.clue_key,
         source,
       });
@@ -165,9 +184,13 @@ const Step3_EvidenceTreeDiscovery = ({
   };
 
   // ── CluesInput 직접 입력 핸들러 ──
+  // ⚠ closure stale 방지 — getState() 로 최신 current_leaf_id 직접 조회.
+  // 트리가 확장되어 leaf 가 바뀐 후 직접 입력 시 옛 leaf 에 expand 하지 않도록.
   const handleDirectClueAdd = async (obs: Observable) => {
-    // CluesInput 은 type+value 자유 입력 — 카탈로그 키 매칭 시도
-    // 단순 매핑: TYPE:value 패턴
+    if (!caseId) return;
+    const current = useClueTreeStore.getState().response;
+    if (!current) return;
+
     const inferredKey = _inferClueKey(obs);
     if (!inferredKey) {
       // 카탈로그에 매칭 안 되면 observables 만 추가 (단서로 표시 X)
@@ -178,11 +201,11 @@ const Step3_EvidenceTreeDiscovery = ({
       );
       return;
     }
-    if (!caseId || !treeState) return;
+
     try {
       const res = await expandTree({
         caseId,
-        parent_node_id: treeState.current_leaf_id,
+        parent_node_id: current.current_leaf_id,
         clue_key: inferredKey,
         source: 'direct_input',
       });
@@ -203,7 +226,7 @@ const Step3_EvidenceTreeDiscovery = ({
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      showToast(`단서 채택 실패: ${msg}`, 4500);
+      showToast(`단서 채택 실패 (${inferredKey}): ${msg}`, 4500);
     }
   };
 
@@ -293,32 +316,87 @@ const Step3_EvidenceTreeDiscovery = ({
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
         <Card
-          title="Evidence Tree — 단서로 맵 밝히기"
-          subtitle="현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기"
+          title={mainView === 'tree' ? 'Evidence Tree — 단서로 맵 밝히기' : '사고유형 컴퍼스 — 360° 방향 수렴'}
+          subtitle={
+            mainView === 'tree'
+              ? '현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기'
+              : '단서마다 사후확률 무게중심이 한 사고유형 방향으로 이동 — 미로 헤쳐나가듯'
+          }
+          action={
+            <div className="flex items-center gap-1">
+              {/* Phase I — 탭 토글 (tree ↔ compass) */}
+              <div className="flex border border-ink-700 rounded overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => switchMainView('tree')}
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors ${
+                    mainView === 'tree'
+                      ? 'bg-brand-teal text-ink-950 font-semibold'
+                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
+                  }`}
+                  title="트리 시각화"
+                >
+                  🌳 트리
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMainView('compass')}
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors border-l border-ink-700 ${
+                    mainView === 'compass'
+                      ? 'bg-brand-teal text-ink-950 font-semibold'
+                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
+                  }`}
+                  title="사고유형 360° 컴퍼스"
+                >
+                  🧭 컴퍼스
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!caseId) return;
+                  if (
+                    !window.confirm(
+                      '현재 트리를 초기화하고 cold-start 로 다시 시작합니다.\n계속하시겠습니까?',
+                    )
+                  )
+                    return;
+                  try {
+                    await resetServer(caseId);
+                    showToast('단서 트리 초기화 완료 — 첫 단서를 입력하세요', 3500);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    showToast(`초기화 실패: ${msg}`, 4500);
+                  }
+                }}
+                disabled={loading || isSubmitting}
+                className="text-[10px] font-mono text-ink-400 hover:text-red-300 border border-ink-700 hover:border-red-500/60 px-2 py-0.5 rounded transition-colors disabled:opacity-40"
+                title="기존 트리를 폐기하고 cold-start 로 재시작"
+              >
+                ⟲ 초기화
+              </button>
+            </div>
+          }
         >
-          <ClueTreeView
-            tree={treeState.tree}
-            currentLeafId={treeState.current_leaf_id}
-            entropyBits={treeState.confidence.entropy_bits}
-            onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
-            onReset={async () => {
-              if (!caseId) return;
-              if (
-                !window.confirm(
-                  '현재 트리를 초기화하고 cold-start 로 다시 시작합니다.\n계속하시겠습니까?',
-                )
-              ) return;
-              try {
-                await resetServer(caseId);
-                showToast('단서 트리 초기화 완료 — 첫 단서를 입력하세요', 3500);
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : String(e);
-                showToast(`초기화 실패: ${msg}`, 4500);
-              }
-            }}
-            disabled={loading || isSubmitting}
-            height={460}
-          />
+          {mainView === 'tree' ? (
+            <ClueTreeView
+              tree={treeState.tree}
+              currentLeafId={treeState.current_leaf_id}
+              entropyBits={treeState.confidence.entropy_bits}
+              onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
+              disabled={loading || isSubmitting}
+              height={460}
+            />
+          ) : (
+            <IncidentTypeCompass
+              tree={treeState.tree}
+              currentLeafId={treeState.current_leaf_id}
+              primaryIncident={treeState.confidence.primary}
+              confidenceReached={treeState.confidence.confidence_reached}
+              size={460}
+              disabled={loading || isSubmitting}
+            />
+          )}
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

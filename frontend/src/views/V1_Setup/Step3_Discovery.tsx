@@ -126,13 +126,13 @@ const Step3_Discovery = ({
   // E4 §4-8 (2026-05-22): 출처 트레이스 — breakdown 응답 캐시 + 로딩 상태
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
-  // Phase 4 (2026-05-25) — backend 의 scoring_mode 추적 (additive | bayesian | evidence_tree).
+  // Phase 4 (2026-05-25) — backend 의 scoring_mode 추적.
   // 매 응답 (start/next/analyze) 에서 갱신. UI 컴포넌트들이 이 값을 보고 % vs 점수 분기.
-  // Phase E (2026-05-25) — 'evidence_tree' 추가. 이 모드면 Step3_EvidenceTreeDiscovery
-  // 로 위임 (legacy 결정 트리 흐름과 완전 분리).
-  const [scoringMode, setScoringMode] = useState<'additive' | 'bayesian' | 'evidence_tree'>(
-    'additive',
-  );
+  // Phase E (2026-05-25) — 'evidence_tree' / Phase H.4 — 'bayes_net' 추가.
+  // 둘 다 Step3_EvidenceTreeDiscovery 로 위임 (legacy 결정 트리 흐름과 완전 분리).
+  const [scoringMode, setScoringMode] = useState<
+    'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net'
+  >('additive');
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -194,9 +194,12 @@ const Step3_Discovery = ({
       try {
         const res = await startTriage(caseId);
         if (cancelled) return;
-        // Phase 4·E — backend 응답의 scoring_mode 갱신 (additive | bayesian | evidence_tree)
-        const mode = (res as { scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' })
-          .scoring_mode;
+        // Phase 4·E·H.4 — backend scoring_mode 갱신 (additive | bayesian | evidence_tree | bayes_net)
+        const mode = (
+          res as {
+            scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
+          }
+        ).scoring_mode;
         if (mode) setScoringMode(mode);
         if (res.next_node) {
           storeStart(res.next_node.id);
@@ -327,9 +330,11 @@ const Step3_Discovery = ({
       setHypothesisScores(res.hypothesis_scores);
       setRecommendation(res.recommendation ?? null);
       setTerminal(res.is_terminal);
-      // Phase 4·E — scoring_mode 매 응답에서 추적 (additive | bayesian | evidence_tree)
+      // Phase 4·E·H.4 — scoring_mode (additive | bayesian | evidence_tree | bayes_net)
       const mode = (
-        res as { scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' }
+        res as {
+          scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
+        }
       ).scoring_mode;
       if (mode) setScoringMode(mode);
       // 2026-05-25 fix: next_node 가 terminal 타입(T_evaluate 등) 이면 currentNode 에
@@ -408,9 +413,9 @@ const Step3_Discovery = ({
     onConfirm('UNCLASSIFIED');
   };
 
-  // Phase E (2026-05-25) — evidence_tree 모드 위임 (단서 기반 동적 트리).
+  // Phase E·H.4 — evidence_tree / bayes_net 모드 위임 (단서 기반 동적 트리).
   // legacy additive/bayesian 결정 트리 흐름은 아래 return 블록이 그대로 처리.
-  if (scoringMode === 'evidence_tree') {
+  if (scoringMode === 'evidence_tree' || scoringMode === 'bayes_net') {
     return (
       <Step3_EvidenceTreeDiscovery
         onPrev={onPrev}

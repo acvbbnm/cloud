@@ -48,6 +48,9 @@ class ClueCandidate:
     rationale: str = ""  # 왜 이 후보가 추천되는지 (top 사고유형 근거)
     # PDF §17.A — Google Chronicle Rule-to-Outcome 정형 Boolean (Phase D)
     outcome_flags: dict = field(default_factory=dict)
+    # Phase H.4 — ATT&CK 기법 ID 리스트 (clue_to_attack 매핑). UI badge 용.
+    # BN 모드 (TRIAGE_MODE=bayes_net) 가 아니어도 항상 동봉 — 학술 정보 노출.
+    techniques: list = field(default_factory=list)
 
 
 @dataclass
@@ -306,7 +309,13 @@ def tree_from_dict(data: dict) -> ClueTree:
     nodes_raw = data.get("nodes", {})
     nodes: dict[str, ClueTreeNode] = {}
     for nid, n in nodes_raw.items():
-        children = [ClueCandidate(**c) for c in n.get("children_candidates", [])]
+        # techniques 필드는 Phase H.4 신규 — 과거 직렬화 데이터 호환 위해 default 보장
+        children = []
+        for c in n.get("children_candidates", []):
+            c = {**c}  # 입력 mutate 방지
+            c.setdefault("techniques", [])
+            c.setdefault("outcome_flags", {})
+            children.append(ClueCandidate(**c))
         nodes[nid] = ClueTreeNode(
             node_id=n["node_id"],
             parent_id=n.get("parent_id"),

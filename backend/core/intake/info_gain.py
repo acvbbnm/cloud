@@ -32,7 +32,11 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
+
+
+# Phase H.4 — likelihood 함수 외부 주입 시그너처 (mode 별 분기)
+LikelihoodFn = Callable[[str], dict[str, float]]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -187,6 +191,7 @@ def rank_candidates(
     exclude_categories: Optional[set[str]] = None,
     use_marginalization: bool = True,
     catalog: Optional[dict] = None,
+    likelihood_fn: Optional[LikelihoodFn] = None,
 ) -> list[dict]:
     """단서 카탈로그 전체에서 IG 내림차순 후보 리스트 반환.
 
@@ -210,6 +215,9 @@ def rank_candidates(
         exclude_categories   : 카테고리 단위 제외 (예: 같은 Q-노드 옵션 중복 차단)
         use_marginalization  : True (기본) — 음성 evidence 도 계산
         catalog              : 외부 주입 (테스트용). 기본은 load_catalog()
+        likelihood_fn        : Phase H.4 — clue_key → P(c|h) 외부 주입 함수.
+                               None 이면 기본 weights_to_likelihood (legacy 모드).
+                               bayes_net.clue_likelihood_via_bn 주입 시 BN 모드 IG.
     """
     excl_keys = exclude_clue_keys or set()
     excl_cats = exclude_categories or set()
@@ -225,8 +233,12 @@ def rank_candidates(
         if not entry.get("has_weights"):
             continue
 
-        weights = entry.get("weights", {})
-        likelihood = weights_to_likelihood(weights)
+        # Phase H.4 — likelihood 함수 분기
+        if likelihood_fn is not None:
+            likelihood = likelihood_fn(clue_key)
+        else:
+            weights = entry.get("weights", {})
+            likelihood = weights_to_likelihood(weights)
         if not likelihood:
             continue
 
@@ -259,11 +271,13 @@ def pick_top_candidates(
     *,
     exclude_clue_keys: Optional[set[str]] = None,
     use_marginalization: bool = True,
+    likelihood_fn: Optional[LikelihoodFn] = None,
 ) -> list[dict]:
     """rank_candidates 상위 k 개만 반환 (편의 함수)."""
     ranked = rank_candidates(
         posterior,
         exclude_clue_keys=exclude_clue_keys,
         use_marginalization=use_marginalization,
+        likelihood_fn=likelihood_fn,
     )
     return ranked[:k]

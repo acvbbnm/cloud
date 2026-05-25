@@ -46,6 +46,10 @@ interface NextCluePanelProps {
    * 후보 재계산 트리거 — 새로고침 버튼 클릭 핸들러.
    */
   onRefreshCandidates?: () => void;
+  /**
+   * Phase H.4 — 백엔드 scoring_mode ('bayes_net' 시 BN 활성 hint 표시).
+   */
+  scoringMode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -197,6 +201,7 @@ const NextCluePanel = ({
   entropyBits,
   disabled,
   onRefreshCandidates,
+  scoringMode,
 }: NextCluePanelProps) => {
   // ── Phase D — IG 모드 (최우선) ──
   if (igCandidates) {
@@ -205,6 +210,11 @@ const NextCluePanel = ({
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
             다음 단서 후보 · IG 정렬
+            {scoringMode === 'bayes_net' && (
+              <span className="ml-1.5 text-[8.5px] font-mono text-purple-300 normal-case tracking-normal border border-purple-700/50 bg-purple-900/30 rounded px-1 py-px">
+                BN
+              </span>
+            )}
             {entropyBits !== undefined && (
               <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
                 entropy {entropyBits.toFixed(2)} bits · {igCandidates.length}개
@@ -298,6 +308,26 @@ const NextCluePanel = ({
                 {c.rationale && (
                   <div className="text-[9.5px] text-ink-400 leading-4 mb-1">
                     {c.rationale}
+                  </div>
+                )}
+
+                {/* Phase H.4 — ATT&CK 기법 badge (clue_to_attack 매핑) */}
+                {c.techniques && c.techniques.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-1">
+                    {c.techniques.slice(0, 4).map((t) => (
+                      <span
+                        key={t}
+                        className="text-[8.5px] font-mono border border-purple-700/55 bg-purple-900/30 text-purple-200 px-1 py-px rounded"
+                        title={`ATT&CK 기법 ${t}`}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                    {c.techniques.length > 4 && (
+                      <span className="text-[8.5px] font-mono text-ink-500">
+                        +{c.techniques.length - 4}
+                      </span>
+                    )}
                   </div>
                 )}
 

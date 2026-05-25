@@ -70,7 +70,7 @@ class Settings:
         "EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"
     )
 
-    # ── Triage 분류 모드 (Phase 2.5~5 실험, 2026-05-25) ──
+    # ── Triage 분류 모드 (Phase 2.5~H.4 실험, 2026-05-25) ──
     # "additive"       (기본) — 누적 합산: 절대 점수 0~180, 임계값 90/130/gap30
     # "bayesian"               — 베이즈 갱신: 확률 0~1, 임계값 0.65/0.60/0.30/gap0.20
     #                            Uniform prior (Jaynes 1968) + Laplace smoothing likelihood
@@ -78,6 +78,12 @@ class Settings:
     #                            docs/evidence_tree_paradigm.md 패러다임.
     #                            프론트가 /api/clue-tree/* 엔드포인트로 분기. legacy
     #                            /api/triage/* 는 호환 응답만 (scoring_mode 만 전파).
+    # "bayes_net"              — Phase H.3+H.4 (2026-05-25): Bayesian Network DAG +
+    #                            Noisy-OR 추론. PDF §17.B BAN paper IEEE 2023 정합.
+    #                            3-layer H → T → C, clue_to_attack 매핑 + Hybrid Fallback.
+    #                            /api/clue-tree/* 흐름 그대로 쓰되, likelihood 계산만
+    #                            bayes_net.clue_likelihood_via_bn 으로 교체.
+    #                            e2e 47/47 (INSIDER T3 약한 시그널 정합 향상).
     # 모든 모드 결정성 100% (같은 입력 → 같은 출력). 환경변수로 안전 토글.
     TRIAGE_MODE: str = os.getenv("TRIAGE_MODE", "additive")
 

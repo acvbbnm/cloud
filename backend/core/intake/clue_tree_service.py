@@ -26,6 +26,8 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from config import settings
+from core.intake import bayes_net
 from core.intake.bayesian import (
     bayes_update,
     initial_posterior,
@@ -101,6 +103,34 @@ def _save_tree_to_case(
 # ─────────────────────────────────────────────────────────────
 
 
+def _is_bayes_net_mode() -> bool:
+    """현재 mode 가 bayes_net 인지 (Phase H.4)."""
+    return settings.TRIAGE_MODE == "bayes_net"
+
+
+def _likelihood_fn_for_mode():
+    """현재 TRIAGE_MODE 에 따른 clue → likelihood 함수.
+
+    - bayes_net: bayes_net.clue_likelihood_via_bn (Noisy-OR DAG 추론, H.3)
+    - 그 외:     None (info_gain 기본 weights_to_likelihood 사용)
+    """
+    if _is_bayes_net_mode():
+        return bayes_net.clue_likelihood_via_bn
+    return None
+
+
+def _lookup_clue_techniques(clue_key: str) -> list[str]:
+    """clue_to_attack 매핑에서 단서의 ATT&CK 기법 리스트 조회 (Phase H.4).
+
+    매핑 없거나 null/빈 리스트면 빈 리스트. UI 가 기법 badge 표시할 때 사용.
+    """
+    try:
+        m = bayes_net.load_clue_to_attack().get("mappings", {}).get(clue_key, {})
+        return list(m.get("techniques") or [])
+    except FileNotFoundError:
+        return []
+
+
 def _build_candidates(
     posterior: dict[str, float],
     *,
@@ -114,23 +144,32 @@ def _build_candidates(
         1.5 ≤ H < 2.5 → 3개
         H < 1.5      → 2개
     k_override 가 주어지면 강제.
+
+    Phase H.4 — TRIAGE_MODE=bayes_net 일 때 IG 계산이 BN Noisy-OR likelihood 사용.
+    또한 응답 candidate 에 ATT&CK 기법 매핑 (techniques) 동봉 — UI badge 용.
     """
     k = k_override if k_override is not None else candidate_count_by_entropy(posterior)
     top = pick_top_candidates(
-        posterior, k=k, exclude_clue_keys=accepted_clue_keys, use_marginalization=True
+        posterior,
+        k=k,
+        exclude_clue_keys=accepted_clue_keys,
+        use_marginalization=True,
+        likelihood_fn=_likelihood_fn_for_mode(),
     )
     out: list[ClueCandidate] = []
     for entry in top:
+        clue_key = entry["clue_key"]
         out.append(
             ClueCandidate(
                 candidate_id=make_node_id(),
-                clue_key=entry["clue_key"],
+                clue_key=clue_key,
                 label=entry["label"],
                 category=entry["category"],
                 value=entry["value"],
                 expected_info_gain=float(entry["expected_info_gain"]),
                 rationale=entry.get("rationale", ""),
                 outcome_flags=dict(entry.get("outcome_flags", {})),  # Phase D
+                techniques=_lookup_clue_techniques(clue_key),  # Phase H.4
             )
         )
     return out
@@ -210,9 +249,14 @@ def expand_tree(
     if not clue_entry.get("has_weights"):
         raise ValueError(f"clue_key {clue_key} 에 weights 없음 — 채택 불가")
 
-    # 베이즈 갱신
+    # 베이즈 갱신 — Phase H.4 mode 분기
     posterior_before = dict(tree.posterior_current)
-    likelihood = weights_to_likelihood(clue_entry["weights"])
+    if _is_bayes_net_mode():
+        # BN 모드 — clue_to_attack 매핑 + Noisy-OR DAG 추론 (H.3)
+        likelihood = bayes_net.clue_likelihood_via_bn(clue_key)
+    else:
+        # legacy — weights.json 직접 likelihood
+        likelihood = weights_to_likelihood(clue_entry["weights"])
     posterior_after = bayes_update(posterior_before, likelihood)
 
     # 트리에 단서 노드 추가
@@ -326,9 +370,13 @@ def _build_response(tree: ClueTree) -> dict:
                 "rationale": c.rationale,
                 # Phase D — outcome_flags 전파 (Google Chronicle 패턴, PDF §17.A)
                 "outcome_flags": c.outcome_flags,
+                # Phase H.4 — ATT&CK 기법 ID (clue_to_attack 매핑) 전파. UI badge 용.
+                "techniques": list(c.techniques or []),
             }
             for c in candidates_raw
         ],
+        # Phase H.4 — 현재 추론 mode (프론트가 BN 표시 결정에 사용)
+        "scoring_mode": settings.TRIAGE_MODE,
         "path": [
             {
                 "node_id": n.node_id,

@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from core.intake import bayes_net
 from core.intake.clue_tree_service import (
     CaseNotFound,
     ClueTreeNotFound,
@@ -180,3 +181,39 @@ async def reset(req: CueTreeResetRequest, db: Session = Depends(get_db)) -> dict
     except CaseNotFound:
         raise _case_not_found(req.caseId)
     return {"status": "ok", "data": data}
+
+
+@router.get("/explain/{clue_key:path}")
+async def explain(clue_key: str) -> dict:
+    """Phase H.4 — 단서의 BN 추론 trace 반환.
+
+    UI 가 후보 hover/click 시 호출하여 ATT&CK 매핑·per-technique likelihood·
+    aggregated likelihood 를 노출. PDF §17.B BAN 학술 설명용.
+
+    `clue_key` 는 ':' 포함 가능 ("IP_ADDRESS:tor_vpn") → path 변환자 :path 사용.
+
+    반환:
+      {
+        "status": "ok",
+        "data": {
+          "clue_key": str,
+          "techniques": [...],
+          "confidence": str,
+          "per_technique_likelihood": {tid: {h: prob}}  (BN 경유 시),
+          "aggregated_likelihood": {h: prob},
+          "source": "bn" | "legacy_fallback"
+        }
+      }
+    """
+    try:
+        info = bayes_net.explain_clue(clue_key)
+    except FileNotFoundError as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"clue_to_attack.json 누락: {e}",
+                "code": "MAPPING_NOT_FOUND",
+            },
+        )
+    return {"status": "ok", "data": info}

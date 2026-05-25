@@ -364,6 +364,7 @@ const Step3_EvidenceTreeDiscovery = ({
             onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
             onRefreshCandidates={() => refreshCandidates(caseId)}
             disabled={loading || isSubmitting}
+            scoringMode={treeState.scoring_mode}
           />
         </Card>
 

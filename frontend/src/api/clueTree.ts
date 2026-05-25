@@ -18,6 +18,7 @@ import client from './client';
 import type {
   ClueTreeResponse,
   ClueExpandRequest,
+  ExplainClueResponse,
 } from '@/types/clueTree';
 
 /** POST /api/clue-tree/start — 빈 트리 시작 (idempotent). */
@@ -64,5 +65,21 @@ export const resetClueTree = async (
   caseId: string,
 ): Promise<ClueTreeResponse> => {
   const res = await client.post('/api/clue-tree/reset', { caseId });
+  return res.data.data;
+};
+
+/**
+ * GET /api/clue-tree/explain/{clue_key} — Phase H.4.
+ *
+ * BN 추론 trace 조회. 후보 hover/click 시 ATT&CK 매핑·per-technique likelihood·
+ * aggregated likelihood 노출 (PDF §17.B BAN 학술 설명).
+ */
+export const explainClue = async (
+  clueKey: string,
+): Promise<ExplainClueResponse> => {
+  // clue_key 는 ':' 포함 ("IP_ADDRESS:tor_vpn") — encodeURIComponent
+  const res = await client.get(
+    `/api/clue-tree/explain/${encodeURIComponent(clueKey)}`,
+  );
   return res.data.data;
 };

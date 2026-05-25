@@ -20,9 +20,13 @@ export interface ClueCandidate {
   /**
    * Phase D — Google Chronicle Rule-to-Outcome 정형 Boolean/enum (PDF §17.A).
    * 예: { outcomeIsAnonymizedSource: true, outcomeSourceCategoryHint: 'tor_vpn' }
-   * Phase A `outcome_flags` 휴리스틱 → 백엔드 응답에 동봉됨.
    */
   outcome_flags: Record<string, boolean | string | number>;
+  /**
+   * Phase H.4 — ATT&CK 기법 ID (clue_to_attack.json 매핑). 빈 배열 = 매핑 없음.
+   * 예: ["T1556.006", "T1078"] — UI badge 로 노출. BN 모드 강조용.
+   */
+  techniques: string[];
 }
 
 /** 채택된 단서 노드 1개 (path 표현). */
@@ -90,6 +94,18 @@ export interface ClueTreeResponse {
   confidence: ClueTreeConfidence;
   candidates: ClueCandidate[];
   path: ClueTreePathNode[];
+  /** Phase H.4 — 백엔드 TRIAGE_MODE 값 ('bayes_net' 일 때 UI 가 ATT&CK badge 강조). */
+  scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
+}
+
+/** explain_clue API 응답 (Phase H.4). */
+export interface ExplainClueResponse {
+  clue_key: string;
+  techniques: string[];
+  confidence: string;
+  per_technique_likelihood?: Record<string, HypothesisScores>;
+  aggregated_likelihood: HypothesisScores;
+  source: 'bn' | 'legacy_fallback';
 }
 
 /** POST /api/clue-tree/expand 요청. */

@@ -113,7 +113,7 @@ const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
         {/* TLP */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] text-ink-300 font-medium">
-            TLP <span className="text-ink-500 text-[10.5px]">(정보 공유 등급, TheHive 5 표준)</span>
+            TLP <span className="text-ink-500 text-[10.5px]">(정보 공유 등급)</span>
           </label>
           <div className="flex gap-2 flex-wrap">
             {tlpOptions.map((t) => {

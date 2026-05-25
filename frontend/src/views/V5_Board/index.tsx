@@ -161,11 +161,11 @@ const V5Board = () => {
       <div>
         <PageHeader
           eyebrow="Layer 4 · M4-1"
-          title="Investigation Board"
-          description="No active incident case."
+          title="수사 보드"
+          description="활성화된 사고 케이스가 없습니다."
         />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 수사 보드를 사용할 수 있습니다.
             </p>
@@ -188,7 +188,7 @@ const V5Board = () => {
     <div className="flex flex-col h-full overflow-y-auto">
       <PageHeader
         eyebrow="Layer 4 · M4-1"
-        title="Investigation Board"
+        title="수사 보드"
         description="ATT&CK 매핑 결과를 후보로 보고, 보드 노드로 추가하여 공격 체인을 재구성합니다."
         actions={
           <>

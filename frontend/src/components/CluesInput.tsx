@@ -95,7 +95,7 @@ const CLUE_TYPES: ClueTypeMeta[] = [
     placeholder: '2026-05-18 14:00-15:00',
     hint: '알람 발생 시점 ±5분',
     variants: [
-      { id: 'off_hours', label: '비업무 시각', hint: '야간·주말 패턴 (KISA §2.4 )' },
+      { id: 'off_hours', label: '비업무 시각', hint: '야간·주말 패턴' },
     ],
   },
   {

@@ -111,8 +111,8 @@ const V8Sherpa = () => {
     <div className="flex flex-col h-full">
       <PageHeader
         eyebrow="Helper · sLLM"
-        title="AI Sherpa"
-        description="Offline sLLM + KB RAG. AI performs only search, summarization, and suggestion — no judgment or decisions."
+        title="AI 셰르파"
+        description="오프라인 sLLM + KB RAG. AI는 검색·요약·제안만 수행하며, 판단·결정은 하지 않습니다."
         meta={
           <div className="flex items-center gap-2">
             <span className="chip">

@@ -100,11 +100,11 @@ const V6Attack = () => {
       <div>
         <PageHeader
           eyebrow="Layer 2 · M2-3"
-          title="ATT&CK Mapping"
-          description="No active incident case."
+          title="ATT&CK 매핑"
+          description="활성화된 사고 케이스가 없습니다."
         />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 매핑 결과를 볼 수 있습니다.
             </p>
@@ -152,8 +152,8 @@ const V6Attack = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-3"
-        title="MITRE ATT&CK Mapping"
-        description="Aggregates attack_events into an ATT&CK Cloud Matrix tactic × technique heatmap. Deterministic JSON rule-based — no hallucinations."
+        title="MITRE ATT&CK 매핑"
+        description="attack_events 를 ATT&CK Cloud Matrix 의 전술 × 기법 히트맵으로 집계합니다. 결정론적 JSON 룰 기반 — 환각 없음."
         actions={
           <>
             <button

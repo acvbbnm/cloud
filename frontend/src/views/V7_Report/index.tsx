@@ -147,11 +147,11 @@ const V7Report = () => {
       <div>
         <PageHeader
           eyebrow="Layer 4 · M4-2"
-          title="Incident Report"
-          description="No active incident case."
+          title="사고 보고서"
+          description="활성화된 사고 케이스가 없습니다."
         />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 보고서를 생성할 수 있습니다.
             </p>
@@ -186,8 +186,8 @@ const V7Report = () => {
     <div>
       <PageHeader
         eyebrow="Layer 4 · M4-2"
-        title="Incident Report"
-        description="Edit the KISA-format 8-section report with AI-assisted drafts. DOCX export supported."
+        title="사고 보고서"
+        description="AI 보조 초안과 함께 KISA 양식 8섹션 보고서를 편집합니다. DOCX 내보내기 지원."
         meta={
           <div className="flex items-center gap-2 flex-wrap">
             <Badge tone={STATUS_TONE[status] ?? 'gray'}>{status}</Badge>

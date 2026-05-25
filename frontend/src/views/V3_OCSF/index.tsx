@@ -60,9 +60,9 @@ const V3OCSF = () => {
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF Normalization" description="No active incident case." />
+        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF 정규화" description="활성화된 사고 케이스가 없습니다." />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료하고 V-2 에서 로그를 업로드하세요.
             </p>
@@ -98,8 +98,8 @@ const V3OCSF = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-1"
-        title="OCSF Normalization"
-        description="Convert raw CSP logs to OCSF 1.3 flattened columns. Compare before/after in the left/right panels."
+        title="OCSF 정규화"
+        description="원본 CSP 로그를 OCSF 1.3 평탄화 컬럼으로 변환합니다. 좌·우 패널에서 변환 전·후를 비교하세요."
         actions={
           <>
             <button

@@ -18,6 +18,10 @@ interface HypothesisScoreBarProps {
   /** 추천 결과의 primary/secondary 강조 (있으면 표시) */
   highlightPrimary?: IncidentType;
   highlightSecondary?: IncidentType;
+  /** 노출할 최대 가설 수 (기본 2 — 사용자 요청 2026-05-25, 0 = 전부) */
+  limit?: number;
+  /** 카드 클릭 시 호출 — 사고유형 비교 풀 오버레이 토글용 (2026-05-25) */
+  onExpand?: () => void;
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -40,19 +44,46 @@ const HypothesisScoreBar = ({
   maxScale = 180,
   highlightPrimary,
   highlightSecondary,
+  limit = 2,
+  onExpand,
 }: HypothesisScoreBarProps) => {
-  // UNCLASSIFIED 제외, 점수 내림차순
-  const rows = (Object.keys(scores) as IncidentType[])
+  // UNCLASSIFIED 제외, 점수 내림차순 — 사용자 요청 2026-05-25: 상위 N개만 (기본 2)
+  const allRows = (Object.keys(scores) as IncidentType[])
     .filter((t) => t !== 'UNCLASSIFIED')
     .map((type) => ({ type, score: scores[type] }))
     .sort((a, b) => b.score - a.score);
+  const rows = limit > 0 ? allRows.slice(0, limit) : allRows;
+  const hiddenCount = allRows.length - rows.length;
 
   const pct = (s: number) => Math.min(100, (s / maxScale) * 100);
 
   return (
-    <div>
-      <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-2">
-         가설 점수
+    <div
+      onClick={onExpand}
+      className={onExpand ? 'cursor-pointer hover:bg-ink-800/30 rounded -mx-1 px-1 py-1 transition-colors' : ''}
+      title={onExpand ? '클릭 시 8종 사고유형 비교·근거 보기' : undefined}
+      role={onExpand ? 'button' : undefined}
+      tabIndex={onExpand ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onExpand && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onExpand();
+        }
+      }}
+    >
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
+           가설 점수 {limit > 0 && allRows.length > 0 && ` · 상위 ${rows.length}`}
+        </span>
+        {onExpand ? (
+          <span className="text-[9.5px] text-brand-teal hover:underline">
+            전체 8종 비교 ⛶
+          </span>
+        ) : (
+          hiddenCount > 0 && (
+            <span className="text-[9.5px] text-ink-500">+{hiddenCount}개</span>
+          )
+        )}
       </div>
 
       <div className="space-y-1.5">

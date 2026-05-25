@@ -21,11 +21,11 @@ import Step4_GuideChecklist_V2 from './Step4_GuideChecklist_V2';
 // 별도 스텝으로 분리. 시스템 구성을 먼저 받아 environment_modifiers 가 단서
 // 루프의 가설 점수를 시딩하도록 순서를 고정한다 (사용자 결정 2026-05-22).
 const stepLabels = [
-  { code: 'M0-0', title: 'ENVIRONMENT' },
-  { code: 'M0-1', title: 'CASE META' },
-  { code: 'M0-2', title: 'SYSTEM CONFIG' },
-  { code: 'M0-3', title: 'CLUE LOOP' },
-  { code: 'M0-4', title: 'COLLECTION GUIDE' },
+  { code: 'M0-0', title: '분석 환경' },
+  { code: 'M0-1', title: '케이스 메타' },
+  { code: 'M0-2', title: '시스템 구성' },
+  { code: 'M0-3', title: '단서 루프' },
+  { code: 'M0-4', title: '수집 가이드' },
 ];
 
 const V1Setup = () => {
@@ -115,8 +115,8 @@ const V1Setup = () => {
     <div>
       <PageHeader
         eyebrow={`Layer 0 · ${current.code}`}
-        title="Incident Intake Workflow"
-        description="Define analysis environment, case metadata, and system configuration. Run the clue loop to estimate incident type, then generate a priority-ranked initial collection guide."
+        title="사고 접수 워크플로우"
+        description="분석 환경·케이스 메타·시스템 구성을 정의하고, 단서 루프(결정 트리)로 사고유형을 추정한 뒤 우선순위가 매겨진 초동 수집 가이드를 생성합니다."
         meta={
           <div className="flex items-center gap-3 flex-wrap">
             {stepLabels.map((s, i) => {

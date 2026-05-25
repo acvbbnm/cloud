@@ -90,10 +90,8 @@ const DiscoveryIntroModal = ({ open, onClose }: DiscoveryIntroModalProps) => {
         </div>
 
         <div className="bg-ink-950/60 border border-ink-700/40 rounded-lg px-3 py-2 mb-4 text-[11px] text-ink-300 leading-5">
-          ℹ <b>표준 흐름</b>: NIST SP 800-61r2 §3.2 Triage + KISA §2.4 초기 대응 점검표 6항목.
-          <br />
-          단서 → 결정 트리 답변 → 시스템 구성 입력 누적 점수로 사고유형을 추정합니다.
-          AI 는 검색·요약·제안만 수행하며 결정은 수사관이 합니다.
+          ℹ <b>진행 방식</b>: 단서 → 결정 트리 답변 → 시스템 구성 입력의 누적 점수로
+          사고유형을 추정합니다. AI 는 검색·요약·제안만 수행하며 결정은 수사관이 합니다.
         </div>
 
         <div className="flex items-center justify-between gap-3">

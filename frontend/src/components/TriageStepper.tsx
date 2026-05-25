@@ -82,7 +82,7 @@ const TriageStepper = ({
       <div className="flex items-center gap-2 mb-2">
         <span className="eyebrow text-brand-blue">진단 타임라인</span>
         <span className="text-[10px] text-ink-500">
-          Q1 → Q6 (6단계 동적 분기 — NIST 800-61r2 + 의료 감별진단)
+          Q1 → Q6 6단계 동적 분기
         </span>
       </div>
 

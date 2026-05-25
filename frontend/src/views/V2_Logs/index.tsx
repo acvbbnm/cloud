@@ -108,11 +108,11 @@ const V2Logs = () => {
       <div>
         <PageHeader
           eyebrow="Layer 1 · M1-1"
-          title="Log Collection"
-          description="No active incident case."
+          title="로그 수집"
+          description="활성화된 사고 케이스가 없습니다."
         />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 로그를 업로드할 수 있습니다.
             </p>
@@ -131,7 +131,7 @@ const V2Logs = () => {
     <div>
       <PageHeader
         eyebrow="Layer 1 · M1-1"
-        title="Log Collection"
+        title="로그 수집"
         description="CSP 로그 파일을 업로드하면 무결성(SHA-256) 검증 후 시드 카탈로그와 자동 매칭됩니다."
         actions={
           <>

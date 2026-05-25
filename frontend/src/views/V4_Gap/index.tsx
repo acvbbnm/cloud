@@ -67,9 +67,9 @@ const V4Gap = () => {
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-2" title="Gap Detection" description="No active incident case." />
+        <PageHeader eyebrow="Layer 2 · M2-2" title="갭 감지" description="활성화된 사고 케이스가 없습니다." />
         <PageBody>
-          <Card title={<>No Case</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">V-1 사고 접수 위저드를 먼저 완료하세요.</p>
             <button onClick={() => navigate('/setup')} className="btn-primary">
               ← V-1 사고 접수
@@ -87,7 +87,7 @@ const V4Gap = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-2"
-        title="Gap Detection"
+        title="갭 감지"
         description="필수 증거 수집 + OCSF 정규화 + ATT&CK 매핑 결과를 종합하여 갭 유형을 자동 판정합니다."
         actions={
           <>

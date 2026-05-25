@@ -25,7 +25,6 @@ import DiscoveryIntroModal, {
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
-import TriageStepper from '@/components/TriageStepper';
 import TriageTreeMinimap from '@/components/TriageTreeMinimap';
 import TriageTreeGraph from '@/components/TriageTreeGraph';
 
@@ -116,6 +115,8 @@ const Step3_Discovery = ({
   >([]);
   // 전체 트리 그래프 오버레이 토글
   const [treeGraphOpen, setTreeGraphOpen] = useState(false);
+  // 사용자 요청 (2026-05-25) — 가설 점수 카드 클릭 시 8종 비교 오버레이 토글
+  const [breakdownOverlayOpen, setBreakdownOverlayOpen] = useState(false);
   /** NextCluePanel 권장 단서 클릭 시 CluesInput 의 selectedType 동기화 (mount 시점 키) */
   const [preferredClueType, setPreferredClueType] = useState<ClueType | null>(null);
   // Q4 (2026-05-21): 트리 답변에서 자동 추출된 variant — CluesInput 토글 자동 선택
@@ -313,7 +314,11 @@ const Step3_Discovery = ({
       setHypothesisScores(res.hypothesis_scores);
       setRecommendation(res.recommendation ?? null);
       setTerminal(res.is_terminal);
-      if (res.next_node) {
+      // 2026-05-25 fix: next_node 가 terminal 타입(T_evaluate 등) 이면 currentNode 에
+      // 넣지 않는다. 넣으면 TriageTreeMinimap 이 trail+current 로 6+1=7개 step 을
+      // 만들어 lvl=6 위치에 "Q7" 라벨을 그리는 버그 발생.
+      const nextIsTerminal = res.next_node?.type === 'terminal' || res.is_terminal;
+      if (res.next_node && !nextIsTerminal) {
         setCurrentNode(res.next_node.id);
         setCurrentNodeData(res.next_node);
       } else {
@@ -390,108 +395,13 @@ const Step3_Discovery = ({
       {/* 진입 사전 안내 모달 — 첫 진입 시만 */}
       <DiscoveryIntroModal open={introOpen} onClose={() => setIntroOpen(false)} />
 
-      {/* 헤더 — 가벼운 안내 */}
-      <div className="panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="eyebrow">Layer 0 · M0-3 · Discovery Loop</span>
-          <Badge tone="purple" size="sm">
-            UNCLASSIFIED
-          </Badge>
-          <span className="text-ink-400">
-            단서·트리아주 누적으로 사고유형을 추정합니다
-          </span>
-          <button
-            onClick={() => setIntroOpen(true)}
-            className="ml-auto text-[10.5px] text-brand-blue hover:underline"
-          >
-             사전 안내 다시 보기
-          </button>
-        </div>
-        <div className="text-ink-500 text-[10.5px]">
-          TheHive·DFIR-IRIS·NIST 800-61r2 표준 흐름. 결정성 100% — 같은 답변 시퀀스는 같은 결과.
-        </div>
-      </div>
-
-      {/* E4 (2026-05-21): 진단 타임라인 stepper — Q1~Q6 6단계 가시화 */}
-      <TriageStepper
-        completedPath={completedPath}
-        currentNodeId={currentNodeId}
-        isTerminal={isTerminal}
-      />
-
       {/* 2-panel 레이아웃 — 좌측 단서 루프 / 우측 가설 점수 */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,400px)] gap-4">
-        {/* 좌측 — 단서·부분로그·결정트리 */}
+        {/* 좌측 — 결정트리 → 단서 → 부분로그 (사용자 요청 2026-05-25: 결정트리 최상단 + 단서/부분로그 위치 교체) */}
         <div className="space-y-3 min-w-0">
-          {/*  단서 입력 */}
+          {/*  결정 트리 질문 — 최상단 (사용자 주 작업) */}
           <Card
-            title={<> 단서 입력 (Observable)</>}
-            subtitle={
-              preferredClueType
-                ? `우측 권장 단서 — ${preferredClueType} 를 추가하세요`
-                : 'DFIR-IRIS IOC + NIST 800-61r2 표 3-2 + Velociraptor artifact 기반 6종'
-            }
-          >
-            <CluesInput
-              key={`${preferredClueType ?? 'default'}-${preferredVariant ?? 'none'}`}
-              observables={observables}
-              preferredType={preferredClueType}
-              preferredVariant={preferredVariant}
-              onAdd={(o) => {
-                addObservable(o);
-                setPreferredClueType(null); // 권장 단서 추가 후 힌트 제거
-                setPreferredVariant(null);
-              }}
-              onAfterAdd={async (o) => {
-                // Q2 (2026-05-21): 단서 추가 시 즉시 백엔드 /api/triage/analyze 호출 →
-                // weight_key 가 있으면 그 가중치, 없으면 generic fallback (Q1) 적용.
-                if (!caseId) return;
-                try {
-                  const res = await analyzeClue(caseId, hypothesisScores, {
-                    type: o.type,
-                    value: o.value,
-                    weight_key: o.weight_key,
-                    note: o.note,
-                    added_at: o.added_at,
-                  });
-                  setHypothesisScores(res.hypothesis_scores);
-                  // 토스트는 첫 단서만 (스팸 방지 — variant 명시는 더 강한 가중치라 알림 가치 큼)
-                  if (o.weight_key) {
-                    showToast(`단서 가중치 적용 (${o.weight_key})`);
-                  }
-                } catch (e) {
-                  // 분석 실패해도 단서는 누적 — 백엔드 미응답 시 store 만 유지
-                  console.warn('[triage/analyze] 단서 분석 실패:', e);
-                }
-              }}
-              onRemove={removeObservable}
-              disabled={loading}
-            />
-          </Card>
-
-          {/*  부분 로그 분석 (선택) */}
-          <Card
-            title={<> 부분 로그 분석 (선택)</>}
-            subtitle="AWS Detective scope time + Microsoft Sentinel entity 표준 흐름"
-          >
-            <PartialLogAnalysis
-              caseId={caseId}
-              currentScores={hypothesisScores}
-              mappedTechniques={mappedTechniques}
-              onAnalyzed={(techIds, _filenames, newScores) => {
-                // dev3 B-2: 백엔드 /api/triage/analyze-logs 가 권위 있는 점수 산출
-                // — 클라이언트 응답을 그대로 적용 (학술 변호: 결정성 100%).
-                addMappedTechniques(techIds);
-                setHypothesisScores(newScores);
-                showToast(`${techIds.length}개 기법 매핑 → 가설 점수 갱신`);
-              }}
-              disabled={loading}
-            />
-          </Card>
-
-          {/*  결정 트리 질문 */}
-          <Card
-            title={<> 결정 트리 (KISA §2.4 + NIST 800-61r2 §3.2)</>}
+            title={<> 결정 트리</>}
             subtitle="질문 답변이 우측 가설 점수에 즉시 반영됩니다"
           >
             {!caseId ? (
@@ -522,6 +432,66 @@ const Step3_Discovery = ({
               />
             )}
           </Card>
+
+          {/*  단서 입력 — 결정트리 보조 (2026-05-25: 부분로그와 위치 교체) */}
+          <Card
+            title={<> 단서 입력 (Observable)</>}
+            subtitle={
+              preferredClueType
+                ? `우측 권장 단서 — ${preferredClueType} 를 추가하세요`
+                : '관측한 IP·도메인·해시·계정 등 단서 6종을 입력하세요'
+            }
+          >
+            <CluesInput
+              key={`${preferredClueType ?? 'default'}-${preferredVariant ?? 'none'}`}
+              observables={observables}
+              preferredType={preferredClueType}
+              preferredVariant={preferredVariant}
+              onAdd={(o) => {
+                addObservable(o);
+                setPreferredClueType(null);
+                setPreferredVariant(null);
+              }}
+              onAfterAdd={async (o) => {
+                if (!caseId) return;
+                try {
+                  const res = await analyzeClue(caseId, hypothesisScores, {
+                    type: o.type,
+                    value: o.value,
+                    weight_key: o.weight_key,
+                    note: o.note,
+                    added_at: o.added_at,
+                  });
+                  setHypothesisScores(res.hypothesis_scores);
+                  if (o.weight_key) {
+                    showToast(`단서 가중치 적용 (${o.weight_key})`);
+                  }
+                } catch (e) {
+                  console.warn('[triage/analyze] 단서 분석 실패:', e);
+                }
+              }}
+              onRemove={removeObservable}
+              disabled={loading}
+            />
+          </Card>
+
+          {/*  부분 로그 분석 (선택) — 단서 보조 (2026-05-25: 단서와 위치 교체) */}
+          <Card
+            title={<> 부분 로그 분석 (선택)</>}
+            subtitle="작은 단위 로그를 미리 붙여 가설을 보강할 수 있습니다"
+          >
+            <PartialLogAnalysis
+              caseId={caseId}
+              currentScores={hypothesisScores}
+              mappedTechniques={mappedTechniques}
+              onAnalyzed={(techIds, _filenames, newScores) => {
+                addMappedTechniques(techIds);
+                setHypothesisScores(newScores);
+                showToast(`${techIds.length}개 기법 매핑 → 가설 점수 갱신`);
+              }}
+              disabled={loading}
+            />
+          </Card>
         </div>
 
         {/* 우측 — 가설 점수 + 추천 + 액션 (sticky + 자체 스크롤) */}
@@ -530,10 +500,12 @@ const Step3_Discovery = ({
             {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
             <ConfidenceGauge scores={hypothesisScores} />
 
+            {/* 사용자 요청 (2026-05-25) — 클릭 시 8종 비교 오버레이 토글 */}
             <HypothesisScoreBar
               scores={hypothesisScores}
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
+              onExpand={() => setBreakdownOverlayOpen(true)}
             />
 
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
@@ -572,8 +544,8 @@ const Step3_Discovery = ({
               }}
             />
 
-            {/* E4 §4-8 (2026-05-21): 사고유형 비교 차트 + 기여 요소 요약
-                2026-05-22: 백엔드 /api/triage/breakdown 실 데이터 연동 — 출처 trace */}
+            {/* 사용자 요청 (2026-05-25) — 사이드바엔 인라인 노출 안 함.
+                위 HypothesisScoreBar 클릭 시 풀스크린 오버레이로 8종 비교 + 근거 표시. */}
             <HypothesisBreakdownChart
               scores={hypothesisScores}
               treeAnswerCount={completedPath.length}
@@ -581,6 +553,9 @@ const Step3_Discovery = ({
               mappedTechniqueCount={mappedTechniques.length}
               breakdown={breakdown}
               breakdownLoading={breakdownLoading}
+              inlineHidden
+              externalOpen={breakdownOverlayOpen}
+              onClose={() => setBreakdownOverlayOpen(false)}
             />
 
             {/* 단서 누적 요약 */}
@@ -605,27 +580,8 @@ const Step3_Discovery = ({
               </div>
             )}
 
-            {/* 트리 경로 요약 (간단) */}
-            {completedPath.length > 0 && (
-              <div>
-                <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider mb-1.5">
-                   트리 경로
-                </div>
-                <ul className="space-y-0.5">
-                  {completedPath.map((p) => (
-                    <li
-                      key={p.node_id}
-                      className="text-[10.5px] text-ink-300 leading-5"
-                    >
-                      <code className="text-ink-500">{p.node_id}</code>
-                      <span className="text-ink-400 ml-1">
-                        → {p.selected_option_ids.length}개 선택
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {/* 트리 경로 텍스트 요약 — 2026-05-25 삭제: 위 결정 트리 미니맵 (react-flow)
+                및 하단 진단 타임라인 stepper 로 이미 시각화되어 중복. */}
 
             {/* E4 §4-6 (2026-05-21): 조기 종료 인라인 카드 — auto_confirm 도달했으나
                 트리가 아직 진행 중일 때 노출 (Q4·Q5·Q6 계속 vs 즉시 확정) */}
@@ -755,6 +711,10 @@ const Step3_Discovery = ({
           </div>
         </div>
       </div>
+
+      {/* 하단 컨텍스트 영역 — 2026-05-25 삭제: 진단 타임라인 + 안내 박스 둘 다
+          결정 트리 미니맵 (사이드바) + 상위 PageHeader 와 중복으로 사용자 요청 정리.
+          사전 안내 모달은 V-1 Step 3 첫 진입 시 자동 표시되며, 다시 보려면 새로고침. */}
 
       {/* 전체 결정 트리 그래프 — 우측 슬라이드 오버레이 (2026-05-22) */}
       {treeGraphOpen && (

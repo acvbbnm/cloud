@@ -37,6 +37,12 @@ interface HypothesisBreakdownChartProps {
   /** 백엔드 /api/triage/breakdown 응답 — 있으면 expanded 영역에 출처 trace 표시 */
   breakdown?: BreakdownResponse | null;
   breakdownLoading?: boolean;
+  /** 인라인 leaderboard 카드 숨김 — 오버레이만 사용 시 (2026-05-25) */
+  inlineHidden?: boolean;
+  /** 외부 컨트롤 — 오버레이 open 상태 (지정 시 내부 state 무시) */
+  externalOpen?: boolean;
+  /** 외부 컨트롤 — 오버레이 닫기 콜백 */
+  onClose?: () => void;
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -87,8 +93,21 @@ const HypothesisBreakdownChart = ({
   autoSkip = 130,
   breakdown = null,
   breakdownLoading = false,
+  inlineHidden = false,
+  externalOpen,
+  onClose,
 }: HypothesisBreakdownChartProps) => {
   const [expanded, setExpanded] = useState<IncidentType | null>(null);
+  const [internalOpen, setInternalOpen] = useState(false);
+  // 외부 컨트롤이 있으면 그것을 우선, 없으면 내부 state 사용
+  const overlayOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const closeOverlay = () => {
+    if (onClose) onClose();
+    else setInternalOpen(false);
+  };
+  const openOverlay = () => {
+    if (externalOpen === undefined) setInternalOpen(true);
+  };
 
   const sorted = (Object.keys(scores) as IncidentType[])
     .filter((t) => t !== 'UNCLASSIFIED')
@@ -98,12 +117,144 @@ const HypothesisBreakdownChart = ({
   const totalNonZero = sorted.filter((r) => r.score > 0).length;
   const max = sorted[0]?.score ?? 0;
 
+  // 내부 리스트 렌더 함수 — 사이드바 / 오버레이 공통 사용
+  const renderList = () => (
+    <div className="space-y-0.5">
+      {sorted.map((row, i) => {
+        const pct = max > 0 ? (row.score / Math.max(autoSkip, max)) * 100 : 0;
+        const isPrimary = i === 0 && row.score > 0;
+        const isSecondary = i === 1 && row.score > 0;
+        const isExpanded = expanded === row.type;
+
+        return (
+          <div key={row.type}>
+            <button
+              type="button"
+              onClick={() =>
+                setExpanded((cur) => (cur === row.type ? null : row.type))
+              }
+              className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left hover:bg-ink-800/60 transition-colors ${
+                isExpanded ? 'bg-ink-800/40' : ''
+              }`}
+            >
+              <span
+                className={`w-4 shrink-0 text-[10px] font-mono ${
+                  isPrimary
+                    ? 'text-brand-teal font-bold'
+                    : isSecondary
+                    ? 'text-brand-amber'
+                    : 'text-ink-500'
+                }`}
+              >
+                {i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span
+                    className={`text-[10.5px] truncate ${
+                      isPrimary
+                        ? 'text-brand-teal font-semibold'
+                        : isSecondary
+                        ? 'text-brand-amber'
+                        : 'text-ink-300'
+                    }`}
+                  >
+                    {INCIDENT_TYPE_KO[row.type]}
+                  </span>
+                  <span className="text-[10px] font-mono text-ink-300 ml-2 shrink-0">
+                    {row.score}
+                  </span>
+                </div>
+                <div className="relative h-1.5 bg-ink-900 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      TYPE_COLOR[row.type]
+                    } ${row.score === 0 ? 'opacity-30' : ''}`}
+                    style={{ width: `${Math.min(100, pct)}%` }}
+                  />
+                </div>
+              </div>
+            </button>
+
+            {isExpanded && (
+              <div className="ml-6 mt-1 mb-1 text-[10px] text-ink-400 leading-4 bg-ink-900/40 rounded px-2 py-1.5 border border-ink-700/30">
+                <ExpandedDetail
+                  type={row.type}
+                  score={row.score}
+                  breakdown={breakdown}
+                  breakdownLoading={breakdownLoading}
+                  fallbackCounts={{
+                    tree: treeAnswerCount,
+                    clue: clueCount,
+                    technique: mappedTechniqueCount,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // 인라인 leaderboard 와 오버레이를 분리해서 렌더. inlineHidden=true 면 오버레이만.
+  const overlayNode = overlayOpen ? (
+    <div
+      className="fixed inset-0 z-50 bg-ink-975/85 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-up"
+      onClick={closeOverlay}
+    >
+      <div
+        className="bg-ink-900 border border-ink-700 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-ink-900 border-b border-ink-700 px-5 py-3 flex items-center justify-between z-10">
+          <div>
+            <div className="text-[15px] font-semibold text-ink-100">사고유형 비교 (8종)</div>
+            <div className="text-[11px] text-ink-400 mt-0.5">
+              기여 요소: 트리 답변 <b className="text-ink-200">{treeAnswerCount}</b> ·
+              단서 <b className="text-ink-200">{clueCount}</b> ·
+              부분 분석 <b className="text-ink-200">{mappedTechniqueCount}</b>
+              {breakdown && (
+                <> · 항목 <b className="text-ink-200">{breakdown.items.length}</b>건</>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={closeOverlay}
+            className="text-ink-400 hover:text-ink-100 text-[18px] leading-none px-2"
+            title="닫기"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-5">
+          <p className="text-[11px] text-ink-400 mb-3 leading-5">
+            각 사고유형을 클릭하면 가중치 출처(결정 트리·단서·부분 분석)별 분해를 볼 수 있습니다.
+            같은 답변 시퀀스는 항상 같은 분해를 산출합니다.
+          </p>
+          {renderList()}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  // inlineHidden — 오버레이만 마운트 (외부에서 trigger)
+  if (inlineHidden) {
+    return overlayNode;
+  }
+
   return (
     <div className="border-t border-ink-700/40 pt-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
+        <button
+          type="button"
+          onClick={openOverlay}
+          className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider hover:text-brand-teal transition-colors cursor-pointer flex items-center gap-1.5"
+          title="클릭하면 확장 오버레이로 자세히 보기"
+        >
            사고유형 비교 (8종)
-        </div>
+          <span className="text-ink-500 text-[11px]">⛶</span>
+        </button>
         <div className="text-[10px] text-ink-500">
           상위 {totalNonZero}/8 활성
           {breakdownLoading && <span className="ml-1 text-brand-blue">· 분해 중…</span>}
@@ -122,83 +273,11 @@ const HypothesisBreakdownChart = ({
         )}
       </div>
 
-      {/* 8 사고유형 leaderboard */}
-      <div className="space-y-0.5">
-        {sorted.map((row, i) => {
-          const pct = max > 0 ? (row.score / Math.max(autoSkip, max)) * 100 : 0;
-          const isPrimary = i === 0 && row.score > 0;
-          const isSecondary = i === 1 && row.score > 0;
-          const isExpanded = expanded === row.type;
+      {/* 8 사고유형 leaderboard (인라인) — 사이드바 표시용 */}
+      {renderList()}
 
-          return (
-            <div key={row.type}>
-              <button
-                type="button"
-                onClick={() =>
-                  setExpanded((cur) => (cur === row.type ? null : row.type))
-                }
-                className={`w-full flex items-center gap-2 px-1.5 py-1 rounded text-left hover:bg-ink-800/60 transition-colors ${
-                  isExpanded ? 'bg-ink-800/40' : ''
-                }`}
-              >
-                <span
-                  className={`w-4 shrink-0 text-[10px] font-mono ${
-                    isPrimary
-                      ? 'text-brand-teal font-bold'
-                      : isSecondary
-                      ? 'text-brand-amber'
-                      : 'text-ink-500'
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span
-                      className={`text-[10.5px] truncate ${
-                        isPrimary
-                          ? 'text-brand-teal font-semibold'
-                          : isSecondary
-                          ? 'text-brand-amber'
-                          : 'text-ink-300'
-                      }`}
-                    >
-                      {INCIDENT_TYPE_KO[row.type]}
-                    </span>
-                    <span className="text-[10px] font-mono text-ink-300 ml-2 shrink-0">
-                      {row.score}
-                    </span>
-                  </div>
-                  <div className="relative h-1.5 bg-ink-900 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-500 ${
-                        TYPE_COLOR[row.type]
-                      } ${row.score === 0 ? 'opacity-30' : ''}`}
-                      style={{ width: `${Math.min(100, pct)}%` }}
-                    />
-                  </div>
-                </div>
-              </button>
-
-              {isExpanded && (
-                <div className="ml-6 mt-1 mb-1 text-[10px] text-ink-400 leading-4 bg-ink-900/40 rounded px-2 py-1.5 border border-ink-700/30">
-                  <ExpandedDetail
-                    type={row.type}
-                    score={row.score}
-                    breakdown={breakdown}
-                    breakdownLoading={breakdownLoading}
-                    fallbackCounts={{
-                      tree: treeAnswerCount,
-                      clue: clueCount,
-                      technique: mappedTechniqueCount,
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* 풀스크린 오버레이 (인라인 헤더 ⛶ 또는 외부 트리거로 토글) */}
+      {overlayNode}
     </div>
   );
 };

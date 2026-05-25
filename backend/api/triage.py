@@ -101,13 +101,13 @@ class TriageNextRequest(BaseModel):
     current_node_id: str
     answer_ids: list[str]
     # 클라이언트가 들고 있는 누적 점수 — stateless 정책
-    hypothesis_scores: dict[str, int]
+    hypothesis_scores: dict[str, float]
     tree_path: list[dict]
 
 
 class TriageAnalyzeRequest(BaseModel):
     caseId: str
-    hypothesis_scores: dict[str, int]
+    hypothesis_scores: dict[str, float]
     clue: Optional[ObservableModel] = None
     technique_ids: Optional[list[str]] = None
 
@@ -129,7 +129,7 @@ class TriageBreakdownRequest(BaseModel):
 class TriageConfirmRequest(BaseModel):
     caseId: str
     incident_type: IncidentType
-    hypothesis_scores: dict[str, int]
+    hypothesis_scores: dict[str, float]
     secondary_incident_types: Optional[list[IncidentType]] = None
     # ── dev3 B-3 (2026-05-19): 트리 진행 상태 영속화 ──
     # 클라이언트가 마지막으로 들고 있던 트리 상태 — useTriageStore 와 1:1

@@ -353,6 +353,7 @@ class Triage:
             "is_terminal": False,
             "recommendation": None,
             "environment_seed": applied,
+            "scoring_mode": settings.TRIAGE_MODE,
         }
 
     @classmethod
@@ -360,7 +361,7 @@ class Triage:
         cls,
         current_node_id: str,
         answer_ids: list[str],
-        current_scores: dict[str, int],
+        current_scores: dict[str, float],
         current_path: list[dict],
     ) -> dict:
         """현재 질문에 답변 → 다음 노드 + 점수 갱신.
@@ -465,12 +466,15 @@ class Triage:
             "tree_path": new_path,
             "is_terminal": is_terminal,
             "recommendation": recommendation,
+            # Phase 4 — frontend 가 매 응답에서 모드 감지 가능 (recommendation 이 None 인
+            # 중간 노드에서도 % 표시·임계값 분기 정확히 동작).
+            "scoring_mode": settings.TRIAGE_MODE,
         }
 
     @classmethod
     def analyze(
         cls,
-        current_scores: dict[str, int],
+        current_scores: dict[str, float],
         clue: Optional[dict] = None,
         technique_ids: Optional[list[str]] = None,
     ) -> dict:

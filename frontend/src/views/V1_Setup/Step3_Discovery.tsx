@@ -124,6 +124,9 @@ const Step3_Discovery = ({
   // E4 §4-8 (2026-05-22): 출처 트레이스 — breakdown 응답 캐시 + 로딩 상태
   const [breakdown, setBreakdown] = useState<BreakdownResponse | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
+  // Phase 4 (2026-05-25) — backend 의 scoring_mode 추적 (additive | bayesian).
+  // 매 응답 (start/next/analyze) 에서 갱신. UI 컴포넌트들이 이 값을 보고 % vs 점수 분기.
+  const [scoringMode, setScoringMode] = useState<'additive' | 'bayesian'>('additive');
 
   // 진입 시 사전 안내 모달 표시 (영속화 체크)
   useEffect(() => {
@@ -185,6 +188,9 @@ const Step3_Discovery = ({
       try {
         const res = await startTriage(caseId);
         if (cancelled) return;
+        // Phase 4 — backend 응답의 scoring_mode 갱신 (any 캐스트 — TriageNextResponse 타입에 신규 필드)
+        const mode = (res as { scoring_mode?: 'additive' | 'bayesian' }).scoring_mode;
+        if (mode) setScoringMode(mode);
         if (res.next_node) {
           storeStart(res.next_node.id);
           setCurrentNodeData(res.next_node);
@@ -314,6 +320,9 @@ const Step3_Discovery = ({
       setHypothesisScores(res.hypothesis_scores);
       setRecommendation(res.recommendation ?? null);
       setTerminal(res.is_terminal);
+      // Phase 4 — scoring_mode 매 응답에서 추적
+      const mode = (res as { scoring_mode?: 'additive' | 'bayesian' }).scoring_mode;
+      if (mode) setScoringMode(mode);
       // 2026-05-25 fix: next_node 가 terminal 타입(T_evaluate 등) 이면 currentNode 에
       // 넣지 않는다. 넣으면 TriageTreeMinimap 이 trail+current 로 6+1=7개 step 을
       // 만들어 lvl=6 위치에 "Q7" 라벨을 그리는 버그 발생.
@@ -500,7 +509,7 @@ const Step3_Discovery = ({
             {/* E4 (2026-05-21): 신뢰도 게이지 — primary score / auto_skip ratio + gap hint */}
             <ConfidenceGauge
               scores={hypothesisScores}
-              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
+              scoringMode={scoringMode}
             />
 
             {/* 사용자 요청 (2026-05-25) — 클릭 시 8종 비교 오버레이 토글 */}
@@ -510,7 +519,7 @@ const Step3_Discovery = ({
               highlightPrimary={recommendation?.primary?.incident_type}
               highlightSecondary={recommendation?.secondary?.incident_type}
               onExpand={() => setBreakdownOverlayOpen(true)}
-              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
+              scoringMode={scoringMode}
             />
 
             {/* 트리 미니맵 (react-flow) — 사용자 결정 #3 */}
@@ -561,7 +570,7 @@ const Step3_Discovery = ({
               inlineHidden
               externalOpen={breakdownOverlayOpen}
               onClose={() => setBreakdownOverlayOpen(false)}
-              scoringMode={(recommendation as { scoring_mode?: 'additive' | 'bayesian' })?.scoring_mode ?? 'additive'}
+              scoringMode={scoringMode}
             />
 
             {/* 단서 누적 요약 */}

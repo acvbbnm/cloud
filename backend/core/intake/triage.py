@@ -53,10 +53,13 @@ INCIDENT_TYPES_9 = INCIDENT_TYPES_8
 
 
 def _initial_scores() -> dict[str, float]:
-    """초기 점수 — TRIAGE_MODE 에 따라 분기 (Phase 2.5, 2026-05-25).
+    """초기 점수 — TRIAGE_MODE 에 따라 분기 (Phase 2.5~5, 2026-05-25).
 
-    - additive (기본): 8 사고유형 + UNCLASSIFIED 모두 0
-    - bayesian       : Verizon DBIR 2024 prior + UNCLASSIFIED=0 (priors.json)
+    - additive       (기본): 8 사고유형 + UNCLASSIFIED 모두 0
+    - bayesian              : Uniform prior (Jaynes 1968) + UNCLASSIFIED=0 (priors.json)
+    - evidence_tree (Phase E): legacy /api/triage/* 는 additive 와 동일 (호환 유지).
+                               단서 트리는 /api/clue-tree/* 가 별도 uniform prior +
+                               베이즈 갱신으로 운용.
     """
     if settings.TRIAGE_MODE == "bayesian":
         from core.intake.bayesian import initial_posterior

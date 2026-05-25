@@ -330,7 +330,7 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
 - [x] **Phase B** — 백엔드 API 4종 (`/api/clue-tree/*`) + Information Gain (KL divergence) + Marginalization (PDF §17.B BAN 정합) + ClueTreeService DB 영속화. pytest 29/29 PASS. commit `e95ad08`
 - [x] **Phase C** — 프론트 트리 UI 노드 클릭·채택·자라기 — types/clueTree.ts + api/clueTree.ts + useClueTreeStore + ClueTreeView (react-flow 기반 ROOT→leaf→IG 후보 fan-out, IG 게이지). tsc 무에러 + vite 빌드 OK. commit `706858c`
 - [x] **Phase D** — NextCluePanel Information Gain 통합 — IG 모드 (igCandidates·entropy·outcome_flags badge·rationale) 추가. ClueCandidate.outcome_flags 백엔드 dataclass → 응답 → 프론트 타입 전파. pytest 51/51 PASS (1 신규 outcome_flags 회귀 테스트 포함). commit `6bd29b1`
-- [ ] **Phase E** — V-1 Step 3 레이아웃 재설계
+- [x] **Phase E** — V-1 Step 3 레이아웃 재설계 — Step3_EvidenceTreeDiscovery 신설 + TRIAGE_MODE=evidence_tree 백엔드 추가 + Step3_Discovery 가 mode 분기로 위임. ClueTreeView 메인 + NextCluePanel IG 사이드 + CluesInput 직접입력/PartialLogAnalysis 자동채택 3 경로 배선. confidence 도달 시 notify 카드 (사용자 결정 §16). tsc 무에러 + vite 빌드 OK + e2e 47/47 / 43/47 보존. commit TBD
 - [ ] **Phase F** — 47 시나리오 단서 시퀀스 마이그레이션 + e2e 회귀
 - [ ] **Phase G** — DiscoveryIntroModal "어두운 맵 밝히기" 안내 갱신
 - [ ] **Phase H** (신설, PDF §17.C 채택) — V-7 보드 networkx GDS 알고리즘 (PageRank·Label Propagation) 이식

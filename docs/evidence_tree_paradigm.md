@@ -346,7 +346,7 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
 - [x] **Phase D** — NextCluePanel Information Gain 통합 — IG 모드 (igCandidates·entropy·outcome_flags badge·rationale) 추가. ClueCandidate.outcome_flags 백엔드 dataclass → 응답 → 프론트 타입 전파. pytest 51/51 PASS (1 신규 outcome_flags 회귀 테스트 포함). commit `6bd29b1`
 - [x] **Phase E** — V-1 Step 3 레이아웃 재설계 — Step3_EvidenceTreeDiscovery 신설 + TRIAGE_MODE=evidence_tree 백엔드 추가 + Step3_Discovery 가 mode 분기로 위임. ClueTreeView 메인 + NextCluePanel IG 사이드 + CluesInput 직접입력/PartialLogAnalysis 자동채택 3 경로 배선. confidence 도달 시 notify 카드 (사용자 결정 §16). tsc 무에러 + vite 빌드 OK + e2e 47/47 / 43/47 보존. commit `666d0e5`
 - [x] **Phase F** — 47 시나리오 단서 시퀀스 마이그레이션 + e2e 회귀 — `scripts/e2e_evidence_tree_test.py` 신설. (Q_node, [option_id]) → decision_tree.json:weight_key → clue_catalog 매핑. composite 가설 허용 (legacy bayesian e2e 와 동일 정책). **결과 43/47 PASS — bayesian baseline 과 정확히 동일** (4 INSIDER T3 약한 시그널 한계 공유). additive 47/47 보존. commit `604506e`
-- [x] **Phase G** — DiscoveryIntroModal "어두운 맵 밝히기" 안내 갱신 — `mode='evidence_tree'` prop 분기로 별도 영속화 키 + 패러다임 안내 콘텐츠 (5단계 흐름·4 컴포넌트·학술 근거). Step3_EvidenceTreeDiscovery 가 자동 노출. + `/api/clue-tree/reset` 엔드포인트 + ClueTreeView 헤더 ⟲ 초기화 버튼 (cold-start 마이그레이션 용). commit TBD
+- [x] **Phase G** — DiscoveryIntroModal "어두운 맵 밝히기" 안내 갱신 — `mode='evidence_tree'` prop 분기로 별도 영속화 키 + 패러다임 안내 콘텐츠 (5단계 흐름·4 컴포넌트·학술 근거). Step3_EvidenceTreeDiscovery 가 자동 노출. + `/api/clue-tree/reset` 엔드포인트 + ClueTreeView 헤더 ⟲ 초기화 버튼 (cold-start 마이그레이션 용). commit `fe21776`
 - [ ] **Phase H** (신설, PDF §17.C 채택) — V-7 보드 networkx GDS 알고리즘 (PageRank·Label Propagation) 이식
 
 각 Phase 완료 시 이 체크리스트 갱신 + 동일 커밋에 push.

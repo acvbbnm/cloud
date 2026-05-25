@@ -2,18 +2,50 @@
  * 다음 단서 제안 패널 — V-1 Step 2 Discovery Loop 우측 (청사진 §2 F-3).
  *
  * 현재 가설 점수 분포를 기반으로 "어떤 단서를 추가하면 가설을 좁힐 수 있는지" 제안.
- * 백엔드 /api/triage/analyze 가 next_clues 응답을 주면 그것을 표시.
- * 미구현 상태에서는 클라이언트 휴리스틱 — 상위 2개 사고유형 별 권장 단서.
  *
- * 학술 근거: next_clue_graph.json (사고유형 → 결정 단서 매핑).
+ * 3 모드 — 우선순위:
+ *   1. **IG 모드 (Phase D, 2026-05-25)**: `igCandidates` prop 제공 시 —
+ *      백엔드 Information Gain 정렬 후보 + 게이지 + rationale + outcome_flags badge.
+ *      paradigm doc §7 + §16 정합. Phase E 에서 Step3_Discovery 가 ClueTree
+ *      응답을 전달함.
+ *   2. **legacy 백엔드 응답 모드**: `suggestions` (NextClueSuggestion[]) — additive·bayesian.
+ *   3. **클라이언트 휴리스틱 fallback**: 상위 2개 사고유형 별 권장 단서.
+ *
+ * 학술 근거: Shannon 1948 IG · BAN(IEEE 2023) marginalization · Google Chronicle
+ *   Rule-to-Outcome (PDF §17.A) outcome_flags 정형화.
  */
 import type { ClueType, HypothesisScores, IncidentType, NextClueSuggestion } from '@/types';
+import type { ClueCandidate } from '@/types/clueTree';
 
 interface NextCluePanelProps {
   scores: HypothesisScores;
   /** 백엔드 응답이 있으면 그것을 우선 표시. 없으면 클라이언트 휴리스틱. */
   suggestions?: NextClueSuggestion[];
   onPickClueType?: (type: ClueType) => void;
+
+  // ── Phase D — IG 모드 props ──
+  /**
+   * Evidence Tree IG 후보 (Phase B `/api/clue-tree/*` 응답).
+   * 제공 시 legacy heuristic / suggestions 모두 무시하고 IG UI 단독 노출.
+   */
+  igCandidates?: ClueCandidate[];
+  /**
+   * IG 후보 클릭 핸들러 — 단서 채택 (Step3_Discovery 가 expand 호출).
+   */
+  onAdoptCandidate?: (candidate: ClueCandidate) => void;
+  /**
+   * 현재 사후확률 entropy (bits). 헤더에 표시.
+   * paradigm §16 — 5/3/2 동적 후보 K 기준.
+   */
+  entropyBits?: number;
+  /**
+   * 클릭 비활성 (loading 중).
+   */
+  disabled?: boolean;
+  /**
+   * 후보 재계산 트리거 — 새로고침 버튼 클릭 핸들러.
+   */
+  onRefreshCandidates?: () => void;
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -133,12 +165,160 @@ const NEXT_CLUE_HEURISTIC: Partial<
   ],
 };
 
+// ── Phase D — outcome_flags badge 표기 헬퍼 ──
+
+const outcomeFlagBadgeColor = (flag: string): string => {
+  // 위험/공격 시그널 → red, 인증/계정 → amber, 출처/익명 → blue, 기본 → teal
+  if (/Anonymized|Foreign|Phishing|Ransomware|Tampered|Exfiltration/i.test(flag)) {
+    return 'bg-red-900/40 text-red-300 border-red-700/50';
+  }
+  if (/Mfa|Auth|Account|Privileged|Privilege|Creation|Dormant/i.test(flag)) {
+    return 'bg-amber-900/40 text-amber-300 border-amber-700/50';
+  }
+  if (/Source|Off|Hours|Burst|Service/i.test(flag)) {
+    return 'bg-blue-900/40 text-blue-300 border-blue-700/50';
+  }
+  return 'bg-emerald-900/30 text-emerald-300 border-emerald-700/50';
+};
+
+const formatFlagLabel = (key: string, value: unknown): string => {
+  // "outcomeIsAnonymizedSource" → "AnonymizedSource"
+  const stripped = key.replace(/^outcome/, '');
+  if (typeof value === 'boolean') return stripped;
+  return `${stripped}: ${String(value)}`;
+};
+
 const NextCluePanel = ({
   scores,
   suggestions,
   onPickClueType,
+  igCandidates,
+  onAdoptCandidate,
+  entropyBits,
+  disabled,
+  onRefreshCandidates,
 }: NextCluePanelProps) => {
-  // 우선: 백엔드 응답 suggestions, 없으면 휴리스틱
+  // ── Phase D — IG 모드 (최우선) ──
+  if (igCandidates) {
+    return (
+      <div className="border-t border-ink-700/40 pt-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10.5px] text-ink-400 font-semibold uppercase tracking-wider">
+            다음 단서 후보 · IG 정렬
+            {entropyBits !== undefined && (
+              <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
+                entropy {entropyBits.toFixed(2)} bits · {igCandidates.length}개
+              </span>
+            )}
+          </span>
+          {onRefreshCandidates && (
+            <button
+              type="button"
+              onClick={onRefreshCandidates}
+              disabled={disabled}
+              title="후보 재계산"
+              className="text-[9.5px] font-mono text-brand-teal hover:text-brand-tealDark border border-brand-teal/40 hover:border-brand-tealDark px-1.5 py-0.5 transition-colors disabled:opacity-40"
+            >
+              ↻ 재계산
+            </button>
+          )}
+        </div>
+
+        {igCandidates.length === 0 ? (
+          <p className="text-[10.5px] text-ink-500 italic leading-5">
+            추가 후보 없음 — 트리에서 직접 입력하세요.
+          </p>
+        ) : (
+          <p className="text-[9.5px] text-ink-500 leading-4 mb-2">
+            Information Gain (Shannon 1948 + Pearl marginalization) 큰 순.
+            각 막대는 정규화된 변별력 — 클릭 시 단서 채택.
+          </p>
+        )}
+
+        <ul className="space-y-1.5">
+          {igCandidates.map((c, i) => {
+            // 정규화 게이지 (max 기준)
+            const maxIg = Math.max(...igCandidates.map((x) => x.expected_info_gain), 0.0001);
+            const pct = Math.max(8, Math.min(100, (c.expected_info_gain / maxIg) * 100));
+            const flagEntries = c.outcome_flags
+              ? Object.entries(c.outcome_flags).slice(0, 4)
+              : [];
+
+            return (
+              <li
+                key={c.candidate_id}
+                className={`bg-ink-900/60 border border-ink-700/70 rounded-lg px-2.5 py-2 transition-colors ${
+                  disabled
+                    ? 'opacity-50'
+                    : 'hover:border-brand-teal/60 hover:bg-ink-900/80 cursor-pointer'
+                }`}
+                onClick={() => {
+                  if (!disabled && onAdoptCandidate) onAdoptCandidate(c);
+                }}
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                onKeyDown={(e) => {
+                  if (disabled) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onAdoptCandidate?.(c);
+                  }
+                }}
+              >
+                <div className="flex items-start gap-1.5 mb-1">
+                  <span className="text-[10px] text-ink-500 mt-0.5 font-mono">
+                    #{i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-ink-100 font-semibold leading-4">
+                      {c.label}
+                    </div>
+                    <div className="text-[9.5px] text-ink-500 font-mono mt-0.5">
+                      {c.category} · {c.clue_key}
+                    </div>
+                  </div>
+                  <span className="text-[9.5px] text-brand-teal font-mono shrink-0">
+                    IG {c.expected_info_gain.toFixed(3)}b
+                  </span>
+                </div>
+
+                {/* IG 정규화 게이지 */}
+                <div className="relative h-1.5 rounded-full bg-ink-950/80 overflow-hidden mb-1.5">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-brand-teal/70 transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                {c.rationale && (
+                  <div className="text-[9.5px] text-ink-400 leading-4 mb-1">
+                    {c.rationale}
+                  </div>
+                )}
+
+                {/* outcome_flags badge (PDF §17.A Google Chronicle) */}
+                {flagEntries.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {flagEntries.map(([k, v]) => (
+                      <span
+                        key={k}
+                        className={`text-[8.5px] font-mono border px-1 py-px rounded ${outcomeFlagBadgeColor(k)}`}
+                        title={`${k} = ${JSON.stringify(v)}`}
+                      >
+                        {formatFlagLabel(k, v)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
+  // ── legacy: 백엔드 응답 suggestions, 없으면 휴리스틱 ──
   if (!suggestions || suggestions.length === 0) {
     // 상위 2개 사고유형
     const top = (Object.keys(scores) as IncidentType[])

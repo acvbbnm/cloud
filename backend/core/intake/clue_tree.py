@@ -46,6 +46,8 @@ class ClueCandidate:
     value: str  # 단서 값 (예: "tor_vpn")
     expected_info_gain: float = 0.0  # Phase B 에서 채움 (KL divergence, bits)
     rationale: str = ""  # 왜 이 후보가 추천되는지 (top 사고유형 근거)
+    # PDF §17.A — Google Chronicle Rule-to-Outcome 정형 Boolean (Phase D)
+    outcome_flags: dict = field(default_factory=dict)
 
 
 @dataclass

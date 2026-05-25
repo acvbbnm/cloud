@@ -130,6 +130,7 @@ def _build_candidates(
                 value=entry["value"],
                 expected_info_gain=float(entry["expected_info_gain"]),
                 rationale=entry.get("rationale", ""),
+                outcome_flags=dict(entry.get("outcome_flags", {})),  # Phase D
             )
         )
     return out
@@ -318,6 +319,8 @@ def _build_response(tree: ClueTree) -> dict:
                 "value": c.value,
                 "expected_info_gain": c.expected_info_gain,
                 "rationale": c.rationale,
+                # Phase D — outcome_flags 전파 (Google Chronicle 패턴, PDF §17.A)
+                "outcome_flags": c.outcome_flags,
             }
             for c in candidates_raw
         ],

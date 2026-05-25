@@ -17,6 +17,12 @@ export interface ClueCandidate {
   /** Information Gain (KL divergence, Shannon 1948, bits). */
   expected_info_gain: number;
   rationale: string;
+  /**
+   * Phase D — Google Chronicle Rule-to-Outcome 정형 Boolean/enum (PDF §17.A).
+   * 예: { outcomeIsAnonymizedSource: true, outcomeSourceCategoryHint: 'tor_vpn' }
+   * Phase A `outcome_flags` 휴리스틱 → 백엔드 응답에 동봉됨.
+   */
+  outcome_flags: Record<string, boolean | string | number>;
 }
 
 /** 채택된 단서 노드 1개 (path 표현). */

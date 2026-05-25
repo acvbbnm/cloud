@@ -81,6 +81,19 @@ def test_start_tree_returns_uniform_with_5_candidates(db_session, case) -> None:
     assert data["path"][0]["clue_key"] == "__ROOT__"
 
 
+def test_start_tree_candidates_carry_outcome_flags(db_session, case) -> None:
+    """Phase D — 후보 응답에 outcome_flags 전파 (PDF §17.A Google Chronicle)."""
+    data = start_tree(db_session, case.case_id)
+    # 모든 후보가 outcome_flags 키를 가져야 함 (빈 dict 라도 OK)
+    for c in data["candidates"]:
+        assert "outcome_flags" in c
+        assert isinstance(c["outcome_flags"], dict)
+    # 최소 1개 후보는 비어있지 않은 outcome_flags 를 가져야 함
+    # (Phase A 추출 시 94/143 단서가 flags 있음)
+    has_any = any(bool(c["outcome_flags"]) for c in data["candidates"])
+    assert has_any, "Top-5 IG 후보 중 outcome_flags 가진 단서 0 — 카탈로그 전파 실패"
+
+
 def test_start_tree_idempotent(db_session, case) -> None:
     """동일 case 에 재호출 → 기존 트리 반환 (덮어쓰기 X)."""
     first = start_tree(db_session, case.case_id)

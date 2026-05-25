@@ -14,8 +14,12 @@
  * 학술 근거: Shannon 1948 IG · BAN(IEEE 2023) marginalization · Google Chronicle
  *   Rule-to-Outcome (PDF §17.A) outcome_flags 정형화.
  */
+import { useState } from 'react';
+
+import { explainClue } from '@/api/clueTree';
+
 import type { ClueType, HypothesisScores, IncidentType, NextClueSuggestion } from '@/types';
-import type { ClueCandidate } from '@/types/clueTree';
+import type { ClueCandidate, ExplainClueResponse } from '@/types/clueTree';
 
 interface NextCluePanelProps {
   scores: HypothesisScores;
@@ -203,6 +207,30 @@ const NextCluePanel = ({
   onRefreshCandidates,
   scoringMode,
 }: NextCluePanelProps) => {
+  // ── 추천 이유 상세 (explain_clue API) — 카드 클릭 시 lazy fetch + cache ──
+  const [expandedClueKey, setExpandedClueKey] = useState<string | null>(null);
+  const [explainCache, setExplainCache] = useState<Record<string, ExplainClueResponse>>({});
+  const [explainLoadingKey, setExplainLoadingKey] = useState<string | null>(null);
+
+  const toggleExplain = async (clueKey: string) => {
+    if (expandedClueKey === clueKey) {
+      setExpandedClueKey(null);
+      return;
+    }
+    setExpandedClueKey(clueKey);
+    if (explainCache[clueKey]) return;
+    setExplainLoadingKey(clueKey);
+    try {
+      const data = await explainClue(clueKey);
+      setExplainCache((prev) => ({ ...prev, [clueKey]: data }));
+    } catch (e) {
+      // 조용히 무시 (네트워크 일시 오류 등)
+      console.warn('[explainClue] failed:', e);
+    } finally {
+      setExplainLoadingKey((cur) => (cur === clueKey ? null : cur));
+    }
+  };
+
   // ── Phase D — IG 모드 (최우선) ──
   if (igCandidates) {
     return (
@@ -343,6 +371,136 @@ const NextCluePanel = ({
                         {formatFlagLabel(k, v)}
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {/* ── 추천 이유 상세 토글 (explain_clue API) ── */}
+                <div className="mt-1.5 pt-1 border-t border-ink-800/80 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExplain(c.clue_key);
+                    }}
+                    className="text-[9.5px] text-ink-400 hover:text-brand-teal font-mono transition-colors flex items-center gap-1"
+                    title="이 단서가 왜 추천되는지 자세히 보기"
+                  >
+                    {expandedClueKey === c.clue_key ? '▲' : '▼'} 추천 이유
+                  </button>
+                  <span className="text-[9px] text-ink-600 font-mono">
+                    클릭하면 채택
+                  </span>
+                </div>
+
+                {expandedClueKey === c.clue_key && (
+                  <div
+                    className="mt-1.5 pt-1.5 border-t border-ink-800/80 space-y-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {explainLoadingKey === c.clue_key && (
+                      <div className="text-[9.5px] text-ink-500 italic">
+                        BN 추론 trace 조회 중…
+                      </div>
+                    )}
+                    {explainCache[c.clue_key] && (() => {
+                      const ex = explainCache[c.clue_key];
+                      // top-3 aggregated_likelihood
+                      const aggTop = Object.entries(ex.aggregated_likelihood)
+                        .filter(([h]) => h !== 'UNCLASSIFIED')
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 3);
+                      const techs = ex.techniques ?? [];
+                      const perTech = ex.per_technique_likelihood ?? {};
+                      return (
+                        <>
+                          {/* 추론 경로 */}
+                          <div className="text-[9.5px] text-ink-400 leading-4">
+                            <span className="text-ink-500">추론 경로 — </span>
+                            {ex.source === 'bn' ? (
+                              <span className="text-purple-300 font-semibold">
+                                Bayesian Network (Noisy-OR DAG)
+                              </span>
+                            ) : (
+                              <span className="text-amber-300">
+                                Legacy fallback (weights.json)
+                              </span>
+                            )}
+                            <span className="ml-1 text-ink-500">
+                              · 신뢰도{' '}
+                              <span className="text-ink-300">{ex.confidence}</span>
+                            </span>
+                          </div>
+
+                          {/* ATT&CK 기법 → 강한 사고유형 */}
+                          {techs.length > 0 && Object.keys(perTech).length > 0 && (
+                            <div>
+                              <div className="text-[9.5px] text-ink-500 mb-0.5">
+                                매핑된 ATT&CK 기법별 영향
+                              </div>
+                              <div className="space-y-0.5">
+                                {techs.map((t) => {
+                                  const lk = perTech[t];
+                                  if (!lk) return null;
+                                  const topH = Object.entries(lk)
+                                    .filter(([h]) => h !== 'UNCLASSIFIED')
+                                    .sort((a, b) => b[1] - a[1])[0];
+                                  if (!topH) return null;
+                                  return (
+                                    <div
+                                      key={t}
+                                      className="text-[9.5px] flex items-center justify-between"
+                                    >
+                                      <span className="font-mono text-purple-300">
+                                        {t}
+                                      </span>
+                                      <span className="text-ink-400">
+                                        →{' '}
+                                        <span className="text-ink-200">
+                                          {INCIDENT_TYPE_KO[topH[0] as IncidentType]}
+                                        </span>{' '}
+                                        <span className="text-brand-teal font-mono">
+                                          {(topH[1] * 100).toFixed(1)}%
+                                        </span>
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 단서 채택 시 사고유형별 likelihood 합산 */}
+                          <div>
+                            <div className="text-[9.5px] text-ink-500 mb-0.5">
+                              단서 채택 시 가설별 likelihood (Top-3)
+                            </div>
+                            <div className="space-y-0.5">
+                              {aggTop.map(([h, p]) => {
+                                const pct = p * 100;
+                                return (
+                                  <div key={h} className="text-[9.5px]">
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <span className="text-ink-200">
+                                        {INCIDENT_TYPE_KO[h as IncidentType]}
+                                      </span>
+                                      <span className="font-mono text-brand-teal">
+                                        {pct.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                    <div className="relative h-1 rounded-full bg-ink-950/80 overflow-hidden">
+                                      <div
+                                        className="absolute inset-y-0 left-0 bg-brand-teal/60"
+                                        style={{ width: `${Math.min(100, pct * 4)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </li>

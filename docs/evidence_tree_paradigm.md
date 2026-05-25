@@ -347,7 +347,8 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
 - [x] **Phase E** — V-1 Step 3 레이아웃 재설계 — Step3_EvidenceTreeDiscovery 신설 + TRIAGE_MODE=evidence_tree 백엔드 추가 + Step3_Discovery 가 mode 분기로 위임. ClueTreeView 메인 + NextCluePanel IG 사이드 + CluesInput 직접입력/PartialLogAnalysis 자동채택 3 경로 배선. confidence 도달 시 notify 카드 (사용자 결정 §16). tsc 무에러 + vite 빌드 OK + e2e 47/47 / 43/47 보존. commit `666d0e5`
 - [x] **Phase F** — 47 시나리오 단서 시퀀스 마이그레이션 + e2e 회귀 — `scripts/e2e_evidence_tree_test.py` 신설. (Q_node, [option_id]) → decision_tree.json:weight_key → clue_catalog 매핑. composite 가설 허용 (legacy bayesian e2e 와 동일 정책). **결과 43/47 PASS — bayesian baseline 과 정확히 동일** (4 INSIDER T3 약한 시그널 한계 공유). additive 47/47 보존. commit `604506e`
 - [x] **Phase G** — DiscoveryIntroModal "어두운 맵 밝히기" 안내 갱신 — `mode='evidence_tree'` prop 분기로 별도 영속화 키 + 패러다임 안내 콘텐츠 (5단계 흐름·4 컴포넌트·학술 근거). Step3_EvidenceTreeDiscovery 가 자동 노출. + `/api/clue-tree/reset` 엔드포인트 + ClueTreeView 헤더 ⟲ 초기화 버튼 (cold-start 마이그레이션 용). commit `fe21776`
-- [ ] **Phase H** (신설, PDF §17.C 채택) — V-7 보드 networkx GDS 알고리즘 (PageRank·Label Propagation) 이식
+- [ ] **Phase H** (재정의 2026-05-25, byungwoo) — Bayesian Network + Noisy-OR 단서 추천. PDF §17.B BAN paper 의 단순화 정합 구현. 상세 계획은 §18 참조.
+- [ ] **Phase I** (이전 Phase H, 보류) — V-7 보드 networkx GDS (PageRank·Label Propagation) — Evidence Tree 완성 후 별도
 
 각 Phase 완료 시 이 체크리스트 갱신 + 동일 커밋에 push.
 
@@ -398,6 +399,175 @@ def candidate_count(posterior: dict[str, float]) -> int:
 ```
 
 사용자 선택 없이 트리는 계속 자랄 수 있음. confidence 갱신 시 알림 카드 업데이트.
+
+---
+
+## 18. Phase H — Bayesian Network + Noisy-OR 단서 추천 상세 계획
+
+> 작성: 2026-05-25, byungwoo
+> 상태: 설계 확정, 단계별 의논·구현 대기
+
+### 18.0 배경
+
+**문제 진단** (Phase G 직후 시연 — 본 doc §17 PDF 검토 후 후속):
+1. **의미 중복 추천** — 이미 `IP_ADDRESS:tor_vpn` 채택 후 `Q5-CRED:tor_vpn` 도 추천 (동일 정보)
+2. **카테고리 monoculture** — top-7 전부 CRED 변별 단서, 다른 가설 변별 단서 0
+3. **시퀀스/인과 무시** — Naive IG 는 현재 사후확률만 봄, 단서 i → 단서 j 인과 무시
+
+PDF 청사진 (BAN paper IEEE 2023) 의 **Bayesian Network DAG + CPT** 패러다임이 답.
+다만 PDF 의 진짜 BN 은 수만 침해 데이터로 학습 — 캡스톤 범위 초과.
+
+### 18.1 사용자 제시 보완안 (2026-05-25)
+
+3가지 학술 표준 결합:
+
+**(A) 합성 데이터 생성 (사용자 제안 §2)**
+- MITRE Atomic Red Team — 700+ ATT&CK 기법별 실행 YAML 정의
+- MITRE ATT&CK Flow — 30+ 실제 사고 시퀀스 (Colonial Pipeline, SolarWinds, NotPetya …)
+- MITRE ATT&CK Groups — 100+ APT 그룹별 기법 사용
+- **샌드박스 실행 없이 YAML/JSON 정의 텍스트만 학습 소스로 활용** (캡스톤 인프라 제약 우회)
+
+**(B) Noisy-OR 모델 (Pearl 1988, 사용자 제안 §3)**
+- 풀 CPT: 143 단서 × 2^143 조합 = 계산 불가능
+- Noisy-OR: 부모 노드 독립 가정 → 파라미터 지수 → 선형 축소
+- 학술 표준 — 보안·리스크 평가 BN 의 정통 단순화
+
+**(C) pgmpy 라이브러리**
+- Python 확률 그래픽 모델 표준 라이브러리 (UC Berkeley·CMU 사용)
+- `NoisyOrCPD` 클래스 — Noisy-OR 직접 표현
+- pip 5MB, 폐쇄망 친화
+
+### 18.2 학술 변호 (논문·발표)
+
+> *"본 시스템은 BAN paper (IEEE 2023) 의 Bayesian Network 패러다임을 따르되,
+> 폐쇄망·캡스톤 제약 하에서:
+> (1) **합성 데이터** — 기업 기밀 침해 데이터 대신 MITRE 공개 자원 (Atomic Red Team
+>     + ATT&CK Flow + ATT&CK Groups) 활용
+> (2) **Noisy-OR (Pearl 1988)** — 풀 CPT 의 지수적 파라미터를 선형 스케일로 축소
+> (3) **pgmpy** — 학술 표준 확률 그래픽 모델 라이브러리, 결정성 100%
+> (4) **폐쇄망 운영** — 학습 1회 (외부 PC), 운영은 정적 JSON 만 사용"*
+
+### 18.3 6단계 구현 계획
+
+```
+[1회 학습 — 개발자 PC]
+  scripts/build_clue_dag.py
+    ├─ H.1 Atomic Red Team + ATT&CK Flow + ATT&CK Groups 다운
+    ├─ H.2 우리 143 단서 → ATT&CK 기법 매핑 (clue_to_attack.json)
+    ├─ H.3 DAG 구조 학습 (clue_dag.json — 노드·엣지)
+    └─ H.4 Noisy-OR 파라미터 추출 (clue_cpt_noisyor.json)
+       ↓
+[정적 JSON 출력 — 폐쇄망]
+  data/triage/external_sources/  (다운받은 원천 데이터)
+  data/triage/clue_to_attack.json (단서 ↔ ATT&CK 매핑)
+  data/triage/clue_dag.json       (BN DAG 구조)
+  data/triage/clue_cpt_noisyor.json (Noisy-OR 파라미터)
+       ↓
+[런타임 추론 — pgmpy]
+  H.5 core/intake/clue_dag_inference.py
+    ├─ pgmpy.NoisyOrCPD 로 P(c | accepted_clues) 계산
+    └─ 기존 IG + Noisy-OR 가중 결합
+  H.6 시연 + e2e 회귀 검증
+```
+
+### 18.4 단계별 상세 + 의논 포인트
+
+#### H.1 — 데이터 수집 (~1h)
+
+**작업**:
+- `backend/data/triage/external_sources/` 디렉토리 생성
+- Atomic Red Team `atomics/` 디렉토리 clone (또는 release zip)
+- ATT&CK Flow corpus clone (`center-for-threat-informed-defense/attack-flow`)
+- ATT&CK STIX (Groups + Techniques) 다운 (`mitre-attack/attack-stix-data`)
+
+**의논 포인트**:
+- 저장 방식 — git submodule vs 정적 zip 복사? (캡스톤은 정적 zip 권장 — 재현성)
+- 어느 데이터셋부터? — Atomic Red Team 이 가장 크지만 ATT&CK Flow 가 직접 시퀀스 정보
+
+#### H.2 — 단서 ↔ ATT&CK 매핑 (~1h)
+
+**작업**:
+- 우리 143 단서 중 27개는 이미 `TECHNIQUE:T1078.004` 직접 매핑
+- 나머지 116개 (`Q5-CRED:tor_vpn`, `IP_ADDRESS:non_korean` 등) 룰 매핑
+- 출력: `data/triage/clue_to_attack.json`
+
+**의논 포인트**:
+- 1:1 매핑 안 되는 단서 처리 — 예: `Q1_inception:csp_alert` 는 ATT&CK 기법 X (메타 정보)
+- 1:N 매핑 — 예: `ACCOUNT:mfa_disabled` → T1556.006 (MFA Bypass) + T1078 (Valid Accounts)
+- 자동 매핑 + 수동 검토 비율
+
+#### H.3 — DAG 구조 학습 (~1h)
+
+**작업**:
+- ATT&CK Tactic 계층 = 1차 prior (Reconnaissance → Initial Access → Execution → ...)
+- ATT&CK Flow JSON 의 실제 시퀀스 = co-occurrence edge
+- ATT&CK Groups 의 기법 사용 패턴 = transition 보강
+- 출력: `data/triage/clue_dag.json`
+
+**의논 포인트**:
+- Edge 임계값 — 몇 번 같이 등장하면 인과 edge? (예: ≥3 그룹 또는 ≥2 flow)
+- Cycle 처리 — DAG 보장 위해 ATT&CK Tactic 단계 순서 강제
+
+#### H.4 — Noisy-OR 파라미터 추출 (~1h)
+
+**작업**:
+- pgmpy 설치 (`pip install pgmpy`)
+- 각 노드별 **leak probability** (부모 없을 때 자발 발생 확률)
+- 각 엣지별 **inhibitor probability** (부모 활성화 시 자식 활성화 못할 확률)
+- pgmpy `NoisyOrCPD` 객체로 직렬화
+- 출력: `data/triage/clue_cpt_noisyor.json`
+
+**의논 포인트**:
+- Leak 추정 방식 — Laplace smoothing? (Verizon DBIR prior 단서별 분배?)
+- Inhibitor 추정 — Atomic Red Team 빈도 / Flow co-occurrence 결합 가중치
+
+#### H.5 — 알고리즘 통합 (~1h)
+
+**작업**:
+- `core/intake/clue_dag_inference.py` 신설
+- pgmpy 추론 — `BayesianNetwork.query(['c_j'], evidence=accepted_clues)`
+- 기존 IG 와 결합: `score(c) = α × IG(c) + β × P_noisyor(c | accepted_clues)`
+- TRIAGE_MODE 환경변수 토글 — `evidence_tree` 기본 활성, fallback 가능
+
+**의논 포인트**:
+- α·β 가중치 — 0.5/0.5 시작? 시나리오 검증 후 조정
+- pgmpy 추론 비용 — 후보 143개 × 추론 1번 = 응답 시간 영향? (벤치마크 필요)
+- fallback — pgmpy 미설치/오류 시 기존 IG 로 자동 전환
+
+#### H.6 — 시연 + 검증 (~1h)
+
+**작업**:
+- 시연 1·2·3 재실행 — 중복·monoculture 해소 확인
+- e2e 회귀 — additive 47/47 / bayesian 43/47 / evidence_tree 43/47 유지
+- 단위 테스트 — `tests/test_clue_dag_inference.py` 신설
+- 시연 비교 — 현재 vs 개선 추천 5개 비교 표
+
+**의논 포인트**:
+- 합격 기준 — 시연 2 의 카테고리 다양성, 시연 3 의 중복 제거 확인
+- e2e 회귀 임계값 — 약간의 PASS 률 변동 허용 (±2건)
+
+### 18.5 학술 인용 보강 (paradigm doc §14)
+
+**추가**:
+- **Atomic Red Team (Red Canary)** — Open Source TTP Library, MITRE 공식 매핑
+- **MITRE ATT&CK Flow Project** — Center for Threat-Informed Defense, Real-World Incident Sequences
+- **pgmpy (Ankan & Panda 2015)** — Python Library for Probabilistic Graphical Models
+- **Noisy-OR Model** (Pearl 1988, §3.2.2 — Bayesian Belief Propagation 의 단순화)
+
+### 18.6 의존성 변경
+
+- **pgmpy** 추가 (~5MB) — `requirements.txt` 갱신 필요
+- byungwoo 브랜치 개발 단계 — 팀원 머지 시 PR 본문에 학술 변호 포함
+
+### 18.7 진행 체크리스트
+
+- [ ] **H.1** — 외부 데이터 수집 (Atomic Red Team + ATT&CK Flow + Groups)
+- [ ] **H.2** — 우리 143 단서 → ATT&CK 매핑 (`clue_to_attack.json`)
+- [ ] **H.3** — DAG 구조 학습 (`clue_dag.json`)
+- [ ] **H.4** — Noisy-OR 파라미터 추출 (`clue_cpt_noisyor.json`)
+- [ ] **H.5** — pgmpy 추론 통합 (`clue_dag_inference.py`)
+- [ ] **H.6** — 시연 + e2e 회귀 + 단위 테스트
+- [ ] commit·push (단계마다 별도 commit + 사용자 확인 후 다음 진행)
 
 ---
 

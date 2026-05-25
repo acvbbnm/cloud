@@ -327,7 +327,7 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
 
 - [x] **Phase 5.0** — priors.json uniform (1/8) 적용 (Jaynes 1968 Max Entropy) — 베이지안 모드 회귀 43/47, additive 47/47 유지. commit `d9d8f8e`
 - [x] **Phase A** — `ClueTreeNode` 자료구조 + clue_catalog.json 자동 추출 + 단위 테스트 — 143 단서 (decision_tree 92 + clue_input 24 + log_analysis 27) + outcome_flags 94/143 + pytest 21/21 PASS. commit `176ad5f`
-- [ ] **Phase B** — 백엔드 API 4종 (`/api/clue-tree/*`) + Information Gain 알고리즘
+- [x] **Phase B** — 백엔드 API 4종 (`/api/clue-tree/*`) + Information Gain (KL divergence) + Marginalization (PDF §17.B BAN 정합) + ClueTreeService DB 영속화. pytest 29/29 PASS. commit TBD
 - [ ] **Phase C** — 프론트 트리 UI 노드 클릭·채택·자라기
 - [ ] **Phase D** — NextCluePanel Information Gain 통합
 - [ ] **Phase E** — V-1 Step 3 레이아웃 재설계

@@ -18,6 +18,7 @@ from api.board import router as board_router
 from api.report import router as report_router
 from api.common import router as common_router
 from api.triage import router as triage_router  # dev3 B-1
+from api.clue_tree import router as clue_tree_router  # Phase B (Evidence Tree, 2026-05-25)
 
 app = FastAPI(
     title="AI Sherpa",
@@ -43,6 +44,7 @@ app.include_router(board_router)
 app.include_router(report_router)
 app.include_router(common_router)
 app.include_router(triage_router)  # dev3 B-1
+app.include_router(clue_tree_router)  # Phase B Evidence Tree
 
 
 @app.on_event("startup")

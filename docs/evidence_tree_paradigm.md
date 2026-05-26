@@ -680,13 +680,37 @@ PDF p3-4 — BERT 변종 + Hugging Face + Django + Docker 풀스택.
 
 **대체**: 기존 `partial_analysis_techniques` 정적 룰 매핑 유지 + 로그 분석 결과를 단서 후보로 제시 (paradigm §4.3).
 
-### 17.E 거부 — Neo4j 그래프 DB 도입
+### 17.E 한정 도입 — Neo4j 그래프 DB (시연 시각화 보조)
 
 PDF p7-8 — Neo4j + Cypher + GraphQL 풀스택.
 
-**거부 사유**: 폐쇄망 단일 데스크톱 + SQLite 9 테이블 설계서 확정 (DB 담당자 합의 사항).
+**초기 거부 (2026-05-25)**: 폐쇄망 단일 데스크톱 + SQLite 9 테이블 설계서 확정 (DB 담당자 합의 사항).
 
-**대체**: networkx (Python 라이브러리, in-memory) 로 GDS 알고리즘만 차용 (§17.C).
+**재검토 (2026-05-26, easy `3aa5879` PoC, Discord 김병우 제안)** — 244 노드 + 385 엣지 적재 성공. 4 옵션 비교 (`docs/neo4j_poc_결과보고.md` §5) 결과 **옵션 B 채택**:
+
+| 옵션 | 채택 여부 | 사유 |
+|---|---|---|
+| A. 메인 DB 이관 (SQLite → Neo4j) | ❌ | 설계서 5.1 ERD 재작성 + DB 담당자 합의 + 5/29 마감 리스크 |
+| **B. 시연용 시각화 보조** | ✅ | SQLite 메인 유지, read-only 미러 export. CLAUDE.md 9테이블 제약 미위반 |
+| C. networkx + react-flow (§17.C) | △ | 메인 그래프 분석엔 그대로 유지 — Phase J 이미 도입 |
+| D. 거부 입장 유지 (구 §17.E) | ❌ | 시연 임팩트 손실 |
+
+**현재 운영 정책**:
+- **메인 영속화**: SQLite 그대로 (`models.py` 무변경, 설계서 5.1 ERD 무변경)
+- **Neo4j 사용처**: 시연 영상 Browser (http://localhost:7474) 캡처 + 발표 자료 그래프 시각화만
+- **데이터 흐름**: 시연 직전 `python backend/scripts/neo4j_poc/import_clue_graph.py` 1회 실행 → `next_clue_graph.json` + `clue_to_attack.json` + `priors.json` → MERGE 적재. 양방향 동기화 X.
+- **앱 런타임 의존**: 0건 (Neo4j 죽어도 시스템 정상 동작)
+- **그래프 분석 알고리즘**: networkx in-memory 유지 (Phase J). Neo4j GDS plugin 미사용.
+
+**산출물** (easy `3aa5879`):
+- `backend/scripts/neo4j_poc/import_clue_graph.py` — idempotent MERGE
+- `backend/scripts/neo4j_poc/demo_queries.py` — Cypher Q1~Q7
+- `backend/scripts/neo4j_poc/reset_password.py` — 초기 비번 변경
+- `docs/neo4j_poc_결과보고.md` — 보고서 + 옵션 비교
+- `docs/neo4j_재현_가이드.md` — 팀원 재현 절차 (이지호 디스코드 가이드 + 6 보완점 통합)
+- `neo4j-tools/` — Community Edition 5.26.26 (.gitignore, 144MB)
+
+**대체 (그래프 분석)**: networkx (Python 라이브러리, in-memory) — Phase J 채택 (§17.C). Neo4j 는 시각화 전용.
 
 ---
 

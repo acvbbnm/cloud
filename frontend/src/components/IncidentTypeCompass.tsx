@@ -160,7 +160,19 @@ const IncidentTypeCompass = ({
   const center = effectiveSize / 2;
   const R = effectiveSize / 2 - 70;  // anchor 반지름 (라벨 여유 확보)
   const labelOffset = 28;            // 라벨 외곽 offset
-  const trailMaxRadius = R * 0.85;   // 무게중심이 닿을 수 있는 최대 반지름
+  // depth 별 점진 확장 — 단서가 적을 땐 중심 근처에서만 움직이고
+  // 단서 ≈ 10 부근에서 saturation. sqrt 곡선 (초반 점진 + 후반 평탄).
+  // 사용자 비전 (2026-05-26): "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고
+  //   향하는 방향이면 좋겠다" 정합.
+  const SATURATION_DEPTH = 10;
+  const MIN_RADIUS_FACTOR = 0.12;  // depth 1 → 12% 반지름까지만
+  const radiusForDepth = (depth: number): number => {
+    if (depth <= 0) return 0;
+    const t = Math.min(1, depth / SATURATION_DEPTH);
+    // sqrt 곡선 — 초반 점진, 후반 saturation
+    const factor = MIN_RADIUS_FACTOR + (0.85 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
+    return R * factor;
+  };
 
   // 8 anchor — 12시 시작, 시계방향 45° 간격
   const anchors: Anchor[] = useMemo(() => {
@@ -180,8 +192,10 @@ const IncidentTypeCompass = ({
 
   // 사후확률 → 무게중심 (anchor 들의 가중평균).
   // UNCLASSIFIED 제외 후 정규화한 분포 사용.
+  // depth 파라미터: 단서 깊이 — 점진 확장 반지름 결정 (초반 점진, 단서 10에 saturation)
   const posteriorToXY = (
     posterior: HypothesisScores,
+    depth: number,
   ): { x: number; y: number } => {
     // 사고유형 8 의 확률 정규화 (UNCLASSIFIED 제외)
     const incidents = INCIDENT_TYPES_ORDER.map((t) => ({
@@ -200,10 +214,11 @@ const IncidentTypeCompass = ({
       dx += norm * (anchor.x - center);
       dy += norm * (anchor.y - center);
     }
-    // 최대 반지름 클램프 (시각 안정성)
+    // depth 별 최대 반지름 클램프 (단서 적을 땐 중심 근처)
+    const maxR = radiusForDepth(depth);
     const r = Math.sqrt(dx * dx + dy * dy);
-    if (r > trailMaxRadius) {
-      const scale = trailMaxRadius / r;
+    if (r > maxR && r > 0) {
+      const scale = maxR / r;
       dx *= scale;
       dy *= scale;
     }
@@ -214,7 +229,7 @@ const IncidentTypeCompass = ({
   const trail: TrailPoint[] = useMemo(() => {
     const path = collectPath(tree.nodes, tree.root_id, currentLeafId);
     return path.map((node) => {
-      const xy = posteriorToXY(node.posterior_after);
+      const xy = posteriorToXY(node.posterior_after, node.depth);
       return {
         x: xy.x,
         y: xy.y,

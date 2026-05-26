@@ -193,3 +193,27 @@ async def get_guide_v2(
     if guide is None:
         raise _case_not_found()
     return {"status": "ok", "data": guide}
+
+
+@router.get("/guide/preview")
+async def get_guide_preview(
+    caseId: str = Query(..., description="케이스 UUID — system_config·csp 출처"),
+    incidentType: IncidentType = Query(
+        ..., description="preview 대상 사고유형 (case.incident_type 무시)"
+    ),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Phase K (2026-05-26 byungwoo) — 가설별 가이드 미리보기.
+
+    V-1 Step 3 트리아주 진행 중 (case.incident_type=UNCLASSIFIED) 에 상위 가설
+    카드 클릭 시 호출. case.system_config 환경 보정은 그대로 적용되어 실제
+    가이드와 동일한 environment_warnings·applied_modifiers 가 산출됨.
+
+    응답 = `/api/guide/v2` 와 동일 스키마 + `preview: True` 마커.
+
+    paradigm doc §19 (Phase K — 사고유형 가이드 통합) 참조.
+    """
+    guide = CollectionGuideV2.generate_preview(db, caseId, incident_type=incidentType)
+    if guide is None:
+        raise _case_not_found()
+    return {"status": "ok", "data": guide}

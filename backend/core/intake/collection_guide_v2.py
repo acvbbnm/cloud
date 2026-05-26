@@ -740,7 +740,7 @@ class CollectionGuideV2:
 
     @classmethod
     def generate(cls, db: Session, case_id: str) -> Optional[dict]:
-        """사고 케이스 → v2 가이드 생성.
+        """사고 케이스 → v2 가이드 생성 (case.incident_type 사용).
 
         Returns:
             응답 dict (청사진  5 형식) 또는 case 미존재 시 None.
@@ -748,8 +748,40 @@ class CollectionGuideV2:
         case = db.get(IncidentCaseModel, case_id)
         if case is None:
             return None
+        return cls._build_guide(db, case, case.incident_type, preview=False)
 
-        incident_type = case.incident_type
+    @classmethod
+    def generate_preview(
+        cls, db: Session, case_id: str, incident_type: str
+    ) -> Optional[dict]:
+        """Phase K (2026-05-26 byungwoo) — preview 가이드.
+
+        V-1 Step 3 트리아주 진행 중 (case.incident_type=UNCLASSIFIED) 에
+        상위 가설별 가이드 미리보기. system_config 환경 보정 그대로 적용.
+
+        Args:
+            case_id: 케이스 ID — system_config·csp 출처
+            incident_type: preview 대상 사고유형 (case.incident_type 무시)
+
+        Returns:
+            응답 dict 에 `"preview": True` 마커 추가, 그 외는 generate() 와 동일.
+        """
+        case = db.get(IncidentCaseModel, case_id)
+        if case is None:
+            return None
+        return cls._build_guide(db, case, incident_type, preview=True)
+
+    @classmethod
+    def _build_guide(
+        cls,
+        db: Session,
+        case: IncidentCaseModel,
+        incident_type: str,
+        *,
+        preview: bool,
+    ) -> dict:
+        """generate / generate_preview 의 공통 빌더 — incident_type 만 분기."""
+        case_id = case.case_id
         csp = case.csp
         system_config = case.system_config or {}
 
@@ -765,6 +797,8 @@ class CollectionGuideV2:
         )
 
         # 4) Phase G — raw_events 매칭 기반 수집 진행도 산출
+        # preview 모드에서도 동일 — 이미 업로드된 로그가 가이드 항목과 매칭되는지
+        # 미리 확인 가능 (예: 사고유형 확정 전이라도 "이 가설이면 70% 수집됨")
         completion_rate, collected_map = _compute_collection_status(
             db, case_id, csp, categories
         )
@@ -788,4 +822,6 @@ class CollectionGuideV2:
             # 2026-05-23 사이클 6 — v1 시드 풍부 메타 (V-1 Step 4 가이드 표시용)
             "seed_targets": seed_targets,
             "version": "v2",
+            # Phase K — 클라이언트가 preview 응답인지 식별 (학술·로그 트레이스용)
+            "preview": preview,
         }

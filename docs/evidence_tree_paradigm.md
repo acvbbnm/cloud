@@ -1104,13 +1104,38 @@ def zone2_chain_candidates(posterior, accepted_clues) -> dict:
 
 **총 ~5h**.
 
-### 21.8 미결 사항 (M.1 시작 전 확인)
+### 21.8 결정 사항 (2026-05-26 byungwoo 확정)
 
-1. **트리거 N·M 값** — 초기 `N=3, M=0.45` 적정한가? 시연 후 fitting?
-2. **Top 3 가설** vs Top 2? 8 사고유형 중 몇 개를 chain 으로 표시?
-3. **단일 가설 우세 시** (예: RANSOM 95%) chain 표시 — 그래도 Top 3 보여줄지 또는 Top 1 만?
-4. **Kill Chain 매핑** — 위 표 (21.5) 그대로 OK 인지, 또는 보강?
-5. **Zone 2 진입 후 다시 Zone 1 회귀 가능?** — 단서 채택 후 likelihood 약해지면 Zone 1 으로 되돌아갈지?
+| # | 항목 | 결정 |
+|---|---|---|
+| 1 | 트리거 N·M 값 | **시연 후 fit** — 초기값 `N=3, M=0.45` 그대로 적용, 47 시나리오 검증으로 조정 |
+| 2 | Top 몇 개 chain | **Top 3 기본** — "꼬리에 꼬리를 물며 확장 가능성도 열어둠" (장기적으로 4-5 확장 가능) |
+| 3 | 단일 가설 우세 시 | **동일 Top 3 적용** — 95% 우세여도 chain 표시 (이전 단계 추론 가능성 유지) |
+| 4 | Kill Chain 매핑 | **§21.5 표 그대로 진행** (필요 시 추후 보강) |
+| 5 | Zone 2 → Zone 1 회귀 | **회귀 허용** — "갈피를 못 잡겠다 싶으면 회귀해서 다시 조사" |
+
+#### 21.8.1 회귀 알고리즘 (결정 5)
+
+Zone 2 진입 후라도 다음 조건 시 Zone 1 로 회귀 가능:
+
+```python
+def should_regress_to_zone1(tree, posterior) -> bool:
+    """Zone 2 → Zone 1 회귀 — 가설 모호 + 사용자 명시 요청 시."""
+    # 자동 회귀: 사후확률이 다시 모호해지면 (entropy 상승)
+    H = entropy_bits(posterior)
+    if H >= 2.0:  # uniform 에 가까움 — Zone 1 으로
+        return True
+
+    # Top 1 우세가 사라짐 (예: 새 약한 단서로 분포가 뒤집힘)
+    top = top_n(posterior, n=2)
+    if len(top) >= 2 and (top[0][1] - top[1][1]) < 0.10:
+        # gap < 10% — 다시 모호
+        return True
+
+    return False  # 그 외에는 사용자 명시 [Zone 1 으로 회귀] 버튼만
+```
+
+**UI**: Zone 2 헤더에 `⤺ 광범위 탐색으로 회귀` 버튼 + entropy 상승 시 자동 알림.
 
 ### 21.9 위험 / 영향
 
@@ -1120,11 +1145,355 @@ def zone2_chain_candidates(posterior, accepted_clues) -> dict:
 
 ### 21.10 진행 체크리스트
 
-- [ ] **M.0** — paradigm doc §21 정리 (본 섹션) — 본 commit 진행 중
-- [ ] **M.1** — 백엔드 `zone` 필드 + `zone_logic.py` + chain 추론
-- [ ] **M.2** — 컴퍼스 동심원 시각 + 전환 애니메이션
-- [ ] **M.3** — Zone 2 chain UI (AttackChainCard + NextCluePanel mode)
-- [ ] **M.4** — 검증 + commit·push
+- [x] **M.0** — paradigm doc §21 정리 (commit `77e85e0`)
+- [ ] **M.1** — 백엔드 `zone` 필드 + `zone_logic.py` + chain 추론 (담당자 미정)
+- [ ] **M.2** — 컴퍼스 동심원 시각 + 전환 애니메이션 (담당자 미정)
+- [ ] **M.3** — Zone 2 chain UI (AttackChainCard + NextCluePanel mode) (담당자 미정)
+- [ ] **M.4** — 검증 + commit·push (담당자 미정)
 
-각 단계 사용자 의논 후 진행.
+**팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.
+
+---
+
+## 22. Phase M 팀원 구현 가이드 (2026-05-26 byungwoo)
+
+> 본 섹션은 Phase M.1~M.4 를 다른 팀원이 구현할 수 있도록 코드 스켈레톤·파일 위치·테스트 기준을 명시한다. byungwoo (팀장) 는 미결 5건 결정·설계 완료 (§21.8) 후 위임. 각 단계 commit 시 본 체크리스트 (§21.10) 갱신 + paradigm doc PR 동일 커밋에 포함.
+
+### 22.1 공통 — 시작 전 부팅 시퀀스
+
+1. `git fetch origin && git checkout byungwoo && git pull`
+2. `docs/팀원_셋업_가이드.md` §2-3 따라 venv + npm install + external_sources 압축 해제
+3. **본 doc §1~§21 통독** — Evidence Tree 패러다임·사용자 비전 이해 필수
+4. **CLAUDE.md 규칙 준수** — 디렉토리 구조·네이밍·금지사항
+
+---
+
+### 22.2 M.1 — 백엔드 zone + chain 추론 (예상 ~1h)
+
+#### M.1.1 — 신규 파일: `core/intake/zone_logic.py`
+
+```python
+"""Phase M (2026-05-26) — 2-zone 컴퍼스 + ATT&CK Kill Chain 정합 추론."""
+from __future__ import annotations
+
+from core.intake.bayesian import top_n
+from core.intake.clue_tree import ClueTree, posterior_entropy
+from core.intake.info_gain import load_catalog, weights_to_likelihood
+
+
+# 사고유형 → ATT&CK Kill Chain 단계 (§21.5 표)
+KILL_CHAIN_ORDER = {
+    "PHISH_INITIAL_ACCESS": 1,
+    "CREDENTIAL_THEFT": 2,
+    "PRIVILEGE_ESCALATION": 3,
+    "INSIDER_THREAT": 4,
+    "MISCONFIG_EXPOSURE": 4,
+    "AUDIT_LOG_TAMPERING": 5,
+    "DATA_EXFILTRATION": 6,
+    "RANSOMWARE": 7,
+}
+
+# 트리거 초기값 (시연 후 fit — §21.8 #1)
+TRIGGER_MIN_DEPTH = 3
+TRIGGER_MIN_LIKELIHOOD = 0.45
+
+# 회귀 임계값 (§21.8.1)
+REGRESS_ENTROPY_THRESHOLD = 2.0
+REGRESS_GAP_THRESHOLD = 0.10
+
+
+def core_clue_likelihood(tree: ClueTree) -> float:
+    """채택된 단서 중 가장 강한 likelihood (보스 단서) 반환."""
+    catalog = load_catalog().get("clues", {})
+    max_lk = 0.0
+    for node in tree.nodes.values():
+        if node.clue_key == "__ROOT__" or node.clue_key not in catalog:
+            continue
+        weights = catalog[node.clue_key].get("weights", {})
+        if not weights:
+            continue
+        lk = weights_to_likelihood(weights)
+        if lk:
+            max_lk = max(max_lk, max(lk.values()))
+    return max_lk
+
+
+def is_zone2_unlocked(tree: ClueTree, posterior: dict) -> bool:
+    """게임 RPG 비유 — 맵 탐색 + 보스 단서 모두 충족."""
+    # ① 맵 탐색 — 트리 깊이
+    depth = max((n.depth for n in tree.nodes.values()), default=0)
+    if depth < TRIGGER_MIN_DEPTH:
+        return False
+
+    # ② 보스 단서 — 가장 강한 likelihood
+    return core_clue_likelihood(tree) >= TRIGGER_MIN_LIKELIHOOD
+
+
+def should_regress(posterior: dict) -> bool:
+    """Zone 2 → Zone 1 자동 회귀 조건 (§21.8.1)."""
+    H = posterior_entropy(posterior)
+    if H >= REGRESS_ENTROPY_THRESHOLD:
+        return True
+    top = top_n(posterior, n=2)
+    if len(top) >= 2 and (top[0][1] - top[1][1]) < REGRESS_GAP_THRESHOLD:
+        return True
+    return False
+
+
+def compute_attack_chain(posterior: dict) -> list[dict]:
+    """Top 3 가설을 Kill Chain 단계 순으로 재정렬 (§21.5)."""
+    top3 = top_n(posterior, n=3)
+    chain = sorted(
+        top3,
+        key=lambda x: KILL_CHAIN_ORDER.get(x[0], 99),
+    )
+    return [
+        {
+            "hypothesis": h,
+            "probability": p,
+            "kill_chain_phase": KILL_CHAIN_ORDER.get(h, 99),
+        }
+        for h, p in chain
+    ]
+```
+
+#### M.1.2 — 수정 파일: `core/intake/clue_tree_service.py`
+
+`_build_response` 응답에 `zone` + `attack_chain` 필드 동봉:
+
+```python
+# 기존 imports 위에 추가
+from core.intake.zone_logic import (
+    compute_attack_chain,
+    is_zone2_unlocked,
+    should_regress,
+)
+
+# _build_response 안 (return dict 부분 수정)
+def _build_response(tree: ClueTree) -> dict:
+    # ... (기존 코드)
+    confidence = evaluate_confidence(tree.posterior_current, depth=current_depth)
+
+    # Phase M 신규 — zone + chain
+    zone2 = is_zone2_unlocked(tree, tree.posterior_current)
+    regress = zone2 and should_regress(tree.posterior_current)
+    final_zone = 1 if (not zone2 or regress) else 2
+
+    return {
+        # ... (기존 필드)
+        "confidence": confidence,
+        # Phase M 신규
+        "zone": final_zone,                                # 1 또는 2
+        "attack_chain": compute_attack_chain(tree.posterior_current),
+        "core_clue_likelihood": core_clue_likelihood(tree),
+        "regress_suggested": regress,
+    }
+```
+
+#### M.1.3 — 단위 테스트: `tests/test_zone_logic.py` (신규)
+
+검증 케이스 (최소 8):
+- depth < 3 → Zone 1 (트리거 미달)
+- depth = 3 + max_lk < 0.45 → Zone 1
+- depth = 3 + max_lk ≥ 0.45 → Zone 2 (트리거 충족)
+- depth = 10 + max_lk = 0.30 → Zone 1 (보스 단서 약함)
+- Zone 2 진입 후 entropy 2.5 bits → 회귀 권고
+- Zone 2 진입 후 gap 5% → 회귀 권고
+- compute_attack_chain — RANSOM 70 + CRED 20 + PHISH 5 → Kill Chain 순 (PHISH 1·CRED 2·RANSOM 7)
+- compute_attack_chain — Top 3 미만 (가설 1개만) → 빈 chain 또는 부분 chain 안전
+
+#### M.1.4 — 합격 기준
+
+- pytest `tests/test_zone_logic.py` 통과
+- 기존 `test_clue_tree_service.py`, `test_clue_tree.py` 회귀 0
+- e2e `scripts/e2e_evidence_tree_test.py` 47/47 PASS (zone 도입이 기존 추론 영향 X)
+- API live test:
+  ```bash
+  curl http://127.0.0.1:8000/api/clue-tree?caseId=<test> | jq '.data.zone, .data.attack_chain'
+  ```
+
+#### M.1.5 — commit 메시지 예시
+
+```
+feat(evidence-tree): M.1 — 2-zone 추론 + ATT&CK chain (작업자명)
+
+paradigm doc §21·§22.2 정합:
+  - core/intake/zone_logic.py 신설 (is_zone2_unlocked + compute_attack_chain + should_regress)
+  - clue_tree_service._build_response 응답에 zone/attack_chain/core_clue_likelihood 추가
+  - tests/test_zone_logic.py 8 케이스
+검증: pytest <건> · e2e 47/47 회귀 0 · API live OK
+```
+
+---
+
+### 22.3 M.2 — 프론트 동심원 시각 (예상 ~1.5h)
+
+#### M.2.1 — 타입 추가: `frontend/src/types/clueTree.ts`
+
+```ts
+export interface AttackChainStep {
+  hypothesis: IncidentType;
+  probability: number;
+  kill_chain_phase: number;
+}
+
+export interface ClueTreeResponse {
+  // ... (기존 필드)
+  // Phase M 신규
+  zone: 1 | 2;
+  attack_chain: AttackChainStep[];
+  core_clue_likelihood: number;
+  regress_suggested: boolean;
+}
+```
+
+#### M.2.2 — 수정 파일: `frontend/src/components/IncidentTypeCompass.tsx`
+
+추가 사항:
+1. SVG 에 내부 원 (R · 0.5) `<circle r={R*0.5} stroke-dasharray="4 4" />` 그리기
+2. 외부 원 (R · 1.0) 강조 — Zone 2 진입 시 색 변화
+3. 점 위치 계산 — `zone === 2` 이면 외부 원 부근, 아니면 기존 로직
+4. 헤더 라벨 — Zone 1 = "광범위 탐색", Zone 2 = "사고유형 chain 구체화"
+5. 전환 애니메이션 — Zone 트랜지션 시 점 부드럽게 이동 (CSS transition)
+
+```tsx
+// 컴퍼스 SVG 안에 추가
+<circle
+  cx={center} cy={center} r={R * 0.5}
+  stroke="rgba(255, 149, 0, 0.4)" strokeDasharray="4 4"
+  fill="none"
+/>
+{response.zone === 1 && (
+  <text x={center} y={center - R * 0.5 - 8} textAnchor="middle"
+    className="text-[9px] fill-amber-400/60">
+    Zone 1 · 광범위 탐색
+  </text>
+)}
+{response.zone === 2 && (
+  <text x={center} y={center - R - 8} textAnchor="middle"
+    className="text-[10px] fill-brand-teal font-bold">
+    🗺 Zone 2 · 사고유형 chain 구체화
+  </text>
+)}
+```
+
+#### M.2.3 — 전환 알림 카드 (선택)
+
+Zone 1 → Zone 2 처음 진입 시 토스트 또는 inline 카드:
+
+```
+🗺 맵 열림 — 코어 단서 발견!
+RANSOMWARE 가설 강 (P=0.47).
+Top 3 가설 chain 구체화 단계로 진입.
+```
+
+#### M.2.4 — 합격 기준
+
+- tsc --noEmit 0 errors
+- vite build 성공
+- 브라우저 시연:
+  1. 단서 1-2개 입력 → 점이 내부 원 안 (Zone 1)
+  2. 단서 3개 + 강한 likelihood 단서 → "Zone 2 열림" 알림 + 점 외부 이동
+  3. Zone 2 진입 후 약한 단서 추가 → entropy 상승 → "회귀 권고" 표시
+
+---
+
+### 22.4 M.3 — Zone 2 chain UI (예상 ~1.5h)
+
+#### M.3.1 — 신규 컴포넌트: `frontend/src/components/AttackChainCard.tsx`
+
+ATT&CK Kill Chain Top 3 가설을 시간순 시각화:
+
+```tsx
+interface AttackChainCardProps {
+  chain: AttackChainStep[];
+  onSelectHypothesis: (h: IncidentType) => void;
+  selectedHypothesis?: IncidentType | null;
+}
+
+// 시각:
+//   [PHISH 5%] → [CRED 20%] → [RANSOM 70%]   ← 좌→우 화살표 (Kill Chain 순)
+//   각 카드 클릭 → 해당 가설별 단서 추천 (NextCluePanel)
+```
+
+#### M.3.2 — 수정: `frontend/src/components/NextCluePanel.tsx`
+
+`mode='chain'` props 추가:
+
+```tsx
+interface NextCluePanelProps {
+  // ... (기존)
+  mode?: 'standard' | 'chain';
+  chainFilterHypothesis?: IncidentType | null;
+}
+
+// chain mode 일 때:
+//   - chainFilterHypothesis 선택된 가설 변별 단서만 노출
+//   - 미선택이면 통합 (Zone 1 동작)
+//   - "→ AttackChainCard 의 가설 클릭" 안내
+```
+
+#### M.3.3 — 수정: `Step3_EvidenceTreeDiscovery.tsx`
+
+`treeState.zone === 2` 일 때:
+1. 우측 상단에 `<AttackChainCard>` 노출
+2. 사용자가 가설 클릭하면 `chainFilterHypothesis` state 갱신
+3. `<NextCluePanel mode="chain" chainFilterHypothesis={...} />` 로 전환
+4. `regress_suggested` 시 토스트 + Zone 1 회귀 버튼
+
+#### M.3.4 — 합격 기준
+
+- Zone 2 진입 후 우측에 AttackChainCard 등장 — Kill Chain 시간순 (PHISH→CRED→RANSOM)
+- 각 가설 카드 클릭 → 단서 후보 변경 (해당 가설 변별)
+- "회귀 권고" 시 사용자에게 명확 알림 + [⤺ 광범위 탐색으로 회귀] 버튼
+
+---
+
+### 22.5 M.4 — 검증 + commit·푸시 (~30분)
+
+```bash
+# 백엔드
+cd backend
+.venv/Scripts/python.exe -m pytest tests/test_zone_logic.py tests/test_clue_tree.py tests/test_clue_tree_service.py -q
+PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe scripts/e2e_tree_e4_test.py | grep -E "결과:|lane 별:"
+PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe scripts/e2e_evidence_tree_test.py | grep -E "결과:|lane 별:"
+
+# 프론트
+cd frontend
+npx tsc --noEmit
+npx vite build
+
+# paradigm doc §21.10 체크리스트 갱신
+# 최종 commit + push origin byungwoo
+```
+
+#### 합격 기준 (전체 Phase M)
+
+| 항목 | 합격선 |
+|---|---|
+| pytest 전체 | 220+ passed · 회귀 0 |
+| additive e2e | 47/47 PASS |
+| evidence_tree e2e | 47/47 PASS |
+| tsc --noEmit | 0 errors |
+| vite build | success |
+| 브라우저 시연 | Zone 1 → 2 전환·chain 표시·회귀 모두 동작 |
+
+---
+
+### 22.6 작업 분배 제안 (선착순)
+
+| 단계 | 작업 유형 | 추천 담당 | 예상 시간 |
+|---|---|---|---|
+| M.1 | 백엔드 알고리즘 + 테스트 | Python 강한 팀원 | ~1h |
+| M.2 | 프론트 SVG·애니메이션 | React·시각화 익숙한 팀원 | ~1.5h |
+| M.3 | 프론트 컴포넌트 + UX | React 강한 팀원 | ~1.5h |
+| M.4 | 통합 검증 + commit | 누구나 | ~30분 |
+
+각 단계 commit 시 본 doc 의 §21.10 체크리스트 + 담당자명 갱신.
+
+### 22.7 문의
+
+- 설계 의문: byungwoo (paradigm doc §21 작성자)
+- 코드 컨벤션: `cloud/CLAUDE.md`
+- 기존 자산 참조: §22.1 부팅 시퀀스 + 본 doc §9 (기존 자산 재활용 매트릭스)
 

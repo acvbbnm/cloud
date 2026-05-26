@@ -36,10 +36,13 @@ import ConfidenceGauge from '@/components/ConfidenceGauge';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
+import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
+
+import { getGuidePreview } from '@/api/intake';
 
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useClueTreeStore } from '@/stores/useClueTreeStore';
@@ -48,6 +51,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import type { ClueCandidate, ClueTreeResponse } from '@/types/clueTree';
 import type {
   ClueType,
+  GuideV2Response,
   HypothesisScores,
   IncidentType,
   Observable,
@@ -112,6 +116,92 @@ const Step3_EvidenceTreeDiscovery = ({
       setIntroOpen(true);
     }
   }, []);
+
+  // ── Phase K (2026-05-26 byungwoo) — 가설 가이드 미리보기 상태 ──
+  // HypothesisScoreBar 의 행 클릭 → 가설 가이드 preview 로딩 → inline expand.
+  // [전체 가이드 보기 →] 클릭 → 풀 가이드 모달 (GuidePreviewModal).
+  const [expandedGuideType, setExpandedGuideType] = useState<IncidentType | null>(
+    null,
+  );
+  const [guidePreviewCache, setGuidePreviewCache] = useState<
+    Record<string, GuideV2Response>
+  >({});
+  const [guidePreviewLoading, setGuidePreviewLoading] = useState(false);
+  const [fullGuideModalType, setFullGuideModalType] = useState<IncidentType | null>(
+    null,
+  );
+
+  /** HypothesisScoreBar 행 클릭 → preview 로딩 + inline expand 토글. */
+  const handleClickIncidentType = async (type: IncidentType) => {
+    // 같은 행 다시 클릭 = 닫기
+    if (expandedGuideType === type) {
+      setExpandedGuideType(null);
+      return;
+    }
+    setExpandedGuideType(type);
+    if (guidePreviewCache[type] || !caseId) return;
+    setGuidePreviewLoading(true);
+    try {
+      const res = await getGuidePreview(caseId, type);
+      setGuidePreviewCache((prev) => ({ ...prev, [type]: res }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showToast(`가이드 미리보기 실패: ${msg}`, 4500);
+    } finally {
+      setGuidePreviewLoading(false);
+    }
+  };
+
+  /** 풀 가이드 모달 열기 — 이미 캐시된 preview 데이터 재사용. */
+  const handleOpenFullGuide = (type: IncidentType) => {
+    setFullGuideModalType(type);
+    // 모달이 캐시 없이 열린 경우 백그라운드 로드
+    if (!guidePreviewCache[type] && caseId) {
+      setGuidePreviewLoading(true);
+      getGuidePreview(caseId, type)
+        .then((res) =>
+          setGuidePreviewCache((prev) => ({ ...prev, [type]: res })),
+        )
+        .catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          showToast(`가이드 로딩 실패: ${msg}`, 4500);
+        })
+        .finally(() => setGuidePreviewLoading(false));
+    }
+  };
+
+  /** Phase K.4 — 가이드 기반 단서 후보 [+] 클릭 → expand_tree 호출. */
+  const handleAdoptGuideClue = async (
+    match: { clue_key: string; clue_type: string; matched_keyword: string },
+    sourceContext: string,
+  ) => {
+    if (!caseId || !treeState) return;
+    try {
+      await expandTree({
+        caseId,
+        parent_node_id: treeState.current_leaf_id,
+        clue_key: match.clue_key,
+        source: 'direct_input', // 가이드 추천 = 사용자가 명시 채택, direct_input 분류
+      });
+      showToast(
+        `가이드 추천 단서 채택 — ${match.clue_type}:${match.matched_keyword} (${sourceContext})`,
+        2800,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showToast(`단서 채택 실패: ${msg}`, 4500);
+    }
+  };
+
+  /** 트리에 이미 채택된 단서 키 set (가이드 매칭 시 중복 차단). */
+  const acceptedClueKeys = (() => {
+    const out = new Set<string>();
+    if (!treeState) return out;
+    for (const node of Object.values(treeState.tree.nodes)) {
+      if (node.clue_key && node.clue_key !== '__ROOT__') out.add(node.clue_key);
+    }
+    return out;
+  })();
 
   // ClueCatalog 가 단서 키 ↔ outcome_flags 룩업이 필요할 때 — 일단은 응답 candidate 가 모두 가지고 옴
 
@@ -315,6 +405,17 @@ const Step3_EvidenceTreeDiscovery = ({
         mode="evidence_tree"
       />
 
+      {/* Phase K.3 — 풀 가이드 모달 (HypothesisScoreBar 의 [전체 가이드 보기] 클릭) */}
+      <GuidePreviewModal
+        open={!!fullGuideModalType}
+        onClose={() => setFullGuideModalType(null)}
+        incidentType={fullGuideModalType}
+        preview={
+          fullGuideModalType ? guidePreviewCache[fullGuideModalType] ?? null : null
+        }
+        loading={guidePreviewLoading}
+      />
+
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
         <Card
@@ -444,6 +545,15 @@ const Step3_EvidenceTreeDiscovery = ({
               scores={scoresForBar}
               scoringMode="bayesian"
               limit={2}
+              onClickIncidentType={handleClickIncidentType}
+              expandedType={expandedGuideType}
+              guidePreview={
+                expandedGuideType ? guidePreviewCache[expandedGuideType] ?? null : null
+              }
+              guideLoading={guidePreviewLoading}
+              onOpenFullGuide={handleOpenFullGuide}
+              onAdoptGuideClue={handleAdoptGuideClue}
+              acceptedClueKeys={acceptedClueKeys}
             />
           </div>
         </Card>

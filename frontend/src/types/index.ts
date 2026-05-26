@@ -401,6 +401,10 @@ export interface GuideV2Response {
   applied_modifiers: GuideV2AppliedModifier[];
   source_standards: string[];
   version: 'v2';
+  // 2026-05-23 사이클 6 — V-1 Step 4 시드 풍부 메타
+  seed_targets?: Array<Record<string, unknown>>;
+  // Phase K (2026-05-26 byungwoo) — preview 응답 식별 마커
+  preview?: boolean;
 }
 
 // 

@@ -27,6 +27,19 @@ export const getGuideV2 = async (caseId: string): Promise<GuideV2Response> => {
   return res.data.data;
 };
 
+/** GET /api/guide/preview — Phase K (2026-05-26 byungwoo). V-1 Step3 트리아주
+ *  진행 중 (UNCLASSIFIED) 상위 가설별 가이드 미리보기. case.system_config 환경
+ *  보정 그대로 적용. 응답에 preview=true 마커. paradigm doc §19 참조. */
+export const getGuidePreview = async (
+  caseId: string,
+  incidentType: IncidentType,
+): Promise<GuideV2Response> => {
+  const res = await client.get('/api/guide/preview', {
+    params: { caseId, incidentType },
+  });
+  return res.data.data;
+};
+
 /** PATCH /api/cases/{caseId} — 케이스 부분 갱신 (dev3 B-3).
  *  V-8 IncidentTypeReviewCard 가 secondary_incident_types 등록 시 호출. */
 export interface UpdateCaseReq {

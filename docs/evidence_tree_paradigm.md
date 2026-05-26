@@ -807,12 +807,12 @@ interface Props {
 
 ### 19.8 진행 체크리스트 (Phase K)
 
-- [ ] **K.0** — 미결 사항 4건 (§19.6) 확정
-- [ ] **K.1** — backend `/api/guide/preview` endpoint + `CollectionGuideV2.generate_preview`
-- [ ] **K.2** — frontend `HypothesisScoreBar.onClickIncidentType` + inline expand 영역
-- [ ] **K.3** — 가이드 → 단서 후보 2개 매핑 (휴리스틱 or 수동 표)
-- [ ] **K.4** — 풀 가이드 페이지/모달 (옵션 확정 후)
-- [ ] **K.5** — 단위 테스트 + 회귀 검증 + 커밋·푸시
+- [x] **K.0** — 미결 사항 4건 (§19.6) 확정 (2026-05-26)
+- [x] **K.1** — backend `/api/guide/preview` + `CollectionGuideV2.generate_preview` (commit `35631d2`)
+- [x] **K.2** — HypothesisScoreBar inline expand + `InlineGuidePreview` + 가이드 캐시
+- [x] **K.3** — GuidePreviewModal — 트리 위 풀 가이드 모달 (팝업창)
+- [x] **K.4** — `utils/guideToClueMatcher.ts` 휴리스틱 (category_id 영문 + category_name 한국어 키워드 룰) — REQUIRED 우선 + 중복 차단 + 상위 2건 노출
+- [x] **K.5** — tsc + vite build + pytest 116/116 + additive e2e 47/47 회귀 0
 
-각 단계 commit 후 paradigm doc 체크리스트 갱신.
+Phase K 완료 — 다음 commit 으로 paradigm doc + 모든 K.2~K.5 변경 일괄 push.
 

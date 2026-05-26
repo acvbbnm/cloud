@@ -1132,7 +1132,7 @@ def zone2_chain_candidates(posterior, accepted_clues) -> dict:
 
 | # | 항목 | 결정 |
 |---|---|---|
-| 1 | 트리거 N·M 값 | **시연 후 fit** — 초기값 `N=3, M=0.45` 그대로 적용, 47 시나리오 검증으로 조정 |
+| 1 | 트리거 N·M 값 | **시연 후 fit** — 초기값 `N=3, M=0.45` 그대로 적용, 47 시나리오 검증으로 조정. **사전 측정 (`scripts/e2e_phase_m_zone_test.py`, 2026-05-26):** Zone 2 진입 19/47 (40.4%) · 회귀 0/47 · chain 정합 47/47 — 권장 범위 30~90% 안에 들어옴, 그대로 유지 |
 | 2 | Top 몇 개 chain | **Top 3 기본** — "꼬리에 꼬리를 물며 확장 가능성도 열어둠" (장기적으로 4-5 확장 가능) |
 | 3 | 단일 가설 우세 시 | **동일 Top 3 적용** — 95% 우세여도 chain 표시 (이전 단계 추론 가능성 유지) |
 | 4 | Kill Chain 매핑 | **§21.5 표 그대로 진행** (필요 시 추후 보강) |
@@ -1185,6 +1185,11 @@ def should_regress_to_zone1(tree, posterior) -> bool:
 - [x] **M.4** — 검증 + commit·push (byungwoo, 2026-05-26, commit `af3dbda`)
   - frontend: `npx tsc --noEmit` 0 errors · `npx vite build` success (657 kB, 2.73s)
   - backend 회귀: pytest `tests/` 290 passed · evidence_tree e2e 47/47 · additive e2e 47/47
+- [x] **M.5** — Phase M 통합 e2e 회귀 (byungwoo, 2026-05-26)
+  - `scripts/e2e_phase_m_zone_test.py` 신설 — 47 시나리오 zone/chain/regress 정량 측정
+  - **결과**: Zone 2 진입 19/47 (40.4%) · 회귀 0/47 · chain 정합 47/47
+  - lane 별 Zone 2: RANSOM 78% · ROUTER 100% · INSIDER/MISCFG 33% · CRED 25% · SHORT/TERM 0%
+  - 트리거 N=3, M=0.45 권장 범위 (30~90%) 안 → 그대로 유지. 시연 후 fit 불필요 가능성
 
 **팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.
 

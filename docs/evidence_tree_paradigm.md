@@ -1158,7 +1158,7 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `components/AttackChainCard.tsx` 신설 — Top 3 가설 Kill Chain 가로 시각화 (좌 PHISH → 우 RANSOM) + 가설 클릭 토글 + 회귀 권고 알림 + 회귀 버튼
   - `components/NextCluePanel.tsx` — `mode='chain'` + `chainFilterHypothesis` props 추가. rationale 기반 가설 변별 단서 필터링 + 헤더 chain 배지 + 빈 결과 안내
   - `views/V1_Setup/Step3_EvidenceTreeDiscovery.tsx` — `chainFilterHypothesis` state + Zone 2 진입 시 `AttackChainCard` 노출 + Zone 1 회귀 시 자동 필터 해제 + `regress_suggested` 1회 토스트 알림
-- [x] **M.4** — 검증 + commit·push (byungwoo, 2026-05-26)
+- [x] **M.4** — 검증 + commit·push (byungwoo, 2026-05-26, commit `af3dbda`)
   - frontend: `npx tsc --noEmit` 0 errors · `npx vite build` success (657 kB, 2.73s)
   - backend 회귀: pytest `tests/` 290 passed · evidence_tree e2e 47/47 · additive e2e 47/47
 

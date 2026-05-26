@@ -904,3 +904,227 @@ NextCluePanel 의 기존 ▼ 추천 이유 expand 영역에 5 색상 코딩 섹�
 | `frontend/src/types/clueTree.ts` | +18 | ExplainClueResponse 풍부 메타 필드 |
 | `frontend/src/components/NextCluePanel.tsx` | +95 | 5 섹션 UI |
 
+---
+
+## 21. Phase M — 2-zone 컴퍼스 + 복합 가설 chain (논의 정리, 2026-05-26 byungwoo)
+
+> 상태: 설계 정리, M.1 코드 착수 전 의논 단계
+
+### 21.1 사용자 비전 (2 인용)
+
+#### 비전 ① — 게임 RPG 비유 (Zone 1 → Zone 2 전환)
+
+> *"트리깊이 + 핵심단서? 코어단서? 같은 느낌이면 좋겠는데.
+> 게임에서도 어느정도 맵을 탐험해야 보스 나오잖아.
+> 코어단서 — 보스, 트리깊이 — 맵탐색의 역할인거지."*
+
+- **맵 탐색** = 트리 깊이 (단서 N개 채택) — 광범위 정보 수집
+- **보스 발견** = 코어 단서 (가설 결정적 시그널) — 강력한 증거
+- 둘 다 만족해야 Zone 2 "맵 열림"
+
+#### 비전 ② — 복합 공격 chain (단일 사고유형 확정 부정)
+
+> *"내가 원하는건 열려있는 가능성이고. 사실 하나의 공격유형만 일어난다는건
+> 말이 안되잖아. 복합적으로 공격이 일어났을텐데 사고유형 하나만 확정해
+> 가는 방식은 틀린 거 같은데. 흠 좋은 방법 없을까."*
+
+→ 학술 정합 핵심: **MITRE ATT&CK Kill Chain** — 실제 침해는 단일 사고유형이 아니라 **단계 시퀀스**.
+
+```
+예시 실제 시나리오:
+  PHISH (Initial Access TA0001)            ← Top 3 (지난 단계)
+     ↓
+  CRED THEFT (Credential Access TA0006)    ← Top 2 (이전 단계)
+     ↓
+  PRIV ESCALATION (TA0004)
+     ↓
+  DATA EXFILTRATION (TA0010)
+     ↓
+  RANSOM (Impact TA0040)                    ← Top 1 (현재 진행 중)
+```
+
+Top 1 가설 = "현재 가장 가능성 큰 단계", Top 2-3 = "이전 / 동반 단계". 단일 확정 X.
+
+### 21.2 기존 컴퍼스 한계 (Diminishing Returns)
+
+현재 `IncidentTypeCompass.tsx` 좌표 계산:
+
+```python
+radiusForDepth(depth)     # depth 1 → 8%·R, depth 15 → 85%·R
+temperatureForDepth(depth)  # depth 1 → T=4 (평탄), depth 15 → T=1 (실제)
+```
+
+**관찰된 문제**:
+- depth 1-5: 점이 크게 이동 (uniform → concentrated 변화 큼)
+- depth 5-14: 점 거의 정지 (이미 95% 도달, 추가 단서 영향 미미)
+
+**수학적으로는 정상** (베이즈 갱신 diminishing returns) — 그러나 사용자 직관과 불일치. 다른 가설로 전환 가능성 시각화 어려움.
+
+### 21.3 사용자 결정 (2026-05-26)
+
+| # | 항목 | 결정 |
+|---|---|---|
+| 1 | Zone 전환 트리거 | **depth ≥ N AND max(P(c\|h)) ≥ M** — 게임 비유 (맵 탐색 + 보스 단서) |
+| 2 | Zone 2 추천 방식 | **복합 가설 chain** — 단일 확정 X. ATT&CK Kill Chain 단계 시퀀스 |
+| 3 | 컴퍼스 시각 | **A. 동심원** (내부 원 + 외부 원 + 점 이동) |
+
+### 21.4 Zone 1 → Zone 2 전환 알고리즘
+
+```python
+def is_zone2_unlocked(tree: ClueTree) -> bool:
+    """게임 RPG 비유 — 맵 탐색 + 보스 단서 모두 충족."""
+    # ① 맵 탐색 — 트리 깊이
+    depth = max(node.depth for node in tree.nodes.values())
+    if depth < 3:
+        return False
+
+    # ② 보스 단서 — 가장 강한 likelihood
+    max_likelihood = 0.0
+    for node in tree.nodes.values():
+        if node.clue_key == "__ROOT__":
+            continue
+        # node.score_delta 의 최대 변화량 또는 카탈로그의 max P(c|h)
+        weights = catalog[node.clue_key].get("weights", {})
+        lk = weights_to_likelihood(weights)
+        max_likelihood = max(max_likelihood, max(lk.values()))
+
+    return max_likelihood >= 0.45
+```
+
+**N=3, M=0.45 초기값** — 사용자 시연 후 미세조정.
+
+### 21.5 복합 가설 chain (ATT&CK Kill Chain 정합)
+
+#### 가설 → Kill Chain 단계 매핑
+
+| 사고유형 | ATT&CK Tactic | Kill Chain 단계 |
+|---|---|---|
+| PHISH_INITIAL_ACCESS | TA0001 Initial Access | 1 |
+| CREDENTIAL_THEFT | TA0006 Credential Access | 2 |
+| PRIVILEGE_ESCALATION | TA0004 Privilege Escalation | 3 |
+| INSIDER_THREAT | TA0008 Lateral Movement | 4 |
+| MISCONFIG_EXPOSURE | TA0007 Discovery (Misconfig 사전 노출) | 4 |
+| AUDIT_LOG_TAMPERING | TA0005 Defense Evasion | 5 |
+| DATA_EXFILTRATION | TA0010 Exfiltration | 6 |
+| RANSOMWARE | TA0040 Impact | 7 |
+
+#### Zone 2 추천 알고리즘
+
+```python
+def zone2_chain_candidates(posterior, accepted_clues) -> dict:
+    """복합 가설 chain — Top 3 가설을 ATT&CK 단계로 정렬.
+
+    각 가설별 단서 추천 분리. 사용자가 어느 단계 파볼지 선택.
+    """
+    top3 = sorted(
+        [(h, p) for h, p in posterior.items() if h != "UNCLASSIFIED"],
+        key=lambda x: -x[1],
+    )[:3]
+
+    # Kill Chain 단계 순으로 재정렬
+    chain = sorted(top3, key=lambda x: KILL_CHAIN_ORDER[x[0]])
+
+    # 각 가설마다 변별력 큰 단서 2-3개 추천
+    per_hypothesis = {}
+    for hyp, prob in chain:
+        per_hypothesis[hyp] = top_clues_for_hypothesis(
+            hyp, accepted_clues, k=3
+        )
+    return {
+        "chain": chain,  # Kill Chain 시간순
+        "per_hypothesis": per_hypothesis,
+    }
+```
+
+### 21.6 컴퍼스 동심원 시각 설계
+
+```
+                    Zone 2 (외부 원, R · 100%)
+            ╭─────────────────────────────────╮
+           /  ◉ 사고유형 확정 영역             \
+          /    "보스 발견 → 가설 chain 구체화"  \
+         /                                       \
+        │                                         │
+        │      ╭─ Zone 1 (내부 원, R · 50%) ─╮    │
+        │      │                              │    │
+        │      │   ⊕ 광범위 탐색 영역          │    │
+        │      │   "맵 탐색 단계"              │    │
+        │      │                              │    │
+        │      ╰──────────────────────────────╯    │
+        │                                          │
+         \                                        /
+          \                                      /
+           \                                    /
+            ╰──────────────────────────────────╯
+
+  • 점 위치:
+    - Zone 1 미진입: 내부 원 안 (사후확률 좌표)
+    - Zone 2 진입 후: 외부 원 부근 (1위 가설 anchor 쪽)
+
+  • 동심원 사이 경계선: depth 3 + max_lk 0.45 트리거 후 "맵 열림" 애니메이션
+
+  • 화살표·점선: 가설 chain (PHISH → CRED → IMPACT) 표시
+```
+
+### 21.7 구현 계획
+
+#### M.0 — paradigm doc §21 정리 (본 섹션, 진행 중)
+
+#### M.1 — 백엔드 zone 메타 + chain 추론 (~1h)
+
+- `core/intake/clue_tree_service.py`:
+  - `_build_response` 에 `zone` 필드 (1 또는 2) 추가
+  - `is_zone2_unlocked()` 헬퍼 (`zone_logic.py` 신설)
+- `core/intake/zone_logic.py` 신설:
+  - `is_zone2_unlocked(tree, posterior)` — 트리거 평가
+  - `compute_attack_chain(posterior)` — Top 3 → Kill Chain 순 재정렬
+  - `core_clue(tree)` — 보스 단서 (가장 강한 likelihood 단서) 식별
+
+#### M.2 — 프론트 동심원 시각 (~1.5h)
+
+- `components/IncidentTypeCompass.tsx`:
+  - `Zone 1 inner_circle` (R · 0.5) + `Zone 2 outer_ring` SVG 추가
+  - 점 위치 — `zone === 2` 면 외부 원 anchor 가중평균, 아니면 내부 (현재 로직)
+  - 전환 애니메이션: 점이 외부로 이동 + "🗺 맵 열림" 알림 카드
+
+#### M.3 — Zone 2 chain UI (~1.5h)
+
+- `components/AttackChainCard.tsx` 신설:
+  - Top 3 가설을 Kill Chain 단계 순 시각화 (좌→우 화살표)
+  - 각 가설 클릭 → 해당 가설별 단서 추천 expand
+- `NextCluePanel.tsx` 에 `mode='chain'` props 추가:
+  - Zone 1 (legacy) — 통합 IG 후보 풀
+  - Zone 2 (chain) — Top 3 가설 분리 + 가설별 단서 그룹화
+
+#### M.4 — paradigm doc 갱신 + 검증 + commit·push (~30분)
+
+- §21 체크리스트 [x]
+- pytest + e2e 회귀
+- tsc + vite build
+
+**총 ~5h**.
+
+### 21.8 미결 사항 (M.1 시작 전 확인)
+
+1. **트리거 N·M 값** — 초기 `N=3, M=0.45` 적정한가? 시연 후 fitting?
+2. **Top 3 가설** vs Top 2? 8 사고유형 중 몇 개를 chain 으로 표시?
+3. **단일 가설 우세 시** (예: RANSOM 95%) chain 표시 — 그래도 Top 3 보여줄지 또는 Top 1 만?
+4. **Kill Chain 매핑** — 위 표 (21.5) 그대로 OK 인지, 또는 보강?
+5. **Zone 2 진입 후 다시 Zone 1 회귀 가능?** — 단서 채택 후 likelihood 약해지면 Zone 1 으로 되돌아갈지?
+
+### 21.9 위험 / 영향
+
+- **컴퍼스 좌표 변경 시각**: 기존 사용자가 봤던 시각과 크게 다름 — 적응 필요
+- **TRIAGE_MODE 호환**: additive·bayesian·bayes_net·evidence_tree 4 모드 모두 zone 필드 응답해야 — fallback 정책 명확화
+- **paradigm doc §16 정합**: "단일 사고유형 자동 종료 X" 정책은 그대로. Zone 2 의 chain 도 사용자가 "확정" 클릭해야 V-2 진행
+
+### 21.10 진행 체크리스트
+
+- [ ] **M.0** — paradigm doc §21 정리 (본 섹션) — 본 commit 진행 중
+- [ ] **M.1** — 백엔드 `zone` 필드 + `zone_logic.py` + chain 추론
+- [ ] **M.2** — 컴퍼스 동심원 시각 + 전환 애니메이션
+- [ ] **M.3** — Zone 2 chain UI (AttackChainCard + NextCluePanel mode)
+- [ ] **M.4** — 검증 + commit·push
+
+각 단계 사용자 의논 후 진행.
+

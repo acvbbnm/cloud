@@ -1146,7 +1146,7 @@ def should_regress_to_zone1(tree, posterior) -> bool:
 ### 21.10 진행 체크리스트
 
 - [x] **M.0** — paradigm doc §21 정리 (commit `77e85e0`)
-- [x] **M.1** — 백엔드 `zone` 필드 + `zone_logic.py` + chain 추론 (byungwoo, 2026-05-26)
+- [x] **M.1** — 백엔드 `zone` 필드 + `zone_logic.py` + chain 추론 (byungwoo, 2026-05-26, commit `0cd7960`)
   - `core/intake/zone_logic.py` 신설 — `is_zone2_unlocked` / `core_clue_likelihood` / `should_regress` / `compute_attack_chain` + `KILL_CHAIN_ORDER`
   - `core/intake/clue_tree_service.py:_build_response` 응답에 `zone` / `attack_chain` / `core_clue_likelihood` / `regress_suggested` 4 필드 추가
   - `tests/test_zone_logic.py` 12 케이스 PASS (depth·likelihood·회귀·chain 순)

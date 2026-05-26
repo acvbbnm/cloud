@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated": "2026-05-26T07:07:42.651360Z",
+    "generated": "2026-05-26T07:17:02.664649Z",
     "generator": "scripts/build_clue_descriptions.py",
     "purpose": "Phase L.1 (2026-05-26 byungwoo) — 단서별 정의·CSP 경로·예시·변별 풀이·학술 근거",
     "source_catalog": "data\\triage\\clue_catalog.json",
@@ -1759,9 +1759,9 @@
     "TECHNIQUE:T1078.004": {
       "description": "ATT&CK T1078.004 — Valid Accounts: Cloud Accounts. 정상 클라우드 계정 도용으로 초기 침투.",
       "how_to_find": {
-        "ncp": "(부분 로그 분석에서 자동 추출) — Sign-In Event + 정상 계정 비정상 활동",
-        "nhn": "(부분 로그 분석 자동) — IAM activity baseline 일탈",
-        "verify": "https://attack.mitre.org/techniques/T1078/004/ — Detection: 'Monitor authentication logs'"
+        "ncp": "Cloud Insight → 보안 알람 → 'Valid Accounts' 카테고리 + Sub Account 활동 로그 → 평소 패턴 외 로그인",
+        "nhn": "Cloud Audit → SignIn 이벤트 → '성공' 필터 + IAM 활동 baseline 비교",
+        "verify": "MITRE T1078.004 공식 (attack.mitre.org/techniques/T1078/004/) — Detection DS0002 (UserAccount Authentication)"
       },
       "examples": [
         "탈취된 admin 계정 로그인",
@@ -1774,9 +1774,9 @@
     "TECHNIQUE:T1110": {
       "description": "ATT&CK T1110 — Brute Force. 패스워드 추측·credential stuffing 으로 자격증명 획득 시도.",
       "how_to_find": {
-        "ncp": "(자동) — Sign-In 실패 빈도 + 동일 계정/IP 시퀀스",
-        "nhn": "(자동) — Authentication failure pattern",
-        "verify": "https://attack.mitre.org/techniques/T1110/ — Detection: 'Multiple authentication failures'"
+        "ncp": "Cloud Insight → 보안 알람 → 'Brute Force' 또는 SignIn 실패 분당 N건 이상 + 출처 IP 집중도",
+        "nhn": "Cloud Audit → SignInFailures 빈도 → 동일 계정/IP 시퀀스 → 성공 시점 매칭",
+        "verify": "MITRE T1110 — attack.mitre.org/techniques/T1110/ + 5분 100+ 실패 패턴"
       },
       "examples": [
         "100+ password 시도",
@@ -1789,9 +1789,9 @@
     "TECHNIQUE:T1556": {
       "description": "ATT&CK T1556 — Modify Authentication Process. MFA 우회·인증 정책 변경.",
       "how_to_find": {
-        "ncp": "(자동) — IAM:UpdateLoginProfile·DeleteVirtualMFADevice 이벤트",
-        "nhn": "(자동) — MFA 정책 변경 API",
-        "verify": "https://attack.mitre.org/techniques/T1556/"
+        "ncp": "Sub Account → MFA 디바이스 변경 이력 + IAM:UpdateLoginProfile·DeleteVirtualMFADevice API 호출",
+        "nhn": "IAM → 사용자 MFA 로그 + Cloud Audit MFA 관련 이벤트",
+        "verify": "MITRE T1556 — attack.mitre.org/techniques/T1556/ + 변경 직후 비국내 IP 로그인 매칭"
       },
       "examples": [
         "MFA device 변경 후 비국내 IP 로그인"
@@ -1803,9 +1803,9 @@
     "TECHNIQUE:T1539": {
       "description": "ATT&CK T1539 — Steal Web Session Cookie. 웹 세션 쿠키 탈취로 자격증명 우회.",
       "how_to_find": {
-        "ncp": "(자동) — Adversary-in-the-middle proxy 시그널",
-        "nhn": "(자동) — 동일 세션 ID 의 다중 IP",
-        "verify": "https://attack.mitre.org/techniques/T1539/"
+        "ncp": "Cloud Insight → 동일 세션 ID 다중 IP 사용 + Cookie/Token replay 시그널 (web proxy 로그)",
+        "nhn": "통합 보안 → AitM (Adversary-in-the-Middle) 알람 + 세션 IP 추적",
+        "verify": "MITRE T1539 — 0ktapus/Twilio 2022 사례 + evilginx2 proxy 패턴"
       },
       "examples": [
         "0ktapus 2022 사례",
@@ -1818,9 +1818,9 @@
     "TECHNIQUE:T1552.005": {
       "description": "ATT&CK T1552.005 — Unsecured Credentials: Cloud Instance Metadata API. 인스턴스 메타데이터 API 에서 자격증명 추출.",
       "how_to_find": {
-        "ncp": "(자동) — EC2 169.254.169.254 메타데이터 비정상 접근",
-        "nhn": "(자동) — 동일 IMDS 호출 패턴",
-        "verify": "https://attack.mitre.org/techniques/T1552/005/"
+        "ncp": "VPC Flow Log → 169.254.169.254 호출 비정상 빈도 + 의심 인스턴스 ID 추적",
+        "nhn": "VPC → 인스턴스 메타데이터 API (IMDS) 접근 로그 + SSRF 패턴",
+        "verify": "MITRE T1552.005 — IMDSv1 vs v2 사용 여부 + Capital One 2019 사례"
       },
       "examples": [
         "IMDSv1 노출",
@@ -1833,9 +1833,9 @@
     "TECHNIQUE:T1098": {
       "description": "ATT&CK T1098 — Account Manipulation. 자격증명 보존·권한 추가를 위해 계정 수정.",
       "how_to_find": {
-        "ncp": "(자동) — IAM:AttachUserPolicy·CreateAccessKey 빈발",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1098/"
+        "ncp": "Cloud Insight → IAM 활동 → AttachUserPolicy·CreateAccessKey 시각 + 행위자",
+        "nhn": "Cloud Audit → IAM:Update*·Put*Policy API 호출 빈도 + 신규 권한 매핑",
+        "verify": "MITRE T1098 — attack.mitre.org/techniques/T1098/ + 권한 변경 baseline 일탈"
       },
       "examples": [
         "탈취 계정에 AdministratorAccess 추가",
@@ -1848,9 +1848,9 @@
     "TECHNIQUE:T1136": {
       "description": "ATT&CK T1136 — Create Account. 신규 계정 생성으로 지속성 확보.",
       "how_to_find": {
-        "ncp": "(자동) — IAM:CreateUser API 호출 + 즉시 권한 추가",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1136/"
+        "ncp": "Sub Account → 사용자 관리 → 생성일 최근 N일 + Cloud Insight CreateUser API 호출 추적",
+        "nhn": "IAM → 신규 사용자 생성 + Cloud Audit CreateUser API 행위자",
+        "verify": "MITRE T1136 — 백도어 계정 패턴 (tmp-* · bd-* · service-* 이름 + 즉시 권한 부여)"
       },
       "examples": [
         "bd-service01 신규 계정",
@@ -1863,9 +1863,9 @@
     "TECHNIQUE:T1484": {
       "description": "ATT&CK T1484 — Domain Policy Modification. IAM 정책·역할 매핑 변경으로 권한 상승.",
       "how_to_find": {
-        "ncp": "(자동) — IAM:UpdateRole·PutRolePolicy API",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1484/"
+        "ncp": "Cloud Insight → IAM 정책 변경 이력 → UpdateRole·PutRolePolicy 호출 + 신뢰 정책 변경",
+        "nhn": "IAM → 역할 매핑 변경 + cross-account 신뢰 정책 → Cloud Audit 추적",
+        "verify": "MITRE T1484 — 신뢰 정책에 외부 계정 ID 추가 패턴"
       },
       "examples": [
         "역할 정책에 admin 권한 추가",
@@ -1878,9 +1878,9 @@
     "TECHNIQUE:T1548.005": {
       "description": "ATT&CK T1548.005 — Temporary Elevated Cloud Access. 임시 권한 상승 (sts:AssumeRole 등) 악용.",
       "how_to_find": {
-        "ncp": "(자동) — sts:AssumeRole 비정상 호출",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1548/005/"
+        "ncp": "Cloud Insight → sts:AssumeRole 비정상 호출 빈도 + 권한 상승 매핑",
+        "nhn": "Cloud Audit → AssumeRole 이벤트 + 호출자→대상 역할 매트릭스",
+        "verify": "MITRE T1548.005 — 임시 자격증명 사용 후 광범위 활동 패턴"
       },
       "examples": [
         "AssumeRole admin → 임시 자격 사용 → 활동"
@@ -1892,9 +1892,9 @@
     "TECHNIQUE:T1530": {
       "description": "ATT&CK T1530 — Data from Cloud Storage Object. 클라우드 스토리지 데이터 수집.",
       "how_to_find": {
-        "ncp": "(자동) — Object Storage GetObject 대량 + 비표준 사용자",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1530/"
+        "ncp": "Object Storage 액세스 로그 → GetObject 빈도 spike + 비표준 사용자 + 대량 다운로드",
+        "nhn": "Object Storage → Access Log → 사용자×버킷 매트릭스에서 비정상 패턴",
+        "verify": "MITRE T1530 — attack.mitre.org/techniques/T1530/ + Capital One 2019 사례 (S3)"
       },
       "examples": [
         "bucket-pii 대량 GetObject",
@@ -1907,9 +1907,9 @@
     "TECHNIQUE:T1537": {
       "description": "ATT&CK T1537 — Transfer Data to Cloud Account. 자체 통제 클라우드 계정으로 데이터 전송.",
       "how_to_find": {
-        "ncp": "(자동) — outbound 트래픽 → 외부 클라우드 IP",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1537/"
+        "ncp": "VPC Flow Log → outbound 트래픽 → 외부 클라우드 IP 대역 (AWS·GCP·Azure) + 대량 전송",
+        "nhn": "VPC → outbound 패턴 분석 + 외부 CSP IP 대역 매칭",
+        "verify": "MITRE T1537 — cross-cloud copy 패턴 + S3 sync to external bucket"
       },
       "examples": [
         "NCP → AWS S3 cross-account copy",
@@ -1922,9 +1922,9 @@
     "TECHNIQUE:T1567": {
       "description": "ATT&CK T1567 — Exfiltration Over Web Service. 웹 서비스 (Dropbox·Mega·pastebin 등) 통한 데이터 유출.",
       "how_to_find": {
-        "ncp": "(자동) — outbound 도메인 dropbox.com·mega.nz·pastebin 등",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1567/"
+        "ncp": "VPC DNS 로그 → dropbox.com·mega.nz·pastebin.com 등 외부 스토리지 도메인 통신",
+        "nhn": "DNS Plus → outbound 도메인 → 외부 파일 공유 서비스 매칭",
+        "verify": "MITRE T1567 — Exfiltration Over Web Service 도메인 리스트"
       },
       "examples": [
         "회사 데이터 → Personal Dropbox 업로드",
@@ -1937,9 +1937,9 @@
     "TECHNIQUE:T1213": {
       "description": "ATT&CK T1213 — Data from Information Repositories. 정보 저장소 (Wiki·SharePoint·코드 저장소) 데이터 수집.",
       "how_to_find": {
-        "ncp": "(자동) — Confluence·Wiki·GitLab API 대량 호출",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1213/"
+        "ncp": "Application Log → Confluence·Wiki·GitLab API 대량 호출 + 비정상 사용자",
+        "nhn": "동일 — 사내 정보 저장소 API 호출 빈도 + 다운로드 양",
+        "verify": "MITRE T1213 — attack.mitre.org/techniques/T1213/"
       },
       "examples": [
         "사내 Wiki 대량 다운로드",
@@ -1952,9 +1952,9 @@
     "TECHNIQUE:T1119": {
       "description": "ATT&CK T1119 — Automated Collection. 스크립트·도구로 자동화된 데이터 수집.",
       "how_to_find": {
-        "ncp": "(자동) — API 호출 User-Agent boto3·SDK + 빈도",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1119/"
+        "ncp": "Cloud Trail User-Agent → boto3·SDK·자동화 도구 + API 호출 분당 빈도 baseline 일탈",
+        "nhn": "Cloud Audit → User-Agent 분석 + 5분 1000+ API 호출 패턴",
+        "verify": "MITRE T1119 — 자동화된 데이터 수집 vs 정상 운영 도구 구분"
       },
       "examples": [
         "boto3 스크립트 ListBuckets+GetObject 자동화",
@@ -1967,9 +1967,9 @@
     "TECHNIQUE:T1562.008": {
       "description": "ATT&CK T1562.008 — Disable Cloud Logs. CloudTrail·Cloud Audit 비활성·삭제로 흔적 은폐.",
       "how_to_find": {
-        "ncp": "(자동) — StopLogging·DeleteTrail·UpdateEventSelectors API",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1562/008/"
+        "ncp": "Cloud Trail → StopLogging·DeleteTrail·UpdateEventSelectors API 호출자·시각",
+        "nhn": "Cloud Audit → 추적 정책 변경 이력 + 보존 정책 단축 매칭",
+        "verify": "MITRE T1562.008 — attack.mitre.org/techniques/T1562/008/ + 활동 직전 audit 비활성"
       },
       "examples": [
         "Trail 'main-audit' StopLogging",
@@ -1982,9 +1982,9 @@
     "TECHNIQUE:T1070": {
       "description": "ATT&CK T1070 — Indicator Removal. 활동 흔적 삭제 (로그·파일·history).",
       "how_to_find": {
-        "ncp": "(자동) — log delete·history clear 시그널",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1070/"
+        "ncp": "Cloud Trail → DeleteObject·DeleteLogStream·history clear API + 활동 후 즉시 인멸",
+        "nhn": "Cloud Audit → Delete* 이벤트 + 본인 활동 시각 비교",
+        "verify": "MITRE T1070 — 활동 후 5-30분 내 흔적 인멸 패턴"
       },
       "examples": [
         "audit log selective delete",
@@ -1997,9 +1997,9 @@
     "TECHNIQUE:T1578": {
       "description": "ATT&CK T1578 — Modify Cloud Compute Infrastructure. 클라우드 인프라 (VM·snapshot·image) 수정·생성.",
       "how_to_find": {
-        "ncp": "(자동) — CreateInstance·CreateImage·CreateSnapshot 비정상",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1578/"
+        "ncp": "VPC → 신규 인스턴스 생성 이벤트 (CreateInstance·RunInstances) + 비표준 타입 (GPU)",
+        "nhn": "Cloud Audit → 컴퓨트 자원 생성·이미지·스냅샷 변경",
+        "verify": "MITRE T1578 — attack.mitre.org/techniques/T1578/ + Billing spike 매칭"
       },
       "examples": [
         "GPU 인스턴스 5+ 신규 (cryptomining)",
@@ -2012,9 +2012,9 @@
     "TECHNIQUE:T1021": {
       "description": "ATT&CK T1021 — Remote Services. 원격 서비스 (SSH·RDP·SMB) 통한 횡적 이동.",
       "how_to_find": {
-        "ncp": "(자동) — VPC outbound 22·3389 포트 + 내부 lateral",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1021/"
+        "ncp": "VPC Flow Log → SSH 22 / RDP 3389 outbound + 내부 lateral movement 패턴",
+        "nhn": "VPC → 내부망 lateral 연결 + 분산 호스트 간 인증 시도",
+        "verify": "MITRE T1021 — attack.mitre.org/techniques/T1021/ + 내부 lateral chain 추적"
       },
       "examples": [
         "SSH 다중 인스턴스 접속 chain",
@@ -2027,9 +2027,9 @@
     "TECHNIQUE:T1550": {
       "description": "ATT&CK T1550 — Use Alternate Authentication Material. 대체 자격증명 (해시·티켓·토큰) 사용.",
       "how_to_find": {
-        "ncp": "(자동) — 비정상 token·session 사용",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1550/"
+        "ncp": "Cloud Trail → 비표준 토큰·세션 ID 사용 + 행위자 식별 불일치",
+        "nhn": "Cloud Audit → 동일 세션의 다중 IP·다중 User-Agent",
+        "verify": "MITRE T1550 — pass-the-hash / stolen session token 패턴"
       },
       "examples": [
         "pass-the-hash",
@@ -2042,9 +2042,9 @@
     "TECHNIQUE:T1136.003": {
       "description": "ATT&CK T1136.003 — Create Account: Cloud Account. 클라우드 계정 신규 생성으로 지속성.",
       "how_to_find": {
-        "ncp": "(자동) — IAM:CreateUser + 즉시 권한 부여",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1136/003/"
+        "ncp": "Sub Account → 신규 클라우드 계정 생성 + 즉시 권한 부여 + 비국내 IP 출처",
+        "nhn": "IAM → CreateUser → AttachUserPolicy 시퀀스 (5분 내)",
+        "verify": "MITRE T1136.003 — attack.mitre.org/techniques/T1136/003/"
       },
       "examples": [
         "bd-cloud-user 신규 + admin 권한"
@@ -2056,9 +2056,9 @@
     "TECHNIQUE:T1485": {
       "description": "ATT&CK T1485 — Data Destruction. 데이터 파괴 (wiper 등) — 복구 불가능 손실.",
       "how_to_find": {
-        "ncp": "(자동) — DeleteObject 대량 + version control off",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1485/"
+        "ncp": "Object Storage → DeleteObject 대량 호출 + version control 비활성 + lifecycle 단축",
+        "nhn": "Cloud Audit → 대량 데이터 삭제 패턴 + 백업 정책 변경",
+        "verify": "MITRE T1485 — attack.mitre.org/techniques/T1485/ + wiper 형 공격 (NotPetya)"
       },
       "examples": [
         "bucket 전체 DELETE",
@@ -2071,9 +2071,9 @@
     "TECHNIQUE:T1486": {
       "description": "ATT&CK T1486 — Data Encrypted for Impact. 랜섬웨어 — 데이터 암호화로 가용성 차단.",
       "how_to_find": {
-        "ncp": "(자동) — 신규 .locked·.encrypted 객체 + PutObject 대량",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1486/"
+        "ncp": "Object Storage → 신규 .locked·.encrypted suffix 객체 + PutObject 분당 빈도 (≥100)",
+        "nhn": "Object Storage → 객체 메타 → 사고 시각 ±1h 신규 비표준 확장자 통계",
+        "verify": "MITRE T1486 — 원본 vs 암호화 객체 크기 ≈ 동일 (덮어쓰기) + entropy ≥ 7.5"
       },
       "examples": [
         "10000+ .locked 객체",
@@ -2086,9 +2086,9 @@
     "TECHNIQUE:T1499": {
       "description": "ATT&CK T1499 — Endpoint Denial of Service. DDoS 로 가용성 차단.",
       "how_to_find": {
-        "ncp": "(자동) — 트래픽 spike + 분산 출처 IP",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1499/"
+        "ncp": "Cloud Insight → DDoS 알람 + 네트워크 트래픽 spike + 분산 출처 IP 분포",
+        "nhn": "Security Monitoring → 'DDoS Pattern' 알람 + 트래픽 그래프",
+        "verify": "MITRE T1499 — attack.mitre.org/techniques/T1499/ + 시간당 패킷 수 baseline"
       },
       "examples": [
         "HTTP flood 10Gbps",
@@ -2101,9 +2101,9 @@
     "TECHNIQUE:T1490": {
       "description": "ATT&CK T1490 — Inhibit System Recovery. 복구 방지 — 백업·스냅샷 삭제.",
       "how_to_find": {
-        "ncp": "(자동) — DeleteBackup·DeleteSnapshot + version control off",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1490/"
+        "ncp": "Backup → DeleteBackup·DeleteSnapshot API + Object Storage version control disable",
+        "nhn": "Backup → 스냅샷 삭제 이력 + 백업 정책 변경",
+        "verify": "MITRE T1490 — attack.mitre.org/techniques/T1490/ + 랜섬 직전 백업 파괴 패턴"
       },
       "examples": [
         "EBS 스냅샷 전체 삭제",
@@ -2116,9 +2116,9 @@
     "TECHNIQUE:T1190": {
       "description": "ATT&CK T1190 — Exploit Public-Facing Application. 외부 노출 애플리케이션 취약점 악용.",
       "how_to_find": {
-        "ncp": "(자동) — public endpoint 비정상 요청 (SQLi·SSRF·RCE)",
-        "nhn": "(자동) — WAF/IPS 알람",
-        "verify": "https://attack.mitre.org/techniques/T1190/"
+        "ncp": "Public Endpoint → WAF 알람 + 비정상 요청 (SQLi·SSRF·RCE) + 외부 노출 자원",
+        "nhn": "WAF·IPS → 공개 애플리케이션 exploit 시그널",
+        "verify": "MITRE T1190 — attack.mitre.org/techniques/T1190/ + Log4Shell·SSRF 사례"
       },
       "examples": [
         "Log4Shell exploit",
@@ -2132,9 +2132,9 @@
     "TECHNIQUE:T1566": {
       "description": "ATT&CK T1566 — Phishing. 피싱 메일·URL·첨부로 초기 침투.",
       "how_to_find": {
-        "ncp": "(자동) — 메일 보안 게이트웨이 알람 + 직원 신고",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1566/"
+        "ncp": "메일 보안 게이트웨이 → 피싱 메일 차단 이력 + 직원 신고 채널 + URL/첨부 평판",
+        "nhn": "동일 — Mail Plus·통합 보안 솔루션의 피싱 차단 로그",
+        "verify": "MITRE T1566 — PhishTank·OpenPhish 매칭 + AitM kit 도메인 식별"
       },
       "examples": [
         "가짜 CSP 비밀번호 변경 메일",
@@ -2147,9 +2147,9 @@
     "TECHNIQUE:T1078.001": {
       "description": "ATT&CK T1078.001 — Valid Accounts: Default Accounts. 기본 계정 (admin/admin 등) 미변경 사용.",
       "how_to_find": {
-        "ncp": "(자동) — admin/root/system 등 기본 계정 활성 + 로그인",
-        "nhn": "(자동)",
-        "verify": "https://attack.mitre.org/techniques/T1078/001/"
+        "ncp": "Sub Account → admin·root·system 등 기본 계정 활성 여부 + 로그인 이력",
+        "nhn": "IAM → 초기 자격증명 미변경 사용자 식별 + 로그인 매칭",
+        "verify": "MITRE T1078.001 — attack.mitre.org/techniques/T1078/001/ + 기본 패스워드 사전 매칭"
       },
       "examples": [
         "admin/admin 로그인 성공",

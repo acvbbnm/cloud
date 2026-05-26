@@ -100,11 +100,16 @@ export default {
       },
       animation: {
         'fade-up': 'fadeUp 0.18s ease-out both',
+        'slide-in-right': 'slideInRight 0.22s ease-out both',
       },
       keyframes: {
         fadeUp: {
           '0%': { opacity: '0', transform: 'translateY(3px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideInRight: {
+          '0%': { opacity: '0', transform: 'translateX(20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
         },
       },
     },

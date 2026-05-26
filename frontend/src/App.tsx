@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import Header from '@/components/Header';
+import LogAnalysisFab from '@/components/LogAnalysisFab';
 import Sidebar from '@/components/Sidebar';
 import SherpaFab from '@/components/SherpaFab';
 import Toast from '@/components/Toast';
@@ -36,6 +37,7 @@ const App = () => {
           </main>
         </div>
         <SherpaFab />
+        <LogAnalysisFab />
         <Toast />
       </div>
     </BrowserRouter>

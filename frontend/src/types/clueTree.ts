@@ -114,4 +114,6 @@ export interface ClueExpandRequest {
   parent_node_id: string;
   clue_key: string;
   source?: 'tree_candidate' | 'direct_input' | 'log_analysis';
+  /** 사용자 입력값을 트리 노드 라벨로 표시 (direct_input 가시성 강화). */
+  label_override?: string;
 }

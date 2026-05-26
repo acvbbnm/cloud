@@ -23,7 +23,7 @@
  *      9  PHISH_INITIAL_ACCESS
  *  10:30  INSIDER_THREAT
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { HypothesisScores, IncidentType } from '@/types';
 import type { SerializedClueTree, SerializedClueTreeNode } from '@/types/clueTree';
@@ -36,8 +36,13 @@ interface IncidentTypeCompassProps {
   /** confidence 도달 시 강조 사고유형. */
   primaryIncident?: IncidentType | null;
   confidenceReached?: boolean;
-  /** SVG 한 변 길이 (기본 460). */
+  /**
+   * SVG 한 변 길이 (기본 자동 반응형 — 부모 width).
+   * 명시 시 고정 크기. min 460, max 780.
+   */
   size?: number;
+  /** 자동 반응형 사용 (기본 true). false 시 size 고정 사용. */
+  responsive?: boolean;
   /** 헤더 텍스트. */
   title?: string;
   /** 카드 헤더 오른쪽 — ⛶ 확대 / 모드 토글 등. */
@@ -125,14 +130,35 @@ const IncidentTypeCompass = ({
   currentLeafId,
   primaryIncident,
   confidenceReached = false,
-  size = 460,
+  size,
+  responsive = true,
   title = '사고유형 컴퍼스',
   headerRight,
   disabled = false,
 }: IncidentTypeCompassProps) => {
+  // ── 반응형: 부모 컨테이너 width 추적 ──
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measured, setMeasured] = useState<number>(size ?? 600);
+
+  useEffect(() => {
+    if (!responsive || size !== undefined) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 600;
+      // anchor 라벨 폭 여유 — 70px 빼고 min/max 클램프
+      const s = Math.max(460, Math.min(780, Math.floor(w - 8)));
+      setMeasured(s);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [responsive, size]);
+
+  const effectiveSize = size ?? measured;
+
   // ── 레이아웃 계산 ──
-  const center = size / 2;
-  const R = size / 2 - 60;          // anchor 반지름 (라벨 여유)
+  const center = effectiveSize / 2;
+  const R = effectiveSize / 2 - 70;  // anchor 반지름 (라벨 여유 확보)
   const labelOffset = 28;            // 라벨 외곽 offset
   const trailMaxRadius = R * 0.85;   // 무게중심이 닿을 수 있는 최대 반지름
 
@@ -240,13 +266,14 @@ const IncidentTypeCompass = ({
         {headerRight}
       </div>
       <div
+        ref={containerRef}
         className="relative flex items-center justify-center"
-        style={{ minHeight: size }}
+        style={{ minHeight: effectiveSize }}
       >
         <svg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
+          width={effectiveSize}
+          height={effectiveSize}
+          viewBox={`0 0 ${effectiveSize} ${effectiveSize}`}
           style={{ display: 'block' }}
         >
           {/* 단위원 외곽 (점선) */}

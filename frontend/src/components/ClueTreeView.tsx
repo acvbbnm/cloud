@@ -49,6 +49,11 @@ interface ClueTreeViewProps {
   onAdoptCandidate: (candidate: ClueCandidate) => void;
   /** 채택된 단서 노드 클릭 (optional, 상세 보기). */
   onClickNode?: (node: SerializedClueTreeNode) => void;
+  /**
+   * ✏ 직접 입력 슬롯 클릭 — 트리 안에서 자유 단서 입력.
+   * 현재 leaf 의 후보 옆에 노드로 표시되어 트리가 끊기지 않게 함.
+   */
+  onDirectInputClick?: () => void;
   /** 비활성 (loading 중 클릭 방지). */
   disabled?: boolean;
   /** ⛶ 확대 — 부모가 큰 오버레이로 띄울 때. */
@@ -95,6 +100,7 @@ interface BuildResult {
 const buildLayout = (
   tree: SerializedClueTree,
   currentLeafId: string,
+  enableDirectInput: boolean,
 ): BuildResult => {
   const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
@@ -254,6 +260,62 @@ const buildLayout = (
       }
     });
 
+    // ── ✏ 직접 입력 슬롯 — 현재 leaf 에만 추가 (트리 끊김 방지) ──
+    // 추천 후보 N개 + 직접 입력 1개 = leaf 의 children 전체 (대칭 fan-out)
+    if (isCurrentLeaf && enableDirectInput) {
+      const slotIdx = total;  // 후보들 다음 위치
+      const slotTotal = total + 1;  // 후보들 + 직접 입력
+      // 중심에서 우측으로 약간 더 (총 폭 고려해서)
+      const offset = (slotIdx - (slotTotal - 1) / 2) * OPT_W;
+      const x = anchorX + offset;
+      const y = adoptedY + OPT_Y_OFFSET;
+      const slotId = `direct-input-${adopted.node_id}`;
+
+      const labelNode = (
+        <div className="flex flex-col items-center gap-0.5 leading-tight">
+          <div className="text-[14px] leading-none">✏</div>
+          <div className="text-[9px] font-semibold text-amber-300">
+            직접 입력
+          </div>
+          <div className="text-[8px] text-ink-500 font-mono">
+            카탈로그 외
+          </div>
+        </div>
+      );
+
+      rfNodes.push({
+        id: slotId,
+        position: { x, y },
+        data: { label: labelNode, isDirectInputSlot: true },
+        targetPosition: Position.Top,
+        sourcePosition: Position.Bottom,
+        draggable: false,
+        connectable: false,
+        selectable: true,
+        style: {
+          background: 'rgba(255, 149, 0, 0.08)',
+          border: '1.5px dashed rgba(255, 149, 0, 0.55)',
+          fontSize: '9px',
+          padding: '4px 6px',
+          borderRadius: '50% / 30%',  // 둥근 모서리 — 슬롯 강조
+          width: CAND_WIDTH * 0.85,
+          textAlign: 'center' as const,
+          cursor: 'pointer',
+        },
+      });
+
+      rfEdges.push({
+        id: `e-${adoptedNodeId}-${slotId}`,
+        source: adoptedNodeId,
+        target: slotId,
+        style: {
+          stroke: 'rgba(255, 149, 0, 0.45)',
+          strokeWidth: 1,
+          strokeDasharray: '5 3',
+        },
+      });
+    }
+
     // 다음 anchor 드리프트 — 선택된 후보의 X 로 이동 (클램프)
     if (chosenClueKey) {
       const rawShift = chosenAbsX - anchorX;
@@ -271,22 +333,24 @@ const ClueTreeView = ({
   entropyBits,
   onAdoptCandidate,
   onClickNode,
+  onDirectInputClick,
   disabled = false,
   onExpand,
   onReset,
   title = '단서 트리',
   height = 460,
 }: ClueTreeViewProps) => {
+  const enableDirectInput = Boolean(onDirectInputClick);
   const { nodes, edges } = useMemo(
-    () => buildLayout(tree, currentLeafId),
-    [tree, currentLeafId],
+    () => buildLayout(tree, currentLeafId, enableDirectInput),
+    [tree, currentLeafId, enableDirectInput],
   );
   const hasContent = nodes.length > 0;
 
   const stableKey = useMemo(() => {
     const nodeIds = Object.keys(tree.nodes).sort();
-    return `${currentLeafId}|${nodeIds.join(',')}`;
-  }, [tree.nodes, currentLeafId]);
+    return `${currentLeafId}|${nodeIds.join(',')}|${enableDirectInput ? 'di' : ''}`;
+  }, [tree.nodes, currentLeafId, enableDirectInput]);
 
   const depth = (() => {
     let d = 0;
@@ -303,6 +367,11 @@ const ClueTreeView = ({
 
   const handleNodeClick = (_evt: React.MouseEvent, node: Node) => {
     if (disabled) return;
+    // ✏ 직접 입력 슬롯
+    if (node.id.startsWith('direct-input-')) {
+      onDirectInputClick?.();
+      return;
+    }
     if (node.id.startsWith('cand-')) {
       const cand = (node.data as { candidate?: ClueCandidate }).candidate;
       // 현재 leaf 의 후보만 채택 가능 — 과거 분기점 후보는 클릭 무시

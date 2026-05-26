@@ -208,6 +208,8 @@ const Step3_EvidenceTreeDiscovery = ({
         parent_node_id: current.current_leaf_id,
         clue_key: inferredKey,
         source: 'direct_input',
+        // 사용자 입력값 (예: "203.0.113.5") 을 트리 노드 라벨로 표시
+        label_override: `${obs.type}: ${obs.value}`,
       });
       addObservable(obs);
       // 채택된 단서를 보조 토스트로 안내
@@ -384,6 +386,17 @@ const Step3_EvidenceTreeDiscovery = ({
               currentLeafId={treeState.current_leaf_id}
               entropyBits={treeState.confidence.entropy_bits}
               onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
+              onDirectInputClick={() => {
+                // ✏ 트리 슬롯 클릭 — 하단 단서 직접 입력 카드로 스크롤 + 강조
+                const el = document.getElementById('direct-input-card');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el.classList.add('ring-2', 'ring-amber-500/70');
+                  window.setTimeout(() => {
+                    el.classList.remove('ring-2', 'ring-amber-500/70');
+                  }, 2000);
+                }
+              }}
               disabled={loading || isSubmitting}
               height={460}
             />
@@ -393,14 +406,14 @@ const Step3_EvidenceTreeDiscovery = ({
               currentLeafId={treeState.current_leaf_id}
               primaryIncident={treeState.confidence.primary}
               confidenceReached={treeState.confidence.confidence_reached}
-              size={460}
               disabled={loading || isSubmitting}
             />
           )}
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Card title="단서 직접 입력" subtitle="카탈로그 매칭 시 자동 채택">
+          <div id="direct-input-card" className="rounded transition-all">
+          <Card title="단서 직접 입력" subtitle="✏ 트리 슬롯 클릭 → 자동 스크롤 + 강조">
             <CluesInput
               observables={observables}
               onAdd={handleDirectClueAdd}
@@ -409,6 +422,7 @@ const Step3_EvidenceTreeDiscovery = ({
               preferredVariant={null}
             />
           </Card>
+          </div>
           <Card title="부분 로그 분석" subtitle="ATT&CK 기법 → 단서 후보 자동 추가">
             <PartialLogAnalysis
               caseId={caseId}

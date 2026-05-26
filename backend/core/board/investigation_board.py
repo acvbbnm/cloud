@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.board.chain import ChainEdge, ChainNode
+from core.board.graph_analytics import analyze_board
 from db.models import (
     ChainEdgeModel,
     ChainNodeModel,
@@ -49,11 +50,18 @@ class InvestigationBoard:
             ).scalars()
         )
 
+        nodes_ser = [ChainNode.serialize(n) for n in nodes]
+        edges_ser = [ChainEdge.serialize(e) for e in edges]
+        # Phase J — networkx GDS 분석 (PageRank + Label Propagation)
+        # 그래프 비어있어도 안전 (빈 결과 반환)
+        gds = analyze_board(nodes_ser, edges_ser, pagerank_top_k=3)
+
         return {
             "caseId": case_id,
-            "nodes": [ChainNode.serialize(n) for n in nodes],
-            "edges": [ChainEdge.serialize(e) for e in edges],
+            "nodes": nodes_ser,
+            "edges": edges_ser,
             "kpi": cls.compute_kpi(db, case_id, case),
+            "gds": gds,  # Phase J 신규
         }
 
     @classmethod

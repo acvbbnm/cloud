@@ -225,6 +225,7 @@ def expand_tree(
     clue_key: str,
     *,
     source: str = "tree_candidate",
+    label_override: Optional[str] = None,
 ) -> dict:
     """단서 채택 → 트리 노드 추가 + 베이즈 갱신 + 다음 후보.
 
@@ -232,6 +233,11 @@ def expand_tree(
       - "tree_candidate" : children_candidates 클릭
       - "direct_input"   : 사용자 직접 입력
       - "log_analysis"   : 로그 분석 결과
+
+    label_override (2026-05-26):
+      - 사용자가 직접 입력한 값 (예: "203.0.113.5") 을 트리 노드 라벨로 표시.
+      - None 이면 카탈로그의 entry.label 사용 (기본).
+      - direct_input source 일 때 generic clue_key 라도 사용자 입력값 가시화.
     """
     case = _load_case(db, case_id)
     tree = _load_tree_from_case(case)
@@ -266,7 +272,7 @@ def expand_tree(
         clue_key=clue_key,
         category=clue_entry.get("category", ""),
         value=clue_entry.get("value", ""),
-        label=clue_entry.get("label", clue_key),
+        label=label_override or clue_entry.get("label", clue_key),
         source=source,
         posterior_before=posterior_before,
         posterior_after=posterior_after,

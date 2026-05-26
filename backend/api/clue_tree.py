@@ -84,6 +84,8 @@ class CueTreeExpandRequest(BaseModel):
     source: Optional[Literal["tree_candidate", "direct_input", "log_analysis"]] = (
         "tree_candidate"
     )
+    # 사용자 입력 값 (예: "203.0.113.5") 을 트리 노드 라벨로 표시 — 가시성 강화
+    label_override: Optional[str] = None
 
 
 class CueTreeSuggestRequest(BaseModel):
@@ -124,6 +126,7 @@ async def expand(req: CueTreeExpandRequest, db: Session = Depends(get_db)) -> di
             parent_node_id=req.parent_node_id,
             clue_key=req.clue_key,
             source=req.source or "tree_candidate",
+            label_override=req.label_override,
         )
     except CaseNotFound:
         raise _case_not_found(req.caseId)

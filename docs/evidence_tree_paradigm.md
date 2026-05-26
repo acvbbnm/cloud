@@ -352,7 +352,12 @@ def suggest_next_clues(posterior, accepted_clues, k=3):
   - [x] **H.3** Bayesian Network DAG + Noisy-OR 추론. **e2e 47/47 PASS** (INSIDER T3 약한 시그널 정합 향상). commit `6ed8459`
   - [x] **H.4** TRIAGE_MODE=bayes_net 통합 — config + clue_tree_service 분기 + info_gain.likelihood_fn 주입 + ClueCandidate.techniques 응답 + `/api/clue-tree/explain/{clue_key}` API + 프론트 ATT&CK badge UI + NextCluePanel BN hint. commit `17589eb`
 - [x] **Phase I** (2026-05-26, byungwoo 사용자 비전) — IncidentTypeCompass 360° 시각화 + scoring_mode 분기 fix + closure stale fix. 사고유형 8개 anchor (12시→10:30 시계방향 45° 간격) + 사후확률 가중 무게중심 + 단서 누적 궤적 (polyline). 순수 SVG ~330줄. Step3 메인 카드에 🌳 트리 / 🧭 컴퍼스 탭 토글 (sessionStorage 영속화). 학술: Pearl 1988 Belief Simplex Projection + 사용자 비전 "미로 헤쳐나가듯" 메타포 직접 구현. commit TBD
-- [ ] **Phase J** (이전 Phase I, 보류) — V-7 보드 networkx GDS (PageRank·Label Propagation) — Evidence Tree 완성 후 별도
+- [x] **Phase J** (2026-05-26, byungwoo) — V-7 보드 networkx GDS (PageRank + Label Propagation) — PDF §17.C 채택 구현.
+  - core/board/graph_analytics.py 신설 — build_graph / page_rank / label_propagation_communities / analyze_board
+  - InvestigationBoard.get_state 응답에 `gds` 필드 동봉 (pagerank top-3 + communities)
+  - pytest test_graph_analytics: 15/15 PASS (PageRank S3 핵심 표적 식별 + Label Propagation 군집 + 결정성 100%)
+  - networkx 3.6.1 이미 설치됨 (의존성 추가 X)
+  - 학술: Brin & Page 1998 PageRank, Zhu & Ghahramani 2002 LPA, Sheyner 2002 Carnegie Mellon Attack Graph
 
 각 Phase 완료 시 이 체크리스트 갱신 + 동일 커밋에 push.
 

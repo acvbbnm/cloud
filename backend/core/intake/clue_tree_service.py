@@ -51,6 +51,12 @@ from core.intake.info_gain import (
     pick_top_candidates,
     weights_to_likelihood,
 )
+from core.intake.zone_logic import (
+    compute_attack_chain,
+    core_clue_likelihood,
+    is_zone2_unlocked,
+    should_regress,
+)
 from db.models import IncidentCaseModel
 
 logger = logging.getLogger(__name__)
@@ -363,11 +369,22 @@ def _build_response(tree: ClueTree) -> dict:
     # Phase K 후속 — 현재 leaf depth (=채택된 단서 수) 를 confidence 평가에 전달
     current_depth = leaf.depth if leaf else 0
 
+    # Phase M.1 — 2-zone 메타 (paradigm §21·§22.2)
+    zone2 = is_zone2_unlocked(tree, tree.posterior_current)
+    regress_suggested = zone2 and should_regress(tree.posterior_current)
+    # 회귀 권고 시 final zone = 1 (UI 가 자동 강제 X, 사용자 결정. paradigm §21.8 #5)
+    final_zone = 1 if (not zone2 or regress_suggested) else 2
+
     return {
         "tree": tree_to_dict(tree),
         "current_leaf_id": tree.current_leaf_id,
         "posterior_current": tree.posterior_current,
         "confidence": evaluate_confidence(tree.posterior_current, depth=current_depth),
+        # Phase M.1 신규 — paradigm §21·§22.2
+        "zone": final_zone,                                       # 1 or 2
+        "attack_chain": compute_attack_chain(tree.posterior_current),
+        "core_clue_likelihood": core_clue_likelihood(tree),
+        "regress_suggested": regress_suggested,
         "candidates": [
             {
                 "candidate_id": c.candidate_id,

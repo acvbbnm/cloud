@@ -91,3 +91,8 @@ GIT_SETUP_가이드.md
 # git 외부. 팀원에게는 zip 으로 별도 전달. 학습 산출물 (clue_dag.json,
 # clue_cpt_noisyor.json) 은 data/triage/ 에 별도 commit.
 backend/data/triage/external_sources/
+
+# ── Neo4j PoC (2026-05-26, easy — Discord 김병우 제안 검증용) ──
+# Neo4j Community Edition 바이너리 + zip + DB·로그. PoC 종료 후 정리 예정.
+neo4j-tools/
+*.neo4j.zip

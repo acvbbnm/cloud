@@ -224,18 +224,59 @@ def test_confidence_not_reached_uniform() -> None:
 
 
 def test_confidence_reached_triggers_notify_action() -> None:
-    """primary ≥ 0.65 + gap ≥ 0.20 → notify_user_confirm (자동 종료 X)."""
+    """primary ≥ 0.65 + gap ≥ 0.20 + depth ≥ 5 → notify_user_confirm.
+
+    Phase K 후속 (2026-05-26 byungwoo) — depth 별 차등 임계값 도입.
+    표준 임계값 (0.65/0.20) 은 depth ≥ 5 에서만 적용.
+    """
     p = {h: 0.0 for h in UNIFORM_PRIOR}
     p["RANSOMWARE"] = 0.89
     p["INSIDER_THREAT"] = 0.04
     p["MISCONFIG_EXPOSURE"] = 0.03
     p["CREDENTIAL_THEFT"] = 0.04
-    info = evaluate_confidence(p)
+    info = evaluate_confidence(p, depth=5)
     assert info["confidence_reached"] is True
-    # 사용자 결정 — 알림만, 자동 종료 X
     assert info["recommended_action"] == "notify_user_confirm"
     assert info["primary"] == "RANSOMWARE"
     assert info["gap"] >= 0.20
+
+
+def test_confidence_depth_based_throttle() -> None:
+    """Phase K 후속 — depth 별 차등 임계값.
+
+    사용자 피드백 (2026-05-26): "단서 2-3개로 너무 빠른 확정" — depth < 3 절대 차단.
+    """
+    # 매우 강한 신호 — RANSOM 95%, gap 90% (단서 1-2개로도 도달 가능한 정도)
+    p_strong = {h: 0.0 for h in UNIFORM_PRIOR}
+    p_strong["RANSOMWARE"] = 0.95
+    p_strong["INSIDER_THREAT"] = 0.02
+    p_strong["MISCONFIG_EXPOSURE"] = 0.02
+    p_strong["CREDENTIAL_THEFT"] = 0.01
+
+    # depth 0-2 — 절대 차단 (단서 부족)
+    for d in (0, 1, 2):
+        assert evaluate_confidence(p_strong, depth=d)["confidence_reached"] is False, (
+            f"depth {d} 에서 단서 부족인데 reached=True 됨 — 사용자 피드백 위배"
+        )
+
+    # depth 3 — 엄격 (0.80/0.30) — 0.95/0.90 충족, 도달
+    info3 = evaluate_confidence(p_strong, depth=3)
+    assert info3["confidence_reached"] is True
+    assert info3["recommended_action"] == "notify_user_confirm"
+
+    # depth 5 — 표준 (0.65/0.20) — 충분히 충족
+    assert evaluate_confidence(p_strong, depth=5)["confidence_reached"] is True
+
+    # 중간 신호 — depth 3 임계값 (0.80/0.30) 미달
+    p_mid = {h: 0.0 for h in UNIFORM_PRIOR}
+    p_mid["RANSOMWARE"] = 0.70
+    p_mid["INSIDER_THREAT"] = 0.15
+    p_mid["MISCONFIG_EXPOSURE"] = 0.10
+    p_mid["CREDENTIAL_THEFT"] = 0.05
+    # depth 3 (0.80/0.30) — 0.70/0.55 — auto_confirm 미달
+    assert evaluate_confidence(p_mid, depth=3)["confidence_reached"] is False
+    # depth 5 (0.65/0.20) — 충족
+    assert evaluate_confidence(p_mid, depth=5)["confidence_reached"] is True
 
 
 def test_confidence_propose_single_below_auto_confirm() -> None:
@@ -244,7 +285,7 @@ def test_confidence_propose_single_below_auto_confirm() -> None:
     p["INSIDER_THREAT"] = 0.20
     p["MISCONFIG_EXPOSURE"] = 0.10
     p["CREDENTIAL_THEFT"] = 0.08
-    info = evaluate_confidence(p)
+    info = evaluate_confidence(p, depth=5)
     assert info["confidence_reached"] is False
     assert info["recommended_action"] == "propose_single"
 

@@ -236,15 +236,26 @@ def candidate_count_by_entropy(posterior: dict[str, float]) -> int:
 # ─────────────────────────────────────────────────────────────
 
 
-def evaluate_confidence(posterior: dict[str, float]) -> dict:
+def evaluate_confidence(
+    posterior: dict[str, float], depth: int = 0
+) -> dict:
     """현재 사후확률 기반 confidence 평가.
 
-    임계값은 bayesian.py:confidence_level 과 동일 (auto_confirm 0.65, gap 0.20).
-    트리 자동 종료 X — UI 에 알림 카드만 노출, 사용자가 직접 [확정] 클릭해야 종료.
+    Phase K 후속 (2026-05-26 byungwoo) — **depth 별 차등 임계값** 도입.
+    사용자 피드백: 단서 2-3개만으로 너무 빠른 확정 도달. 단서 충분히 모인
+    후에야 확정 허용하도록 점진 완화.
 
-    반환:
-        {primary, primary_prob, secondary, secondary_prob, gap,
-         confidence_reached: bool, recommended_action: str, entropy: float}
+    임계값 정책
+    ----------
+        depth = 0    : 가상의 ROOT 만 — confidence 도달 불가
+        depth 1-2    : 매우 엄격 — primary_p ≥ 0.85 + gap ≥ 0.35
+                       (강한 단서 1-2개만으로 확정 차단)
+        depth 3-4    : 엄격 — primary_p ≥ 0.75 + gap ≥ 0.25
+                       (단서 3-4개 누적되어야 확정 허용)
+        depth ≥ 5    : 표준 — primary_p ≥ 0.65 + gap ≥ 0.20
+                       (bayesian.py:confidence_level Phase 3.5 grid 값)
+
+    트리 자동 종료 X — UI 에 알림 카드만 노출 (paradigm doc §16).
     """
     ranked = sorted(
         [(h, p) for h, p in posterior.items() if h != "UNCLASSIFIED"],
@@ -256,13 +267,23 @@ def evaluate_confidence(posterior: dict[str, float]) -> dict:
     gap = primary_p - secondary_p
     H = posterior_entropy(posterior)
 
-    AUTO_CONFIRM = 0.65
-    GAP_REQ = 0.20
-    reached = primary_p >= AUTO_CONFIRM and gap >= GAP_REQ
+    # depth 별 임계값 (사용자 피드백 2026-05-26 — "단서 2-3개로 너무 빠른 확정")
+    # 정책: 최소 3 단서 (depth ≥ 3) 채택 후에만 확정 허용. 그 이전엔 절대 차단.
+    MIN_DEPTH_FOR_CONFIRM = 3
+    if depth < MIN_DEPTH_FOR_CONFIRM:
+        auto_confirm, gap_req = 1.01, 1.01  # 절대 도달 불가
+    elif depth == 3:
+        auto_confirm, gap_req = 0.80, 0.30
+    elif depth == 4:
+        auto_confirm, gap_req = 0.75, 0.25
+    else:  # depth ≥ 5
+        auto_confirm, gap_req = 0.65, 0.20  # 표준 (Phase 3.5 fitted)
+
+    reached = primary_p >= auto_confirm and gap >= gap_req
 
     if reached:
         action = "notify_user_confirm"  # 알림 카드 노출, 사용자가 [확정] 클릭 대기
-    elif primary_p >= 0.60 and gap >= GAP_REQ / 2:
+    elif primary_p >= 0.60 and gap >= 0.10:
         action = "propose_single"
     elif primary_p >= 0.30:
         action = "propose_composite"
@@ -278,6 +299,9 @@ def evaluate_confidence(posterior: dict[str, float]) -> dict:
         "confidence_reached": reached,
         "recommended_action": action,
         "entropy_bits": H,
+        # Phase K 후속 — 디버그·UI 안내용
+        "depth": depth,
+        "thresholds": {"auto_confirm": auto_confirm, "gap_req": gap_req},
     }
 
 

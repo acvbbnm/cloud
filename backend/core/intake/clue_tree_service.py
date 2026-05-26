@@ -278,8 +278,9 @@ def expand_tree(
         posterior_after=posterior_after,
     )
 
-    # confidence 평가
-    confidence = evaluate_confidence(posterior_after)
+    # confidence 평가 — Phase K 후속 (2026-05-26): depth 별 차등 임계값
+    # node.depth 는 root=0 기준이므로 채택된 단서 수와 동일.
+    confidence = evaluate_confidence(posterior_after, depth=node.depth)
     tree.confidence_reached = confidence["confidence_reached"]
     if confidence["confidence_reached"]:
         tree.incident_type_recommendation = confidence["primary"]
@@ -359,12 +360,14 @@ def _build_response(tree: ClueTree) -> dict:
     leaf = tree.nodes.get(tree.current_leaf_id)
     candidates_raw = leaf.children_candidates if leaf else []
     path = path_from_root(tree)
+    # Phase K 후속 — 현재 leaf depth (=채택된 단서 수) 를 confidence 평가에 전달
+    current_depth = leaf.depth if leaf else 0
 
     return {
         "tree": tree_to_dict(tree),
         "current_leaf_id": tree.current_leaf_id,
         "posterior_current": tree.posterior_current,
-        "confidence": evaluate_confidence(tree.posterior_current),
+        "confidence": evaluate_confidence(tree.posterior_current, depth=current_depth),
         "candidates": [
             {
                 "candidate_id": c.candidate_id,

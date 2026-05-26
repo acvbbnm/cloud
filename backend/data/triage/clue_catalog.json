@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": "v1-clue-catalog",
-    "generated": "2026-05-25T08:45:13.653944Z",
+    "generated": "2026-05-26T00:46:47.163786Z",
     "generator": "backend/scripts/build_clue_catalog.py",
     "sources": [
       "data\\triage\\decision_tree.json",
@@ -1445,10 +1445,10 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": -5,
+        "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
       },
-      "weight_source": "직무 범위 내 활동 → INSIDER 가설 감점 (CERT Insider Threat Guide §4.1 반대 시그널) [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "직무 범위 내 활동 — 중립 시그널 (정상 활동도 INSIDER 케이스 나타남). 2026-05-26 fix: -5 → 0 (음수 가중치가 Laplace smoothing 후 likelihood=0 만들어 baeysian/evidence_tree INSIDER posterior 침몰 원인이었음) [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
         "outcomeIsInsiderSignal": true,
         "outcomeIsInScope": true

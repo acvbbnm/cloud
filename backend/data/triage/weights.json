@@ -757,8 +757,8 @@
       "RANSOMWARE": 0,
       "MISCONFIG_EXPOSURE": 0,
       "PHISH_INITIAL_ACCESS": 0,
-      "INSIDER_THREAT": -5,
-      "source": "직무 범위 내 활동 → INSIDER 가설 감점 (CERT Insider Threat Guide §4.1 반대 시그널) [ISO 27035-1:2023 Assess & Decide]",
+      "INSIDER_THREAT": 0,
+      "source": "직무 범위 내 활동 — 중립 시그널 (정상 활동도 INSIDER 케이스 나타남). 2026-05-26 fix: -5 → 0 (음수 가중치가 Laplace smoothing 후 likelihood=0 만들어 baeysian/evidence_tree INSIDER posterior 침몰 원인이었음) [ISO 27035-1:2023 Assess & Decide]",
       "UNCLASSIFIED": 0
     },
     "Q4-INSIDER:partner_account": {

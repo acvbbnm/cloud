@@ -150,20 +150,36 @@ def nhn_privilege_escalation(ev: dict) -> Optional[str]:
 
 
 def ncp_data_exfiltration(ev: dict) -> Optional[str]:
-    """NCP raw event → DE target_id (CT-NCP-DE-001~003).
+    """NCP raw event → DE target_id (CT-NCP-DE-001~004).
 
     핵심 패턴 (synthetic ncp_data_exfiltration.json 기반):
-      · Request/Complete For Exporting To Object Storage  → 데이터 유출 본행위
-      · Disable AccessKey                                  → 흔적 지움 (보강)
-      · Login                                              → 초기 접근 보강
+      · Request/Complete For Exporting To Object Storage  → 데이터 유출 본행위 (-001)
+      · Cross Account Put Object                          → 외부 계정 객체 복사 (-001)
+      · Issue PreSigned URL External                      → 외부 공유 링크 발급 (-001)
+      · HTTP Plain Upload                                 → 평문 HTTP 업로드 (-001)
+      · Disable AccessKey                                 → 흔적 지움 (-002)
+      · Login                                             → 초기 접근 (-003)
+
+    Phase J fix (2026-05-26): 누락된 3 advanced exfil 패턴 추가
+      — Cross Account Put Object / PreSigned URL / HTTP Plain Upload
+      (test_matchers e2e 14/17 → 17/17 fix)
     """
     action = (ev.get("action") or "").strip()
     action_l = action.lower()
     product = (ev.get("product_name") or "").strip()
 
-    if "exporting to object storage" in action_l or (
-        product in {"Object Storage", "ObjectStorage"} and "export" in action_l
-    ):
+    # 데이터 유출 본행위 (다양한 경로 — 객체 저장소·외부 링크·평문 업로드)
+    exfil_keywords = (
+        "exporting to object storage",
+        "cross account put object",
+        "presigned url external",
+        "presigned url",  # 변종 호환
+        "http plain upload",
+        "external upload",  # 변종 호환
+    )
+    if any(k in action_l for k in exfil_keywords):
+        return "CT-NCP-DE-001"
+    if product in {"Object Storage", "ObjectStorage"} and "export" in action_l:
         return "CT-NCP-DE-001"
     if "disable accesskey" in action_l or "disableaccesskey" in action_l.replace(" ", ""):
         return "CT-NCP-DE-002"
@@ -377,7 +393,12 @@ def nhn_misconfig_exposure(ev: dict) -> Optional[str]:
 
 
 def ncp_phish_initial_access(ev: dict) -> Optional[str]:
-    """NCP raw → PHISH target_id (CT-NCP-PHISH-001~004)."""
+    """NCP raw → PHISH target_id (CT-NCP-PHISH-001~005).
+
+    Phase J fix (2026-05-26): DNS Tunnel·C2 채널 패턴 추가 (CT-NCP-PHISH-005)
+      — 피싱 후속 C2/exfil 채널 (MITRE T1071.004 DNS).
+      (test_matchers e2e 5/6 → 6/6 fix)
+    """
     action = (ev.get("action") or "").strip()
     action_l = action.lower()
 
@@ -393,6 +414,9 @@ def ncp_phish_initial_access(ev: dict) -> Optional[str]:
     # 감사 로그 변조
     if "tracer" in action_l or "disable auto export" in action_l:
         return "CT-NCP-PHISH-004"
+    # C2/exfil 채널 — DNS Tunnel·beacon·callback (MITRE T1071.004)
+    if "dns tunnel" in action_l or "c2 callback" in action_l or "beacon" in action_l:
+        return "CT-NCP-PHISH-005"
     return None
 
 
@@ -416,6 +440,11 @@ _NHN_PHISH_RULES: list[tuple[str, re.Pattern]] = [
     ),
     # 리소스 조작 (후속 행위)
     ("CT-NHN-PHISH-004", re.compile(r"^event_id\.iaas\.instance_action\.")),
+    # Phase J fix (2026-05-26) — C2 채널 (DNS tunnel·beacon·callback, MITRE T1071.004)
+    (
+        "CT-NHN-PHISH-005",
+        re.compile(r"^event_id\.network\.(dns\.tunnel|c2|beacon)"),
+    ),
 ]
 
 

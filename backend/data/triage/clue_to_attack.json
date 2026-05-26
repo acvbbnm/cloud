@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": "v1-clue-to-attack",
-    "generated": "2026-05-25T15:59:47.216979Z",
+    "generated": "2026-05-26T00:46:54.525609Z",
     "generator": "backend/scripts/build_clue_attack_mapping.py",
     "source_catalog": "data\\triage\\clue_catalog.json",
     "purpose": "Bayesian Network DAG 노드·조건부 의존성 입력 — PDF §17.B BAN paper 정합. 단서 → ATT&CK 기법 다중 매핑 (Noisy-OR 처리).",

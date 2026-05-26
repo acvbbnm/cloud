@@ -228,20 +228,26 @@ const IncidentTypeCompass = ({
   }, [tree.nodes, tree.root_id, currentLeafId, anchors]);
 
   const currentPos = trail.length > 0 ? trail[trail.length - 1] : null;
-  // 가장 가까운 anchor (현재 위치 기준)
-  const nearestAnchor = useMemo(() => {
+  // 사후확률 1위 anchor — 우측 신뢰도 패널과 일관성 보장.
+  // (이전엔 무게중심에서 가장 가까운 anchor 였으나 다른 가설들의 분포 효과로
+  //  1위 사고유형과 다를 수 있어 사용자 혼란 → 1위 가설 직접 사용으로 fix)
+  const topAnchor = useMemo(() => {
     if (!currentPos) return null;
-    let best: Anchor | null = null;
-    let bestDist = Infinity;
+    const posterior = currentPos.posterior;
+    let bestType: IncidentType | null = null;
+    let bestProb = -1;
     for (const a of anchors) {
-      const d = Math.hypot(a.x - currentPos.x, a.y - currentPos.y);
-      if (d < bestDist) {
-        bestDist = d;
-        best = a;
+      const p = posterior[a.type] ?? 0;
+      if (p > bestProb) {
+        bestProb = p;
+        bestType = a.type;
       }
     }
-    return best;
+    return bestType ? anchors.find((a) => a.type === bestType) ?? null : null;
   }, [currentPos, anchors]);
+
+  // 이전: 무게중심에서 가장 가까운 anchor (nearestAnchor) — 1위 가설과
+  // 다를 수 있어 사용자 혼란 → topAnchor (사후확률 1위) 로 통일.
 
   return (
     <div className="border border-ink-700 bg-ink-950/40 flex flex-col">
@@ -250,15 +256,20 @@ const IncidentTypeCompass = ({
           {title}
           <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
             depth {Math.max(0, trail.length - 1)} · 8 사고유형 360°
-            {nearestAnchor && (
+            {topAnchor && (
               <>
-                {' '}· 방향
+                {' '}· 1위
                 <span
                   className="ml-1"
-                  style={{ color: nearestAnchor.color }}
+                  style={{ color: topAnchor.color }}
                 >
-                  {INCIDENT_KO[nearestAnchor.type]}
+                  {INCIDENT_KO[topAnchor.type]}
                 </span>
+                {currentPos && (
+                  <span className="ml-1 text-ink-500">
+                    ({((currentPos.posterior[topAnchor.type] ?? 0) * 100).toFixed(1)}%)
+                  </span>
+                )}
               </>
             )}
           </span>
@@ -310,12 +321,14 @@ const IncidentTypeCompass = ({
             />
           ))}
 
-          {/* 8 anchor — 사고유형 점 + 라벨 */}
+          {/* 8 anchor — 사고유형 점 + 라벨. 1위 anchor 강조 (우측 신뢰도 패널 정합). */}
           {anchors.map((a) => {
-            const isNearest = nearestAnchor?.type === a.type;
+            const isTop = topAnchor?.type === a.type;
             const isPrimary =
               confidenceReached && primaryIncident === a.type;
-            const dotR = isPrimary ? 9 : isNearest ? 7 : 5;
+            const dotR = isPrimary ? 9 : isTop ? 7 : 5;
+            // 표시 변수 통일 (legacy isNearest 명 → isTop 의미)
+            const isNearest = isTop;
             return (
               <g key={`anchor-${a.type}`}>
                 {/* glow (confidence 도달 시) */}

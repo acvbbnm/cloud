@@ -2,11 +2,12 @@
   "_meta": {
     "version": "v1-skeleton",
     "created": "2026-05-18",
-    "status": "draft — dev3 구현 진행 중 확장",
+    "status": "v1-skeleton-patched — 4 사고유형 (RANSOM·MISCONFIG·PHISH·INSIDER) hypothesis_boost 보강 (이지호 PoC 보고서 §3.1 갭 발견 후속)",
     "purpose": "단서 → 다음 단서 매핑 그래프. Discovery Loop 의 ③ 다음 단서 가이드.",
     "primary_standard": "AWS Detective Profile Guidance + Microsoft Sentinel exploration query + MITRE D3FEND",
     "design_principle": "단서 1개 입력 시 다음에 봐야 할 단서 2-4개를 우선순위 순으로 제안.",
-    "user_interaction": "사용자가 제안된 다음 단서를 클릭하면 단서 입력 폼에 자동 채워짐."
+    "user_interaction": "사용자가 제안된 다음 단서를 클릭하면 단서 입력 폼에 자동 채워짐.",
+    "last_patched": "2026-05-26 byungwoo"
   },
   "pivots": [
     {
@@ -19,7 +20,9 @@
           "action": "raw_events 에서 src_ip 전체 검색",
           "hint_clue_type": "TIME_WINDOW",
           "hypothesis_boost": {
-            "CREDENTIAL_THEFT": 15
+            "CREDENTIAL_THEFT": 15,
+            "PHISH_INITIAL_ACCESS": 5,
+            "INSIDER_THREAT": 5
           },
           "source": "MITRE T1078.004 + AWS Detective IP profile"
         },
@@ -29,7 +32,9 @@
           "action": "raw_events 에서 csp 별 src_ip 검색",
           "hint_clue_type": "SERVICE",
           "hint_value": "multi_csp",
-          "hypothesis_boost": {},
+          "hypothesis_boost": {
+            "INSIDER_THREAT": 10
+          },
           "source": "실 raw 분석 115.91.214.5 사례"
         },
         {
@@ -38,7 +43,8 @@
           "action": "ocsf_events 에서 actor_user + activity=IAM_MODIFY",
           "hint_clue_type": "ACCOUNT",
           "hypothesis_boost": {
-            "PRIVILEGE_ESCALATION": 20
+            "PRIVILEGE_ESCALATION": 20,
+            "INSIDER_THREAT": 10
           },
           "source": "MITRE T1098"
         },
@@ -48,7 +54,9 @@
           "action": "ocsf_events 에서 1분 내 실패+성공 같은 계정",
           "hint_clue_type": null,
           "hypothesis_boost": {
-            "CREDENTIAL_THEFT": 25
+            "CREDENTIAL_THEFT": 25,
+            "PHISH_INITIAL_ACCESS": 15,
+            "INSIDER_THREAT": 5
           },
           "source": "MITRE T1110 + T1556"
         }
@@ -63,7 +71,8 @@
           "question": "이 계정의 권한 변경 이력?",
           "action": "ocsf_events 에서 actor_user + activity=IAM_MODIFY",
           "hypothesis_boost": {
-            "PRIVILEGE_ESCALATION": 25
+            "PRIVILEGE_ESCALATION": 25,
+            "INSIDER_THREAT": 15
           },
           "source": "MITRE T1098"
         },
@@ -74,7 +83,9 @@
           "hint_clue_type": "SERVICE",
           "hint_value": "object_storage",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 25
+            "DATA_EXFILTRATION": 25,
+            "RANSOMWARE": 15,
+            "INSIDER_THREAT": 10
           },
           "source": "MITRE T1530"
         },
@@ -84,7 +95,9 @@
           "action": "ocsf_events 에서 actor_user + src_endpoint_ip 분포 분석",
           "hint_clue_type": "IP_ADDRESS",
           "hypothesis_boost": {
-            "CREDENTIAL_THEFT": 15
+            "CREDENTIAL_THEFT": 15,
+            "INSIDER_THREAT": 10,
+            "PHISH_INITIAL_ACCESS": 10
           },
           "source": "MITRE T1078.004"
         },
@@ -93,7 +106,9 @@
           "question": "이 계정의 MFA 적용 상태?",
           "action": "system_config.mfa_status 확인 + IAM 정책 점검",
           "hypothesis_boost": {
-            "CREDENTIAL_THEFT": 30
+            "CREDENTIAL_THEFT": 30,
+            "MISCONFIG_EXPOSURE": 20,
+            "PHISH_INITIAL_ACCESS": 15
           },
           "source": "CSA #2 IAM + environment_modifier m-004"
         }
@@ -109,7 +124,9 @@
           "action": "external_lookup (오프라인 환경에서는 KB 사례 매칭)",
           "hypothesis_boost": {
             "DATA_EXFILTRATION": 10,
-            "AUDIT_LOG_TAMPERING": 5
+            "AUDIT_LOG_TAMPERING": 5,
+            "RANSOMWARE": 20,
+            "PHISH_INITIAL_ACCESS": 15
           },
           "source": "VirusTotal API (오프라인 시 비활성)"
         },
@@ -119,7 +136,9 @@
           "action": "raw_events 에서 file_hash 검색",
           "hint_clue_type": "ACCOUNT",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 20
+            "DATA_EXFILTRATION": 20,
+            "RANSOMWARE": 25,
+            "INSIDER_THREAT": 10
           },
           "source": "MITRE T1567"
         }
@@ -135,7 +154,8 @@
           "action": "vpc_flow_logs + dns_logs 에서 domain 검색",
           "hint_clue_type": "IP_ADDRESS",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 20
+            "DATA_EXFILTRATION": 20,
+            "PHISH_INITIAL_ACCESS": 15
           },
           "source": "MITRE T1071"
         },
@@ -144,7 +164,9 @@
           "question": "이 도메인이 C2 도메인 또는 DGA 도메인?",
           "action": "threat_intel_lookup (오프라인 시 KB 사례)",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 25
+            "DATA_EXFILTRATION": 25,
+            "RANSOMWARE": 20,
+            "PHISH_INITIAL_ACCESS": 15
           },
           "source": "MITRE T1568.002"
         }
@@ -160,7 +182,8 @@
           "action": "ocsf_events 에서 time 범위 + non_korean_ip OR new_account",
           "hint_clue_type": "IP_ADDRESS",
           "hypothesis_boost": {
-            "CREDENTIAL_THEFT": 15
+            "CREDENTIAL_THEFT": 15,
+            "PHISH_INITIAL_ACCESS": 10
           },
           "source": "KrCERT/CC 2025-08 제2장 — 시각 패턴 점검 (구 KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) ⑤ 계승)"
         },
@@ -169,7 +192,8 @@
           "question": "이 시각에 권한 변경 또는 IAM 작업이 있었는가?",
           "action": "ocsf_events 에서 time 범위 + activity=IAM_MODIFY",
           "hypothesis_boost": {
-            "PRIVILEGE_ESCALATION": 25
+            "PRIVILEGE_ESCALATION": 25,
+            "INSIDER_THREAT": 15
           },
           "source": "MITRE T1098"
         },
@@ -180,7 +204,8 @@
           "hint_clue_type": "SERVICE",
           "hint_value": "object_storage",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 25
+            "DATA_EXFILTRATION": 25,
+            "RANSOMWARE": 25
           },
           "source": "MITRE T1530"
         },
@@ -189,7 +214,8 @@
           "question": "이 시각에 감사 로그 활성 상태 변경이 있었는가?",
           "action": "audit_log_events 에서 time 범위 + audit_status_change",
           "hypothesis_boost": {
-            "AUDIT_LOG_TAMPERING": 30
+            "AUDIT_LOG_TAMPERING": 30,
+            "INSIDER_THREAT": 15
           },
           "source": "MITRE T1562.008"
         }
@@ -205,7 +231,8 @@
           "action": "ocsf_events 에서 service + actor_user 그룹화",
           "hint_clue_type": "ACCOUNT",
           "hypothesis_boost": {
-            "DATA_EXFILTRATION": 15
+            "DATA_EXFILTRATION": 15,
+            "INSIDER_THREAT": 10
           },
           "source": "AWS Detective service profile"
         },
@@ -214,7 +241,9 @@
           "question": "이 서비스에서 발생한 권한 변경 이력은?",
           "action": "ocsf_events 에서 service + activity=POLICY_MODIFY",
           "hypothesis_boost": {
-            "PRIVILEGE_ESCALATION": 20
+            "PRIVILEGE_ESCALATION": 20,
+            "INSIDER_THREAT": 15,
+            "MISCONFIG_EXPOSURE": 10
           },
           "source": "MITRE T1484"
         },
@@ -223,7 +252,9 @@
           "question": "이 서비스의 로그가 비활성 상태인가?",
           "action": "system_config.auditEnabled + service-specific log status",
           "hypothesis_boost": {
-            "AUDIT_LOG_TAMPERING": 25
+            "AUDIT_LOG_TAMPERING": 25,
+            "INSIDER_THREAT": 20,
+            "MISCONFIG_EXPOSURE": 15
           },
           "source": "MITRE T1562.008 + environment_modifier m-001"
         }

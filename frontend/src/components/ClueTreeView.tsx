@@ -151,7 +151,10 @@ const buildLayout = (
     // 결정 시점에 보였던 모든 후보를 dashed 로 표시. 그 중 실제 채택된 다음 노드는
     // "다음 채택 노드의 clue_key" 와 매칭하여 실선·brand-teal 로 강조.
     const candidates = adopted.children_candidates ?? [];
-    const total = candidates.length;
+    const candCount = candidates.length;
+    // 현재 leaf 면 직접 입력 슬롯도 children 의 일부로 fan-out 균등 배치
+    const slotCount = isCurrentLeaf && enableDirectInput ? 1 : 0;
+    const total = candCount + slotCount;
     if (total === 0) return;
 
     // 다음 채택 노드의 clue_key (있으면 → 선택된 후보 식별)
@@ -261,12 +264,10 @@ const buildLayout = (
     });
 
     // ── ✏ 직접 입력 슬롯 — 현재 leaf 에만 추가 (트리 끊김 방지) ──
-    // 추천 후보 N개 + 직접 입력 1개 = leaf 의 children 전체 (대칭 fan-out)
+    // 후보들과 같은 total 기준으로 fan-out — 마지막 위치 (candCount 인덱스)
     if (isCurrentLeaf && enableDirectInput) {
-      const slotIdx = total;  // 후보들 다음 위치
-      const slotTotal = total + 1;  // 후보들 + 직접 입력
-      // 중심에서 우측으로 약간 더 (총 폭 고려해서)
-      const offset = (slotIdx - (slotTotal - 1) / 2) * OPT_W;
+      const slotIdx = candCount;
+      const offset = (slotIdx - (total - 1) / 2) * OPT_W;
       const x = anchorX + offset;
       const y = adoptedY + OPT_Y_OFFSET;
       const slotId = `direct-input-${adopted.node_id}`;
@@ -349,7 +350,11 @@ const ClueTreeView = ({
 
   const stableKey = useMemo(() => {
     const nodeIds = Object.keys(tree.nodes).sort();
-    return `${currentLeafId}|${nodeIds.join(',')}|${enableDirectInput ? 'di' : ''}`;
+    // 현재 leaf 의 candidates 목록도 키에 포함 — 갱신 시 react-flow 재마운트
+    const leafCands = (tree.nodes[currentLeafId]?.children_candidates ?? [])
+      .map((c) => c.candidate_id)
+      .join(',');
+    return `${currentLeafId}|${nodeIds.join(',')}|${leafCands}|${enableDirectInput ? 'di' : ''}`;
   }, [tree.nodes, currentLeafId, enableDirectInput]);
 
   const depth = (() => {

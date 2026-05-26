@@ -27,7 +27,24 @@ from pathlib import Path
 _BACKEND = Path(__file__).resolve().parents[1]
 TRIAGE = _BACKEND / "data" / "triage"
 CATALOG_PATH = TRIAGE / "clue_catalog.json"
+OVERRIDES_PATH = TRIAGE / "clue_overrides.json"  # Phase L (2026-05-26) 143 단서 수동 override
 OUT_PATH = TRIAGE / "clue_descriptions.json"
+
+
+def _load_external_overrides() -> dict:
+    """외부 JSON 파일에서 단서별 description/how_to_find/examples 로드.
+
+    Phase L 풀 override (143 단서) — SPECIFIC_OVERRIDES 내장 6건 보다 우선.
+    파일 없으면 빈 dict (내장 override 만 사용).
+    """
+    if not OVERRIDES_PATH.exists():
+        return {}
+    try:
+        data = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
+        return data.get("overrides", {})
+    except Exception as e:  # noqa: BLE001
+        print(f"[warn] {OVERRIDES_PATH} 로드 실패: {e}", file=sys.stderr)
+        return {}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -320,16 +337,22 @@ SPECIFIC_OVERRIDES: dict[str, dict] = {
 # ─────────────────────────────────────────────────────────────
 
 
-def build_description(clue_key: str, entry: dict) -> dict:
-    """단서 1건의 풍부 메타 dict 반환."""
+def build_description(clue_key: str, entry: dict, ext_overrides: dict) -> dict:
+    """단서 1건의 풍부 메타 dict 반환.
+
+    우선순위:
+        1. 외부 JSON 파일 (clue_overrides.json) — Phase L 풀 override
+        2. 내장 SPECIFIC_OVERRIDES — 6건 (legacy fallback)
+        3. 카테고리 템플릿 자동 생성
+    """
     category = entry.get("category", "")
     label = entry.get("label", clue_key)
     weight_source = entry.get("weight_source", "").strip()
     outcome_flags = entry.get("outcome_flags", {})
     weights = entry.get("weights", {})
 
-    # 1) override 우선 — 있으면 그대로
-    override = SPECIFIC_OVERRIDES.get(clue_key, {})
+    # 1) 외부 JSON override 우선 (Phase L)
+    override = ext_overrides.get(clue_key) or SPECIFIC_OVERRIDES.get(clue_key, {})
 
     # 2) description
     if override.get("description"):
@@ -389,20 +412,41 @@ def main() -> int:
     clues = catalog.get("clues", {})
     print(f"카탈로그 단서 수: {len(clues)}")
 
+    ext_overrides = _load_external_overrides()
+    print(f"외부 override 수: {len(ext_overrides)}")
+
+    # 카탈로그에 없는 override 키 경고 (오타 검증)
+    catalog_keys = set(clues.keys())
+    ext_keys = set(ext_overrides.keys())
+    unknown = ext_keys - catalog_keys
+    missing = catalog_keys - ext_keys
+    if unknown:
+        print(f"⚠ override JSON 에 있는데 카탈로그에 없는 키 {len(unknown)} 건:")
+        for k in sorted(unknown)[:5]:
+            print(f"    {k}")
+    if missing:
+        print(f"⚠ 카탈로그에 있는데 override 안 된 키 {len(missing)} 건:")
+        for k in sorted(missing)[:5]:
+            print(f"    {k}")
+
     descriptions: dict[str, dict] = {}
-    has_override = 0
+    has_ext_override = 0
+    has_internal_override = 0
     has_outcome_hint = 0
     no_examples = 0
 
     for clue_key, entry in clues.items():
-        d = build_description(clue_key, entry)
+        d = build_description(clue_key, entry, ext_overrides)
         descriptions[clue_key] = d
-        if clue_key in SPECIFIC_OVERRIDES:
-            has_override += 1
+        if clue_key in ext_overrides:
+            has_ext_override += 1
+        elif clue_key in SPECIFIC_OVERRIDES:
+            has_internal_override += 1
         if entry.get("outcome_flags"):
             has_outcome_hint += 1
         if not d["examples"]:
             no_examples += 1
+    has_override = has_ext_override + has_internal_override
 
     output = {
         "_meta": {

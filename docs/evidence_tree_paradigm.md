@@ -689,3 +689,128 @@ PDF p7-8 — Neo4j + Cypher + GraphQL 풀스택.
 **대체**: networkx (Python 라이브러리, in-memory) 로 GDS 알고리즘만 차용 (§17.C).
 
 ---
+
+
+## 19. Phase K — 사고유형 가이드 통합 (논의 정리, 2026-05-26 byungwoo)
+
+### 19.1 사용자 비전
+
+> "사고유형이 확정되어감에 따라 단서를 기반으로 다음단서 추천말고도 우리
+> 수집가이드 만들어둔거도 참고해서 알려주면 좋을거같긴한데. 사고유형에따른
+> 가이드니까 특정 사고유형으로 확률이 기울어갈수록 특정단서가 발견될 확률이
+> 높아질테니까 오른쪽에 상위 2개 뜨는거 클릭하면 수집가이드도 엿보는게
+> 가능하면 좋지않을까 싶은데"
+
+### 19.2 기존 자산 (재활용 대상)
+
+- `core/intake/collection_guide_v2.py` — `CollectionGuideV2.generate(db, caseId)`
+- `api/intake.py` — `GET /api/guide/v2?caseId=` (case.incident_type 기반)
+- `data/collection_targets/seed_targets.json` — 사고유형별 수집 대상 카탈로그
+- 응답 구조: `phases` (Kill Chain 단계 그룹) + `targets` + `completionRate` +
+  `applied_modifiers` + `environment_warnings` + 학술 인용 (KISA·NIST·ISO)
+
+### 19.3 갭 — UNCLASSIFIED 상태 preview 불가
+
+현재 `/api/guide/v2` 는 `case.incident_type` **확정된 후** 만 작동.
+V-1 Step 3 (트리 진행 중, UNCLASSIFIED) 에서 상위 2 가설 가이드 엿보기 →
+**preview API 신설 필요**.
+
+### 19.4 사용자 결정 (AskUserQuestion 답변, 2026-05-26)
+
+| # | 결정 | 답변 |
+|---|---|---|
+| 1 | 표시 방식 | **B. Inline expand** — 우측 가설 카드 안에서 펼침 (drawer/모달 아님) |
+| 2 | 가이드 깊이 | "**해당 사고유형 수집가이드 페이지 열어서 볼 수 있게**" — 별도 페이지/모달 풀 가이드 노출 |
+| 3 | API 방향 | **B. 새 endpoint 신설** — `/api/guide/preview?caseId=&incidentType=` |
+| 4 | 단서 트리 연동 | "**가이드를 토대로 상위 옵션 하나에서 두개 더 제공**하는 형태" — 가이드 → 추가 단서 후보 2개 도출 |
+
+### 19.5 구현 계획 (Phase K — 코드 작성 전 설계)
+
+#### 단계 1 — 백엔드 preview API
+
+```python
+# api/intake.py
+@router.get("/guide/preview")
+async def guide_preview(
+    caseId: str = Query(...),
+    incidentType: IncidentType = Query(...),
+    db: Session = Depends(get_db),
+) -> dict:
+    """case 의 incident_type 대신 preview 용 임의 사고유형 가이드 생성.
+    case.system_config 환경 보정은 그대로 적용 (실제 environment 정합)."""
+    guide = CollectionGuideV2.generate_preview(db, caseId, incident_type=incidentType)
+    return {"status": "ok", "data": guide}
+```
+
+- 기존 `CollectionGuideV2.generate` 시그니처 갱신 또는 신규 메서드 `generate_preview` 추가
+- case.system_config 보정·environment_warnings 그대로 적용
+- 응답 구조는 기존 `/api/guide/v2` 와 동일 (재활용)
+
+#### 단계 2 — 프론트 inline expand UI
+
+```tsx
+// HypothesisScoreBar.tsx 확장
+interface Props {
+  ...
+  onClickIncidentType?: (type: IncidentType) => void;  // 신규
+  expandedType?: IncidentType | null;                    // 펼친 가설
+  guidePreview?: GuidePreviewData;                       // 미리보기 데이터
+}
+
+// 카드 클릭 → onClickIncidentType(type) → 부모가 expandedType 설정
+//   + API 호출하여 guidePreview 채움 → 카드 아래 expand 영역에 렌더
+```
+
+표시 항목 (간략):
+- Kill Chain phase 별 수집 대상 Top 3
+- 각 항목 우선순위 (REQUIRED / CORROBORATING)
+- environment_warnings 표시
+- **[전체 가이드 페이지 열기 →]** 버튼 — 별도 라우트 또는 모달
+
+#### 단계 3 — "가이드 기반 단서 후보 2개 추가" 산출
+
+> "가이드를 토대로 상위 옵션 하나에서 두개 더 제공" 사용자 요청 핵심.
+
+해석: 가이드의 수집 대상 → 단서 카탈로그 매핑 → IG 후보 풀 + 보조 후보 2개.
+
+매핑 룰 후보:
+- `target.kill_chain_phase` + `target.collection_keywords` → `clue_catalog` 의 적합 단서 (휴리스틱)
+- 또는 수동 매핑 표 `guide_target_to_clue.json` 신규 생성 (Phase H.2 의 outcome_flags 패턴 차용)
+
+**Phase K.1 — MVP (간략 매핑)**:
+- 가이드의 phase 별 첫 REQUIRED 항목 1~2개를 → "[+ 단서로 추가] 보조 버튼" 으로 노출
+- 사용자가 클릭하면 단서 카탈로그에서 적합 키 찾아 expand
+- 매핑 실패 시 직접 입력 안내
+
+#### 단계 4 — 풀 가이드 페이지
+
+옵션 A: 신규 라우트 `/guide/:caseId/:incidentType` (별도 페이지)
+옵션 B: V-1 Setup 내부 step (cf. Step3_Discovery 와 같은 V-1 sub-step)
+옵션 C: 풀 모달 (현재 trie 위 overlay)
+
+→ **추가 결정 필요**.
+
+### 19.6 미결 사항 (Phase K 시작 전 확인)
+
+1. **풀 가이드 페이지 위치** — 별도 라우트 vs sub-step vs 모달?
+2. **"단서 추가 2개" 매핑 방식** — 휴리스틱 vs 수동 매핑 표?
+3. **inline expand 영역 높이 제한** — 펼친 가이드가 우측 패널 너무 길게 만들지 X
+4. **UNCLASSIFIED → 확정 후 연동** — 사고유형 확정 후엔 `/api/guide/v2` 로 자동 전환?
+
+### 19.7 위험 / 영향
+
+- 기존 `/api/guide/v2` 응답 구조 그대로 재활용 — 회귀 위험 0
+- `CollectionGuideV2` 모듈 시그니처 확장 (preview 메서드) — 기존 호출부 영향 없도록 신규 메서드 추가 권장
+- HypothesisScoreBar 의 `onExpand` (8종 비교) 와 새 `onClickIncidentType` 충돌 가능 — props 분리 명확화
+
+### 19.8 진행 체크리스트 (Phase K)
+
+- [ ] **K.0** — 미결 사항 4건 (§19.6) 확정
+- [ ] **K.1** — backend `/api/guide/preview` endpoint + `CollectionGuideV2.generate_preview`
+- [ ] **K.2** — frontend `HypothesisScoreBar.onClickIncidentType` + inline expand 영역
+- [ ] **K.3** — 가이드 → 단서 후보 2개 매핑 (휴리스틱 or 수동 표)
+- [ ] **K.4** — 풀 가이드 페이지/모달 (옵션 확정 후)
+- [ ] **K.5** — 단위 테스트 + 회귀 검증 + 커밋·푸시
+
+각 단계 commit 후 paradigm doc 체크리스트 갱신.
+

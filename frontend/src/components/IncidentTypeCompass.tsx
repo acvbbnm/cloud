@@ -160,18 +160,56 @@ const IncidentTypeCompass = ({
   const center = effectiveSize / 2;
   const R = effectiveSize / 2 - 70;  // anchor 반지름 (라벨 여유 확보)
   const labelOffset = 28;            // 라벨 외곽 offset
-  // depth 별 점진 확장 — 단서가 적을 땐 중심 근처에서만 움직이고
-  // 단서 ≈ 10 부근에서 saturation. sqrt 곡선 (초반 점진 + 후반 평탄).
-  // 사용자 비전 (2026-05-26): "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고
-  //   향하는 방향이면 좋겠다" 정합.
-  const SATURATION_DEPTH = 10;
-  const MIN_RADIUS_FACTOR = 0.12;  // depth 1 → 12% 반지름까지만
+  // depth 별 점진 확장 + 사후확률 temperature 평탄화 — 단서 누적이 적을 때
+  // 모델이 너무 빨리 한 가설로 쏠리는 것을 시각만 부드럽게 표현.
+  // ⚠ Bayes update 자체는 그대로 (e2e 회귀 0) — 시각화 calibration 만 적용.
+  //
+  // 사용자 비전 (2026-05-26):
+  //   1. "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고 향하는 방향"
+  //   2. "초기 이동 방향이 너무 큼 — 한 사고유형으로 치우치는 경향"
+  //   → SATURATION_DEPTH 15 (이전 10), temperature scaling 추가.
+  //
+  // 학술 정합: P^(1/T) softmax temperature (calibration) — Platt 1999, Guo 2017.
+  const SATURATION_DEPTH = 15;
+  const MIN_RADIUS_FACTOR = 0.08;  // depth 1 → 8% 반지름 (이전 12% → 더 안쪽)
+
+  /** depth 별 무게중심 최대 반지름 — sqrt 곡선 (초반 점진 + 후반 saturation). */
   const radiusForDepth = (depth: number): number => {
     if (depth <= 0) return 0;
     const t = Math.min(1, depth / SATURATION_DEPTH);
-    // sqrt 곡선 — 초반 점진, 후반 saturation
     const factor = MIN_RADIUS_FACTOR + (0.85 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
     return R * factor;
+  };
+
+  /** depth 별 temperature — 깊을수록 T↓ (실제 분포에 가깝게).
+   *  depth 1 → T=4 (매우 평탄), depth 5 → T=2.5, depth 10 → T=1.5, depth 15+ → T=1 (그대로). */
+  const temperatureForDepth = (depth: number): number => {
+    if (depth <= 0) return 5;
+    if (depth >= SATURATION_DEPTH) return 1;
+    // 4 → 1 으로 선형 감소
+    const t = depth / SATURATION_DEPTH;
+    return 4 - 3 * t;
+  };
+
+  /** P^(1/T) 으로 분포 평탄화. T>1 = 평탄, T=1 = 그대로. */
+  const tempered = (
+    posterior: HypothesisScores,
+    T: number,
+  ): Record<string, number> => {
+    if (T <= 1) return posterior;
+    const out: Record<string, number> = {};
+    let total = 0;
+    for (const t of INCIDENT_TYPES_ORDER) {
+      const p = posterior[t] ?? 0;
+      const v = Math.pow(Math.max(0, p), 1 / T);
+      out[t] = v;
+      total += v;
+    }
+    if (total <= 0) return posterior;
+    for (const t of INCIDENT_TYPES_ORDER) {
+      out[t] = out[t] / total;
+    }
+    return out;
   };
 
   // 8 anchor — 12시 시작, 시계방향 45° 간격
@@ -191,26 +229,25 @@ const IncidentTypeCompass = ({
   }, [center, R]);
 
   // 사후확률 → 무게중심 (anchor 들의 가중평균).
-  // UNCLASSIFIED 제외 후 정규화한 분포 사용.
-  // depth 파라미터: 단서 깊이 — 점진 확장 반지름 결정 (초반 점진, 단서 10에 saturation)
+  // depth 별 temperature 평탄화 + 최대 반지름 클램프 — 초반 부드러운 진입.
   const posteriorToXY = (
     posterior: HypothesisScores,
     depth: number,
   ): { x: number; y: number } => {
-    // 사고유형 8 의 확률 정규화 (UNCLASSIFIED 제외)
-    const incidents = INCIDENT_TYPES_ORDER.map((t) => ({
-      type: t,
-      p: posterior[t] ?? 0,
-    }));
-    const total = incidents.reduce((s, e) => s + e.p, 0);
-    if (total <= 0) {
-      return { x: center, y: center };
-    }
+    // depth 별 T 적용 → 평탄화된 분포로 무게중심 계산
+    const T = temperatureForDepth(depth);
+    const calibrated = tempered(posterior, T);
+
+    // 사고유형 8 의 확률 정규화 (UNCLASSIFIED 제외 — calibrated 에서 이미 정규화됨)
+    let weightSum = 0;
+    for (const t of INCIDENT_TYPES_ORDER) weightSum += calibrated[t] ?? 0;
+    if (weightSum <= 0) return { x: center, y: center };
+
     let dx = 0;
     let dy = 0;
-    for (const { type, p } of incidents) {
-      const norm = p / total;
-      const anchor = anchors.find((a) => a.type === type)!;
+    for (const t of INCIDENT_TYPES_ORDER) {
+      const norm = (calibrated[t] ?? 0) / weightSum;
+      const anchor = anchors.find((a) => a.type === t)!;
       dx += norm * (anchor.x - center);
       dy += norm * (anchor.y - center);
     }

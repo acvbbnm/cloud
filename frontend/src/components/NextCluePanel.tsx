@@ -54,6 +54,19 @@ interface NextCluePanelProps {
    * Phase H.4 — 백엔드 scoring_mode ('bayes_net' 시 BN 활성 hint 표시).
    */
   scoringMode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
+
+  // ── Phase M.3 (2026-05-26) — Zone 2 chain mode props ──
+  /**
+   * 후보 필터링 모드.
+   * - 'standard' (기본) — 통합 IG 후보 풀 (Zone 1 동작).
+   * - 'chain'           — chainFilterHypothesis 선택 시 그 가설 변별 단서만 노출.
+   */
+  mode?: 'standard' | 'chain';
+  /**
+   * chain mode 에서 선택된 가설 — rationale 기반 필터링 키.
+   * null 이면 모든 후보 표시 + "가설 클릭하세요" 안내.
+   */
+  chainFilterHypothesis?: IncidentType | null;
 }
 
 const INCIDENT_TYPE_KO: Record<IncidentType, string> = {
@@ -206,6 +219,8 @@ const NextCluePanel = ({
   disabled,
   onRefreshCandidates,
   scoringMode,
+  mode = 'standard',
+  chainFilterHypothesis = null,
 }: NextCluePanelProps) => {
   // ── 추천 이유 상세 (explain_clue API) — 카드 클릭 시 lazy fetch + cache ──
   const [expandedClueKey, setExpandedClueKey] = useState<string | null>(null);
@@ -233,6 +248,15 @@ const NextCluePanel = ({
 
   // ── Phase D — IG 모드 (최우선) ──
   if (igCandidates) {
+    // Phase M.3 — chain mode 필터링: rationale 이 선택된 가설명으로 시작하는 후보만
+    // (rationale 포맷: `{hypothesis} 변별력 최고 (P(c|h)=...)` — info_gain.py:rank_candidates)
+    const isChainMode = mode === 'chain' && chainFilterHypothesis !== null;
+    const displayCandidates = isChainMode
+      ? igCandidates.filter((c) =>
+          c.rationale.startsWith(`${chainFilterHypothesis} `),
+        )
+      : igCandidates;
+
     return (
       <div className="border-t border-ink-700/40 pt-3">
         <div className="flex items-center justify-between mb-1.5">
@@ -243,9 +267,18 @@ const NextCluePanel = ({
                 BN
               </span>
             )}
+            {isChainMode && (
+              <span className="ml-1.5 text-[8.5px] font-mono text-emerald-300 normal-case tracking-normal border border-emerald-700/50 bg-emerald-900/30 rounded px-1 py-px">
+                chain · {INCIDENT_TYPE_KO[chainFilterHypothesis]}
+              </span>
+            )}
             {entropyBits !== undefined && (
               <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
-                entropy {entropyBits.toFixed(2)} bits · {igCandidates.length}개
+                entropy {entropyBits.toFixed(2)} bits · {displayCandidates.length}
+                {isChainMode && displayCandidates.length !== igCandidates.length && (
+                  <span className="text-ink-600">/{igCandidates.length}</span>
+                )}
+                개
               </span>
             )}
           </span>
@@ -261,6 +294,17 @@ const NextCluePanel = ({
             </button>
           )}
         </div>
+
+        {/* Phase M.3 — chain mode 활성 시 가설 변별 단서 없음 안내 */}
+        {isChainMode && displayCandidates.length === 0 && igCandidates.length > 0 && (
+          <div className="bg-emerald-900/15 border border-emerald-700/40 rounded px-2.5 py-2 text-[10.5px] text-emerald-100 leading-5 mb-2">
+            <span className="font-semibold">{INCIDENT_TYPE_KO[chainFilterHypothesis]}</span>
+            {' '}변별 단서가 현재 후보 풀에 없습니다.
+            <div className="text-[9.5px] text-ink-400 mt-1">
+              다른 가설을 클릭하거나, 위 [↻ 재계산] 으로 후보를 갱신하세요.
+            </div>
+          </div>
+        )}
 
         {igCandidates.length === 0 ? (
           <div className="bg-amber-900/15 border border-amber-700/40 rounded px-2.5 py-2 text-[10.5px] text-amber-200 leading-5">
@@ -279,9 +323,9 @@ const NextCluePanel = ({
         )}
 
         <ul className="space-y-1.5">
-          {igCandidates.map((c, i) => {
-            // 정규화 게이지 (max 기준)
-            const maxIg = Math.max(...igCandidates.map((x) => x.expected_info_gain), 0.0001);
+          {displayCandidates.map((c, i) => {
+            // 정규화 게이지 (max 기준) — chain mode 일 때도 필터된 풀 기준
+            const maxIg = Math.max(...displayCandidates.map((x) => x.expected_info_gain), 0.0001);
             const pct = Math.max(8, Math.min(100, (c.expected_info_gain / maxIg) * 100));
             const flagEntries = c.outcome_flags
               ? Object.entries(c.outcome_flags).slice(0, 4)

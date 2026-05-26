@@ -1151,9 +1151,16 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `core/intake/clue_tree_service.py:_build_response` 응답에 `zone` / `attack_chain` / `core_clue_likelihood` / `regress_suggested` 4 필드 추가
   - `tests/test_zone_logic.py` 12 케이스 PASS (depth·likelihood·회귀·chain 순)
   - 회귀 검증: `tests/` 290 passed · evidence_tree e2e 47/47 · additive e2e 47/47
-- [ ] **M.2** — 컴퍼스 동심원 시각 + 전환 애니메이션 (담당자 미정)
-- [ ] **M.3** — Zone 2 chain UI (AttackChainCard + NextCluePanel mode) (담당자 미정)
-- [ ] **M.4** — 검증 + commit·push (담당자 미정)
+- [x] **M.2** — 컴퍼스 동심원 시각 + 전환 애니메이션 (byungwoo, 2026-05-26)
+  - `types/clueTree.ts` — `AttackChainStep` 타입 + `ClueTreeResponse` 에 4 필드 추가
+  - `components/IncidentTypeCompass.tsx` — 내부 원 (R·0.5, Zone 1 경계 amber) + 외부 원 (R, Zone 2 진입 시 emerald 강조) + Zone 라벨 + 헤더 Zone 배지 + 회귀 권고 배지 + 점 zone 2 boost (최소 R·0.55) + CSS transition 부드러운 이동 + 하단 zone-aware 안내
+- [x] **M.3** — Zone 2 chain UI — AttackChainCard + NextCluePanel mode (byungwoo, 2026-05-26)
+  - `components/AttackChainCard.tsx` 신설 — Top 3 가설 Kill Chain 가로 시각화 (좌 PHISH → 우 RANSOM) + 가설 클릭 토글 + 회귀 권고 알림 + 회귀 버튼
+  - `components/NextCluePanel.tsx` — `mode='chain'` + `chainFilterHypothesis` props 추가. rationale 기반 가설 변별 단서 필터링 + 헤더 chain 배지 + 빈 결과 안내
+  - `views/V1_Setup/Step3_EvidenceTreeDiscovery.tsx` — `chainFilterHypothesis` state + Zone 2 진입 시 `AttackChainCard` 노출 + Zone 1 회귀 시 자동 필터 해제 + `regress_suggested` 1회 토스트 알림
+- [x] **M.4** — 검증 + commit·push (byungwoo, 2026-05-26)
+  - frontend: `npx tsc --noEmit` 0 errors · `npx vite build` success (657 kB, 2.73s)
+  - backend 회귀: pytest `tests/` 290 passed · evidence_tree e2e 47/47 · additive e2e 47/47
 
 **팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.
 

@@ -86,6 +86,17 @@ export interface ClueTreeConfidence {
   entropy_bits: number;
 }
 
+/**
+ * Phase M.1 — Top N 가설을 ATT&CK Kill Chain 단계 순으로 정렬한 chain 한 단계.
+ * paradigm doc §21.5 — PHISH(1) → CRED(2) → PRIV(3) → INSIDER/MISCFG(4) → AUDIT(5) → DATA(6) → RANSOM(7).
+ */
+export interface AttackChainStep {
+  hypothesis: IncidentType;
+  probability: number;
+  /** KILL_CHAIN_ORDER 매핑 단계 (1~7, 미정 시 99). */
+  kill_chain_phase: number;
+}
+
 /** 4 엔드포인트 공통 응답 스키마. */
 export interface ClueTreeResponse {
   tree: SerializedClueTree;
@@ -96,6 +107,15 @@ export interface ClueTreeResponse {
   path: ClueTreePathNode[];
   /** Phase H.4 — 백엔드 TRIAGE_MODE 값 ('bayes_net' 일 때 UI 가 ATT&CK badge 강조). */
   scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
+  // ─── Phase M.1 (2026-05-26) — 2-zone 컴퍼스 + ATT&CK Kill Chain ───
+  /** 1 = 광범위 탐색 (Zone 1), 2 = 사고유형 chain 구체화 (Zone 2). paradigm §21.4. */
+  zone?: 1 | 2;
+  /** Top 3 가설 Kill Chain 시간순 (PHISH→...→RANSOM). 비어있으면 Zone 1 미진입. */
+  attack_chain?: AttackChainStep[];
+  /** 채택된 단서 중 가장 강한 P(c|h). Zone 2 트리거 (≥0.45) — paradigm §21.4 ②. */
+  core_clue_likelihood?: number;
+  /** Zone 2 → 1 회귀 권고 (entropy ≥ 2.0 OR top1-top2 gap < 0.10) — §21.8.1. */
+  regress_suggested?: boolean;
 }
 
 /** explain_clue API 응답 (Phase H.4 + L.2 풍부 메타). */

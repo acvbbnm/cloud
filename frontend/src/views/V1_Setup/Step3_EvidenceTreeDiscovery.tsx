@@ -29,6 +29,7 @@
  */
 import { useEffect, useState } from 'react';
 
+import AttackChainCard from '@/components/AttackChainCard';
 import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
 import CluesInput from '@/components/CluesInput';
@@ -116,6 +117,33 @@ const Step3_EvidenceTreeDiscovery = ({
       setIntroOpen(true);
     }
   }, []);
+
+  // ── Phase M.3 (2026-05-26) — Zone 2 chain mode 상태 ──
+  // chainFilterHypothesis: AttackChainCard 에서 선택된 가설 (null = 미선택, 통합 풀).
+  // zone 1 으로 회귀 시 자동 해제.
+  const [chainFilterHypothesis, setChainFilterHypothesis] = useState<IncidentType | null>(
+    null,
+  );
+  // Zone 2 → Zone 1 자동 해제 (paradigm §21.8.1)
+  useEffect(() => {
+    if (treeState?.zone !== 2 && chainFilterHypothesis !== null) {
+      setChainFilterHypothesis(null);
+    }
+  }, [treeState?.zone, chainFilterHypothesis]);
+  // 회귀 권고 토스트 1회 알림 (state 진입 시점 감지)
+  const [regressNotified, setRegressNotified] = useState(false);
+  useEffect(() => {
+    if (treeState?.regress_suggested && !regressNotified) {
+      showToast(
+        '⤺ 회귀 권고 — 가설이 다시 모호해졌습니다. 광범위 탐색 (Zone 1) 으로 복귀 권장',
+        4500,
+      );
+      setRegressNotified(true);
+    }
+    if (!treeState?.regress_suggested && regressNotified) {
+      setRegressNotified(false);
+    }
+  }, [treeState?.regress_suggested, regressNotified, showToast]);
 
   // ── Phase K (2026-05-26 byungwoo) — 가설 가이드 미리보기 상태 ──
   // HypothesisScoreBar 의 행 클릭 → 가설 가이드 preview 로딩 → inline expand.
@@ -508,6 +536,9 @@ const Step3_EvidenceTreeDiscovery = ({
               primaryIncident={treeState.confidence.primary}
               confidenceReached={treeState.confidence.confidence_reached}
               disabled={loading || isSubmitting}
+              zone={treeState.zone ?? 1}
+              regressSuggested={treeState.regress_suggested ?? false}
+              coreClueLikelihood={treeState.core_clue_likelihood ?? 0}
             />
           )}
         </Card>
@@ -558,6 +589,26 @@ const Step3_EvidenceTreeDiscovery = ({
           </div>
         </Card>
 
+        {/* Phase M.3 — Zone 2 진입 시 복합 가설 chain (paradigm §21.5) */}
+        {treeState.zone === 2 && treeState.attack_chain && treeState.attack_chain.length > 0 && (
+          <Card
+            title="🗺 Zone 2 — 복합 가설 chain"
+            subtitle="ATT&CK Kill Chain 시간순 · 카드 클릭 → 해당 가설 변별 단서 필터"
+          >
+            <AttackChainCard
+              chain={treeState.attack_chain}
+              selectedHypothesis={chainFilterHypothesis}
+              onSelectHypothesis={setChainFilterHypothesis}
+              regressSuggested={treeState.regress_suggested ?? false}
+              onRequestRegress={() => {
+                setChainFilterHypothesis(null);
+                showToast('Zone 1 으로 복귀 — 광범위 탐색 모드', 2800);
+              }}
+              disabled={loading || isSubmitting}
+            />
+          </Card>
+        )}
+
         <Card title="다음 단서 후보" subtitle="Information Gain 순">
           <NextCluePanel
             scores={scoresForBar}
@@ -567,6 +618,8 @@ const Step3_EvidenceTreeDiscovery = ({
             onRefreshCandidates={() => refreshCandidates(caseId)}
             disabled={loading || isSubmitting}
             scoringMode={treeState.scoring_mode}
+            mode={treeState.zone === 2 ? 'chain' : 'standard'}
+            chainFilterHypothesis={chainFilterHypothesis}
           />
         </Card>
 

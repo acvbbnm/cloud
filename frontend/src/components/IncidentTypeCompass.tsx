@@ -49,6 +49,13 @@ interface IncidentTypeCompassProps {
   headerRight?: React.ReactNode;
   /** 비활성 (loading). */
   disabled?: boolean;
+  // ─── Phase M.2 (2026-05-26) — 2-zone 컴퍼스 (paradigm §21·§22.3) ───
+  /** 1 = 광범위 탐색 (내부 원 안), 2 = 사고유형 chain 구체화 (외부 원 부근). */
+  zone?: 1 | 2;
+  /** Zone 2 → 1 회귀 권고 — 헤더 알림. */
+  regressSuggested?: boolean;
+  /** 보스 단서 likelihood (시각화 보조 — 0 ~ 1). */
+  coreClueLikelihood?: number;
 }
 
 const INCIDENT_TYPES_ORDER: IncidentType[] = [
@@ -135,6 +142,9 @@ const IncidentTypeCompass = ({
   title = '사고유형 컴퍼스',
   headerRight,
   disabled = false,
+  zone = 1,
+  regressSuggested = false,
+  coreClueLikelihood = 0,
 }: IncidentTypeCompassProps) => {
   // ── 반응형: 부모 컨테이너 width 추적 ──
   const containerRef = useRef<HTMLDivElement>(null);
@@ -259,6 +269,18 @@ const IncidentTypeCompass = ({
       dx *= scale;
       dy *= scale;
     }
+    // Phase M.2 — Zone 2 진입 시 점을 외부 원 부근으로 끌어올림 (paradigm §21.6).
+    // 회귀 권고 중에는 boost 해제 (자연 위치로 복귀 — 사용자에게 모호함 시각화).
+    // 방향은 보존하고 반지름만 최소 R*0.55 보장 (내부 원 밖, 외부 원 근처).
+    if (zone === 2 && !regressSuggested && r > 0) {
+      const minR = R * 0.55;
+      const curR = Math.sqrt(dx * dx + dy * dy);
+      if (curR < minR) {
+        const scale = minR / curR;
+        dx *= scale;
+        dy *= scale;
+      }
+    }
     return { x: center + dx, y: center + dy };
   };
 
@@ -308,6 +330,30 @@ const IncidentTypeCompass = ({
           {title}
           <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
             depth {Math.max(0, trail.length - 1)} · 8 사고유형 360°
+            {/* Phase M.2 — Zone 배지 */}
+            <span
+              className={
+                'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold ' +
+                (zone === 2 && !regressSuggested
+                  ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
+                  : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
+              }
+              title={
+                zone === 2 && !regressSuggested
+                  ? '코어 단서 발견 — 사고유형 chain 구체화 단계'
+                  : '광범위 탐색 — 단서 누적 중'
+              }
+            >
+              {zone === 2 && !regressSuggested ? '🗺 Zone 2' : 'Zone 1'}
+            </span>
+            {regressSuggested && (
+              <span
+                className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold bg-amber-900/40 text-amber-300 border border-amber-600/40"
+                title="entropy 상승 또는 가설 격차 축소 — 광범위 탐색 복귀 권고"
+              >
+                ⤺ 회귀 권고
+              </span>
+            )}
             {topAnchor && (
               <>
                 {' '}· 1위
@@ -339,25 +385,63 @@ const IncidentTypeCompass = ({
           viewBox={`0 0 ${effectiveSize} ${effectiveSize}`}
           style={{ display: 'block' }}
         >
-          {/* 단위원 외곽 (점선) */}
+          {/* 단위원 외곽 (Zone 2 영역 경계) — zone===2 일 때 강조 */}
           <circle
             cx={center}
             cy={center}
             r={R}
             fill="none"
-            stroke="rgba(120, 130, 150, 0.18)"
-            strokeWidth={1}
-            strokeDasharray="3 4"
+            stroke={
+              zone === 2 && !regressSuggested
+                ? 'rgba(38, 194, 129, 0.55)'
+                : 'rgba(120, 130, 150, 0.18)'
+            }
+            strokeWidth={zone === 2 && !regressSuggested ? 1.5 : 1}
+            strokeDasharray={zone === 2 && !regressSuggested ? '6 4' : '3 4'}
+            style={{ transition: 'stroke 320ms ease, stroke-width 320ms ease' }}
           />
-          {/* 내부 보조원 — 50% 신뢰 영역 */}
+          {/* Phase M.2 — 내부 보조원 = Zone 1 경계 (paradigm §21.6) */}
           <circle
             cx={center}
             cy={center}
             r={R * 0.5}
             fill="none"
-            stroke="rgba(120, 130, 150, 0.08)"
+            stroke={
+              zone === 1
+                ? 'rgba(255, 149, 0, 0.32)'
+                : 'rgba(120, 130, 150, 0.10)'
+            }
             strokeWidth={1}
+            strokeDasharray="4 4"
+            style={{ transition: 'stroke 320ms ease' }}
           />
+          {/* Zone 라벨 — 내부 원 위쪽 (Zone 1) 또는 외부 원 위쪽 (Zone 2) */}
+          {zone === 1 && (
+            <text
+              x={center}
+              y={center - R * 0.5 - 6}
+              fill="rgba(255, 149, 0, 0.6)"
+              fontSize={9}
+              fontWeight={600}
+              textAnchor="middle"
+              style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.05em' }}
+            >
+              Zone 1 · 광범위 탐색
+            </text>
+          )}
+          {zone === 2 && !regressSuggested && (
+            <text
+              x={center}
+              y={center - R - 10}
+              fill="#26C281"
+              fontSize={10.5}
+              fontWeight={700}
+              textAnchor="middle"
+              style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em' }}
+            >
+              🗺 Zone 2 · 사고유형 chain 구체화
+            </text>
+          )}
 
           {/* 8 방향 분할선 */}
           {anchors.map((a) => (
@@ -484,6 +568,7 @@ const IncidentTypeCompass = ({
                   fill={isCurrent ? '#26C281' : isRoot ? '#FF9500' : 'rgba(38, 194, 129, 0.55)'}
                   stroke={isCurrent ? '#34D399' : 'rgba(38, 194, 129, 0.8)'}
                   strokeWidth={isCurrent ? 1.5 : 1}
+                  style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
                 />
                 {/* depth 번호 */}
                 {!isRoot && (
@@ -550,9 +635,24 @@ const IncidentTypeCompass = ({
           </div>
         )}
       </div>
-      {/* 하단 안내 */}
+      {/* 하단 안내 — zone 별 메시지 (paradigm §21.4) */}
       <div className="px-2.5 py-1.5 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
-        🧭 사후확률 가중 무게중심 — 단서가 누적될수록 한 사고유형 방향으로 수렴
+        {zone === 2 && !regressSuggested ? (
+          <>
+            🗺 <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%).
+            Top 가설 chain 으로 다음 단서를 좁혀가세요
+          </>
+        ) : regressSuggested ? (
+          <>
+            ⤺ <span className="text-amber-300 font-semibold">회귀 권고</span> — entropy 상승/가설 격차 축소로 다시 모호.
+            Zone 1 으로 돌아가 광범위 탐색 권장
+          </>
+        ) : (
+          <>
+            🧭 <span className="text-amber-300 font-semibold">Zone 1</span> — 사후확률 가중 무게중심.
+            맵 탐색 (depth ≥ 3) + 코어 단서 (P(c|h) ≥ 45%) 모두 충족 시 Zone 2 진입
+          </>
+        )}
         {confidenceReached && primaryIncident && (
           <span className="ml-2 text-brand-teal font-semibold">
             · {INCIDENT_KO[primaryIncident]} 방향 도달 ✓

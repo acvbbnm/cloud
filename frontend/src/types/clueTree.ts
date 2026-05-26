@@ -98,7 +98,7 @@ export interface ClueTreeResponse {
   scoring_mode?: 'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net';
 }
 
-/** explain_clue API 응답 (Phase H.4). */
+/** explain_clue API 응답 (Phase H.4 + L.2 풍부 메타). */
 export interface ExplainClueResponse {
   clue_key: string;
   techniques: string[];
@@ -106,6 +106,24 @@ export interface ExplainClueResponse {
   per_technique_likelihood?: Record<string, HypothesisScores>;
   aggregated_likelihood: HypothesisScores;
   source: 'bn' | 'legacy_fallback';
+
+  // ── Phase L.2 (2026-05-26) — 풍부 메타 (clue_descriptions.json) ──
+  /** 단서의 정의·의미 (한국어 풀어쓰기). */
+  description?: string;
+  /** CSP 콘솔에서 실제로 찾는 경로 (NCP·NHN·외부 검증). */
+  how_to_find?: {
+    ncp?: string;
+    nhn?: string;
+    verify?: string;
+  };
+  /** 카테고리별 대표 사례 (IP·해시·도메인 등). */
+  examples?: string[];
+  /** 사고유형 가중치 분석 → 한국어 변별 풀이. */
+  discrimination_explanation?: string;
+  /** 학술 인용 (MITRE T-id, KISA, CSA 등). */
+  academic_source?: string;
+  /** ISO/IEC 27035 단계 (Assess & Decide 등). */
+  iso_framework?: string | null;
 }
 
 /** POST /api/clue-tree/expand 요청. */

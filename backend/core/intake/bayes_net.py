@@ -349,8 +349,44 @@ def bn_evaluate_sequence(
     return posterior, trace
 
 
+_descriptions_cache: Optional[dict] = None
+
+
+def load_clue_descriptions() -> dict:
+    """Phase L.1 (2026-05-26) — 단서 풍부 메타 로드 + 캐시.
+
+    `data/triage/clue_descriptions.json` 의 `descriptions` 매핑.
+    파일 없으면 빈 dict (탈락 시 explain_clue 가 우아하게 폴백).
+    """
+    global _descriptions_cache
+    if _descriptions_cache is not None:
+        return _descriptions_cache
+
+    path = Path(__file__).resolve().parent.parent.parent / "data" / "triage" / "clue_descriptions.json"
+    if not path.exists():
+        logger.warning("clue_descriptions.json 없음 — 메타 없이 동작: %s", path)
+        _descriptions_cache = {}
+        return _descriptions_cache
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        _descriptions_cache = data.get("descriptions", {})
+    except Exception as e:  # noqa: BLE001
+        logger.error("clue_descriptions.json 로드 실패: %s", e)
+        _descriptions_cache = {}
+    return _descriptions_cache
+
+
+def invalidate_descriptions_cache() -> None:
+    """테스트·핫리로드용."""
+    global _descriptions_cache
+    _descriptions_cache = None
+
+
 def explain_clue(clue_key: str) -> dict:
-    """단서의 BN 추론 trace 반환 — 디버깅·UI 설명용.
+    """단서의 BN 추론 trace + 풍부 메타 반환 — UI 설명용.
+
+    Phase L.2 (2026-05-26 byungwoo) — clue_descriptions.json 통합. 응답 구조:
 
     {
       "clue_key": str,
@@ -359,16 +395,34 @@ def explain_clue(clue_key: str) -> dict:
       "per_technique_likelihood": {tid: {h: prob, ...}, ...},
       "aggregated_likelihood": {h: prob, ...},
       "source": str,               # bn | legacy_fallback
+
+      # ── L.2 신규: clue_descriptions.json 메타 ──
+      "description": str,
+      "how_to_find": {"ncp": str, "nhn": str, "verify": str},
+      "examples": [str],
+      "discrimination_explanation": str,
+      "academic_source": str,
+      "iso_framework": str | None,
     }
     """
     mapping_root = load_clue_to_attack()
     mapping = mapping_root.get("mappings", {}).get(clue_key)
     lk = clue_likelihood_via_bn(clue_key)
+    descriptions = load_clue_descriptions()
+    desc = descriptions.get(clue_key, {})
 
     out: dict = {
         "clue_key": clue_key,
         "aggregated_likelihood": lk,
+        # L.2 — 풍부 메타 (Phase L.1 자동 생성 + 핵심 단서 수동 보강)
+        "description": desc.get("description", ""),
+        "how_to_find": desc.get("how_to_find", {"ncp": "", "nhn": "", "verify": ""}),
+        "examples": desc.get("examples", []),
+        "discrimination_explanation": desc.get("discrimination_explanation", ""),
+        "academic_source": desc.get("academic_source", ""),
+        "iso_framework": desc.get("iso_framework"),
     }
+
     if not mapping or not mapping.get("techniques"):
         out["techniques"] = []
         out["confidence"] = mapping.get("confidence", "n/a") if mapping else "n/a"

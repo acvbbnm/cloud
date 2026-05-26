@@ -816,3 +816,91 @@ interface Props {
 
 Phase K 완료 — 다음 commit 으로 paradigm doc + 모든 K.2~K.5 변경 일괄 push.
 
+---
+
+## 20. Phase L — 단서 메타 풍부화 (수사관 가독성)
+
+> 작성: 2026-05-26, byungwoo
+> 상태: 완료
+> 사용자 피드백: *"다음 단서들 후보에 대한 설명은 어디서 보니. 저게 뭔지 알아야 저걸 찾아보고 단서 후보로 올릴 거 아니야. 저게 어떤 단서이고 왜 연관 있는지를 자세하게 설명해 줄 수 있어야 하는 거 아니니"*
+
+### 20.1 문제 진단
+
+기존 NextCluePanel 의 후보 카드는 다음만 표시:
+- 라벨 ("Tor·VPN exit node 출처")
+- category · clue_key
+- IG 점수
+- 한 줄 rationale ("CRED 변별력 최고 P(c|h)=0.45")
+
+→ 수사관이 "**이 단서 실제로 어디서 찾지?**" 알 수 없음. 후보 채택 판단 불가.
+
+### 20.2 5 메타 필드 (Phase L.1)
+
+`scripts/build_clue_descriptions.py` 자동 생성 → `data/triage/clue_descriptions.json`:
+
+| 필드 | 내용 | 자동 생성 룰 |
+|---|---|---|
+| `description` | 단서의 정의·의미 | label + outcome_flags 힌트 결합 |
+| `how_to_find` | `{ncp, nhn, verify}` CSP 경로 | 카테고리별 템플릿 + 핵심 단서 수동 override |
+| `examples` | 대표 사례 | 카테고리별 예시 풀 (Tor exit IP, .locked 파일 등) |
+| `discrimination_explanation` | 변별력 한국어 풀이 | weights 분석 (강/중/약/무영향 4단계) |
+| `academic_source` | 학술 인용 | weight_source 분리 (ISO 프레임워크 별도) |
+
+**자동 생성 + 핵심 6 단서 수동 override** (사용자 결정 C — CSP 구체 경로):
+- `IP_ADDRESS:tor_vpn`, `IP_ADDRESS:non_korean`
+- `ACCOUNT:mfa_disabled`, `ACCOUNT:newly_created`
+- `SERVICE:cloud_trail`
+- `Q6-RANSOM:note_found`
+
+### 20.3 백엔드 통합 (Phase L.2)
+
+`core/intake/bayes_net.py:explain_clue` 응답에 5 메타 동봉:
+```python
+{
+  "clue_key": "IP_ADDRESS:tor_vpn",
+  "techniques": ["T1090.003"],
+  "aggregated_likelihood": {...},
+  "source": "bn",
+  # L.2 신규
+  "description": "접속 IP 가 공개 Tor 출구 노드 또는 익명 VPN ...",
+  "how_to_find": {"ncp": "Cloud Insight → ...", "nhn": "...", "verify": "..."},
+  "examples": ["115.91.214.5 (Tor exit, KR)", ...],
+  "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +30점. ...",
+  "academic_source": "MITRE T1090.003",
+  "iso_framework": "ISO 27035-1:2023 Assess & Decide",
+}
+```
+
+`load_clue_descriptions()` 캐시 — `clue_descriptions.json` 1회 로드 후 메모리.
+
+### 20.4 프론트 UI (Phase L.3)
+
+NextCluePanel 의 기존 ▼ 추천 이유 expand 영역에 5 색상 코딩 섹션:
+
+| 섹션 | 색상 | 내용 |
+|---|---|---|
+| 📖 단서 정의 | brand-teal | description |
+| 🔍 어디서 찾나 | blue | NCP/NHN/verify 3행 |
+| 📋 예시 | amber | examples 리스트 (mono font) |
+| 💡 왜 변별력 있나 | emerald | discrimination_explanation |
+| 📚 학술 근거 | purple | academic_source + iso_framework |
+
+기존 "추론 경로 (BN vs legacy)" + "ATT&CK 기법별 영향" + "Top-3 likelihood" 그대로 보존.
+
+### 20.5 검증
+
+- 143 단서 모두 메타 생성 (override 6 + outcome 힌트 94 + 예시 0 누락)
+- pytest 74/74 PASS (clue_tree + clue_tree_service + info_gain + bayes_net)
+- additive e2e 47/47 PASS (회귀 0)
+- API live: `IP_ADDRESS:tor_vpn` 응답에 description / NCP 경로 / examples / academic_source 모두 동봉 확인
+
+### 20.6 산출물
+
+| 파일 | 줄수 | 역할 |
+|---|---|---|
+| `scripts/build_clue_descriptions.py` | 432 | 자동 생성 스크립트 + override 6건 |
+| `data/triage/clue_descriptions.json` | 143 entries | 메타 산출물 |
+| `core/intake/bayes_net.py` | +52 | load_clue_descriptions + explain_clue 확장 |
+| `frontend/src/types/clueTree.ts` | +18 | ExplainClueResponse 풍부 메타 필드 |
+| `frontend/src/components/NextCluePanel.tsx` | +95 | 5 섹션 UI |
+

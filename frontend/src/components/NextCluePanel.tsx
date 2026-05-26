@@ -413,7 +413,93 @@ const NextCluePanel = ({
                       const perTech = ex.per_technique_likelihood ?? {};
                       return (
                         <>
-                          {/* 추론 경로 */}
+                          {/* Phase L.2 — 📖 정의 */}
+                          {ex.description && (
+                            <div className="bg-ink-950/50 border-l-2 border-brand-teal/60 pl-2 py-1">
+                              <div className="text-[9px] text-brand-teal font-semibold mb-0.5">
+                                📖 단서 정의
+                              </div>
+                              <div className="text-[10px] text-ink-200 leading-4">
+                                {ex.description}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Phase L.2 — 🔍 어디서 찾나 (NCP/NHN/verify) */}
+                          {ex.how_to_find && (ex.how_to_find.ncp || ex.how_to_find.nhn) && (
+                            <div className="bg-ink-950/50 border-l-2 border-blue-500/60 pl-2 py-1">
+                              <div className="text-[9px] text-blue-300 font-semibold mb-0.5">
+                                🔍 어디서 찾나
+                              </div>
+                              <div className="space-y-0.5 text-[9.5px] leading-4">
+                                {ex.how_to_find.ncp && (
+                                  <div>
+                                    <span className="text-blue-400 font-mono">NCP</span>{' '}
+                                    <span className="text-ink-300">{ex.how_to_find.ncp}</span>
+                                  </div>
+                                )}
+                                {ex.how_to_find.nhn && (
+                                  <div>
+                                    <span className="text-blue-400 font-mono">NHN</span>{' '}
+                                    <span className="text-ink-300">{ex.how_to_find.nhn}</span>
+                                  </div>
+                                )}
+                                {ex.how_to_find.verify && (
+                                  <div>
+                                    <span className="text-ink-500 font-mono">검증</span>{' '}
+                                    <span className="text-ink-400">{ex.how_to_find.verify}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Phase L.2 — 📋 예시 */}
+                          {ex.examples && ex.examples.length > 0 && (
+                            <div className="bg-ink-950/50 border-l-2 border-amber-500/60 pl-2 py-1">
+                              <div className="text-[9px] text-amber-300 font-semibold mb-0.5">
+                                📋 예시
+                              </div>
+                              <ul className="text-[9.5px] text-ink-300 leading-4 space-y-0.5">
+                                {ex.examples.slice(0, 4).map((eg, i) => (
+                                  <li key={i} className="font-mono">
+                                    <span className="text-ink-500">·</span> {eg}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Phase L.2 — 💡 변별 풀이 */}
+                          {ex.discrimination_explanation && (
+                            <div className="bg-ink-950/50 border-l-2 border-emerald-500/60 pl-2 py-1">
+                              <div className="text-[9px] text-emerald-300 font-semibold mb-0.5">
+                                💡 왜 변별력 있나
+                              </div>
+                              <div className="text-[9.5px] text-ink-300 leading-4">
+                                {ex.discrimination_explanation}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Phase L.2 — 📚 학술 근거 */}
+                          {(ex.academic_source || ex.iso_framework) && (
+                            <div className="bg-ink-950/50 border-l-2 border-purple-500/60 pl-2 py-1">
+                              <div className="text-[9px] text-purple-300 font-semibold mb-0.5">
+                                📚 학술 근거
+                              </div>
+                              <div className="text-[9.5px] text-ink-400 leading-4">
+                                {ex.academic_source}
+                                {ex.iso_framework && (
+                                  <div className="text-[9px] text-ink-500 mt-0.5 font-mono">
+                                    ISO 프레임워크: {ex.iso_framework}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 기존 — 추론 경로 */}
                           <div className="text-[9.5px] text-ink-400 leading-4">
                             <span className="text-ink-500">추론 경로 — </span>
                             {ex.source === 'bn' ? (

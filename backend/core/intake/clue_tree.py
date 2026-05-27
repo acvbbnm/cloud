@@ -27,7 +27,45 @@ import math
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
+
+
+# ─────────────────────────────────────────────────────────────
+# 모듈 상수 (R.1, 2026-05-28, hard) — 매직 문자열·숫자 외부화
+# ─────────────────────────────────────────────────────────────
+#
+# 배경 (docs/하드코딩_감사_P18_P19_2026-05-28.md §2 항목 #3·#4·#6·#7):
+#   root sentinel·source enum·UNCLASSIFIED 필터·INCIDENT_COUNT 가 여러 곳에
+#   박혀 있어 DRY 위반 + 추가/변경 시 동기화 비용. 모듈 상수로 한 곳에서 관리.
+
+# Root 노드 sentinel — make_root + heal_tree_invariants 양쪽에서 사용.
+ROOT_CLUE_KEY: str = "__ROOT__"
+ROOT_CATEGORY: str = "ROOT"
+
+# 사고유형 개수 (UNCLASSIFIED 제외 = "real" 사고유형 수, dev3 C-1 풀세트 8종).
+# entropy 최대값 log2(N) 계산에 사용. types/index.ts 의 IncidentType 길이 - 1 과 일치.
+INCIDENT_COUNT: int = 8
+
+# Posterior 분석 시 제외할 가설 키 (sentinel — 분류 안 됨 상태).
+# entropy 계산·confidence 평가에서 일관 제외. 추가 sentinel 생기면 여기만 추가.
+SENTINEL_HYPOTHESIS_KEYS: frozenset[str] = frozenset({"UNCLASSIFIED"})
+
+# 단서 채택 출처 enum — types narrowing 으로 IDE/mypy 가 오타 차단.
+#   system         : make_root 가 만든 가상 ROOT 노드
+#   tree_candidate : children_candidates 클릭
+#   direct_input   : 사용자 직접 입력
+#   log_analysis   : 로그 분석 결과
+#   heal           : heal_tree_invariants 가 root 재생성한 경우 (P.19, hard)
+ClueSource = Literal["system", "tree_candidate", "direct_input", "log_analysis", "heal"]
+
+
+def real_hypotheses(posterior: dict[str, float]) -> dict[str, float]:
+    """sentinel(UNCLASSIFIED 등) 제외한 실제 사고유형 사후확률만 반환.
+
+    R.1 (hard) — entropy_of_posterior + evaluate_confidence 의 중복 필터를 DRY 통합.
+    sentinel 키가 추가될 때 SENTINEL_HYPOTHESIS_KEYS 한 곳만 수정하면 모두 반영.
+    """
+    return {k: v for k, v in posterior.items() if k not in SENTINEL_HYPOTHESIS_KEYS}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -69,7 +107,7 @@ class ClueTreeNode:
     category: str
     value: str
     label: str
-    source: str  # "tree_candidate" | "direct_input" | "log_analysis"
+    source: ClueSource  # R.1 (hard) — Literal 타입화 (위 모듈 상수 ClueSource 참조)
     # 베이즈 갱신 결과
     score_delta: dict[str, float] = field(default_factory=dict)
     posterior_after: dict[str, float] = field(default_factory=dict)
@@ -123,11 +161,11 @@ def make_root(case_id: str, initial_posterior: dict[str, float]) -> ClueTree:
         node_id=root_id,
         parent_id=None,
         depth=0,
-        clue_key="__ROOT__",
-        category="ROOT",
+        clue_key=ROOT_CLUE_KEY,  # R.1 — 모듈 상수
+        category=ROOT_CATEGORY,
         value="initial",
         label="수사 시작 (uniform prior 1/8)",
-        source="system",
+        source="system",  # ClueSource Literal — 가상 ROOT 노드
         score_delta={},
         posterior_after=dict(initial_posterior),
         accepted_at=now,
@@ -213,12 +251,14 @@ def set_candidates(
 def posterior_entropy(posterior: dict[str, float]) -> float:
     """사후확률 분포의 Shannon entropy (bits).
 
-    UNCLASSIFIED 는 제외. 0 ≤ H ≤ log2(8) = 3.0 bits.
+    sentinel(UNCLASSIFIED) 는 제외. 0 ≤ H ≤ log2(INCIDENT_COUNT) bits.
+
+    R.1 (hard) — real_hypotheses 헬퍼 + INCIDENT_COUNT 상수 사용으로 매직 제거.
     """
-    p = [v for k, v in posterior.items() if k != "UNCLASSIFIED" and v > 0]
+    p = [v for v in real_hypotheses(posterior).values() if v > 0]
     s = sum(p)
     if s <= 0:
-        return math.log2(8)  # 정보 없음 = 최대 entropy
+        return math.log2(INCIDENT_COUNT)  # 정보 없음 = 최대 entropy
     p = [x / s for x in p]
     return -sum(x * math.log2(x) for x in p if x > 0)
 
@@ -268,8 +308,9 @@ def evaluate_confidence(
 
     트리 자동 종료 X — UI 에 알림 카드만 노출 (paradigm doc §16).
     """
+    # R.1 (hard) — real_hypotheses 헬퍼로 sentinel 일관 제외
     ranked = sorted(
-        [(h, p) for h, p in posterior.items() if h != "UNCLASSIFIED"],
+        real_hypotheses(posterior).items(),
         key=lambda x: -x[1],
     )
 
@@ -455,8 +496,8 @@ def heal_tree_invariants(tree: ClueTree, *, logger=None) -> int:
             node_id=tree.root_id,
             parent_id=None,
             depth=0,
-            clue_key="__ROOT__",
-            category="ROOT",
+            clue_key=ROOT_CLUE_KEY,  # R.1 — 모듈 상수 (make_root 와 통일)
+            category=ROOT_CATEGORY,
             value="recreated",
             label="수사 시작 (heal: 복구된 root)",
             source="heal",

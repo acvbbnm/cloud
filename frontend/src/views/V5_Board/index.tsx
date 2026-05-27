@@ -276,14 +276,19 @@ const V5Board = () => {
 
         <div className="flex gap-4">
           <div className="flex-1 min-w-0 flex flex-col gap-3">
-            <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
+            {/* Phase P.7 — 옛 BoardCanvas (백엔드 미연동, 카드 시각화) 는 V-2
+                cards 가 있을 때만 노출. 메인 보드는 아래 ChainGraphCanvas. */}
+            {(cards.length > 0 || pendingLog) && (
+              <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
+            )}
 
-            {/* 보드 노드 + 엣지 (SVG 그래프, UF-04) */}
+            {/* 메인 보드 — ATT&CK + 단서 + 엣지 통합 그래프 (SVG, UF-04) */}
             <Card
-              title={<> 공격 체인 그래프 (chain_nodes + chain_edges)</>}
+              title={<>🗺 수사 보드 (단서 · ATT&CK · 엣지)</>}
               subtitle={
                 <span className="text-[10.5px] text-ink-400">
-                  노드 클릭 = 상세 표시 · 엣지 모드에서 두 노드 연속 클릭 = 화살표 생성
+                  좌측 LogPanel 의 🔍 단서를 드래그해서 떨어뜨리기 · 노드 클릭 = 상세 ·
+                  엣지 모드에서 두 노드 연속 클릭 = 화살표
                 </span>
               }
               action={

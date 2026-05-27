@@ -13,15 +13,22 @@
  *   - 사후확률 분포의 2D barycentric 투영
  *   - "어두운 맵 밝히기" (paradigm §1) 메타포의 직접 구현
  *
- * 8 사고유형 시계방향 배치 (12시 시작):
- *     12  CREDENTIAL_THEFT
- *   1:30  PRIVILEGE_ESCALATION
- *      3  DATA_EXFILTRATION
- *   4:30  AUDIT_LOG_TAMPERING
- *      6  RANSOMWARE
- *   7:30  MISCONFIG_EXPOSURE
- *      9  PHISH_INITIAL_ACCESS
- *  10:30  INSIDER_THREAT
+ * 8 사고유형 시계방향 배치 (12시 시작, Phase P 재배치 — KBW 2026-05-27).
+ * MITRE Cloud Kill Chain 시간순 (Initial Access → Impact) 으로 인접 사고유형이
+ * 의미상 연결되도록 재정렬. 수사 보드 피드백 "맵 인접 배치 확인" 응답.
+ *
+ *     12  PHISH_INITIAL_ACCESS    (Phase 1, Initial Access)
+ *   1:30  CREDENTIAL_THEFT        (Phase 2, Credential Access)
+ *      3  PRIVILEGE_ESCALATION    (Phase 3, Privilege Esc.)
+ *   4:30  INSIDER_THREAT          (Phase 4, Discovery/Lateral)
+ *      6  MISCONFIG_EXPOSURE      (Phase 4, Discovery/Lateral)
+ *   7:30  AUDIT_LOG_TAMPERING     (Phase 5, Defense Evasion)
+ *      9  DATA_EXFILTRATION       (Phase 6, Exfiltration)
+ *  10:30  RANSOMWARE              (Phase 7, Impact)
+ *
+ * 인접성:
+ *   PHISH ↔ CRED ↔ PRIV ↔ INSIDER ↔ MISCFG ↔ AUDIT ↔ DATA ↔ RANSOM
+ *   모두 Kill Chain 순서로 ±1 단계 차이 (시계방향 자연 흐름).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -58,16 +65,41 @@ interface IncidentTypeCompassProps {
   coreClueLikelihood?: number;
 }
 
+// Phase P (KBW, 2026-05-27) — Kill Chain 시간순 시계방향 재배치.
 const INCIDENT_TYPES_ORDER: IncidentType[] = [
-  'CREDENTIAL_THEFT',      // 12시
-  'PRIVILEGE_ESCALATION',  // 1:30
-  'DATA_EXFILTRATION',     // 3시
-  'AUDIT_LOG_TAMPERING',   // 4:30
-  'RANSOMWARE',            // 6시
-  'MISCONFIG_EXPOSURE',    // 7:30
-  'PHISH_INITIAL_ACCESS',  // 9시
-  'INSIDER_THREAT',        // 10:30
+  'PHISH_INITIAL_ACCESS',  // 12시   · Phase 1 · Initial Access
+  'CREDENTIAL_THEFT',      // 1:30   · Phase 2 · Credential Access
+  'PRIVILEGE_ESCALATION',  // 3시    · Phase 3 · Privilege Esc.
+  'INSIDER_THREAT',        // 4:30   · Phase 4 · Discovery/Lateral
+  'MISCONFIG_EXPOSURE',    // 6시    · Phase 4 · Discovery/Lateral
+  'AUDIT_LOG_TAMPERING',   // 7:30   · Phase 5 · Defense Evasion
+  'DATA_EXFILTRATION',     // 9시    · Phase 6 · Exfiltration
+  'RANSOMWARE',            // 10:30  · Phase 7 · Impact
 ];
+
+/** 사고유형별 Kill Chain phase (1~7). 컴퍼스 라벨 + 인접 검증용. */
+const KILL_CHAIN_PHASE: Record<IncidentType, number> = {
+  PHISH_INITIAL_ACCESS: 1,
+  CREDENTIAL_THEFT: 2,
+  PRIVILEGE_ESCALATION: 3,
+  INSIDER_THREAT: 4,
+  MISCONFIG_EXPOSURE: 4,
+  AUDIT_LOG_TAMPERING: 5,
+  DATA_EXFILTRATION: 6,
+  RANSOMWARE: 7,
+  UNCLASSIFIED: 99,
+};
+
+/** Stage 별 trail 색 — Phase P (KBW, 2026-05-27) 사용자 피드백
+ *  "다시 중앙에서 시작 다른색 사용해서 다음 트리라는 인상" */
+const STAGE_COLORS: Record<number, { fill: string; stroke: string; label: string }> = {
+  1: { fill: '#26C281', stroke: '#34D399', label: 'Stage 1' },
+  2: { fill: '#5BA3F0', stroke: '#7BBAFA', label: 'Stage 2' },
+  3: { fill: '#A56BE6', stroke: '#BB87F0', label: 'Stage 3' },
+  4: { fill: '#E66BC2', stroke: '#F087D0', label: 'Stage 4' },
+};
+const stageColor = (stage: number) =>
+  STAGE_COLORS[stage] ?? STAGE_COLORS[4];
 
 // 사고유형별 한국어 라벨 + 색상
 const INCIDENT_KO: Record<IncidentType, string> = {
@@ -112,6 +144,8 @@ interface TrailPoint {
   label: string;
   depth: number;
   posterior: HypothesisScores;
+  /** Phase P (KBW, 2026-05-27) — 노드 stage. */
+  stage: number;
 }
 
 const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -269,35 +303,77 @@ const IncidentTypeCompass = ({
       dx *= scale;
       dy *= scale;
     }
-    // Phase M.2 → P.4 (2026-05-26 사용자 피드백): Zone 2 boost 제거.
-    //   기존 동작: Zone 2 진입 시 모든 trail 점에 minR=R*0.55 보장 boost.
-    //   문제: zone 1→2 트랜지션 순간 path 의 모든 점이 통째로 외부로 점프 →
-    //         polyline 이 끊긴 것처럼 보임 + 사용자 의도 (자연스러운 흐름) 위배.
-    //   해결: boost 제거. 점은 사후확률에 따라 자연 이동. Zone 2 강조는 외부
-    //         원 강조 + 색상 + 배지 + 라벨로 표현 (이미 구현됨).
-    //
-    //   결과 — depth 증가하면 radiusForDepth 가 자연스럽게 점을 외부로 끌어줌.
-    //   "보스 단서" 의 강한 likelihood 가 한 anchor 로 무게중심을 밀어주므로
-    //   Zone 2 의 외곽 위치도 자연스럽게 형성됨.
+    // Phase M.2 — Zone 2 진입 시 점을 외부 원 부근으로 끌어올림 (paradigm §21.6).
+    // 회귀 권고 중에는 boost 해제 (자연 위치로 복귀 — 사용자에게 모호함 시각화).
+    // 방향은 보존하고 반지름만 최소 R*0.55 보장 (내부 원 밖, 외부 원 근처).
+    if (zone === 2 && !regressSuggested && r > 0) {
+      const minR = R * 0.55;
+      const curR = Math.sqrt(dx * dx + dy * dy);
+      if (curR < minR) {
+        const scale = minR / curR;
+        dx *= scale;
+        dy *= scale;
+      }
+    }
     return { x: center + dx, y: center + dy };
   };
 
-  // 궤적 — root → 각 채택 단서 → current
+  // 궤적 — root → 각 채택 단서 → current.
+  // Phase P (KBW, 2026-05-27) — stage 경계에서 중앙(center)으로 reset point 삽입.
+  // 사용자 피드백: "다음 사고유형 단서 찾는거의 경우 다시 중앙에서 시작 다른색"
   const trail: TrailPoint[] = useMemo(() => {
     const path = collectPath(tree.nodes, tree.root_id, currentLeafId);
-    return path.map((node) => {
+    const points: TrailPoint[] = [];
+    let prevStage = 1;
+    path.forEach((node, idx) => {
+      const nodeStage = node.stage ?? 1;
+      // stage 전환 시점 — 새 stage 시작 직전 "중앙 reset 마커" 삽입.
+      // 이로써 trail polyline 이 외곽 → 중앙 → 새 방향 으로 꺾임.
+      if (idx > 0 && nodeStage > prevStage) {
+        points.push({
+          x: center,
+          y: center,
+          clueKey: `__STAGE_RESET_${nodeStage}__`,
+          label: `◆ Stage ${nodeStage} 시작`,
+          depth: 0,
+          posterior: { ...node.posterior_after, UNCLASSIFIED: 0 } as HypothesisScores,
+          stage: nodeStage,
+        });
+      }
       const xy = posteriorToXY(node.posterior_after, node.depth);
-      return {
+      points.push({
         x: xy.x,
         y: xy.y,
         clueKey: node.clue_key,
         label: node.clue_key === '__ROOT__' ? '◆ 시작' : node.label,
         depth: node.depth,
         posterior: node.posterior_after,
-      };
+        stage: nodeStage,
+      });
+      prevStage = nodeStage;
     });
+    return points;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree.nodes, tree.root_id, currentLeafId, anchors]);
+  }, [tree.nodes, tree.root_id, currentLeafId, anchors, center]);
+
+  /** trail 을 stage 별 세그먼트로 분할 — polyline 색 다르게 그릴 수 있도록. */
+  const trailSegments = useMemo(() => {
+    const segs: TrailPoint[][] = [];
+    let cur: TrailPoint[] = [];
+    let curStage = -1;
+    for (const p of trail) {
+      if (p.stage !== curStage) {
+        // 새 stage 시작 — 이전 세그먼트 마감, reset 점부터 다음 세그먼트 시작
+        if (cur.length > 0) segs.push(cur);
+        cur = [p];
+        curStage = p.stage;
+      } else {
+        cur.push(p);
+      }
+    }
+    if (cur.length > 0) segs.push(cur);
+    return segs;
+  }, [trail]);
 
   const currentPos = trail.length > 0 ? trail[trail.length - 1] : null;
   // 사후확률 1위 anchor — 우측 신뢰도 패널과 일관성 보장.
@@ -497,50 +573,77 @@ const IncidentTypeCompass = ({
                   stroke={a.color}
                   strokeWidth={isPrimary ? 2 : 1}
                 />
-                {/* 라벨 — anchor 의 각도에 따라 anchor 외곽 위치에 텍스트 정렬 */}
+                {/* 라벨 — anchor 의 각도에 따라 anchor 외곽 위치에 텍스트 정렬.
+                    Phase P (KBW) — Kill Chain phase 번호 prefix 로 인접 의미 시각화. */}
                 {(() => {
                   // text-anchor 결정 (각도 기반)
                   const cosA = Math.cos(a.angle);
                   let textAnchor: 'start' | 'middle' | 'end' = 'middle';
                   if (cosA > 0.3) textAnchor = 'start';
                   else if (cosA < -0.3) textAnchor = 'end';
+                  const phase = KILL_CHAIN_PHASE[a.type];
                   return (
-                    <text
-                      x={a.labelX}
-                      y={a.labelY}
-                      fill={isPrimary ? a.color : 'rgba(220, 225, 235, 0.85)'}
-                      fontSize={11}
-                      fontWeight={isPrimary ? 700 : 600}
-                      textAnchor={textAnchor}
-                      dominantBaseline="middle"
-                      style={{ fontFamily: 'system-ui, sans-serif' }}
-                    >
-                      {INCIDENT_KO[a.type]}
-                    </text>
+                    <>
+                      <text
+                        x={a.labelX}
+                        y={a.labelY - 6}
+                        fill={isPrimary ? a.color : 'rgba(160, 170, 185, 0.7)'}
+                        fontSize={8.5}
+                        fontWeight={700}
+                        textAnchor={textAnchor}
+                        dominantBaseline="middle"
+                        style={{
+                          fontFamily: 'system-ui, sans-serif',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        P{phase}
+                      </text>
+                      <text
+                        x={a.labelX}
+                        y={a.labelY + 6}
+                        fill={isPrimary ? a.color : 'rgba(220, 225, 235, 0.85)'}
+                        fontSize={11}
+                        fontWeight={isPrimary ? 700 : 600}
+                        textAnchor={textAnchor}
+                        dominantBaseline="middle"
+                        style={{ fontFamily: 'system-ui, sans-serif' }}
+                      >
+                        {INCIDENT_KO[a.type]}
+                      </text>
+                    </>
                   );
                 })()}
               </g>
             );
           })}
 
-          {/* 궤적 — 단서 시퀀스 연결 폴리라인 */}
-          {trail.length >= 2 && (
-            <polyline
-              points={trail.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
-              fill="none"
-              stroke="#26C281"
-              strokeWidth={1.6}
-              strokeOpacity={0.65}
-              strokeDasharray="4 3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
+          {/* 궤적 — stage 별 세그먼트로 폴리라인 분할 (Phase P, KBW).
+              각 stage 가 자체 색상으로 그려져 "다음 트리" 인상 강화. */}
+          {trailSegments.map((seg, si) => {
+            if (seg.length < 2) return null;
+            const sc = stageColor(seg[0].stage);
+            return (
+              <polyline
+                key={`trail-seg-${si}`}
+                points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
+                fill="none"
+                stroke={sc.fill}
+                strokeWidth={1.8}
+                strokeOpacity={si === trailSegments.length - 1 ? 0.78 : 0.42}
+                strokeDasharray="4 3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            );
+          })}
 
-          {/* 궤적 점 — 각 채택 단서 */}
+          {/* 궤적 점 — 각 채택 단서. stage 별 색상. */}
           {trail.map((t, i) => {
             const isCurrent = i === trail.length - 1;
             const isRoot = i === 0;
+            const isResetMarker = t.clueKey.startsWith('__STAGE_RESET_');
+            const sc = stageColor(t.stage);
             return (
               <g key={`trail-${i}`}>
                 {isCurrent && (
@@ -548,7 +651,7 @@ const IncidentTypeCompass = ({
                     cx={t.x}
                     cy={t.y}
                     r={14}
-                    fill="#26C281"
+                    fill={sc.fill}
                     opacity={0.18}
                   >
                     <animate
@@ -559,17 +662,56 @@ const IncidentTypeCompass = ({
                     />
                   </circle>
                 )}
-                <circle
-                  cx={t.x}
-                  cy={t.y}
-                  r={isCurrent ? 6 : isRoot ? 4.5 : 4}
-                  fill={isCurrent ? '#26C281' : isRoot ? '#FF9500' : 'rgba(38, 194, 129, 0.55)'}
-                  stroke={isCurrent ? '#34D399' : 'rgba(38, 194, 129, 0.8)'}
-                  strokeWidth={isCurrent ? 1.5 : 1}
-                  style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
-                />
-                {/* depth 번호 */}
-                {!isRoot && (
+                {/* stage reset 마커 — 중앙에 큰 ◆ + stage 라벨 */}
+                {isResetMarker ? (
+                  <>
+                    <circle
+                      cx={t.x}
+                      cy={t.y}
+                      r={10}
+                      fill={sc.fill}
+                      fillOpacity={0.18}
+                      stroke={sc.stroke}
+                      strokeWidth={1.5}
+                      strokeDasharray="3 2"
+                    />
+                    <text
+                      x={t.x}
+                      y={t.y + 4}
+                      fill={sc.stroke}
+                      fontSize={13}
+                      fontWeight={800}
+                      textAnchor="middle"
+                      style={{ fontFamily: 'system-ui, sans-serif' }}
+                    >
+                      ◆
+                    </text>
+                    <text
+                      x={t.x}
+                      y={t.y - 16}
+                      fill={sc.stroke}
+                      fontSize={10}
+                      fontWeight={700}
+                      textAnchor="middle"
+                      style={{ fontFamily: 'system-ui, sans-serif' }}
+                    >
+                      {sc.label} 시작
+                    </text>
+                  </>
+                ) : (
+                  <circle
+                    cx={t.x}
+                    cy={t.y}
+                    r={isCurrent ? 6 : isRoot ? 4.5 : 4}
+                    fill={isCurrent ? sc.fill : isRoot ? '#FF9500' : sc.fill}
+                    fillOpacity={isCurrent ? 1 : isRoot ? 1 : 0.55}
+                    stroke={isCurrent ? sc.stroke : isRoot ? '#FFB04D' : sc.fill}
+                    strokeWidth={isCurrent ? 1.5 : 1}
+                    style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
+                  />
+                )}
+                {/* depth 번호 (reset 마커 제외) */}
+                {!isRoot && !isResetMarker && (
                   <text
                     x={t.x + 8}
                     y={t.y - 6}
@@ -582,11 +724,11 @@ const IncidentTypeCompass = ({
                   </text>
                 )}
                 {/* 현재 위치 단서 라벨 */}
-                {isCurrent && !isRoot && (
+                {isCurrent && !isRoot && !isResetMarker && (
                   <text
                     x={t.x}
                     y={t.y + 22}
-                    fill="#26C281"
+                    fill={sc.stroke}
                     fontSize={10.5}
                     fontWeight={700}
                     textAnchor="middle"

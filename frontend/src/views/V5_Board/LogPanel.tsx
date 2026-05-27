@@ -59,7 +59,7 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
   }
 
   return (
-    <div className="panel min-h-[440px] max-h-[640px] flex flex-col">
+    <div className="panel min-h-[480px] max-h-[820px] flex flex-col">
       <div className="flex items-center justify-between p-4 pb-2.5">
         <div className="flex items-center gap-1">
           <button

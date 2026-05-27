@@ -24,7 +24,43 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { isClueNode } from '@/api/board';
 import { CLUE_DRAG_MIME, type CluePayload } from './LogPanel';
 
-import type { BoardEdge, BoardNode } from '@/types';
+import type { BoardEdge, BoardNode, IncidentType } from '@/types';
+
+// Phase P.7 (2026-05-27, easy 32554e4 머지) — 단서 노드의 어떤 사고유형
+// 단서였는지 라벨링. 수사 보드 피드백 by easycode42 (이지호):
+// "단서에 어떤 사고유형의 단서였는지 라벨링이 필요".
+const INCIDENT_KO: Record<IncidentType, string> = {
+  CREDENTIAL_THEFT: '자격증명',
+  PRIVILEGE_ESCALATION: '권한상승',
+  DATA_EXFILTRATION: '데이터유출',
+  AUDIT_LOG_TAMPERING: '로그변조',
+  RANSOMWARE: '랜섬',
+  MISCONFIG_EXPOSURE: '설정노출',
+  PHISH_INITIAL_ACCESS: '피싱',
+  INSIDER_THREAT: '내부자',
+  UNCLASSIFIED: '미분류',
+};
+
+const INCIDENT_COLORS: Record<IncidentType, string> = {
+  CREDENTIAL_THEFT: '#5BA3F0',
+  PRIVILEGE_ESCALATION: '#A56BE6',
+  DATA_EXFILTRATION: '#E66BC2',
+  AUDIT_LOG_TAMPERING: '#E68A6B',
+  RANSOMWARE: '#E63B3B',
+  MISCONFIG_EXPOSURE: '#E6A03B',
+  PHISH_INITIAL_ACCESS: '#6BE69E',
+  INSIDER_THREAT: '#3BC2E6',
+  UNCLASSIFIED: '#7A8294',
+};
+
+/** 단서 노드 meta 에서 사고유형 추출. clue_bridge 가 tree.confirmed_hypotheses[-1] 을
+ *  meta.hypothesis 로 기록하므로 그 값을 사용. 없으면 null. */
+const incidentFromNode = (n: BoardNode): IncidentType | null => {
+  if (!n.meta || (n.meta as { type?: string }).type !== 'clue') return null;
+  const h = (n.meta as { hypothesis?: string | null }).hypothesis;
+  if (!h) return null;
+  return h as IncidentType;
+};
 
 interface ChainGraphCanvasProps {
   nodes: BoardNode[];
@@ -77,10 +113,40 @@ const ChainGraphCanvas = ({
     return m;
   }, [nodes]);
 
-  // 드래그 중 임시 위치 오버라이드 (백엔드 호출 전)
+  // 드래그 중 임시 위치 오버라이드 (백엔드 호출 전).
+  // Phase P.7 (2026-05-27, easy 머지) — closure-staleness 수정.
+  //   기존 동작: useEffect deps 에 [nodes, edgeMode, edgeStartId, onMoveNode,
+  //   onPickEdgeEnd, onSelectNode, tempPos] 포함 → pointermove 마다 setTempPos
+  //   가 tempPos 갱신 → useEffect 재실행 → listener 재등록 폭주.
+  //   변경: ref 미러링 + deps 비움 (한 번만 등록).
   const [tempPos, setTempPos] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const tempPosRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const updateTempPos = (
+    fn: (prev: Map<string, { x: number; y: number }>) => Map<string, { x: number; y: number }>,
+  ) => {
+    const next = fn(tempPosRef.current);
+    tempPosRef.current = next;
+    setTempPos(next);
+  };
   // Phase P.6 — 단서 drag-over 시각 강조
   const [clueDragOver, setClueDragOver] = useState(false);
+
+  // Phase P.7 (사용자 피드백: "확대 기능이 없어서 식별 어렵다") — zoom + pan 추가.
+  //   - viewport state: tx/ty (translate) + scale
+  //   - wheel: 마우스 위치 기준 zoom in/out (0.4 ~ 3.0)
+  //   - 빈 영역 pointerdown + drag: pan
+  //   - 노드 pointerdown 은 stopPropagation 으로 pan 차단됨 (handleNodePointerDown)
+  const [viewport, setViewport] = useState({ tx: 0, ty: 0, scale: 1 });
+  const viewportRef = useRef(viewport);
+  useEffect(() => {
+    viewportRef.current = viewport;
+  }, [viewport]);
+  const panRef = useRef<{
+    startClientX: number;
+    startClientY: number;
+    startTx: number;
+    startTy: number;
+  } | null>(null);
   const layout = useMemo(() => {
     if (tempPos.size === 0) return baseLayout;
     const m = new Map(baseLayout);
@@ -99,7 +165,7 @@ const ChainGraphCanvas = ({
     moved: boolean;
   } | null>(null);
 
-  // SVG 좌표계로 client 좌표 변환
+  // SVG viewBox 좌표계로 client 좌표 변환
   const toSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -112,22 +178,47 @@ const ChainGraphCanvas = ({
     return { x: p.x, y: p.y };
   };
 
+  // Phase P.7 — world (zoom/pan 적용 전) 좌표 변환. 노드 드래그·단서 drop 용.
+  const toWorldCoords = (clientX: number, clientY: number) => {
+    const { x: svgX, y: svgY } = toSvgCoords(clientX, clientY);
+    const { tx, ty, scale } = viewportRef.current;
+    return { x: (svgX - tx) / scale, y: (svgY - ty) / scale };
+  };
+
   const handleNodePointerDown = (e: React.PointerEvent, n: BoardNode) => {
     if (edgeMode) return; // 엣지 모드일 때는 드래그 비활성
     if (!onMoveNode) return;
     e.stopPropagation();
     const pos = layout.get(n.node_id);
     if (!pos) return;
-    const { x: svgX, y: svgY } = toSvgCoords(e.clientX, e.clientY);
+    // Phase P.7 — world 좌표 사용 (zoom/pan 인지)
+    const { x: worldX, y: worldY } = toWorldCoords(e.clientX, e.clientY);
     dragRef.current = {
       nodeId: n.node_id,
-      offX: svgX - pos.x,
-      offY: svgY - pos.y,
+      offX: worldX - pos.x,
+      offY: worldY - pos.y,
       startClientX: e.clientX,
       startClientY: e.clientY,
       moved: false,
     };
   };
+
+  // Phase P.7 (2026-05-27, easy 머지) — 항상 최신 props 를 참조하기 위해 ref 미러링.
+  // pointermove/up listener 는 한 번만 등록 (closure-staleness 방지).
+  const nodesRef = useRef(nodes);
+  const edgeModeRef = useRef(edgeMode);
+  const edgeStartIdRef = useRef(edgeStartId);
+  const onMoveNodeRef = useRef(onMoveNode);
+  const onSelectNodeRef = useRef(onSelectNode);
+  const onPickEdgeEndRef = useRef(onPickEdgeEnd);
+  useEffect(() => {
+    nodesRef.current = nodes;
+    edgeModeRef.current = edgeMode;
+    edgeStartIdRef.current = edgeStartId;
+    onMoveNodeRef.current = onMoveNode;
+    onSelectNodeRef.current = onSelectNode;
+    onPickEdgeEndRef.current = onPickEdgeEnd;
+  }, [nodes, edgeMode, edgeStartId, onMoveNode, onSelectNode, onPickEdgeEnd]);
 
   useEffect(() => {
     const handleMove = (e: PointerEvent) => {
@@ -135,10 +226,11 @@ const ChainGraphCanvas = ({
       if (!d) return;
       const dist = Math.abs(e.clientX - d.startClientX) + Math.abs(e.clientY - d.startClientY);
       if (dist > 3) d.moved = true;
-      const { x: svgX, y: svgY } = toSvgCoords(e.clientX, e.clientY);
-      const nx = Math.max(0, Math.round(svgX - d.offX));
-      const ny = Math.max(0, Math.round(svgY - d.offY));
-      setTempPos((prev) => {
+      // Phase P.7 — world 좌표로 노드 위치 갱신
+      const { x: worldX, y: worldY } = toWorldCoords(e.clientX, e.clientY);
+      const nx = Math.max(0, Math.round(worldX - d.offX));
+      const ny = Math.max(0, Math.round(worldY - d.offY));
+      updateTempPos((prev) => {
         const m = new Map(prev);
         m.set(d.nodeId, { x: nx, y: ny });
         return m;
@@ -149,23 +241,27 @@ const ChainGraphCanvas = ({
       if (!d) return;
       dragRef.current = null;
       if (d.moved) {
-        // 드래그 종료 → 영속화
-        const final = tempPos.get(d.nodeId);
-        if (final && onMoveNode) {
-          onMoveNode(d.nodeId, final.x, final.y);
+        // 드래그 종료 → 영속화 (ref 의 최신 tempPos·onMoveNode 사용)
+        const final = tempPosRef.current.get(d.nodeId);
+        if (final && onMoveNodeRef.current) {
+          onMoveNodeRef.current(d.nodeId, final.x, final.y);
         }
       } else {
-        // 클릭으로 간주
-        const n = nodes.find((x) => x.node_id === d.nodeId);
+        // 클릭으로 간주 (ref 의 최신 nodes·edgeMode·콜백 사용)
+        const n = nodesRef.current.find((x) => x.node_id === d.nodeId);
         if (n) {
-          if (edgeMode && edgeStartId && edgeStartId !== n.node_id) {
-            onPickEdgeEnd(edgeStartId, n.node_id);
+          if (
+            edgeModeRef.current &&
+            edgeStartIdRef.current &&
+            edgeStartIdRef.current !== n.node_id
+          ) {
+            onPickEdgeEndRef.current(edgeStartIdRef.current, n.node_id);
           } else {
-            onSelectNode(n);
+            onSelectNodeRef.current(n);
           }
         }
         // 클릭은 임시 위치 폐기
-        setTempPos((prev) => {
+        updateTempPos((prev) => {
           if (!prev.has(d.nodeId)) return prev;
           const m = new Map(prev);
           m.delete(d.nodeId);
@@ -179,10 +275,13 @@ const ChainGraphCanvas = ({
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
-  }, [nodes, edgeMode, edgeStartId, onMoveNode, onPickEdgeEnd, onSelectNode, tempPos]);
+    // deps 비움 — listener 는 한 번만 등록. 최신 값은 ref 로 참조.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 백엔드 응답이 갱신되면 임시 위치 초기화 (서버 값으로 통합)
   useEffect(() => {
+    tempPosRef.current = new Map();
     setTempPos(new Map());
   }, [nodes]);
 
@@ -207,6 +306,75 @@ const ChainGraphCanvas = ({
   });
   const width = maxRight;
   const height = maxBottom;
+
+  // Phase P.7 — zoom + pan 핸들러
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const { tx, ty, scale } = viewportRef.current;
+    const delta = e.deltaY > 0 ? 0.9 : 1.1; // 휠 다운=축소, 업=확대
+    const newScale = Math.min(3.0, Math.max(0.4, scale * delta));
+    if (newScale === scale) return;
+    // 마우스 위치 기준 zoom — 마우스 좌표(SVG world) 가 zoom 후에도 같은 자리에 있도록
+    const svg = svgRef.current;
+    if (!svg) {
+      setViewport({ tx, ty, scale: newScale });
+      return;
+    }
+    const rect = svg.getBoundingClientRect();
+    // SVG viewBox 와 화면 크기 비율
+    const vbScaleX = width / rect.width;
+    const vbScaleY = height / rect.height;
+    const mouseSvgX = (e.clientX - rect.left) * vbScaleX;
+    const mouseSvgY = (e.clientY - rect.top) * vbScaleY;
+    // zoom 전 world 좌표: (mouseSvg - tx) / scale
+    // zoom 후 world 좌표 가 같도록: newTx = mouseSvg - (mouseSvg - tx) * (newScale / scale)
+    const ratio = newScale / scale;
+    const newTx = mouseSvgX - (mouseSvgX - tx) * ratio;
+    const newTy = mouseSvgY - (mouseSvgY - ty) * ratio;
+    setViewport({ tx: newTx, ty: newTy, scale: newScale });
+  };
+
+  const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // 노드/엣지 가 아닌 빈 영역에서만 pan 시작
+    // (노드 onPointerDown 은 stopPropagation 으로 여기 도달 X)
+    if (edgeMode) return; // 엣지 모드면 pan 비활성 (클릭으로 엣지 생성)
+    panRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startTx: viewportRef.current.tx,
+      startTy: viewportRef.current.ty,
+    };
+  };
+
+  useEffect(() => {
+    const handlePanMove = (e: PointerEvent) => {
+      const p = panRef.current;
+      if (!p) return;
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const vbScaleX = width / rect.width;
+      const vbScaleY = height / rect.height;
+      const dx = (e.clientX - p.startClientX) * vbScaleX;
+      const dy = (e.clientY - p.startClientY) * vbScaleY;
+      setViewport({
+        tx: p.startTx + dx,
+        ty: p.startTy + dy,
+        scale: viewportRef.current.scale,
+      });
+    };
+    const handlePanUp = () => {
+      panRef.current = null;
+    };
+    window.addEventListener('pointermove', handlePanMove);
+    window.addEventListener('pointerup', handlePanUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePanMove);
+      window.removeEventListener('pointerup', handlePanUp);
+    };
+  }, [width, height]);
+
+  const resetView = () => setViewport({ tx: 0, ty: 0, scale: 1 });
 
   // Phase P.6 — drop zone 핸들러 (LogPanel 단서 탭 → ChainGraph)
   const handleClueDragOver = (e: React.DragEvent<SVGSVGElement>) => {
@@ -239,7 +407,8 @@ const ChainGraphCanvas = ({
       return;
     }
     if (!payload.clue_key) return;
-    const { x, y } = toSvgCoords(e.clientX, e.clientY);
+    // Phase P.7 — world 좌표 (zoom/pan 인지) 로 drop 위치 계산
+    const { x, y } = toWorldCoords(e.clientX, e.clientY);
     // 노드 좌상단 기준 좌표 (NODE_W/H 의 중앙이 드롭 위치가 되도록 조정)
     const pos_x = Math.max(0, Math.round(x - NODE_W / 2));
     const pos_y = Math.max(0, Math.round(y - NODE_H / 2));
@@ -257,10 +426,14 @@ const ChainGraphCanvas = ({
           ? 'bg-brand-teal/10 border-brand-teal/60 shadow-[0_0_0_2px_rgba(45,212,191,0.25)]'
           : 'bg-ink-950/40 border-ink-700/40')
       }
-      style={{ maxHeight: 380, touchAction: 'none' }}
+      // Phase P.7 (사용자 피드백: "공격체인그래프쪽이 너무 작다") — 영역 확장
+      style={{ maxHeight: 680, minHeight: 480, touchAction: 'none' }}
       onDragOver={handleClueDragOver}
       onDragLeave={handleClueDragLeave}
       onDrop={handleClueDrop}
+      // Phase P.7 — zoom + pan
+      onWheel={handleWheel}
+      onPointerDown={handleSvgPointerDown}
     >
       <defs>
         {/* 엣지 끝 화살표 — 파란 톤 */}
@@ -277,6 +450,9 @@ const ChainGraphCanvas = ({
           <path d="M0,0 L10,5 L0,10 z" fill="#3D7BFF" />
         </marker>
       </defs>
+
+      {/* Phase P.7 — zoom/pan transform 적용 (모든 콘텐츠 감싸기) */}
+      <g transform={`translate(${viewport.tx},${viewport.ty}) scale(${viewport.scale})`}>
 
       {/* 엣지 — line + marker */}
       {edges.map((e) => {
@@ -324,17 +500,20 @@ const ChainGraphCanvas = ({
         const rejected = n.status === 'REJECTED';
         // Phase O — 단서 노드 시각 구분 (type='clue')
         const isClue = isClueNode(n);
+        // Phase P.7 (easy 머지) — 단서 노드의 사고유형 추출
+        const incident = isClue ? incidentFromNode(n) : null;
+        const incidentColor = incident ? INCIDENT_COLORS[incident] : '#2DD4BF';
 
-        // stroke 색상 우선순위: start > candidate > selected > rejected > clue > default
+        // stroke 색상 우선순위: start > candidate > selected > rejected > clue(hypothesis) > default
         let stroke = '#2A3441';
-        if (isClue) stroke = '#2DD4BF'; // teal — 단서 기본 stroke
+        if (isClue) stroke = incidentColor; // 사고유형 색상 (없으면 teal)
         if (rejected) stroke = '#EF4444';
         if (sel) stroke = '#3D7BFF';
         if (isCandidate) stroke = '#F59E0B';
         if (isStart) stroke = '#10B981';
 
-        // 단서 노드는 살짝 밝은 fill (teal 톤) — ATT&CK 노드와 한눈에 구분
-        const fill = rejected ? '#1a1a1f' : isClue ? '#0F2F2C' : '#161A21';
+        // 단서 노드 fill — 사고유형 hue 의 어두운 톤 (배경 인식성)
+        const fill = rejected ? '#1a1a1f' : isClue ? '#10181F' : '#161A21';
         const strokeWidth = isStart || isCandidate || sel || isClue ? 2.5 : 1;
 
         // 단서 노드는 prefix 아이콘 + 짧은 라벨
@@ -366,6 +545,45 @@ const ChainGraphCanvas = ({
               strokeWidth={strokeWidth}
               opacity={rejected ? 0.55 : 1}
             />
+            {/* Phase P.7 (easy 머지) — 단서 노드 좌측 사고유형 색상 띠 (4px) */}
+            {isClue && incident && (
+              <rect
+                x={0}
+                y={0}
+                width={4}
+                height={NODE_H}
+                rx={2}
+                fill={incidentColor}
+                opacity={0.95}
+              />
+            )}
+            {/* Phase P.7 (easy 머지) — 단서 노드 우상단 사고유형 한국어 배지 */}
+            {isClue && incident && (
+              <>
+                <rect
+                  x={NODE_W - 56}
+                  y={4}
+                  width={52}
+                  height={13}
+                  rx={3}
+                  fill={incidentColor}
+                  fillOpacity={0.18}
+                  stroke={incidentColor}
+                  strokeWidth={0.8}
+                />
+                <text
+                  x={NODE_W - 30}
+                  y={13.5}
+                  textAnchor="middle"
+                  fill={incidentColor}
+                  fontSize={9}
+                  fontWeight={700}
+                  style={{ fontFamily: 'system-ui, sans-serif' }}
+                >
+                  {INCIDENT_KO[incident]}
+                </text>
+              </>
+            )}
             <text
               x={NODE_W / 2}
               y={22}
@@ -426,6 +644,31 @@ const ChainGraphCanvas = ({
           </g>
         );
       })}
+      </g>
+      {/* Phase P.7 — zoom 컨트롤 (SVG 우상단 고정 오버레이) */}
+      <g
+        transform={`translate(${width - 76}, 8)`}
+        style={{ cursor: 'pointer' }}
+      >
+        <rect x={0} y={0} width={68} height={22} rx={4}
+              fill="#0f1117" stroke="#2a3441" strokeWidth={0.8} />
+        <text x={8} y={15} fill="#9aa3b2" fontSize={10} fontFamily="monospace">
+          {`${Math.round(viewport.scale * 100)}%`}
+        </text>
+        <g
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            resetView();
+          }}
+        >
+          <rect x={42} y={3} width={22} height={16} rx={3}
+                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
+          <text x={53} y={14} textAnchor="middle"
+                fill="#5EEAD4" fontSize={9} fontWeight={700}>
+            1:1
+          </text>
+        </g>
+      </g>
     </svg>
   );
 };

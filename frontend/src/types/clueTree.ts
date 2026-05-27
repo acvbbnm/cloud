@@ -39,6 +39,8 @@ export interface ClueTreePathNode {
   value: string;
   source: 'system' | 'tree_candidate' | 'direct_input' | 'log_analysis';
   posterior_after: HypothesisScores;
+  /** Phase P (KBW, 2026-05-27) — 노드가 속한 stage. 1 = 첫 분석, 2+ = multi-stage 추적. */
+  stage?: number;
 }
 
 /** 트리 직렬화 (DB JSON 영속화 — paradigm doc §5). */
@@ -55,6 +57,8 @@ export interface SerializedClueTreeNode {
   posterior_after: HypothesisScores;
   accepted_at: string;
   children_candidates: ClueCandidate[];
+  /** Phase P (KBW, 2026-05-27) — multi-stage 추적용. legacy 노드는 1 fallback. */
+  stage?: number;
 }
 
 export interface SerializedClueTree {

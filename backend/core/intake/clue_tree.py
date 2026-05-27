@@ -58,6 +58,7 @@ class ClueTreeNode:
     """채택된 단서 노드 1개.
 
     score_delta 와 posterior_after 는 베이즈 갱신 결과 스냅샷.
+    stage 는 multi-stage 추적용 (Phase P 후속 — 2026-05-27, KBW).
     """
 
     node_id: str
@@ -75,6 +76,9 @@ class ClueTreeNode:
     accepted_at: str = ""  # ISO-8601
     # 다음 후보 (자식 들)
     children_candidates: list[ClueCandidate] = field(default_factory=list)
+    # Phase P (KBW, 2026-05-27) — 노드가 속한 stage. advance_to_next_stage 이후
+    # 채택되는 노드는 tree.stage 값을 그대로 기록 → 시각화에서 stage 경계 검출에 사용.
+    stage: int = 1
 
 
 @dataclass
@@ -182,6 +186,7 @@ def append_clue_node(
         posterior_after=dict(posterior_after),
         accepted_at=now,
         children_candidates=[],
+        stage=tree.stage,
     )
     tree.nodes[new_id] = node
     tree.current_leaf_id = new_id
@@ -362,6 +367,7 @@ def tree_from_dict(data: dict) -> ClueTree:
             posterior_after=dict(n.get("posterior_after", {})),
             accepted_at=n.get("accepted_at", ""),
             children_candidates=children,
+            stage=int(n.get("stage", 1)),
         )
     return ClueTree(
         case_id=data["case_id"],

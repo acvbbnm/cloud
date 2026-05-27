@@ -356,15 +356,22 @@ const IncidentTypeCompass = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tree.nodes, tree.root_id, currentLeafId, anchors, center]);
 
-  /** trail 을 stage 별 세그먼트로 분할 — polyline 색 다르게 그릴 수 있도록. */
+  /** trail 을 stage 별 세그먼트로 분할 — polyline 색 다르게 그릴 수 있도록.
+   *  Phase P.12 (2026-05-27 사용자 피드백: "또 노드 끊어짐 현상 페이즈2 바뀔때"):
+   *    Stage 경계점을 양쪽 segment 에 *공유* 시켜 시각적 연속성 보장.
+   *    또한 단일 점 segment 도 그려지도록 인접 점 추가 (이전 끊김의 진짜 원인). */
   const trailSegments = useMemo(() => {
+    if (trail.length < 2) return [];
     const segs: TrailPoint[][] = [];
-    let cur: TrailPoint[] = [];
-    let curStage = -1;
-    for (const p of trail) {
+    let cur: TrailPoint[] = [trail[0]];
+    let curStage = trail[0].stage;
+    for (let i = 1; i < trail.length; i++) {
+      const p = trail[i];
       if (p.stage !== curStage) {
-        // 새 stage 시작 — 이전 세그먼트 마감, reset 점부터 다음 세그먼트 시작
-        if (cur.length > 0) segs.push(cur);
+        // Stage 경계 — 새 점도 *이전 segment 의 마지막 점* 으로 추가 (연결성 ↑)
+        cur.push(p);
+        segs.push(cur);
+        // 새 segment 는 경계점부터 시작
         cur = [p];
         curStage = p.stage;
       } else {
@@ -619,19 +626,25 @@ const IncidentTypeCompass = ({
           })}
 
           {/* 궤적 — stage 별 세그먼트로 폴리라인 분할 (Phase P, KBW).
-              각 stage 가 자체 색상으로 그려져 "다음 트리" 인상 강화. */}
+              각 stage 가 자체 색상으로 그려져 "다음 트리" 인상 강화.
+              Phase P.10 (2026-05-27 사용자 피드백: "이전 사고유형 선이 안 보임") —
+              과거 segment 의 가시성 강화: opacity 0.42→0.72, dasharray 제거 (실선),
+              strokeWidth 1.8→2.2 로 두께 증가. */}
           {trailSegments.map((seg, si) => {
             if (seg.length < 2) return null;
             const sc = stageColor(seg[0].stage);
+            const isLatest = si === trailSegments.length - 1;
             return (
               <polyline
                 key={`trail-seg-${si}`}
                 points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
                 fill="none"
                 stroke={sc.fill}
-                strokeWidth={1.8}
-                strokeOpacity={si === trailSegments.length - 1 ? 0.78 : 0.42}
-                strokeDasharray="4 3"
+                strokeWidth={isLatest ? 2.4 : 2.2}
+                strokeOpacity={isLatest ? 0.88 : 0.72}
+                // 최신 segment: 실선 (현재 진행 강조)
+                // 과거 segment: 짧은 점선 (지나간 흔적 + 시각 구분, 그러나 충분히 진함)
+                strokeDasharray={isLatest ? undefined : '6 2'}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />

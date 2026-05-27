@@ -186,8 +186,11 @@ const ChainGraphCanvas = ({
   };
 
   const handleNodePointerDown = (e: React.PointerEvent, n: BoardNode) => {
-    if (edgeMode) return; // 엣지 모드일 때는 드래그 비활성
-    if (!onMoveNode) return;
+    // Phase P.11 (2026-05-27 사용자 피드백: "엣지모드 작동 안 함") —
+    //   기존 동작: edgeMode 면 즉시 return → dragRef 미설정 → handleUp click
+    //             분기 도달 X → 엣지 생성 안 됨.
+    //   변경: edgeMode 라도 dragRef set (드래그는 비활성, 클릭만 처리).
+    //         handleUp 에서 edgeMode 면 onPickEdgeEnd / onSelectNode 호출.
     e.stopPropagation();
     const pos = layout.get(n.node_id);
     if (!pos) return;
@@ -240,7 +243,8 @@ const ChainGraphCanvas = ({
       const d = dragRef.current;
       if (!d) return;
       dragRef.current = null;
-      if (d.moved) {
+      // Phase P.11 — edgeMode 일 때는 드래그 이동 무시 (위치 영속화 X), 클릭만 처리
+      if (d.moved && !edgeModeRef.current) {
         // 드래그 종료 → 영속화 (ref 의 최신 tempPos·onMoveNode 사용)
         const final = tempPosRef.current.get(d.nodeId);
         if (final && onMoveNodeRef.current) {
@@ -285,17 +289,15 @@ const ChainGraphCanvas = ({
     setTempPos(new Map());
   }, [nodes]);
 
-  if (nodes.length === 0) {
-    return (
-      <div className="text-[12px] text-ink-400 py-2">
-        보드에 추가된 노드가 없습니다. 아래 ATT&CK 후보에서 "보드 추가" 를 눌러 노드를 생성하세요.
-      </div>
-    );
-  }
+  // Phase P.14 (2026-05-27 사용자 피드백: "보드 넘어가면 화면 망가짐") —
+  //   기존: nodes.length===0 시 <div> 반환 → SVG 영역 사라짐 → Card 비율 깨짐 +
+  //         단서 drop zone 사라져서 LogPanel 단서 드래그 무의미
+  //   변경: 빈 보드도 SVG 렌더 + drop zone 유지. 안내 text 는 SVG 안에 overlay.
+  const isEmpty = nodes.length === 0;
 
-  // 캔버스 크기 — 격자 기본 + 드래그로 이동한 노드 범위 모두 포함
-  const rows = Math.ceil(nodes.length / NODES_PER_ROW);
-  const cols = Math.min(nodes.length, NODES_PER_ROW);
+  // 캔버스 크기 — 빈 보드도 안전한 default. 격자 + 드래그 영역.
+  const rows = Math.max(1, Math.ceil(nodes.length / NODES_PER_ROW));
+  const cols = isEmpty ? NODES_PER_ROW : Math.min(nodes.length, NODES_PER_ROW);
   const baseWidth = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
   const baseHeight = PAD * 2 + rows * NODE_H + (rows - 1) * GAP_Y;
   let maxRight = baseWidth;
@@ -307,32 +309,39 @@ const ChainGraphCanvas = ({
   const width = maxRight;
   const height = maxBottom;
 
-  // Phase P.7 — zoom + pan 핸들러
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const { tx, ty, scale } = viewportRef.current;
-    const delta = e.deltaY > 0 ? 0.9 : 1.1; // 휠 다운=축소, 업=확대
-    const newScale = Math.min(3.0, Math.max(0.4, scale * delta));
-    if (newScale === scale) return;
-    // 마우스 위치 기준 zoom — 마우스 좌표(SVG world) 가 zoom 후에도 같은 자리에 있도록
+  // Phase P.11 (사용자 피드백: "확대 작동 안 함") — React onWheel 은 passive listener
+  // 라 preventDefault 무시됨. native addEventListener 로 {passive:false} 등록.
+  // width/height 는 ref 로 전달 (deps 변경 시 listener 재등록 폭주 방지).
+  const sizeRef = useRef({ width, height });
+  useEffect(() => {
+    sizeRef.current = { width, height };
+  }, [width, height]);
+
+  useEffect(() => {
     const svg = svgRef.current;
-    if (!svg) {
-      setViewport({ tx, ty, scale: newScale });
-      return;
-    }
-    const rect = svg.getBoundingClientRect();
-    // SVG viewBox 와 화면 크기 비율
-    const vbScaleX = width / rect.width;
-    const vbScaleY = height / rect.height;
-    const mouseSvgX = (e.clientX - rect.left) * vbScaleX;
-    const mouseSvgY = (e.clientY - rect.top) * vbScaleY;
-    // zoom 전 world 좌표: (mouseSvg - tx) / scale
-    // zoom 후 world 좌표 가 같도록: newTx = mouseSvg - (mouseSvg - tx) * (newScale / scale)
-    const ratio = newScale / scale;
-    const newTx = mouseSvgX - (mouseSvgX - tx) * ratio;
-    const newTy = mouseSvgY - (mouseSvgY - ty) * ratio;
-    setViewport({ tx: newTx, ty: newTy, scale: newScale });
-  };
+    if (!svg) return;
+    const onWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      const { tx, ty, scale } = viewportRef.current;
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.min(3.0, Math.max(0.4, scale * delta));
+      if (newScale === scale) return;
+      const rect = svg.getBoundingClientRect();
+      const { width: w, height: h } = sizeRef.current;
+      const vbScaleX = w / rect.width;
+      const vbScaleY = h / rect.height;
+      const mouseSvgX = (e.clientX - rect.left) * vbScaleX;
+      const mouseSvgY = (e.clientY - rect.top) * vbScaleY;
+      const ratio = newScale / scale;
+      const newTx = mouseSvgX - (mouseSvgX - tx) * ratio;
+      const newTy = mouseSvgY - (mouseSvgY - ty) * ratio;
+      setViewport({ tx: newTx, ty: newTy, scale: newScale });
+    };
+    svg.addEventListener('wheel', onWheelNative, { passive: false });
+    return () => {
+      svg.removeEventListener('wheel', onWheelNative);
+    };
+  }, []);
 
   const handleSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // 노드/엣지 가 아닌 빈 영역에서만 pan 시작
@@ -375,6 +384,21 @@ const ChainGraphCanvas = ({
   }, [width, height]);
 
   const resetView = () => setViewport({ tx: 0, ty: 0, scale: 1 });
+  // Phase P.11 — 휠 외 클릭으로도 zoom 가능 (사용자 피드백: "확대 기능 작동 안 함")
+  const zoomBy = (factor: number) => {
+    const { tx, ty, scale } = viewportRef.current;
+    const newScale = Math.min(3.0, Math.max(0.4, scale * factor));
+    if (newScale === scale) return;
+    // 중앙 기준 zoom — 마우스 위치 정보 없으므로 SVG 중앙 기준
+    const cx = sizeRef.current.width / 2;
+    const cy = sizeRef.current.height / 2;
+    const ratio = newScale / scale;
+    setViewport({
+      tx: cx - (cx - tx) * ratio,
+      ty: cy - (cy - ty) * ratio,
+      scale: newScale,
+    });
+  };
 
   // Phase P.6 — drop zone 핸들러 (LogPanel 단서 탭 → ChainGraph)
   const handleClueDragOver = (e: React.DragEvent<SVGSVGElement>) => {
@@ -431,8 +455,8 @@ const ChainGraphCanvas = ({
       onDragOver={handleClueDragOver}
       onDragLeave={handleClueDragLeave}
       onDrop={handleClueDrop}
-      // Phase P.7 — zoom + pan
-      onWheel={handleWheel}
+      // Phase P.11 — zoom 은 native addEventListener {passive:false} 로 등록
+      // (React onWheel 은 passive 라 preventDefault 무시됨). pan 만 React 핸들러.
       onPointerDown={handleSvgPointerDown}
     >
       <defs>
@@ -453,6 +477,41 @@ const ChainGraphCanvas = ({
 
       {/* Phase P.7 — zoom/pan transform 적용 (모든 콘텐츠 감싸기) */}
       <g transform={`translate(${viewport.tx},${viewport.ty}) scale(${viewport.scale})`}>
+
+      {/* Phase P.14 — 빈 보드 안내 overlay (SVG 안에 그려 drop zone 유지) */}
+      {isEmpty && (
+        <g pointerEvents="none">
+          <text
+            x={baseWidth / 2}
+            y={baseHeight / 2 - 24}
+            textAnchor="middle"
+            fill="#5EEAD4"
+            fontSize={14}
+            fontWeight={600}
+          >
+            🔍 단서를 여기로 드래그하거나
+          </text>
+          <text
+            x={baseWidth / 2}
+            y={baseHeight / 2 + 2}
+            textAnchor="middle"
+            fill="#9aa3b2"
+            fontSize={11.5}
+          >
+            아래 ATT&CK 후보의 [보드 추가] 로 노드를 생성하세요
+          </text>
+          <text
+            x={baseWidth / 2}
+            y={baseHeight / 2 + 22}
+            textAnchor="middle"
+            fill="#7A8294"
+            fontSize={10}
+            fontFamily="monospace"
+          >
+            우측 LogPanel 의 [🔍 단서] 탭 활용
+          </text>
+        </g>
+      )}
 
       {/* 엣지 — line + marker */}
       {edges.map((e) => {
@@ -645,25 +704,43 @@ const ChainGraphCanvas = ({
         );
       })}
       </g>
-      {/* Phase P.7 — zoom 컨트롤 (SVG 우상단 고정 오버레이) */}
+      {/* Phase P.11 — zoom 컨트롤 (SVG 우상단 고정 오버레이): [-] [percent] [+] [1:1] */}
       <g
-        transform={`translate(${width - 76}, 8)`}
+        transform={`translate(${Math.max(8, width - 152)}, 8)`}
         style={{ cursor: 'pointer' }}
       >
-        <rect x={0} y={0} width={68} height={22} rx={4}
+        <rect x={0} y={0} width={144} height={22} rx={4}
               fill="#0f1117" stroke="#2a3441" strokeWidth={0.8} />
-        <text x={8} y={15} fill="#9aa3b2" fontSize={10} fontFamily="monospace">
+        {/* [-] 축소 */}
+        <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(0.85); }}>
+          <rect x={3} y={3} width={20} height={16} rx={3}
+                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
+          <text x={13} y={15} textAnchor="middle" fill="#9aa3b2"
+                fontSize={13} fontWeight={700}>−</text>
+        </g>
+        {/* 현재 zoom % */}
+        <text x={56} y={15} textAnchor="middle"
+              fill={viewport.scale === 1 ? '#9aa3b2' : '#5EEAD4'}
+              fontSize={10} fontFamily="monospace">
           {`${Math.round(viewport.scale * 100)}%`}
         </text>
+        {/* [+] 확대 */}
+        <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(1.18); }}>
+          <rect x={88} y={3} width={20} height={16} rx={3}
+                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
+          <text x={98} y={15} textAnchor="middle" fill="#5EEAD4"
+                fontSize={12} fontWeight={700}>+</text>
+        </g>
+        {/* [1:1] reset */}
         <g
           onPointerDown={(e) => {
             e.stopPropagation();
             resetView();
           }}
         >
-          <rect x={42} y={3} width={22} height={16} rx={3}
+          <rect x={113} y={3} width={28} height={16} rx={3}
                 fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
-          <text x={53} y={14} textAnchor="middle"
+          <text x={127} y={14} textAnchor="middle"
                 fill="#5EEAD4" fontSize={9} fontWeight={700}>
             1:1
           </text>

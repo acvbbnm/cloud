@@ -194,13 +194,19 @@ const Step3_Discovery = ({
     };
   }, [caseId, completedPath, observables, mappedTechniques]);
 
-  // 트리 시작 — 케이스가 있고 currentNodeId 가 없을 때.
-  // POST /api/triage/start 가 case.system_config 의 environment_modifiers 를
-  // 평가하여 0 이 아닌 가설 점수를 시딩해 반환한다 (M0-2 → M0-3 연결).
+  // 트리 시작 — 케이스가 있으면 mount 시 무조건 호출 (idempotent).
+  // POST /api/triage/start 는 case.system_config 의 environment_modifiers 기반
+  // 시드 점수 반환. 호출 자체가 idempotent 라 currentNodeId 가 있어도 안전.
+  //
+  // Phase P.9 (2026-05-27 사용자 피드백 — 옛 UI 회귀 노출 fix):
+  //   이전 동작: currentNodeId 있으면 startTriage skip → scoringMode default
+  //   'additive' 유지 → evidence_tree/bayes_net 위임 불발 → 옛 결정 트리 UI 노출
+  //   변경: currentNodeId 조건 제거. startTriage 항상 호출하여 scoring_mode 확정.
+  //   currentNode 데이터는 이미 store 에 있으면 덮어쓰지 않음 (기존 진행 보존).
   useEffect(() => {
     let cancelled = false;
     const initTree = async () => {
-      if (!caseId || currentNodeId) return;
+      if (!caseId) return;
       setLoading(true);
       try {
         const res = await startTriage(caseId);
@@ -214,7 +220,9 @@ const Step3_Discovery = ({
         if (mode) setScoringMode(mode);
         // Phase P.5 — scoringMode 확정 표시 (introOpen 자동 호출 조건 해제)
         setScoringModeBootstrapped(true);
-        if (res.next_node) {
+        // Phase P.9 — 기존 currentNodeId 가 있으면 store/currentNode 덮어쓰지 않음.
+        // 옛 진행 상태 보존 + scoring_mode 만 갱신 → 위임 분기 작동.
+        if (res.next_node && !currentNodeId) {
           storeStart(res.next_node.id);
           setCurrentNodeData(res.next_node);
           setHypothesisScores(res.hypothesis_scores);

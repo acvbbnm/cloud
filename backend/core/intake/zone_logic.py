@@ -58,7 +58,13 @@ KILL_CHAIN_ORDER: dict[str, int] = {
 
 
 TRIGGER_MIN_DEPTH: int = 3
-TRIGGER_MIN_LIKELIHOOD: float = 0.45
+TRIGGER_MIN_LIKELIHOOD: float = 0.30
+# Phase P.10 (2026-05-27) — 일반 단서 cap=20 적용 후 실측:
+#   weights_to_likelihood(max_w=20, 8 가설) ≈ 0.22 ~ 0.33 분포
+#   강한 변별 단서 (T1552.005, T1110, fail_then_success 등) max_lk ≈ 0.31~0.33
+# Phase P.13 (2026-05-27 사용자 피드백: "Zone 열리는게 안 보였어") — 0.40→0.30.
+#   cap=20 의 상한 likelihood (0.33) 미만이면 Zone 2 진입 불가 → 0.30 으로 낮춰
+#   강한 단서 1개 + depth ≥ 3 시 정상 트리거.
 
 # 회귀 임계값 (paradigm §21.8.1)
 REGRESS_ENTROPY_THRESHOLD: float = 2.0

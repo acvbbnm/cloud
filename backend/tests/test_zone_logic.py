@@ -168,6 +168,34 @@ def test_should_not_regress_when_clear_winner() -> None:
     assert should_regress(posterior) is False
 
 
+def test_should_not_regress_when_stage_ge_2() -> None:
+    """Phase P.4 (2026-05-26) — Multi-Stage 진입 후 (stage ≥ 2) 회귀 권고 OFF.
+
+    Stage 2 의 새 baseline 은 anchor 가설 0 + 나머지 12-30% 분포 → entropy 자연
+    높음. 이건 "다시 모호" 가 아니라 "새 광범위 탐색" 정상 상태. 사용자 인지
+    부조화 ("막 확정했는데 왜 회귀?!") 차단.
+    """
+    # 일부러 entropy 매우 높은 posterior 구성 — stage=1 이면 True 가 나옴
+    posterior = {
+        "CREDENTIAL_THEFT": 0.0,           # anchor freeze
+        "PRIVILEGE_ESCALATION": 0.30,
+        "DATA_EXFILTRATION": 0.20,
+        "INSIDER_THREAT": 0.15,
+        "RANSOMWARE": 0.12,
+        "AUDIT_LOG_TAMPERING": 0.10,
+        "MISCONFIG_EXPOSURE": 0.08,
+        "PHISH_INITIAL_ACCESS": 0.05,
+        "UNCLASSIFIED": 0.0,
+    }
+    # stage 1 — 회귀 권고 발동해야 정상 (entropy 높음)
+    assert should_regress(posterior, stage=1) is True
+    # stage 2 — 회귀 권고 차단 (Multi-Stage 새 baseline)
+    assert should_regress(posterior, stage=2) is False
+    # stage 3, 4 — 동일
+    assert should_regress(posterior, stage=3) is False
+    assert should_regress(posterior, stage=99) is False
+
+
 # ─────────────────────────────────────────────────────────────
 # 4. compute_attack_chain — Kill Chain 순 재정렬
 # ─────────────────────────────────────────────────────────────

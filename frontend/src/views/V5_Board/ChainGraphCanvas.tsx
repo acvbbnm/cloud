@@ -22,6 +22,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 
 import { isClueNode } from '@/api/board';
+import { CLUE_DRAG_MIME, type CluePayload } from './LogPanel';
 
 import type { BoardEdge, BoardNode } from '@/types';
 
@@ -34,6 +35,9 @@ interface ChainGraphCanvasProps {
   onSelectNode: (n: BoardNode) => void;
   onPickEdgeEnd: (fromId: string, toId: string) => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
+  /** Phase P.6 — LogPanel 단서 탭에서 드래그된 단서를 보드 노드로 변환.
+   *  null 이면 drop 비활성 (caseId 없을 때 등). */
+  onDropClue?: (payload: CluePayload, posX: number, posY: number) => void;
 }
 
 const NODE_W = 168;
@@ -52,6 +56,7 @@ const ChainGraphCanvas = ({
   onSelectNode,
   onPickEdgeEnd,
   onMoveNode,
+  onDropClue,
 }: ChainGraphCanvasProps) => {
   // 영속 위치 우선 + 미설정 시 격자 배치
   const baseLayout = useMemo(() => {
@@ -74,6 +79,8 @@ const ChainGraphCanvas = ({
 
   // 드래그 중 임시 위치 오버라이드 (백엔드 호출 전)
   const [tempPos, setTempPos] = useState<Map<string, { x: number; y: number }>>(new Map());
+  // Phase P.6 — 단서 drag-over 시각 강조
+  const [clueDragOver, setClueDragOver] = useState(false);
   const layout = useMemo(() => {
     if (tempPos.size === 0) return baseLayout;
     const m = new Map(baseLayout);
@@ -201,13 +208,59 @@ const ChainGraphCanvas = ({
   const width = maxRight;
   const height = maxBottom;
 
+  // Phase P.6 — drop zone 핸들러 (LogPanel 단서 탭 → ChainGraph)
+  const handleClueDragOver = (e: React.DragEvent<SVGSVGElement>) => {
+    if (!onDropClue) return;
+    // dataTransfer 타입 검사 — 단서 MIME 일 때만 drop 허용
+    if (!e.dataTransfer.types.includes(CLUE_DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (!clueDragOver) setClueDragOver(true);
+  };
+
+  const handleClueDragLeave = (e: React.DragEvent<SVGSVGElement>) => {
+    // SVG 내부 자식으로 이동하면 leave 가 발생하나 relatedTarget 이 SVG 내부.
+    // currentTarget(SVG) 의 contains 검사로 진짜 outside 인지 확인.
+    const related = e.relatedTarget as Node | null;
+    if (related && e.currentTarget.contains(related)) return;
+    setClueDragOver(false);
+  };
+
+  const handleClueDrop = (e: React.DragEvent<SVGSVGElement>) => {
+    if (!onDropClue) return;
+    e.preventDefault();
+    setClueDragOver(false);
+    const raw = e.dataTransfer.getData(CLUE_DRAG_MIME);
+    if (!raw) return;
+    let payload: CluePayload;
+    try {
+      payload = JSON.parse(raw) as CluePayload;
+    } catch {
+      return;
+    }
+    if (!payload.clue_key) return;
+    const { x, y } = toSvgCoords(e.clientX, e.clientY);
+    // 노드 좌상단 기준 좌표 (NODE_W/H 의 중앙이 드롭 위치가 되도록 조정)
+    const pos_x = Math.max(0, Math.round(x - NODE_W / 2));
+    const pos_y = Math.max(0, Math.round(y - NODE_H / 2));
+    onDropClue(payload, pos_x, pos_y);
+  };
+
   return (
     <svg
       ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid meet"
-      className="w-full bg-ink-950/40 border border-ink-700/40 rounded-xl"
+      className={
+        'w-full border rounded-xl transition-colors ' +
+        (clueDragOver
+          ? 'bg-brand-teal/10 border-brand-teal/60 shadow-[0_0_0_2px_rgba(45,212,191,0.25)]'
+          : 'bg-ink-950/40 border-ink-700/40')
+      }
       style={{ maxHeight: 380, touchAction: 'none' }}
+      onDragOver={handleClueDragOver}
+      onDragLeave={handleClueDragLeave}
+      onDrop={handleClueDrop}
     >
       <defs>
         {/* 엣지 끝 화살표 — 파란 톤 */}

@@ -43,10 +43,14 @@ class Settings:
     DB_URL: str = os.getenv("DB_URL", f"sqlite:///{BASE_DIR / 'ai_sherpa.db'}")
 
     # ── CORS ──
+    # 브라우저는 호스트명을 입력값 그대로 보내므로 localhost / 127.0.0.1 모두 등록 (preflight 400 방지)
     CORS_ORIGINS: list[str] = [
         "http://localhost:5173",  # Vite 기본 포트
         "http://localhost:5174",  # Vite 충돌 시 자동 fallback
         "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000",
     ]
 
     # ── Ollama (sLLM) ──

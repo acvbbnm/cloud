@@ -133,13 +133,24 @@ const Step3_Discovery = ({
   const [scoringMode, setScoringMode] = useState<
     'additive' | 'bayesian' | 'evidence_tree' | 'bayes_net'
   >('additive');
+  // Phase P.5 — scoringMode 가 백엔드 응답으로 "확정된" 시점 표시.
+  // startTriage / nextTriage 응답에서 set. 이 값 false 일 때는 modal 자동 호출 금지.
+  const [scoringModeBootstrapped, setScoringModeBootstrapped] = useState(false);
 
-  // 진입 시 사전 안내 모달 표시 (영속화 체크)
+  // Phase P.5 (2026-05-26 byungwoo 피드백 — 옛 UI 회귀 노출 차단):
+  //   기존 동작: mount 즉시 introOpen=true → 옛 additive 모달 깜빡 노출 후 위임으로 사라짐
+  //   변경: mount 자동 호출 제거. scoringMode 가 백엔드로부터 확정된 후 (bootstrapped=true)
+  //         에만, 그리고 additive/bayesian 일 때만 introOpen=true.
+  //         evidence_tree/bayes_net 면 위임으로 빠지므로 modal 자체 안 뜸.
+  //
+  //   localStorage 키는 modal 컴포넌트 내부에서 mode 별로 별도 관리됨.
   useEffect(() => {
+    if (!scoringModeBootstrapped) return;
+    if (scoringMode !== 'additive' && scoringMode !== 'bayesian') return;
     if (!hasDismissedDiscoveryIntro()) {
       setIntroOpen(true);
     }
-  }, []);
+  }, [scoringMode, scoringModeBootstrapped]);
 
   // E4 §4-8 (2026-05-22): 출처 트레이스 자동 갱신 — 트리 답변·단서·기법 변할 때.
   // 500ms 디바운스 — 연속 입력 시 API 호출 폭주 방지.
@@ -201,6 +212,8 @@ const Step3_Discovery = ({
           }
         ).scoring_mode;
         if (mode) setScoringMode(mode);
+        // Phase P.5 — scoringMode 확정 표시 (introOpen 자동 호출 조건 해제)
+        setScoringModeBootstrapped(true);
         if (res.next_node) {
           storeStart(res.next_node.id);
           setCurrentNodeData(res.next_node);
@@ -337,6 +350,8 @@ const Step3_Discovery = ({
         }
       ).scoring_mode;
       if (mode) setScoringMode(mode);
+      // Phase P.5 — scoringMode 확정 표시 (next 응답에서도 안전 망)
+      setScoringModeBootstrapped(true);
       // 2026-05-25 fix: next_node 가 terminal 타입(T_evaluate 등) 이면 currentNode 에
       // 넣지 않는다. 넣으면 TriageTreeMinimap 이 trail+current 로 6+1=7개 step 을
       // 만들어 lvl=6 위치에 "Q7" 라벨을 그리는 버그 발생.

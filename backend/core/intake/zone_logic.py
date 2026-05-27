@@ -129,7 +129,7 @@ def is_zone2_unlocked(tree: ClueTree, posterior: dict[str, float]) -> bool:
 # ─────────────────────────────────────────────────────────────
 
 
-def should_regress(posterior: dict[str, float]) -> bool:
+def should_regress(posterior: dict[str, float], stage: int = 1) -> bool:
     """Zone 2 → Zone 1 자동 회귀 조건 (paradigm §21.8.1).
 
     1. entropy ≥ REGRESS_ENTROPY_THRESHOLD (uniform 근처 — 다시 모호)
@@ -137,7 +137,16 @@ def should_regress(posterior: dict[str, float]) -> bool:
 
     둘 중 하나라도 True 면 회귀 권고. UI 는 자동 강제 X — 알림만 + 사용자
     [Zone 1 으로 회귀] 버튼.
+
+    Phase N.4 정합 (2026-05-26): stage ≥ 2 에서는 회귀 권고 OFF.
+      이유 — Multi-Stage 진입 직후 새 baseline (anchor 가설 0 + 나머지 12-30%
+      분포) 은 entropy 가 자연스레 높음. 이건 "다시 모호" 가 아니라 "새 광범위
+      탐색 시작" 이 정상 상태. 사용자 입장에서 "막 확정했는데 왜 회귀?!" 인지
+      부조화를 차단.
     """
+    if stage >= 2:
+        return False
+
     H = posterior_entropy(posterior)
     if H >= REGRESS_ENTROPY_THRESHOLD:
         return True

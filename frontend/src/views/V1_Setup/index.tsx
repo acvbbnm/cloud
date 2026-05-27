@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMutation } from '@tanstack/react-query';
@@ -45,14 +44,27 @@ const V1Setup = () => {
   const showToast = useToastStore((s) => s.show);
   const resetCase = useCaseStore((s) => s.reset);
   const resetTriage = useTriageStore((s) => s.reset);
-  const [step, setStep] = useState(0);
 
-  // 2026-05-21: V-1 mount 시 store 자동 초기화 — 새로고침·새 탭마다 깨끗한 상태로 시작.
-  useEffect(() => {
+  // 2026-05-26 (사용자 피드백): intake 진행 상황을 다른 뷰 왕복에도 유지.
+  //   - V-1 step 을 useCaseStore.currentStep 과 동기화 → localStorage 영속화
+  //   - 이전 mount-시-auto-reset 동작 제거 (다른 뷰에서 돌아오면 그대로 이어감)
+  //   - 명시적 [🔄 새 케이스] 버튼으로만 리셋 가능 (헤더)
+  const step = useCaseStore((s) => s.currentStep);
+  const setStep = useCaseStore((s) => s.setStep);
+
+  /** 명시적 새 케이스 시작 — 사용자가 헤더의 [🔄 새 케이스] 클릭 시. */
+  const startNewCase = () => {
+    if (caseId) {
+      const ok = window.confirm(
+        '진행 중인 케이스 진행 상황이 모두 초기화됩니다. 새 케이스로 시작할까요?',
+      );
+      if (!ok) return;
+    }
     resetCase();
     resetTriage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setStep(0);
+    showToast('새 케이스 시작 — V-1 처음부터', 2500);
+  };
 
   const current = stepLabels[step];
 
@@ -119,6 +131,18 @@ const V1Setup = () => {
         description="분석 환경·케이스 메타·시스템 구성을 정의하고, 단서 루프(결정 트리)로 사고유형을 추정한 뒤 우선순위가 매겨진 초동 수집 가이드를 생성합니다."
         meta={
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Phase P.3 (2026-05-26) — 명시적 새 케이스 시작 버튼.
+                다른 뷰 왔다가 돌아와도 진행 상황 유지 → 사용자가 명시적으로 누를 때만 reset. */}
+            {(caseId || step > 0) && (
+              <button
+                type="button"
+                onClick={startNewCase}
+                className="text-[10.5px] text-ink-400 hover:text-amber-300 border border-ink-700 hover:border-amber-500/60 px-2 py-0.5 rounded transition-colors"
+                title="모든 진행 상황 초기화 + V-1 처음부터"
+              >
+                🔄 새 케이스
+              </button>
+            )}
             {stepLabels.map((s, i) => {
               const state = i < step ? 'done' : i === step ? 'cur' : 'idle';
               return (

@@ -91,6 +91,35 @@ const V5Board = () => {
     },
   });
 
+  // Phase P.6 (2026-05-26) — LogPanel 단서 탭에서 ChainGraph 로 드래그된 단서 처리.
+  // POST /api/board/nodes {clue_key, pos_x, pos_y, source: 'manual_drag'}
+  // 멱등: 보드에 같은 clue_key 노드가 이미 있으면 백엔드 호출 전 차단 (토스트 안내).
+  const addClueNodeMutation = useMutation({
+    mutationFn: (vars: {
+      clue_key: string;
+      label: string;
+      pos_x: number;
+      pos_y: number;
+    }) =>
+      createNode({
+        caseId: caseId!,
+        clue_key: vars.clue_key,
+        label: vars.label,
+        pos_x: vars.pos_x,
+        pos_y: vars.pos_y,
+        source: 'manual_drag',
+        is_ai_suggested: false,
+      }),
+    onSuccess: (node) => {
+      showToast(`🔍 단서 노드 추가 — ${node.label}`);
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`단서 노드 추가 실패: ${msg}`);
+    },
+  });
+
   const updateStatusMutation = useMutation({
     mutationFn: ({ nodeId, status }: { nodeId: string; status: 'CONFIRMED' | 'REJECTED' }) =>
       updateNode(nodeId, { status }),
@@ -302,6 +331,34 @@ const V5Board = () => {
                 onMoveNode={(nodeId, x, y) =>
                   movePositionMutation.mutate({ nodeId, x, y })
                 }
+                // Phase P.6 — LogPanel 단서 탭 drop 처리
+                onDropClue={
+                  caseId
+                    ? (payload, x, y) => {
+                        // 프론트 멱등 — 이미 있는 clue_key 차단
+                        const exists = boardNodes.some((n) => {
+                          const m = n.meta;
+                          if (!m || typeof m !== 'object') return false;
+                          return (
+                            (m as Record<string, unknown>).clue_key === payload.clue_key
+                          );
+                        });
+                        if (exists) {
+                          showToast(
+                            `📋 이미 보드에 있는 단서: ${payload.label}`,
+                            3000,
+                          );
+                          return;
+                        }
+                        addClueNodeMutation.mutate({
+                          clue_key: payload.clue_key,
+                          label: payload.label,
+                          pos_x: x,
+                          pos_y: y,
+                        });
+                      }
+                    : undefined
+                }
               />
               {edgeMode && (
                 <div className="mt-2 text-[10.5px] text-ink-400 leading-5">
@@ -466,7 +523,7 @@ const V5Board = () => {
               />
             </Card>
 
-            <LogPanel onDragStart={setPendingLog} />
+            <LogPanel onDragStart={setPendingLog} boardNodes={boardNodes} />
           </div>
         </div>
       </div>

@@ -35,6 +35,7 @@ import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
 import CluesInput from '@/components/CluesInput';
 import ConfidenceGauge from '@/components/ConfidenceGauge';
+import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuideBanner';
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
@@ -126,6 +127,10 @@ const Step3_EvidenceTreeDiscovery = ({
   // NIST SP 800-86 §4.1 Initial Triage. cold-start ~ depth 1 구간에 노출,
   // depth ≥ 2 면 자동 숨김. 사용자 X 클릭으로 영구 dismiss (sessionStorage).
   const [reconDismissed, setReconDismissed] = useState<boolean>(hasDismissedRecon);
+  // Phase P.2 (2026-05-26) — 기본 수사 가이드 dismiss
+  const [entryGuideDismissed, setEntryGuideDismissed] = useState<boolean>(
+    hasDismissedEntryGuide,
+  );
 
   // ── Phase M.3 (2026-05-26) — Zone 2 chain mode 상태 ──
   // chainFilterHypothesis: AttackChainCard 에서 선택된 가설 (null = 미선택, 통합 풀).
@@ -462,6 +467,20 @@ const Step3_EvidenceTreeDiscovery = ({
             chainDescription={treeState.chain_description ?? ''}
             stage={treeState.stage ?? 1}
             disabled={loading || isSubmitting}
+          />
+        )}
+
+        {/* Phase P.2 (2026-05-26) — 기본 수사 가이드 (UNCLASSIFIED Initial Triage)
+            사고유형 무관 필수 로그 점검표. 사후확률 영향 X — 단순 안내.
+            ReconClueCard 보다 위 (cold-start 직후 가장 먼저 노출). */}
+        {!entryGuideDismissed && (treeState.path.length - 1) < 4 && (
+          <EntryGuideBanner
+            caseId={caseId}
+            onOpenFullGuide={(preview) => {
+              setGuidePreviewCache((prev) => ({ ...prev, UNCLASSIFIED: preview }));
+              setFullGuideModalType('UNCLASSIFIED');
+            }}
+            onDismiss={() => setEntryGuideDismissed(true)}
           />
         )}
 

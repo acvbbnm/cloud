@@ -269,18 +269,16 @@ const IncidentTypeCompass = ({
       dx *= scale;
       dy *= scale;
     }
-    // Phase M.2 — Zone 2 진입 시 점을 외부 원 부근으로 끌어올림 (paradigm §21.6).
-    // 회귀 권고 중에는 boost 해제 (자연 위치로 복귀 — 사용자에게 모호함 시각화).
-    // 방향은 보존하고 반지름만 최소 R*0.55 보장 (내부 원 밖, 외부 원 근처).
-    if (zone === 2 && !regressSuggested && r > 0) {
-      const minR = R * 0.55;
-      const curR = Math.sqrt(dx * dx + dy * dy);
-      if (curR < minR) {
-        const scale = minR / curR;
-        dx *= scale;
-        dy *= scale;
-      }
-    }
+    // Phase M.2 → P.4 (2026-05-26 사용자 피드백): Zone 2 boost 제거.
+    //   기존 동작: Zone 2 진입 시 모든 trail 점에 minR=R*0.55 보장 boost.
+    //   문제: zone 1→2 트랜지션 순간 path 의 모든 점이 통째로 외부로 점프 →
+    //         polyline 이 끊긴 것처럼 보임 + 사용자 의도 (자연스러운 흐름) 위배.
+    //   해결: boost 제거. 점은 사후확률에 따라 자연 이동. Zone 2 강조는 외부
+    //         원 강조 + 색상 + 배지 + 라벨로 표현 (이미 구현됨).
+    //
+    //   결과 — depth 증가하면 radiusForDepth 가 자연스럽게 점을 외부로 끌어줌.
+    //   "보스 단서" 의 강한 likelihood 가 한 anchor 로 무게중심을 밀어주므로
+    //   Zone 2 의 외곽 위치도 자연스럽게 형성됨.
     return { x: center + dx, y: center + dy };
   };
 

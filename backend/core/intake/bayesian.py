@@ -135,13 +135,63 @@ def weights_to_likelihood(weights: dict[str, int]) -> dict[str, float]:
     return {h: (w + smoothing) / total for h, w in sco.items()}
 
 
+def apply_robust_floor(
+    posterior: dict[str, float], epsilon: float | None = None
+) -> dict[str, float]:
+    """Phase N.2 — Robust Bayes ε-contamination 후처리.
+
+    학술 정합:
+      - Berger 1985 *Robust Bayesian Analysis* — ε-contamination model:
+            π̃(h) = (1 − ε) π(h) + ε π₀(h)
+        여기서 π₀ = uniform (모든 가설 동등) → 단일 가설 99% 쏠림 차단.
+
+    동기 (paradigm §21.1 ②):
+      "복합 공격이 정상" — 단서 4-5개 누적으로 한 가설 99% 도달해도, 다른 7
+      가설에 최소 ε/8 = 1% (default) floor 보장 → 복합 가설 chain 가시화 유지.
+
+    파라미터:
+      epsilon: contamination 비중 (0 = 비활성, 0.08 = 각 가설 1% floor).
+               None 이면 settings.ROBUST_FLOOR_EPSILON 사용.
+
+    동작:
+      - UNCLASSIFIED 는 floor 미적용 (sentinel, 0 유지).
+      - 8 사고유형에만 (1-ε)·posterior + ε·uniform mix 적용.
+      - 결과 합 = 1 보장.
+    """
+    eps = settings.ROBUST_FLOOR_EPSILON if epsilon is None else epsilon
+    if eps <= 0:
+        return dict(posterior)
+
+    # 8 사고유형 (UNCLASSIFIED 제외) 만 contamination 적용
+    hyps = [h for h in posterior if h != "UNCLASSIFIED"]
+    if not hyps:
+        return dict(posterior)
+    n = len(hyps)
+    uniform = 1.0 / n
+
+    # 정규화 — 8 가설 합 = 1 (UNCLASSIFIED 0 가정)
+    raw_total = sum(posterior.get(h, 0.0) for h in hyps)
+    if raw_total <= 0:
+        # 정보 없음 → uniform 분포 그대로
+        out = {h: uniform for h in hyps}
+        out["UNCLASSIFIED"] = posterior.get("UNCLASSIFIED", 0.0)
+        return out
+
+    out: dict[str, float] = {}
+    for h in hyps:
+        norm = posterior.get(h, 0.0) / raw_total
+        out[h] = (1.0 - eps) * norm + eps * uniform
+    out["UNCLASSIFIED"] = posterior.get("UNCLASSIFIED", 0.0)
+    return out
+
+
 def bayes_update(
     posterior: dict[str, float], likelihood: dict[str, float]
 ) -> dict[str, float]:
-    """베이즈 1-step 갱신.
+    """베이즈 1-step 갱신 + Robust Bayes ε-contamination 후처리 (Phase N.2).
 
     posterior_new[h] = posterior[h] × likelihood[h]
-    정규화 후 합 = 1.
+    정규화 후 합 = 1, ε-contamination 적용 → 모든 가설 최소 ε/8 floor 보장.
 
     likelihood 에 없는 사고유형은 1.0 (변동 없음) 으로 처리 — UNCLASSIFIED 등.
     """
@@ -154,7 +204,9 @@ def bayes_update(
     if total <= 0:
         # 모두 0 곱이면 prior 로 복귀 (안전)
         return initial_posterior()
-    return {h: v / total for h, v in raw.items()}
+    normalized = {h: v / total for h, v in raw.items()}
+    # Phase N.2 — Robust Bayes floor 적용 (epsilon=0 이면 통과만)
+    return apply_robust_floor(normalized)
 
 
 def top_n(posterior: dict[str, float], n: int = 3) -> list[tuple[str, float]]:

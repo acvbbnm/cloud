@@ -87,6 +87,13 @@ class Settings:
     # 모든 모드 결정성 100% (같은 입력 → 같은 출력). 환경변수로 안전 토글.
     TRIAGE_MODE: str = os.getenv("TRIAGE_MODE", "additive")
 
+    # ── Phase N.2 (2026-05-26 byungwoo) — Robust Bayes ε-contamination ──
+    # bayes_update 후처리로 모든 8 사고유형에 floor (ε/8 = 1%) 보장.
+    # 학술: Berger 1985 *Robust Bayesian Analysis* — ε-contamination model.
+    # 동기 (paradigm §21.1 ②): "복합 공격이 정상" — 단일 가설 99% 쏠림 차단.
+    # 0.0 = 비활성 (legacy 동작), 0.08 = ε 권장 (1%/가설). 환경변수 토글 가능.
+    ROBUST_FLOOR_EPSILON: float = float(os.getenv("ROBUST_FLOOR_EPSILON", "0.08"))
+
     # ── 페이지네이션 ──
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100

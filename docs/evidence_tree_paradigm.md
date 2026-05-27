@@ -1220,6 +1220,28 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - lane 별 Zone 2: RANSOM 78% · ROUTER 100% · INSIDER/MISCFG 33% · CRED 25% · SHORT/TERM 0%
   - 트리거 N=3, M=0.45 권장 범위 (30~90%) 안 → 그대로 유지. 시연 후 fit 불필요 가능성
 
+## Phase N — 복합 가설 추적 강화 (2026-05-26, byungwoo)
+
+> 사용자 비전 (2026-05-26 추가):
+> 1. *"첫 단서로 특정 사고 한쪽 쏠림 방지" — 사고유형 무관 정찰 단서 먼저 누적*
+> 2. *"99% 한 가설 쏠림 차단" — 복합 공격이 정상 (paradigm §21.1 ②)*
+> 3. *"특정 단계 도달 후 그 사고유형에서 시작해서 연관된 다른 공격도 찾아가기" — 다단계 chain*
+
+### N 체크리스트
+
+- [x] **N.1** — 1차 정찰 단서 가이드 카드 (byungwoo, 2026-05-26, commit `b9f25ff`)
+  - `GET /api/clue-tree/recon-options` — Q1·Q2A 그룹별 15 옵션 반환 (max weight ≤ 35)
+  - `frontend/src/components/ReconClueCard.tsx` 신설 — cold-start (depth < 2) 노출
+  - paradigm doc §4.4 신설 — NIST SP 800-86 §4.1 Initial Triage 정합
+- [x] **N.2** — Robust Bayes ε-contamination Floor (byungwoo, 2026-05-26)
+  - `core/intake/bayesian.py:apply_robust_floor` 신설 — Berger 1985 학술 정합
+  - `bayes_update` 후처리 통합 — 8 가설 각 최소 1% floor (ε=0.08 default)
+  - `settings.ROBUST_FLOOR_EPSILON` 환경변수 토글 (0=비활성, 0.08=권장)
+  - 검증: 단위 테스트 8/8 PASS · evidence_tree e2e 47/47 · additive e2e 47/47 · Phase M e2e 19/47 동일
+  - 효과: 단서 4회 누적 + 강한 likelihood 0.95 시 CRED 압축됨 (99%→92.08%), 나머지 7 가설 각 ≥1%
+- [ ] **N.3** — 가설별 신뢰도 시계열 sparkline (담당자 미정)
+- [ ] **N.4** — 다단계 공격 chain 추적 (담당자 미정)
+
 **팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.
 
 ---

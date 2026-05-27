@@ -640,11 +640,12 @@ const IncidentTypeCompass = ({
                 points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
                 fill="none"
                 stroke={sc.fill}
-                strokeWidth={isLatest ? 2.4 : 2.2}
-                strokeOpacity={isLatest ? 0.88 : 0.72}
-                // 최신 segment: 실선 (현재 진행 강조)
-                // 과거 segment: 짧은 점선 (지나간 흔적 + 시각 구분, 그러나 충분히 진함)
-                strokeDasharray={isLatest ? undefined : '6 2'}
+                strokeWidth={isLatest ? 2.8 : 2.4}
+                strokeOpacity={isLatest ? 0.92 : 0.78}
+                // Phase P.17 (사용자 피드백: "회귀권고에서도 오류가 있어 노드가 깨지는데")
+                //   기존 dasharray "6 2" 가 점간 거리 짧을 때 (depth 1-3 근방) 끊겨 보임 →
+                //   회귀권고/Zone1 케이스에서 polyline 이 안 보이는 버그.
+                //   변경: 모든 segment 실선. stage 구분은 stroke 색 + opacity 로만.
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -723,7 +724,10 @@ const IncidentTypeCompass = ({
                     style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
                   />
                 )}
-                {/* depth 번호 (reset 마커 제외) */}
+                {/* depth 번호 (reset 마커 제외)
+                 *  Phase P.17 — trail index `i` 대신 t.depth 사용.
+                 *  RESET 마커가 삽입되면 i 가 점프 (1,2,4) → 사용자 혼란.
+                 *  depth 는 실제 단서 순서라 RESET 무관하게 1,2,3,4 연속. */}
                 {!isRoot && !isResetMarker && (
                   <text
                     x={t.x + 8}
@@ -733,7 +737,7 @@ const IncidentTypeCompass = ({
                     fontWeight={600}
                     style={{ fontFamily: 'system-ui, sans-serif' }}
                   >
-                    {i}
+                    {t.depth}
                   </text>
                 )}
                 {/* 현재 위치 단서 라벨 */}

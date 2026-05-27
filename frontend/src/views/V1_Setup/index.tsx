@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useTriageStore } from '@/stores/useTriageStore';
+import { useClueTreeStore } from '@/stores/useClueTreeStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { createCase, updateCase } from '@/api/intake';
 import type { CSP, IncidentType, Severity } from '@/types';
@@ -44,6 +45,7 @@ const V1Setup = () => {
   const showToast = useToastStore((s) => s.show);
   const resetCase = useCaseStore((s) => s.reset);
   const resetTriage = useTriageStore((s) => s.reset);
+  const resetClueTree = useClueTreeStore((s) => s.reset);
 
   // 2026-05-26 (사용자 피드백): intake 진행 상황을 다른 뷰 왕복에도 유지.
   //   - V-1 step 을 useCaseStore.currentStep 과 동기화 → localStorage 영속화
@@ -60,10 +62,21 @@ const V1Setup = () => {
       );
       if (!ok) return;
     }
+    // Phase P.16 (2026-05-27 사용자 피드백: "콜드스타트 안 되고 쓰레기 데이터 남아있음")
+    //   useClueTreeStore 의 sessionStorage 영속 응답이 잔존 → 새 케이스인데
+    //   옛 evidence_tree path/posterior 가 그대로 표시되는 버그. reset 추가.
     resetCase();
     resetTriage();
+    resetClueTree();
+    // 영속화 키들 명시 제거 — sessionStorage/localStorage 잔존 차단
+    try {
+      window.sessionStorage.removeItem('aisherpa.reconClueCard.dismissed');
+      window.sessionStorage.removeItem('aisherpa.entryGuideBanner.dismissed');
+    } catch {
+      /* ignore */
+    }
     setStep(0);
-    showToast('새 케이스 시작 — V-1 처음부터', 2500);
+    showToast('새 케이스 시작 — V-1 처음부터 (모든 store 초기화)', 2500);
   };
 
   const current = stepLabels[step];

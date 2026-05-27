@@ -96,3 +96,20 @@ export const getReconOptions = async (): Promise<ReconOptionsResponse> => {
   const res = await client.get('/api/clue-tree/recon-options');
   return res.data.data;
 };
+
+/**
+ * POST /api/clue-tree/advance-stage — Phase N.4 다단계 공격 chain 진입.
+ *
+ * 확정된 사고유형을 anchor 로 freeze 하고 다음 stage 의 새 baseline (STAGE_TRANSITION_MATRIX
+ * 의 연관 가중치) 으로 진행. paradigm §23 정합.
+ */
+export const advanceClueTreeStage = async (
+  caseId: string,
+  confirmedHypothesis: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/advance-stage', {
+    caseId,
+    confirmed_hypothesis: confirmedHypothesis,
+  });
+  return res.data.data;
+};

@@ -40,6 +40,7 @@ import DiscoveryIntroModal, {
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
+import MultiStageBoard from '@/components/MultiStageBoard';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
@@ -110,6 +111,7 @@ const Step3_EvidenceTreeDiscovery = ({
   const refreshCandidates = useClueTreeStore((s) => s.refreshCandidates);
   const hydrate = useClueTreeStore((s) => s.hydrate);
   const resetServer = useClueTreeStore((s) => s.resetServer);
+  const advanceStage = useClueTreeStore((s) => s.advanceStage);
 
   // Phase G — 첫 진입 시 evidence_tree 패러다임 안내 모달
   const [introOpen, setIntroOpen] = useState(false);
@@ -452,6 +454,16 @@ const Step3_EvidenceTreeDiscovery = ({
 
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
+        {/* Phase N.4 (2026-05-26) — 다단계 공격 chain 추적 보드 */}
+        {treeState.confirmed_hypotheses && treeState.confirmed_hypotheses.length > 0 && (
+          <MultiStageBoard
+            confirmedHypotheses={treeState.confirmed_hypotheses}
+            chainDescription={treeState.chain_description ?? ''}
+            stage={treeState.stage ?? 1}
+            disabled={loading || isSubmitting}
+          />
+        )}
+
         {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시 */}
         {!reconDismissed && (treeState.path.length - 1) < 2 && (
           <ReconClueCard
@@ -673,24 +685,50 @@ const Step3_EvidenceTreeDiscovery = ({
                   {(treeState.confidence.gap * 100).toFixed(1)}%p
                 </div>
               )}
-              <div className="flex gap-2 pt-1">
+              {/* Phase N.4 — 자동/수동 진입 양립 (paradigm §23) */}
+              <div className="flex flex-col gap-1.5 pt-1">
                 <button
                   type="button"
-                  onClick={handleConfirm}
-                  disabled={isSubmitting}
-                  className="flex-1 text-[11px] font-semibold bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
-                >
-                  확정하고 다음 단계로 →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 그냥 계속 단서 채택 — confidence 카드는 알림으로 남음
+                  onClick={async () => {
+                    if (!caseId || !treeState.confidence.primary) return;
+                    try {
+                      await advanceStage(caseId, treeState.confidence.primary);
+                      setChainFilterHypothesis(null);
+                      showToast(
+                        `🔗 ${INCIDENT_TYPE_KO[treeState.confidence.primary]} 확정 — 다음 단계 자동 추적 시작`,
+                        3500,
+                      );
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      showToast(`다음 단계 진입 실패: ${msg}`, 4500);
+                    }
                   }}
-                  className="text-[11px] text-ink-300 hover:text-ink-100 border border-ink-700 hover:border-ink-500 px-3 py-1.5 rounded transition-colors"
+                  disabled={isSubmitting || loading}
+                  className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-ink-950 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
+                  title="paradigm §23 Multi-Stage — 확정 가설 anchor + 연관 가설 새 baseline"
                 >
-                  단서 더 채택
+                  🔗 다음 단계 추적 (multi-stage) →
                 </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={isSubmitting}
+                    className="flex-1 text-[11px] bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
+                    title="단일 사고유형 확정 + V-2 로그 수집으로 진행"
+                  >
+                    확정하고 V-2 로 →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      /* 단서 더 채택 — confidence 카드는 알림으로 남음 */
+                    }}
+                    className="text-[11px] text-ink-300 hover:text-ink-100 border border-ink-700 hover:border-ink-500 px-3 py-1.5 rounded transition-colors"
+                  >
+                    단서 더 채택
+                  </button>
+                </div>
               </div>
             </div>
           </Card>

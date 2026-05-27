@@ -116,6 +116,15 @@ export interface ClueTreeResponse {
   core_clue_likelihood?: number;
   /** Zone 2 → 1 회귀 권고 (entropy ≥ 2.0 OR top1-top2 gap < 0.10) — §21.8.1. */
   regress_suggested?: boolean;
+  // ─── Phase N.4 (2026-05-26) — Multi-Stage Attack Chain (paradigm §23) ───
+  /** 현재 stage (1 = 첫 분석, 2 = 첫 사고유형 확정 후 추적, ...). */
+  stage?: number;
+  /** 확정된 사고유형 시퀀스 (시간순). 길이 ≥ 1 이면 multi-stage 진행 중. */
+  confirmed_hypotheses?: IncidentType[];
+  /** confirmed ≥ 2 면 multi-stage 공격. */
+  is_multistage?: boolean;
+  /** 한국어 chain 시퀀스 (예: "자격증명 탈취 → 권한 상승"). */
+  chain_description?: string;
 }
 
 /** explain_clue API 응답 (Phase H.4 + L.2 풍부 메타). */

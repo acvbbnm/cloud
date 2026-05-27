@@ -1252,7 +1252,11 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `POST /api/clue-tree/advance-stage` 엔드포인트
   - `tests/test_stage_transition.py` 15/15 PASS · 전체 313/313 · e2e 47/47 · Phase M e2e 19/47 동일
   - **라이브 검증**: Stage 2 (CRED 확정) → PRIV 30%/DATA 20%/INSIDER 15%/RANSOM 12% / Stage 3 (CRED+PRIV) → DATA 31.6%/RANSOM 26.3%
-- [ ] **N.4.2** — Step 3 Stage 2 UI (MultiStageBoard + 자동/수동 진입 버튼)
+- [x] **N.4.2** — Step 3 Stage 2 UI (byungwoo, 2026-05-26)
+  - `frontend/src/components/MultiStageBoard.tsx` 신설 — 확정 가설 chain 시간순 가로 시각화 + Phase label + Stage 번호
+  - `Step3_EvidenceTreeDiscovery.tsx` — 좌측 메인 상단 MultiStageBoard 노출 (confirmed ≥ 1) + 확정 카드에 [🔗 다음 단계 추적] 버튼 (수동) + [확정하고 V-2 로 →] 버튼 (legacy 단일) 양립 제공
+  - `types/clueTree.ts` — ClueTreeResponse 에 stage/confirmed_hypotheses/is_multistage/chain_description 추가
+  - `api/clueTree.ts:advanceClueTreeStage` + `stores/useClueTreeStore.ts:advanceStage` 액션
 - [ ] **N.4.3** — V-7 보고서 multi-stage chain 통합
 
 ---

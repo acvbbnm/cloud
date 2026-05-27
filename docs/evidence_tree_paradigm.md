@@ -1257,7 +1257,11 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `Step3_EvidenceTreeDiscovery.tsx` — 좌측 메인 상단 MultiStageBoard 노출 (confirmed ≥ 1) + 확정 카드에 [🔗 다음 단계 추적] 버튼 (수동) + [확정하고 V-2 로 →] 버튼 (legacy 단일) 양립 제공
   - `types/clueTree.ts` — ClueTreeResponse 에 stage/confirmed_hypotheses/is_multistage/chain_description 추가
   - `api/clueTree.ts:advanceClueTreeStage` + `stores/useClueTreeStore.ts:advanceStage` 액션
-- [ ] **N.4.3** — V-7 보고서 multi-stage chain 통합
+- [x] **N.4.3** — V-7 보고서 multi-stage chain 통합 (byungwoo, 2026-05-26)
+  - `core/board/report_generator.py:_build_multistage_section` 신설 — case.triage_state.evidence_tree.confirmed_hypotheses 추출
+  - confirmed ≥ 2 시 보고서 §1 개요에 "🔗 다단계 공격 추적" 섹션 자동 삽입 (chain 시퀀스 + Mandiant M-Trends 2024 인용)
+  - confirmed = 1 시 "확정 사고유형: …" 짧은 라벨
+  - 회귀: pytest tests/ 313 passed
 
 ---
 

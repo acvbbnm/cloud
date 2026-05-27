@@ -109,6 +109,54 @@ class ReportGenerator:
     def _docx_path(case_id: str) -> Path:
         return settings.EXPORTS_DIR / f"{case_id}.docx"
 
+    # ── Phase N.4 (2026-05-26) — 다단계 공격 chain 섹션 ──
+    @staticmethod
+    def _build_multistage_section(case) -> Optional[str]:
+        """case.triage_state.evidence_tree 에서 confirmed_hypotheses 추출 →
+        보고서 텍스트 섹션 생성. paradigm §23 정합.
+
+        confirmed = 0: None (multi-stage X)
+        confirmed = 1: 단일 사고유형 확정 — 일반 섹션
+        confirmed ≥ 2: 복합 공격 chain — Mandiant M-Trends 2024 정량 인용
+        """
+        from core.intake.stage_transition import chain_description, is_multistage
+
+        ts = case.triage_state or {}
+        evidence_tree = ts.get("evidence_tree") if isinstance(ts, dict) else None
+        if not evidence_tree:
+            return None
+        confirmed = evidence_tree.get("confirmed_hypotheses") or []
+        if not confirmed:
+            return None
+
+        ko_chain = chain_description(confirmed)
+        multistage = is_multistage(confirmed)
+
+        if not multistage:
+            # 단일 사고유형 확정 — 짧은 라벨만
+            return f"확정 사고유형: {ko_chain}"
+
+        # 복합 공격 chain
+        lines = [
+            "=" * 64,
+            "🔗 다단계 공격 추적 (Multi-Stage Attack Chain)",
+            "=" * 64,
+            f"확정 시퀀스: {ko_chain}",
+            f"단계 수: {len(confirmed)}",
+            "",
+            "공격자가 단일 단계에서 수사 종결될 경우 후속 단계 추적을 놓칠 수 있으나,",
+            "AI Sherpa 의 Multi-Stage 추적 모듈 (paradigm §23) 이 ATT&CK Flow + Mandiant",
+            "M-Trends 2024 의 통계적 전이 패턴을 기반으로 후속 단계 가설을 자동 제시했고,",
+            "수사관이 단계마다 [확정] 클릭으로 chain 을 확장한 결과입니다.",
+            "",
+            "학술 정합:",
+            "  • MITRE ATT&CK Flow (2023) — 단계 시퀀스 학습",
+            "  • Mandiant M-Trends 2024 — 평균 16일 dwell · 5-7 단계 복합 공격",
+            "  • 1-step Markov Chain on ATT&CK Tactics",
+            "=" * 64,
+        ]
+        return "\n".join(lines)
+
     # ── 영속화 ─────────────────────────────────────────
     @classmethod
     def load(cls, case_id: str) -> Optional[dict]:
@@ -207,6 +255,12 @@ class ReportGenerator:
         )
         if case.system_config:
             overview += f"시스템 구성: {json.dumps(case.system_config, ensure_ascii=False)}\n"
+
+        # ── Phase N.4 (2026-05-26) — 다단계 공격 chain 섹션 ──
+        # paradigm §23 정합. confirmed_hypotheses 2개 이상이면 multi-stage 안내.
+        multistage_section = cls._build_multistage_section(case)
+        if multistage_section:
+            overview += "\n" + multistage_section
 
         # ── 섹션 2: 타임라인 (상위 20건) ──
         tl_lines = []

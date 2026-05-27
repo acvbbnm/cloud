@@ -1239,7 +1239,11 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `settings.ROBUST_FLOOR_EPSILON` 환경변수 토글 (0=비활성, 0.08=권장)
   - 검증: 단위 테스트 8/8 PASS · evidence_tree e2e 47/47 · additive e2e 47/47 · Phase M e2e 19/47 동일
   - 효과: 단서 4회 누적 + 강한 likelihood 0.95 시 CRED 압축됨 (99%→92.08%), 나머지 7 가설 각 ≥1%
-- [ ] **N.3** — 가설별 신뢰도 시계열 sparkline (담당자 미정)
+- [x] **N.3** — 가설별 신뢰도 시계열 sparkline (byungwoo, 2026-05-26)
+  - `components/HypothesisSparkline.tsx` 신설 — path 의 posterior_after[h] 시계열 SVG polyline
+  - `AttackChainCard.tsx` 통합 — Top 3 가설 카드에 sparkline 동봉 (width 56 · height 14)
+  - 학술 정합: MITRE ATT&CK Kill Chain (TA0001~TA0040) · Mandiant 2023 Dwell Time
+  - 효과: 단일 99% 쏠림이 아닌 가설별 시간순 활성 곡선 시각화 — "어느 시점에 강했는가"
 - [ ] **N.4** — 다단계 공격 chain 추적 (담당자 미정)
 
 **팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.

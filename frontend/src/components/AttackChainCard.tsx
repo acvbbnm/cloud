@@ -19,7 +19,9 @@
  */
 import { Fragment } from 'react';
 
-import type { AttackChainStep } from '@/types/clueTree';
+import HypothesisSparkline from './HypothesisSparkline';
+
+import type { AttackChainStep, ClueTreePathNode } from '@/types/clueTree';
 import type { IncidentType } from '@/types';
 
 interface AttackChainCardProps {
@@ -31,6 +33,12 @@ interface AttackChainCardProps {
   /** 회귀 버튼 클릭 — 사용자가 Zone 1 으로 자발 복귀 의사 표시 (선택 해제 + 토스트). */
   onRequestRegress?: () => void;
   disabled?: boolean;
+  /**
+   * Phase N.3 — root → leaf path. 각 가설별 sparkline (시계열) 시각화.
+   * 단서 시점별 사후확률 변동 — "이 가설이 어느 시점에 강했는가" 가시화.
+   * 복합 공격 직관 정합 (paradigm §21.1 ②).
+   */
+  path?: ClueTreePathNode[];
 }
 
 const INCIDENT_KO: Record<IncidentType, string> = {
@@ -86,6 +94,7 @@ const AttackChainCard = ({
   regressSuggested = false,
   onRequestRegress,
   disabled = false,
+  path,
 }: AttackChainCardProps) => {
   if (chain.length === 0) {
     return (
@@ -158,8 +167,18 @@ const AttackChainCard = ({
                 >
                   {INCIDENT_KO[step.hypothesis]}
                 </div>
-                <div className="text-[10px] text-ink-400 font-mono mt-0.5">
-                  {prob}%
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-ink-400 font-mono">{prob}%</span>
+                  {/* Phase N.3 — 가설별 시계열 sparkline */}
+                  {path && path.length >= 2 && (
+                    <HypothesisSparkline
+                      path={path}
+                      hypothesis={step.hypothesis}
+                      color={color}
+                      width={56}
+                      height={14}
+                    />
+                  )}
                 </div>
               </button>
               {/* 화살표 (마지막 아닌 경우) */}

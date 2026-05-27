@@ -638,6 +638,7 @@ const Step3_EvidenceTreeDiscovery = ({
                 showToast('Zone 1 으로 복귀 — 광범위 탐색 모드', 2800);
               }}
               disabled={loading || isSubmitting}
+              path={treeState.path}
             />
           </Card>
         )}

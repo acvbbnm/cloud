@@ -39,6 +39,7 @@ from core.intake.clue_tree import (
     append_clue_node,
     candidate_count_by_entropy,
     evaluate_confidence,
+    heal_tree_invariants,
     make_node_id,
     make_root,
     path_from_root,
@@ -95,13 +96,32 @@ def _load_tree_from_case(case: IncidentCaseModel) -> Optional[ClueTree]:
     raw = state.get(TRIAGE_STATE_KEY)
     if not raw:
         return None
-    return tree_from_dict(raw)
+    tree = tree_from_dict(raw)
+    # P.19 (2026-05-28, hard) — 역직렬화 직후 invariant 강제 보장.
+    # 옛 버전·외부 조작으로 손상된 triage_state JSON 의 잔존 케이스 자동 복구.
+    healed = heal_tree_invariants(tree, logger=logger)
+    if healed > 0:
+        logger.info(
+            "_load_tree_from_case: healed %d invariant(s) for case=%s — 손상된 triage_state 자동 복구",
+            healed,
+            case.case_id,
+        )
+    return tree
 
 
 def _save_tree_to_case(
     db: Session, case: IncidentCaseModel, tree: ClueTree
 ) -> None:
     """ClueTree 직렬화 → incident_cases.triage_state["evidence_tree"] 저장."""
+    # P.19 (2026-05-28, hard) — 저장 직전 invariant 강제 보장.
+    # 응답 빌더가 healing 한 in-memory tree 가 그대로 영속화되어 DB 손상 제거.
+    healed = heal_tree_invariants(tree, logger=logger)
+    if healed > 0:
+        logger.warning(
+            "_save_tree_to_case: %d invariant(s) healed before save — case=%s",
+            healed,
+            case.case_id,
+        )
     state = dict(case.triage_state or {})
     state[TRIAGE_STATE_KEY] = tree_to_dict(tree)
     # 평면 dict 재할당해야 SQLAlchemy JSON 변경 감지
@@ -432,6 +452,10 @@ def _build_response(tree: ClueTree) -> dict:
       "path": [...]          # root → leaf 단서 시퀀스 (UI 미니맵용)
     }
     """
+    # P.19 (2026-05-28, hard) — 응답 직전 invariant 마지막 방어선.
+    # _load 직후·_save 직전에 이미 healing 호출되지만, 응답 빌더가 단독 호출되는
+    # 경로(get_tree 등)도 모두 안전하도록 3중 방어. 정합 트리면 healed=0 (zero-cost).
+    heal_tree_invariants(tree, logger=logger)
     leaf = tree.nodes.get(tree.current_leaf_id)
     candidates_raw = leaf.children_candidates if leaf else []
     path = path_from_root(tree)

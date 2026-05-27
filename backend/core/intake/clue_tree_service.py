@@ -439,8 +439,13 @@ def _build_response(tree: ClueTree) -> dict:
     current_depth = leaf.depth if leaf else 0
 
     # Phase M.1 — 2-zone 메타 (paradigm §21·§22.2)
+    # Phase P.15 (2026-05-27 e2e 감사 — P.4 fix 가 P.8 easy 흡수로 되돌려진 회귀)
+    #   should_regress 에 stage 전달 필수 — stage ≥ 2 시 자동 False (Multi-Stage
+    #   새 baseline 의 entropy 자연 높음을 회귀 권고로 오인 차단).
     zone2 = is_zone2_unlocked(tree, tree.posterior_current)
-    regress_suggested = zone2 and should_regress(tree.posterior_current)
+    regress_suggested = zone2 and should_regress(
+        tree.posterior_current, stage=tree.stage
+    )
     # 회귀 권고 시 final zone = 1 (UI 가 자동 강제 X, 사용자 결정. paradigm §21.8 #5)
     final_zone = 1 if (not zone2 or regress_suggested) else 2
 

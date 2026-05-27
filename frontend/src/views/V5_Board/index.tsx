@@ -324,6 +324,9 @@ const V5Board = () => {
               className="flex-shrink-0"
             >
               <ChainGraphCanvas
+                // Phase P.15 — caseId 변경 시 viewport/tempPos 자동 reset
+                // (zoom·pan 상태가 다른 case 로 이월되어 노드 안 보이는 버그 차단)
+                key={caseId}
                 nodes={boardNodes}
                 edges={boardEdges}
                 activeNodeId={activeBoardNode?.node_id ?? null}

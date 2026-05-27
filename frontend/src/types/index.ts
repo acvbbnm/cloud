@@ -16,8 +16,40 @@ export type IncidentType =
   | 'MISCONFIG_EXPOSURE'
   | 'PHISH_INITIAL_ACCESS'
   | 'INSIDER_THREAT'
-  //  미분류 
+  //  미분류
   | 'UNCLASSIFIED';
+
+/**
+ * R.2 (hard, 2026-05-28) — 사고유형 Kill Chain 시계방향 배치 단일 소스.
+ *
+ * 하드코딩 감사 #5 해결: IncidentTypeCompass.tsx 가 같은 배열을 자체 정의해서
+ * 사고유형 추가/순서 변경 시 두 파일 동기화 부담이 있었음. types/index.ts 단일
+ * 소스로 통일.
+ *
+ * 12시부터 시계방향으로 MITRE Cloud Kill Chain 시간순 (Initial Access → Impact).
+ * UNCLASSIFIED 는 Kill Chain 매핑 없으므로 제외 (Exclude<...> 로 타입 narrowing).
+ *
+ *     12  PHISH_INITIAL_ACCESS    (Phase 1, Initial Access)
+ *   1:30  CREDENTIAL_THEFT        (Phase 2, Credential Access)
+ *      3  PRIVILEGE_ESCALATION    (Phase 3, Privilege Esc.)
+ *   4:30  INSIDER_THREAT          (Phase 4, Discovery/Lateral)
+ *      6  MISCONFIG_EXPOSURE      (Phase 4, Discovery/Lateral)
+ *   7:30  AUDIT_LOG_TAMPERING     (Phase 5, Defense Evasion)
+ *      9  DATA_EXFILTRATION       (Phase 6, Exfiltration)
+ *  10:30  RANSOMWARE              (Phase 7, Impact)
+ */
+export const INCIDENT_TYPES_KILL_CHAIN_ORDER: ReadonlyArray<
+  Exclude<IncidentType, 'UNCLASSIFIED'>
+> = [
+  'PHISH_INITIAL_ACCESS',
+  'CREDENTIAL_THEFT',
+  'PRIVILEGE_ESCALATION',
+  'INSIDER_THREAT',
+  'MISCONFIG_EXPOSURE',
+  'AUDIT_LOG_TAMPERING',
+  'DATA_EXFILTRATION',
+  'RANSOMWARE',
+] as const;
 
 // dev3 신규 — TheHive 5 차용 (정보 공유 등급)
 export type TLP = 'RED' | 'AMBER' | 'GREEN' | 'WHITE';

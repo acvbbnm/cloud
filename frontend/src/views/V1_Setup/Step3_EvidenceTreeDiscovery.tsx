@@ -42,6 +42,7 @@ import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
+import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
 
 import { getGuidePreview } from '@/api/intake';
 
@@ -117,6 +118,11 @@ const Step3_EvidenceTreeDiscovery = ({
       setIntroOpen(true);
     }
   }, []);
+
+  // ── Phase N.1 (2026-05-26) — 1차 정찰 단서 카드 dismiss 상태 ──
+  // NIST SP 800-86 §4.1 Initial Triage. cold-start ~ depth 1 구간에 노출,
+  // depth ≥ 2 면 자동 숨김. 사용자 X 클릭으로 영구 dismiss (sessionStorage).
+  const [reconDismissed, setReconDismissed] = useState<boolean>(hasDismissedRecon);
 
   // ── Phase M.3 (2026-05-26) — Zone 2 chain mode 상태 ──
   // chainFilterHypothesis: AttackChainCard 에서 선택된 가설 (null = 미선택, 통합 풀).
@@ -446,6 +452,33 @@ const Step3_EvidenceTreeDiscovery = ({
 
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
+        {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시 */}
+        {!reconDismissed && (treeState.path.length - 1) < 2 && (
+          <ReconClueCard
+            treeDepth={Math.max(0, treeState.path.length - 1)}
+            acceptedClueKeys={acceptedClueKeys}
+            disabled={loading || isSubmitting}
+            onDismiss={() => setReconDismissed(true)}
+            onAdopt={async (clueKey, label) => {
+              if (!caseId) return;
+              const current = useClueTreeStore.getState().response;
+              if (!current) return;
+              try {
+                await expandTree({
+                  caseId,
+                  parent_node_id: current.current_leaf_id,
+                  clue_key: clueKey,
+                  source: 'direct_input',
+                });
+                showToast(`정찰 단서 채택 — ${label}`, 2500);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                showToast(`정찰 단서 채택 실패: ${msg}`, 4500);
+              }
+            }}
+          />
+        )}
+
         <Card
           title={mainView === 'tree' ? 'Evidence Tree — 단서로 맵 밝히기' : '사고유형 컴퍼스 — 360° 방향 수렴'}
           subtitle={

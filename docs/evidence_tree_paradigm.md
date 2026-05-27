@@ -95,6 +95,35 @@ Q1 "어떻게 알게 됐나?" → "CSP 알람" → Q2A → Q3_CRED → Q4_CRED �
 - 로그 분석 → 매핑된 ATT&CK 기법들을 **단서 후보로 자동 추가**
 - 사용자가 후보 중 선택해서 트리에 채택
 
+### 4.4 **1차 정찰 가이드 카드** (Phase N.1 신설, 2026-05-26 byungwoo)
+
+> *사용자 비전: "지금 형태면 첫 단서로 특정 사고 한 쪽으로 쏠릴 확률 높아짐.
+>  기본 가이드로 몇 가지 기본 단서·이상징후 같은 걸 입력 후 기본적인 몇 가지
+>  정찰 데이터를 기반으로 확률 계산을 시작하자."*
+
+**문제** (§4.0 cold-start 의 부작용):
+강한 단서 1개만 채택하면 weights 가 한 사고유형에 ≥30 누적 → posterior 의 그
+가설이 50%+ 도달 → 다음 IG 추천이 그 lane 에 편향 → **trap 발생**.
+
+**해결**: cold-start 직후 사고유형 무관 약한 정찰 단서 (Q1 inception / Q2A
+alert_type) 2-4개 먼저 누적 → posterior 약 비균등 → 그 후 자체 단서 입력 시
+한 쪽 급격한 쏠림 차단.
+
+**학술 정합**:
+- NIST SP 800-86 §4.1 *Initial Triage* — Precursors and Indicators 우선 수집
+- NIST SP 800-61r2 §3.2 — IDS·SIEM·외부 신고 등 사고 인지 신호 분류
+
+**UI**:
+- cold-start (`tree.path.length - 1 < 2`) + 미dismiss 시 `ReconClueCard` 노출
+- Q1·Q2A 그룹 → 옵션 클릭 → `expand_tree(source='direct_input')` 호출
+- depth ≥ 2 도달 시 자동 숨김 (또는 사용자 ✕ 클릭으로 영구 dismiss)
+- 각 옵션 우측에 "주 변별 방향" 배지 (예: `자격증명 탈취 +15`) — 어떤 가설로
+  약하게 기우는지 가시화
+
+**API**:
+- `GET /api/clue-tree/recon-options` → `{groups: [{node_id, question, options[]}]}`
+- 카탈로그 prefix 매칭 (`Q1_inception:` / `Q2A:`) — has_weights 단서만
+
 ---
 
 ## 5. 자료구조

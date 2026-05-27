@@ -19,6 +19,7 @@ import type {
   ClueTreeResponse,
   ClueExpandRequest,
   ExplainClueResponse,
+  ReconOptionsResponse,
 } from '@/types/clueTree';
 
 /** POST /api/clue-tree/start — 빈 트리 시작 (idempotent). */
@@ -81,5 +82,17 @@ export const explainClue = async (
   const res = await client.get(
     `/api/clue-tree/explain/${encodeURIComponent(clueKey)}`,
   );
+  return res.data.data;
+};
+
+/**
+ * GET /api/clue-tree/recon-options — Phase N.1 정찰 단서 옵션.
+ *
+ * NIST SP 800-86 §4.1 Initial Triage 정합. cold-start 시 사용자가 사고유형
+ * 무관 약한 신호 (Q1 inception / Q2A alert_type) 2-4개 채택하여 posterior 를
+ * 약하게 비균등하게 만든 후 자체 단서 입력 — 한 쪽 사고유형 쏠림 차단.
+ */
+export const getReconOptions = async (): Promise<ReconOptionsResponse> => {
+  const res = await client.get('/api/clue-tree/recon-options');
   return res.data.data;
 };

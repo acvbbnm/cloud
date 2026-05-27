@@ -146,6 +146,30 @@ export interface ExplainClueResponse {
   iso_framework?: string | null;
 }
 
+/**
+ * Phase N.1 — 1차 정찰 단서 옵션 (`GET /api/clue-tree/recon-options`).
+ * NIST SP 800-86 §4.1 Initial Triage / SP 800-61r2 §3.2 Precursors and Indicators.
+ */
+export interface ReconClueOption {
+  clue_key: string;
+  label: string;
+  short_label: string;
+  category: string;
+  value: string;
+  weights: Record<string, number>;
+  weight_source?: string;
+}
+
+export interface ReconClueGroup {
+  node_id: string;
+  question: string;
+  options: ReconClueOption[];
+}
+
+export interface ReconOptionsResponse {
+  groups: ReconClueGroup[];
+}
+
 /** POST /api/clue-tree/expand 요청. */
 export interface ClueExpandRequest {
   caseId: string;

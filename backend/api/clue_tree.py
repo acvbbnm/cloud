@@ -30,6 +30,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from core.intake import bayes_net
+from core.intake.info_gain import load_catalog
 from core.intake.clue_tree_service import (
     CaseNotFound,
     ClueTreeNotFound,
@@ -184,6 +185,79 @@ async def reset(req: CueTreeResetRequest, db: Session = Depends(get_db)) -> dict
     except CaseNotFound:
         raise _case_not_found(req.caseId)
     return {"status": "ok", "data": data}
+
+
+@router.get("/recon-options")
+async def recon_options() -> dict:
+    """Phase N.1 — 1차 정찰 단서 옵션 (사고유형 무관 약한 신호).
+
+    설계서: `docs/evidence_tree_paradigm.md` §4.4 (Phase N 신설)
+    학술 정합:
+      - NIST SP 800-86 §4.1 Initial Triage
+      - NIST SP 800-61r2 §3.2 Sources of Precursors and Indicators
+
+    Cold-start 직후 사용자에게 노출. 사고유형 무관 약한 단서 (Q1 inception
+    "어떻게 알게 됐나" / Q2A alert_type "어떤 이상이 있었나") 를 그룹별로
+    반환. 사용자가 2~4개 선택 → posterior 약 비균등 → 그 후 자체 단서로
+    한 쪽 쏠림 차단.
+
+    반환 (`groups[]` 각 그룹 = 정찰 질문 1개):
+      {
+        "status": "ok",
+        "data": {
+          "groups": [
+            {
+              "node_id": "Q1_inception",
+              "question": "어떻게 사고를 알게 됐나요?",
+              "options": [{clue_key, label, short_label, value, weights}, ...]
+            },
+            {"node_id": "Q2A_alert_type", ...}
+          ]
+        }
+      }
+    """
+    # 정찰 카테고리 — 사고유형 무관 약한 신호 (NIST SP 800-86 Initial Triage)
+    RECON_CATEGORIES = [
+        ("Q1_inception", "어떻게 사고를 알게 됐나요?"),
+        ("Q2A_alert_type", "어떤 이상이 있었나요? (선택)"),
+    ]
+
+    catalog = load_catalog()
+    clues = catalog.get("clues", {})
+
+    groups = []
+    for node_id, question in RECON_CATEGORIES:
+        # 해당 category 의 단서들 추출 (weight_key prefix 매칭)
+        # Q1_inception → "Q1_inception:*" 또는 category="Q1_inception"
+        # Q2A_alert_type → "Q2A:*" (weights.json 의 short prefix)
+        prefixes = {
+            "Q1_inception": ["Q1_inception:"],
+            "Q2A_alert_type": ["Q2A:"],
+        }.get(node_id, [f"{node_id}:"])
+
+        options = []
+        for clue_key, entry in clues.items():
+            if not entry.get("has_weights"):
+                continue
+            if not any(clue_key.startswith(p) for p in prefixes):
+                continue
+            options.append({
+                "clue_key": clue_key,
+                "label": entry.get("label", clue_key),
+                "short_label": entry.get("short_label", entry.get("label", clue_key)),
+                "category": entry.get("category", ""),
+                "value": entry.get("value", ""),
+                "weights": entry.get("weights", {}),
+                "weight_source": entry.get("weight_source", ""),
+            })
+        if options:
+            groups.append({
+                "node_id": node_id,
+                "question": question,
+                "options": options,
+            })
+
+    return {"status": "ok", "data": {"groups": groups}}
 
 
 @router.get("/explain/{clue_key:path}")

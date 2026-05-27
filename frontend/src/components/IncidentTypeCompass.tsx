@@ -150,20 +150,34 @@ interface TrailPoint {
 
 const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
-/** root → currentLeaf path 수집. */
+/** root → currentLeaf path 수집.
+ *
+ * Phase P.18 (2026-05-27 사용자 피드백 — "페이즈 변경/회귀 권고 시 중앙 점·점선 사라짐"):
+ *   backend `parent_id` 체인이 중간에 끊겨 root 도달 못하는 케이스(stage advance/회귀
+ *   경합 등) 가 관측됨. while 이 root 전에 종료되면 trail[0] 이 root 가 아니고,
+ *   isRoot 분기 + 중앙 ◆ 안내가 모두 실패 → 사용자가 "중앙 점이 사라졌다" 인상.
+ *   안전망: root 노드가 tree.nodes 에 있으면 chain 의 첫 노드로 강제 prepend.
+ */
 const collectPath = (
   nodes: Record<string, SerializedClueTreeNode>,
   rootId: string,
   leafId: string,
 ): SerializedClueTreeNode[] => {
-  if (!nodes[leafId]) return nodes[rootId] ? [nodes[rootId]] : [];
+  const rootNode = nodes[rootId] ?? null;
+  if (!nodes[leafId]) return rootNode ? [rootNode] : [];
   const chain: SerializedClueTreeNode[] = [];
   let cur: string | null = leafId;
   while (cur && nodes[cur]) {
     chain.push(nodes[cur]);
     cur = nodes[cur].parent_id;
   }
-  return chain.reverse();
+  chain.reverse();
+  // P.18 안전망: chain 첫 노드가 root 가 아니면 root 명시 prepend.
+  // (depth 비교가 가장 안전 — root.node_id 와 일치하지 않더라도 depth=0 가 root 의미)
+  if (rootNode && chain[0]?.node_id !== rootNode.node_id) {
+    chain.unshift(rootNode);
+  }
+  return chain;
 };
 
 const IncidentTypeCompass = ({
@@ -640,12 +654,12 @@ const IncidentTypeCompass = ({
                 points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
                 fill="none"
                 stroke={sc.fill}
-                strokeWidth={isLatest ? 2.8 : 2.4}
-                strokeOpacity={isLatest ? 0.92 : 0.78}
-                // Phase P.17 (사용자 피드백: "회귀권고에서도 오류가 있어 노드가 깨지는데")
-                //   기존 dasharray "6 2" 가 점간 거리 짧을 때 (depth 1-3 근방) 끊겨 보임 →
-                //   회귀권고/Zone1 케이스에서 polyline 이 안 보이는 버그.
-                //   변경: 모든 segment 실선. stage 구분은 stroke 색 + opacity 로만.
+                // Phase P.18 (2026-05-27) — 사용자 피드백 "점선이 다 사라진다" 캡쳐:
+                //   trail 점들끼리 연결선이 안 보이는 케이스 (점간 거리 짧을 때 점 영역에
+                //   polyline 이 묻히거나, stage 1 청록색이 점과 같은 색이라 묻힘).
+                //   strokeWidth 2.8→3.2 (latest) / 2.4→2.8 (past), opacity 0.92→1.0 / 0.78→0.85.
+                strokeWidth={isLatest ? 3.2 : 2.8}
+                strokeOpacity={isLatest ? 1.0 : 0.85}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -758,8 +772,12 @@ const IncidentTypeCompass = ({
             );
           })}
 
-          {/* 중앙 ◆ 표식 (uniform 시작점) — 단서 0개일 때만 */}
-          {trail.length <= 1 && (
+          {/* 중앙 ◆ 표식 (uniform 시작점) — 단서 0개 OR root 부재 fallback.
+           *  Phase P.18 (2026-05-27) — 사용자 피드백 "가장 가운데 점이 없어졌네요" 캡쳐:
+           *    backend parent_id 체인이 끊겨 trail 에 root(depth=0) 가 없는 케이스에서
+           *    중앙 ◆ 가 사라져 "수사 시작" 시각 anchor 자체가 없어지는 인상.
+           *    조건 확장: trail 첫 점이 root depth=0 가 아니면 항상 중앙 ◆ 표시. */}
+          {(trail.length <= 1 || (trail[0]?.depth ?? 0) > 0) && (
             <g>
               <text
                 x={center}

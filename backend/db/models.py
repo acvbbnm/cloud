@@ -164,6 +164,7 @@ class ChainNodeModel(Base):
     """수사 보드 — 공격 체인 노드.
 
     label은 설계서엔 없으나 보드 UI 노드 표시용으로 팀 합의하에 추가.
+    meta 는 Phase O (2026-05-26) 단서 노드 통합 — 단서·stage·source 자유 저장.
     """
 
     __tablename__ = "chain_nodes"
@@ -172,13 +173,21 @@ class ChainNodeModel(Base):
     case_id = Column(String(36), ForeignKey("incident_cases.case_id"), nullable=False)
     attack_id = Column(
         String(36), ForeignKey("attack_events.attack_id"), nullable=True
-    )  # NULL = AI 후보 노드
+    )  # NULL = AI 후보 노드 또는 clue 노드 (Phase O)
     status = Column(String(16), nullable=False, default="CONFIRMED")  # CONFIRMED/REJECTED
     is_ai_suggested = Column(Boolean, nullable=False, default=False)
     pos_x = Column(Integer, nullable=True)
     pos_y = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     label = Column(String(256), nullable=True)  # [팀 합의 추가 — 설계서 미정의]
+    # Phase O (2026-05-26, byungwoo) — Evidence Board 통합용 자유 메타.
+    #   { "type": "clue" | "attack",        # 노드 종류 (default "attack")
+    #     "clue_key": "Q1_inception:...",    # type=clue 시 단서 카탈로그 키
+    #     "stage": 1,                        # multi-stage chain 의 stage (Phase N.4)
+    #     "hypothesis": "CREDENTIAL_THEFT",  # stage 의 anchor 가설
+    #     "source": "auto_seed" | "manual_drag" | "user_added",
+    #     ... }
+    meta = Column(JSON, nullable=True)
 
 
 # ── 테이블 8: 체인 엣지 (설계서 Table 50, 6컬럼) ──

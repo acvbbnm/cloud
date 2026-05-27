@@ -30,6 +30,7 @@
 import { useEffect, useState } from 'react';
 
 import AttackChainCard from '@/components/AttackChainCard';
+import BridgeToBoardCard from '@/components/BridgeToBoardCard';
 import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
 import CluesInput from '@/components/CluesInput';
@@ -733,6 +734,14 @@ const Step3_EvidenceTreeDiscovery = ({
             </div>
           </Card>
         )}
+
+        {/* Phase O.4 (2026-05-26) — 단서들을 V-5 보드로 일괄 이관 카드.
+            path.length - 1 = root 제외 채택 단서 수. 0 이면 자체 미노출. */}
+        <BridgeToBoardCard
+          caseId={caseId}
+          acceptedClueCount={Math.max(0, treeState.path.length - 1)}
+          onToast={showToast}
+        />
 
         <div className="flex gap-2">
           <button

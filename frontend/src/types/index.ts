@@ -168,6 +168,27 @@ export interface PaginatedData<T> {
   pageSize: number;
 }
 
+/** Phase O — 단서 노드 meta (chain_nodes.meta JSON). */
+export interface ClueNodeMeta {
+  type: 'clue';
+  clue_key: string;
+  stage: number;
+  source: string; // 'manual_drag' | 'manual_bulk' | 'auto_seed' | 'user_added' | ...
+  hypothesis?: string | null;
+  tree_node_id?: string;
+  tree_depth?: number;
+  tree_source?: string;
+  [key: string]: unknown;
+}
+
+/** Phase O — ATT&CK 노드 meta (옵션, 보드 보강용). */
+export interface AttackNodeMeta {
+  type: 'attack';
+  [key: string]: unknown;
+}
+
+export type BoardNodeMeta = ClueNodeMeta | AttackNodeMeta | null;
+
 export interface BoardNode {
   node_id: string;
   attack_id: string | null;
@@ -176,6 +197,10 @@ export interface BoardNode {
   is_ai_suggested: boolean;
   pos_x: number;
   pos_y: number;
+  /** Phase O — 노드 종류 ('attack' | 'clue'). 백엔드가 meta.type 또는 기본 'attack' 추론. */
+  type?: 'attack' | 'clue';
+  /** Phase O — 단서 노드 부가 정보 (type='clue' 시 ClueNodeMeta). */
+  meta?: BoardNodeMeta;
 }
 
 export interface BoardEdge {

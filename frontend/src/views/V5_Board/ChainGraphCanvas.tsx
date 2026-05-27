@@ -21,6 +21,8 @@
  */
 import { useMemo, useRef, useState, useEffect } from 'react';
 
+import { isClueNode } from '@/api/board';
+
 import type { BoardEdge, BoardNode } from '@/types';
 
 interface ChainGraphCanvasProps {
@@ -267,19 +269,25 @@ const ChainGraphCanvas = ({
         const isStart = edgeStartId === n.node_id;
         const isCandidate = edgeMode && edgeStartId !== null && edgeStartId !== n.node_id;
         const rejected = n.status === 'REJECTED';
+        // Phase O — 단서 노드 시각 구분 (type='clue')
+        const isClue = isClueNode(n);
 
-        // stroke 색상 우선순위: start > candidate > selected > rejected > default
+        // stroke 색상 우선순위: start > candidate > selected > rejected > clue > default
         let stroke = '#2A3441';
+        if (isClue) stroke = '#2DD4BF'; // teal — 단서 기본 stroke
         if (rejected) stroke = '#EF4444';
         if (sel) stroke = '#3D7BFF';
         if (isCandidate) stroke = '#F59E0B';
         if (isStart) stroke = '#10B981';
 
-        const fill = rejected ? '#1a1a1f' : '#161A21';
-        const strokeWidth = isStart || isCandidate || sel ? 2.5 : 1;
+        // 단서 노드는 살짝 밝은 fill (teal 톤) — ATT&CK 노드와 한눈에 구분
+        const fill = rejected ? '#1a1a1f' : isClue ? '#0F2F2C' : '#161A21';
+        const strokeWidth = isStart || isCandidate || sel || isClue ? 2.5 : 1;
 
+        // 단서 노드는 prefix 아이콘 + 짧은 라벨
+        const rawLabel = isClue ? `🔍 ${n.label}` : n.label;
         const labelText =
-          n.label.length > 24 ? `${n.label.slice(0, 24)}…` : n.label;
+          rawLabel.length > 24 ? `${rawLabel.slice(0, 24)}…` : rawLabel;
 
         const statusColor =
           n.status === 'CONFIRMED'
@@ -322,12 +330,20 @@ const ChainGraphCanvas = ({
               textAnchor="middle"
               fontSize={10}
             >
-              <tspan fill="#9aa3b2">
-                {n.is_ai_suggested ? ' AI · ' : ' 수동 · '}
+              <tspan fill={isClue ? '#5EEAD4' : '#9aa3b2'}>
+                {isClue ? '단서 · ' : n.is_ai_suggested ? ' AI · ' : ' 수동 · '}
               </tspan>
               <tspan fill={statusColor} fontWeight={600}>
                 {n.status}
               </tspan>
+              {isClue &&
+                n.meta &&
+                'stage' in n.meta &&
+                typeof (n.meta as { stage?: number }).stage === 'number' && (
+                  <tspan fill="#5EEAD4">
+                    {` · S${(n.meta as { stage: number }).stage}`}
+                  </tspan>
+                )}
             </text>
             {/* 엣지 모드 라벨 */}
             {isStart && (

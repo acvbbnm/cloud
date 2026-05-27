@@ -1,13 +1,20 @@
 import client from './client';
-import type { BoardNode, BoardResponse, NodeStatus } from '@/types';
+import type { BoardEdge, BoardNode, BoardNodeMeta, BoardResponse, NodeStatus } from '@/types';
 
 export interface CreateNodeReq {
   caseId: string;
   attack_id?: string | null;
+  /** Phase O — 단서 1st-class 노드. attack_id 와 동시 지정 불가. */
+  clue_key?: string | null;
   label?: string;
   is_ai_suggested?: boolean;
   pos_x?: number;
   pos_y?: number;
+  /** Phase O — clue_key 동반 메타 옵션. */
+  stage?: number;
+  hypothesis?: string | null;
+  source?: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface UpdateNodeReq {
@@ -15,6 +22,7 @@ export interface UpdateNodeReq {
   pos_x?: number;
   pos_y?: number;
   label?: string;
+  meta?: Record<string, unknown>; // Phase O — shallow merge
 }
 
 export interface CreateEdgeReq {
@@ -22,6 +30,21 @@ export interface CreateEdgeReq {
   from_node_id: string;
   to_node_id: string;
   label?: string;
+}
+
+/** Phase O.3 — Evidence Tree → 보드 일괄 bridge 요청. */
+export interface BridgeFromClueTreeReq {
+  caseId: string;
+  source?: string;
+  include_root?: boolean;
+  include_edges?: boolean;
+  node_ids?: string[] | null;
+}
+
+export interface BridgeResult {
+  created_nodes: BoardNode[];
+  skipped: Array<{ clue_key: string; reason: string }>;
+  created_edges: BoardEdge[];
 }
 
 /** GET /api/board?caseId= — case 의 보드 전체 상태. */
@@ -47,4 +70,21 @@ export const updateNode = async (nodeId: string, req: UpdateNodeReq): Promise<Bo
 export const createEdge = async (req: CreateEdgeReq) => {
   const res = await client.post('/api/board/edges', req);
   return res.data.data;
+};
+
+/** Phase O.3 — POST /api/board/nodes/from-clue-tree.
+ *  Evidence Tree 의 채택 단서들을 보드 노드로 일괄 이관 (멱등 + 옵션 엣지). */
+export const bridgeFromClueTree = async (
+  req: BridgeFromClueTreeReq
+): Promise<BridgeResult> => {
+  const res = await client.post('/api/board/nodes/from-clue-tree', req);
+  return res.data.data;
+};
+
+/** Phase O — BoardNode 가 단서 노드인지 type guard. */
+export const isClueNode = (
+  node: BoardNode
+): node is BoardNode & { meta: NonNullable<BoardNodeMeta> & { type: 'clue' } } => {
+  if (node.type === 'clue') return true;
+  return !!node.meta && (node.meta as { type?: string }).type === 'clue';
 };

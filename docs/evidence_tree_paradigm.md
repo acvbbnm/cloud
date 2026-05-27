@@ -1329,6 +1329,129 @@ paradigm §21.1 ② "복합 공격이 정상" 비전의 진짜 완성. 현재 Ph
 
 ---
 
+## 24. Phase O — Evidence Board 통합 (2026-05-26 byungwoo)
+
+> *사용자 비전 (2026-05-26):*
+> *"단서들이 수사보드에 연동되어서 수사보드에서 단서들을 조합해보면서*
+> *타임라인을 직접 예측하며 어택 체인을 재구성"*
+
+### 24.1 동기
+
+Phase A~N 으로 Evidence Tree 자체는 완성. 그러나 **수사 결과물 (path) 이 V-5 수사보드와 분리**되어 있음:
+  - Tree 의 단서 path 는 V-1 Step 3 안에서만 시각화
+  - V-5 보드는 ATT&CK 노드(`attack_id`) 만 1st-class
+  - 단서 - ATT&CK 매핑(Phase H.4 clue_to_attack)은 있지만 보드에서 단서 자체를 다루지 못함
+
+사용자의 실수사 워크플로 정합:
+  - 수사관은 단서를 모은 뒤 **타임라인 위에 직접 배치**하며 시나리오 재구성
+  - 게임 RPG 비유 — "Evidence Tree = 인벤토리, 수사보드 = 작업대"
+  - 두 화면이 데이터 단절되면 사용자는 path 를 손으로 옮겨 적어야 함
+
+### 24.2 학술 정합
+
+- **Police investigation board** (시각적 evidence pinboard) — Lutters & Ackerman 2007, "Achieving Safety: A Field Study of Boundary Objects in Aircraft Technical Support" (boundary object 로서의 board)
+- **CRISP-DM** Visualization (Chapman et al. 2000) — analytic 산출물의 visual 재배치 정합
+- **ATT&CK Navigator** layer JSON — 단일 기법보다 단서 + 기법 + 가설을 합친 통합 layer 가 분석가 효율 ↑ (MITRE 2024 Usability Report)
+- **NIST SP 800-86 §4.3 Examination** — 단서를 시간순 timeline 위에 배치하는 단계가 표준
+
+### 24.3 설계 결정 (단서 노드 1st-class)
+
+| 결정 | 선택지 검토 | 채택안 |
+|---|---|---|
+| **DB 모델** | (a) 별도 `clue_nodes` 테이블 (b) `chain_nodes.type` 컬럼 (c) `chain_nodes.meta` JSON | **(c)** — `attack_id=NULL + meta={type:'clue', ...}`. 신규 테이블 없음, legacy 호환, 자유 확장 |
+| **노드 정체성** | (a) attack_id ⊕ clue_key 상호 배타 (b) 둘 다 허용 | **(a)** — 둘 다 명시 시 400 NODE_TYPE_AMBIGUOUS. 단일 노드 정체성 보장 |
+| **bridge 멱등** | (a) 항상 새로 생성 (중복 OK) (b) `clue_key` 중복 차단 | **(b)** — "단서 조합" UX 가 중복 노드로 혼란 X. 두 번째 호출 시 모두 `skipped` |
+| **엣지 자동** | (a) bridge 시 강제 생성 (b) 옵션 (c) 안 만듦 | **(b)** `include_edges=False` 기본 — paradigm §16 "AI 비판단", 타임라인은 수사관 판단 |
+| **anchor 가설** | (a) Top 1 가설 (b) confirmed 마지막 | **(b)** `confirmed_hypotheses[-1]` — 다단계 chain 의 현재 stage 가설을 meta.hypothesis 동봉. 미확정 시 None |
+| **좌표 자동** | (a) 일직선 (b) 격자 (c) 기존 노드 우측 분포 | **(c)** — `max(pos_x) + step`, y 지그재그. 기존 ATT&CK 노드와 충돌 X, 사용자 드래그로 자유 재배치 |
+| **자동 V-5 이동** | (a) 자동 라우팅 (b) 안내만 | **(b)** — 토스트 안내, 사용자 결정. paradigm §16 정합 |
+
+### 24.4 4 단계 체크리스트
+
+- [x] **O.1** — `chain_nodes.meta` JSON 컬럼 + idempotent 마이그레이션 (byungwoo, commit `8ef4f2f`)
+  - `db/models.py:ChainNodeModel.meta` Column(JSON, nullable=True)
+  - `scripts/migrate_o1_chain_nodes_meta.py` — PRAGMA table_info 확인 후 ALTER TABLE
+  - 검증: pytest 313 passed (회귀 0)
+
+- [x] **O.2** — Clue 노드 백엔드 API + ChainNode 도메인 확장 (byungwoo)
+  - `core/board/chain.py` — `ChainNode.create/update/serialize` meta 지원
+  - `derive_label_from_clue(clue_key)` — clue_catalog short_label 추출 (미등록 시 clue_key fallback)
+  - `build_clue_meta(clue_key, stage, hypothesis, source, extra)` — 표준 meta dict
+  - `api/board.py` — `POST /api/board/nodes` 가 `clue_key` 입력 허용 (attack_id 와 XOR)
+  - `PATCH /api/board/nodes/{id}` — meta shallow merge 지원
+  - 검증: `tests/test_board_chain_node.py` 8/8 PASS, 전체 321/321
+
+- [x] **O.3** — Evidence Tree → 보드 자동 bridge (byungwoo)
+  - `core/board/clue_bridge.py` 신설 — `bridge_clue_tree_to_board(...)` 함수
+  - `api/board.py` — `POST /api/board/nodes/from-clue-tree` 엔드포인트
+  - 응답: `{created_nodes, skipped[{clue_key, reason}], created_edges}`
+  - 옵션: `include_root`/`include_edges`/`node_ids` 부분 이관
+  - 검증: `tests/test_clue_bridge.py` 10/10 PASS, 전체 331/331
+
+- [x] **O.4** — 프론트 UI: bridge 버튼 + clue 노드 시각 구분 (byungwoo)
+  - `frontend/src/types/index.ts` — `BoardNode.type?` + `meta?` + `ClueNodeMeta`/`BoardNodeMeta`
+  - `frontend/src/api/board.ts` — `bridgeFromClueTree()` API + `isClueNode()` type guard
+  - `frontend/src/components/BridgeToBoardCard.tsx` 신설 — Card UI · include_edges 토글 · 결과 토스트
+  - `Step3_EvidenceTreeDiscovery.tsx` 우측 sticky 끝에 노출 (path.length-1 ≥ 1 시)
+  - `V5_Board/ChainGraphCanvas.tsx` — clue 노드 🔍 prefix · teal stroke/fill · "단서 · CONFIRMED · S{stage}" label
+  - 검증: tsc 0 errors · vite build OK (372 modules · 3.85s)
+
+- [x] **O.5** — 통합 e2e + paradigm doc + 커밋·푸시 (byungwoo)
+  - `backend/scripts/e2e_phase_o_bridge_test.py` — 5단계 시나리오 (case 생성 → tree start → expand × 2 → bridge → board 조회)
+  - paradigm doc §24 작성 (본 섹션)
+  - 최종 회귀 검증
+
+### 24.5 데이터 모델 (chain_nodes.meta JSON)
+
+```jsonc
+// type='clue' 노드 (Phase O)
+{
+  "type": "clue",
+  "clue_key": "Q1_inception:csp_alert",
+  "stage": 2,                              // Multi-Stage chain 의 stage (Phase N.4)
+  "source": "manual_bulk",                 // 이관 경로: manual_bulk | manual_drag | auto_seed
+  "hypothesis": "CREDENTIAL_THEFT",        // anchor 가설 (confirmed_hypotheses[-1])
+  "tree_node_id": "abc123",                // 역추적용 (Evidence Tree 의 ClueTreeNode.node_id)
+  "tree_depth": 2,                         // path 깊이
+  "tree_source": "tree_candidate"          // tree_candidate | direct_input | log_analysis
+}
+
+// type='attack' 노드 (기존, legacy 호환)
+null  // 또는 사용자가 명시한 보강 meta
+```
+
+### 24.6 API 명세
+
+```
+POST /api/board/nodes
+  Body: { caseId, attack_id ⊕ clue_key, label?, stage?, hypothesis?, source?, meta? }
+  ⊕ 동시 지정 시 → 400 NODE_TYPE_AMBIGUOUS
+
+PATCH /api/board/nodes/{node_id}
+  Body: { status?, pos_x?, pos_y?, label?, meta? }
+  meta 가 dict 면 기존 meta 와 shallow merge
+
+POST /api/board/nodes/from-clue-tree
+  Body: { caseId, source?, include_root?, include_edges?, node_ids? }
+  Tree 없을 때 → 404 EVIDENCE_TREE_NOT_FOUND
+  응답: { created_nodes[], skipped[], created_edges[] }
+```
+
+### 24.7 영향 / 위험
+
+- **legacy 호환**: meta=None 노드는 응답에서 meta 키 생략, type='attack' default 추론. 기존 보드 동작 100% 보존
+- **DB 마이그레이션**: idempotent — PRAGMA 확인 후 ALTER TABLE. 기존 운영 DB 안전
+- **시연 임팩트**: V-1 Tree 에서 추론 끝나면 [🗺 단서들을 수사 보드로] 버튼 한 번으로 V-5 보드에 단서 노드 일괄 등장 → 사용자가 드래그·엣지로 시나리오 재구성. 경쟁 시스템 (CrowdStrike·Mandiant) 의 "분석가가 노드 직접 입력" 대비 차별화
+- **확장 여지**: meta 자유 필드로 향후 `tags`, `confidence_score`, `evidence_path[]` 등 추가 가능 — 스키마 변경 불필요
+
+### 24.8 다음 단계 후보 (Phase O 외 — 별도 phase)
+
+- **O+1**: 보드 노드 우클릭 → 단서 메타·variants 표시 (Phase L 의 5섹션 통합)
+- **O+2**: 보드 → V-7 보고서 — 단서 노드도 보고서 §1 개요에 포함 (현재는 ATT&CK 만)
+- **O+3**: chain_edges 의 label 자동 추론 — "단서 시퀀스" / "공격 단계 전이" 등
+
+---
+
 ## 22. Phase M 팀원 구현 가이드 (2026-05-26 byungwoo)
 
 > 본 섹션은 Phase M.1~M.4 를 다른 팀원이 구현할 수 있도록 코드 스켈레톤·파일 위치·테스트 기준을 명시한다. byungwoo (팀장) 는 미결 5건 결정·설계 완료 (§21.8) 후 위임. 각 단계 commit 시 본 체크리스트 (§21.10) 갱신 + paradigm doc PR 동일 커밋에 포함.

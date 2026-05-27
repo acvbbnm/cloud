@@ -23,10 +23,13 @@
 """
 from __future__ import annotations
 
+import json
 import math
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 from typing import Literal, Optional
 
 
@@ -66,6 +69,71 @@ def real_hypotheses(posterior: dict[str, float]) -> dict[str, float]:
     sentinel 키가 추가될 때 SENTINEL_HYPOTHESIS_KEYS 한 곳만 수정하면 모두 반영.
     """
     return {k: v for k, v in posterior.items() if k not in SENTINEL_HYPOTHESIS_KEYS}
+
+
+# ─────────────────────────────────────────────────────────────
+# Confidence / Entropy 정책 로더 (R.3, 2026-05-28, hard) — #1·#2 해결
+# ─────────────────────────────────────────────────────────────
+#
+# 배경: 하드코딩 감사 §2-A·§2-B — depth 차등 임계값 7개 + entropy 기반 K 4개가
+#       함수 본문에 박혀 있어 학술 변호값 변경 시 코드 수정 + 회귀 위험.
+# 정책: backend/data/triage/confidence_policy.json 으로 외부화 + lazy load + cache.
+#       JSON 부재 시 FileNotFoundError — fail-fast (정책 누락 = 시스템 무결성 손상).
+
+_CONFIDENCE_POLICY_PATH: Path = (
+    Path(__file__).resolve().parents[2] / "data" / "triage" / "confidence_policy.json"
+)
+
+
+@lru_cache(maxsize=1)
+def load_confidence_policy() -> dict:
+    """confidence_policy.json 로드 + 캐시 (R.3, hard).
+
+    Returns:
+        dict — depth_thresholds, confidence_levels, entropy_candidate_k 3 섹션.
+
+    Raises:
+        FileNotFoundError — JSON 파일 부재 시 (fail-fast).
+        ValueError — JSON 파싱 실패 시.
+    """
+    if not _CONFIDENCE_POLICY_PATH.exists():
+        raise FileNotFoundError(
+            f"confidence_policy.json not found at {_CONFIDENCE_POLICY_PATH} — "
+            "R.3 (hard) 정책 외부화 후 필수 파일. data/triage 에 복원 필요."
+        )
+    with _CONFIDENCE_POLICY_PATH.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _resolve_depth_policy(depth: int) -> tuple[float, float]:
+    """주어진 depth 에 해당하는 (auto_confirm, gap_req) 임계값 반환.
+
+    policies 배열을 순회하며 depth_min ≤ depth ≤ depth_max (None=무한대) 매칭.
+    """
+    policy = load_confidence_policy()
+    for p in policy["depth_thresholds"]["policies"]:
+        dmin = p["depth_min"]
+        dmax = p["depth_max"]
+        if depth >= dmin and (dmax is None or depth <= dmax):
+            return float(p["auto_confirm"]), float(p["gap_req"])
+    # 모든 정책이 매칭 안 되면 (이론상 발생 X) sentinel-block 반환
+    return 1.01, 1.01
+
+
+def _resolve_k_by_entropy(H: float) -> int:
+    """주어진 entropy(bits) 에 해당하는 후보 노출 개수 K 반환.
+
+    entropy_min 내림차순으로 정렬된 thresholds 를 순회 — 가장 먼저 매칭되는 K.
+    """
+    policy = load_confidence_policy()
+    sorted_th = sorted(
+        policy["entropy_candidate_k"]["thresholds"],
+        key=lambda x: -x["entropy_min"],
+    )
+    for th in sorted_th:
+        if H >= float(th["entropy_min"]):
+            return int(th["k"])
+    return 2  # 안전 디폴트 (가장 작은 K)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -268,18 +336,11 @@ def candidate_count_by_entropy(posterior: dict[str, float]) -> int:
 
     사용자 결정 (2026-05-25, paradigm doc §16) — 동적 entropy 기반.
 
-    임계값
-    -----
-        H ≥ 2.5 bits (모호, uniform 근처) → 5개
-        1.5 ≤ H < 2.5 (점차 좁혀짐)       → 3개
-        H < 1.5 (수렴 단계)               → 2개
+    R.3 (hard) — 임계값을 data/triage/confidence_policy.json 외부화.
+    JSON 의 entropy_candidate_k.thresholds 가 단일 출처.
     """
     H = posterior_entropy(posterior)
-    if H >= 2.5:
-        return 5
-    if H >= 1.5:
-        return 3
-    return 2
+    return _resolve_k_by_entropy(H)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -319,25 +380,23 @@ def evaluate_confidence(
     gap = primary_p - secondary_p
     H = posterior_entropy(posterior)
 
-    # depth 별 임계값 (사용자 피드백 2026-05-26 — "단서 2-3개로 너무 빠른 확정")
-    # 정책: 최소 3 단서 (depth ≥ 3) 채택 후에만 확정 허용. 그 이전엔 절대 차단.
-    MIN_DEPTH_FOR_CONFIRM = 3
-    if depth < MIN_DEPTH_FOR_CONFIRM:
-        auto_confirm, gap_req = 1.01, 1.01  # 절대 도달 불가
-    elif depth == 3:
-        auto_confirm, gap_req = 0.80, 0.30
-    elif depth == 4:
-        auto_confirm, gap_req = 0.75, 0.25
-    else:  # depth ≥ 5
-        auto_confirm, gap_req = 0.65, 0.20  # 표준 (Phase 3.5 fitted)
+    # R.3 (hard) — depth 차등 임계값을 data/triage/confidence_policy.json 외부화.
+    # 사용자 피드백 정책 (paradigm doc §16 + 2026-05-26 "단서 2-3개 너무 빠른 확정")
+    # 은 JSON 단일 출처에서 관리. 함수 본문은 정책 lookup 만 수행.
+    auto_confirm, gap_req = _resolve_depth_policy(depth)
 
     reached = primary_p >= auto_confirm and gap >= gap_req
 
+    # R.3 (hard) — confidence_levels 보조 레벨도 JSON 외부화.
+    policy = load_confidence_policy()
+    medium = policy["confidence_levels"]["medium"]
+    low = policy["confidence_levels"]["low"]
+
     if reached:
         action = "notify_user_confirm"  # 알림 카드 노출, 사용자가 [확정] 클릭 대기
-    elif primary_p >= 0.60 and gap >= 0.10:
+    elif primary_p >= float(medium["primary_p_min"]) and gap >= float(medium["gap_min"]):
         action = "propose_single"
-    elif primary_p >= 0.30:
+    elif primary_p >= float(low["primary_p_min"]):
         action = "propose_composite"
     else:
         action = "continue_collecting"

@@ -57,6 +57,11 @@ from core.intake.zone_logic import (
     is_zone2_unlocked,
     should_regress,
 )
+from core.intake.stage_transition import (
+    chain_description,
+    compute_stage_prior,
+    is_multistage,
+)
 from db.models import IncidentCaseModel
 
 logger = logging.getLogger(__name__)
@@ -347,6 +352,70 @@ def reset_tree(db: Session, case_id: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────
+# Phase N.4 — Multi-Stage Attack Chain (paradigm §23, 2026-05-26)
+# ─────────────────────────────────────────────────────────────
+
+
+def advance_stage(
+    db: Session, case_id: str, confirmed_hypothesis: str
+) -> dict:
+    """확정된 사고유형을 anchor 로 두고 다음 stage 진입.
+
+    동작
+    ----
+    1. confirmed_hypotheses 시퀀스에 새 가설 추가 (시간순)
+    2. stage += 1
+    3. posterior_current = STAGE_TRANSITION_MATRIX 의 다음 baseline (확정 가설 제외 + 연관 가중치)
+    4. confidence_reached / recommendation reset — 새 stage 진행 위해
+    5. current_leaf 의 children_candidates 새 baseline 기반 재계산
+
+    설계 결정 (paradigm §23.3):
+      - 기존 nodes 보존 (시계열·보고서 추적용)
+      - current_leaf_id 그대로 — 새 stage 단서들은 같은 leaf 의 children 으로 자라남
+      - 베이즈 갱신은 새 baseline 에서 시작 → expand_tree 동작 변경 없음
+
+    사용:
+      Stage 1 에서 CREDENTIAL_THEFT 확정 (confidence_reached=True) →
+      사용자 [확정하고 다음 단계 추적] 클릭 → advance_stage(db, case_id, "CREDENTIAL_THEFT")
+    """
+    case = _load_case(db, case_id)
+    tree = _load_tree_from_case(case)
+    if tree is None:
+        raise ClueTreeNotFound(case_id)
+
+    # 이미 확정된 가설은 중복 추가 안 함
+    if confirmed_hypothesis in tree.confirmed_hypotheses:
+        raise ValueError(
+            f"가설 {confirmed_hypothesis} 가 이미 확정 시퀀스에 있음: "
+            f"{tree.confirmed_hypotheses}"
+        )
+
+    new_confirmed = list(tree.confirmed_hypotheses) + [confirmed_hypothesis]
+    new_baseline = compute_stage_prior(new_confirmed)
+
+    tree.confirmed_hypotheses = new_confirmed
+    tree.stage += 1
+    tree.posterior_current = new_baseline
+    tree.confidence_reached = False
+    tree.incident_type_recommendation = None
+
+    # 현 leaf 의 children_candidates 재계산 — 새 baseline 기준 IG
+    accepted = _collect_accepted_keys(tree)
+    candidates = _build_candidates(new_baseline, accepted_clue_keys=accepted)
+    set_candidates(tree, tree.current_leaf_id, candidates)
+
+    _save_tree_to_case(db, case, tree)
+    logger.info(
+        "clue-tree advance-stage %s — confirmed=%s, stage=%d, chain=%s",
+        case_id,
+        confirmed_hypothesis,
+        tree.stage,
+        chain_description(new_confirmed),
+    )
+    return _build_response(tree)
+
+
+# ─────────────────────────────────────────────────────────────
 # 응답 빌더 — API 공통 포맷
 # ─────────────────────────────────────────────────────────────
 
@@ -385,6 +454,11 @@ def _build_response(tree: ClueTree) -> dict:
         "attack_chain": compute_attack_chain(tree.posterior_current),
         "core_clue_likelihood": core_clue_likelihood(tree),
         "regress_suggested": regress_suggested,
+        # Phase N.4 신규 — Multi-Stage Attack Chain (paradigm §23)
+        "stage": tree.stage,
+        "confirmed_hypotheses": list(tree.confirmed_hypotheses),
+        "is_multistage": is_multistage(tree.confirmed_hypotheses),
+        "chain_description": chain_description(tree.confirmed_hypotheses),
         "candidates": [
             {
                 "candidate_id": c.candidate_id,

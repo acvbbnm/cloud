@@ -34,6 +34,7 @@ from core.intake.info_gain import load_catalog
 from core.intake.clue_tree_service import (
     CaseNotFound,
     ClueTreeNotFound,
+    advance_stage,
     expand_tree,
     get_tree,
     reset_tree,
@@ -95,6 +96,13 @@ class CueTreeSuggestRequest(BaseModel):
 
 class CueTreeResetRequest(BaseModel):
     caseId: str
+
+
+class CueTreeAdvanceStageRequest(BaseModel):
+    """Phase N.4 — 확정된 사고유형 anchor → 다음 stage 진입 요청."""
+
+    caseId: str
+    confirmed_hypothesis: str  # 확정된 사고유형 (8 사고유형 중 1)
 
 
 # ── 엔드포인트 ─────────────────────────────────────────────
@@ -184,6 +192,48 @@ async def reset(req: CueTreeResetRequest, db: Session = Depends(get_db)) -> dict
         data = reset_tree(db, req.caseId)
     except CaseNotFound:
         raise _case_not_found(req.caseId)
+    return {"status": "ok", "data": data}
+
+
+@router.post("/advance-stage")
+async def advance_stage_endpoint(
+    req: CueTreeAdvanceStageRequest, db: Session = Depends(get_db)
+) -> dict:
+    """Phase N.4 — 다단계 공격 chain 추적 진입.
+
+    설계서: `docs/evidence_tree_paradigm.md` §23 (Phase N.4)
+    학술 정합: MITRE ATT&CK Flow + Mandiant M-Trends 2024 multi-stage chain.
+
+    동작:
+      1. tree.confirmed_hypotheses 에 새 가설 추가
+      2. stage += 1
+      3. posterior_current = STAGE_TRANSITION_MATRIX 의 새 baseline
+         (확정 가설 freeze + 연관 가설 가중치 부여)
+      4. confidence_reached / recommendation reset
+      5. 현 leaf 의 children_candidates 새 baseline 기반 재계산
+
+    사용 시나리오:
+      Stage 1: CRED 92% 확정 → advance-stage("CREDENTIAL_THEFT")
+      → Stage 2 baseline = {PRIV: 0.30, DATA: 0.20, INSIDER: 0.15, ...}
+      → 사용자가 stage 2 단서 누적 → PRIV 확정 → advance-stage("PRIVILEGE_ESCALATION")
+      → Stage 3 baseline = {DATA: 0.34, RANSOM: 0.30, AUDIT: 0.17, ...}
+      → ...
+    """
+    try:
+        data = advance_stage(db, req.caseId, req.confirmed_hypothesis)
+    except CaseNotFound:
+        raise _case_not_found(req.caseId)
+    except ClueTreeNotFound:
+        raise _tree_not_started(req.caseId)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "message": str(e),
+                "code": "CLUE_TREE_INVALID_ADVANCE",
+            },
+        )
     return {"status": "ok", "data": data}
 
 

@@ -118,12 +118,16 @@ def test_robust_floor_excludes_unclassified() -> None:
 # ─────────────────────────────────────────────────────────────
 
 
-def test_robust_floor_empty_returns_uniform() -> None:
-    """모든 가설 0 → uniform 1/8 분포 (안전 폴백)."""
+def test_robust_floor_empty_passthrough() -> None:
+    """모든 가설 0 → 입력 그대로 반환 (정규화 X, 안전 폴백).
+
+    합 보존 정책 (2026-05-26): 8 사고유형 raw 합 = 0 인 경우 정규화 정보가
+    없으므로 입력을 그대로 반환. 호출자가 다른 단계에서 처리.
+    """
     posterior = {**{h: 0.0 for h in HYPS_8}, "UNCLASSIFIED": 0.0}
     out = apply_robust_floor(posterior, epsilon=0.08)
     for h in HYPS_8:
-        assert out[h] == pytest.approx(1.0 / 8)
+        assert out[h] == 0.0
 
 
 # ─────────────────────────────────────────────────────────────

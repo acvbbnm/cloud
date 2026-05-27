@@ -162,25 +162,28 @@ def apply_robust_floor(
     if eps <= 0:
         return dict(posterior)
 
-    # 8 사고유형 (UNCLASSIFIED 제외) 만 contamination 적용
+    # 8 사고유형 (UNCLASSIFIED 제외) 만 contamination 적용 — 합 보존 정책
     hyps = [h for h in posterior if h != "UNCLASSIFIED"]
     if not hyps:
         return dict(posterior)
     n = len(hyps)
     uniform = 1.0 / n
 
-    # 정규화 — 8 가설 합 = 1 (UNCLASSIFIED 0 가정)
-    raw_total = sum(posterior.get(h, 0.0) for h in hyps)
-    if raw_total <= 0:
-        # 정보 없음 → uniform 분포 그대로
-        out = {h: uniform for h in hyps}
-        out["UNCLASSIFIED"] = posterior.get("UNCLASSIFIED", 0.0)
-        return out
+    # 8 사고유형 raw 합 — UNCLASSIFIED 와 별개 비중 보존 (bn_update 호환)
+    raw_total_hyps = sum(posterior.get(h, 0.0) for h in hyps)
+    if raw_total_hyps <= 0:
+        # 8 가설 정보 없음 → 입력 그대로 반환 (정규화 안 된 상태)
+        return dict(posterior)
 
     out: dict[str, float] = {}
     for h in hyps:
-        norm = posterior.get(h, 0.0) / raw_total
-        out[h] = (1.0 - eps) * norm + eps * uniform
+        # ① 내부 분포 정규화 (합 = 1 정규화 8 가설만)
+        norm_internal = posterior.get(h, 0.0) / raw_total_hyps
+        # ② Floor 적용 — uniform 으로 ε contamination
+        floored = (1.0 - eps) * norm_internal + eps * uniform
+        # ③ raw_total_hyps 비중으로 복원 — UNCLASSIFIED 와의 합 보존
+        out[h] = floored * raw_total_hyps
+    # UNCLASSIFIED 비중 그대로 보존
     out["UNCLASSIFIED"] = posterior.get("UNCLASSIFIED", 0.0)
     return out
 

@@ -90,6 +90,12 @@ class ClueTree:
     incident_type_recommendation: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+    # Phase N.4 (2026-05-26) — Multi-Stage Attack Chain 추적
+    # 확정된 사고유형 시퀀스 (시간순). 길이 ≥ 1 이면 multi-stage 진행 중.
+    # 학술 정합: ATT&CK Flow + Mandiant M-Trends double extortion chain.
+    confirmed_hypotheses: list[str] = field(default_factory=list)
+    # 현재 stage (1 = 첫 분석, 2 = 첫 사고유형 확정 후 추적, ...).
+    stage: int = 1
 
 
 # ─────────────────────────────────────────────────────────────
@@ -325,6 +331,9 @@ def tree_to_dict(tree: ClueTree) -> dict:
         "created_at": tree.created_at,
         "updated_at": tree.updated_at,
         "nodes": {nid: asdict(n) for nid, n in tree.nodes.items()},
+        # Phase N.4 — Multi-Stage 추적
+        "confirmed_hypotheses": list(tree.confirmed_hypotheses),
+        "stage": tree.stage,
     }
 
 
@@ -364,6 +373,9 @@ def tree_from_dict(data: dict) -> ClueTree:
         incident_type_recommendation=data.get("incident_type_recommendation"),
         created_at=data.get("created_at", ""),
         updated_at=data.get("updated_at", ""),
+        # Phase N.4 — Multi-Stage 추적 (legacy 호환: default [], 1)
+        confirmed_hypotheses=list(data.get("confirmed_hypotheses", [])),
+        stage=int(data.get("stage", 1)),
     )
 
 

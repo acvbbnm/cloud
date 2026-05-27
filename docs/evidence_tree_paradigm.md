@@ -1239,12 +1239,83 @@ def should_regress_to_zone1(tree, posterior) -> bool:
   - `settings.ROBUST_FLOOR_EPSILON` 환경변수 토글 (0=비활성, 0.08=권장)
   - 검증: 단위 테스트 8/8 PASS · evidence_tree e2e 47/47 · additive e2e 47/47 · Phase M e2e 19/47 동일
   - 효과: 단서 4회 누적 + 강한 likelihood 0.95 시 CRED 압축됨 (99%→92.08%), 나머지 7 가설 각 ≥1%
-- [x] **N.3** — 가설별 신뢰도 시계열 sparkline (byungwoo, 2026-05-26)
+- [x] **N.3** — 가설별 신뢰도 시계열 sparkline (byungwoo, 2026-05-26, commit `b217de6`)
   - `components/HypothesisSparkline.tsx` 신설 — path 의 posterior_after[h] 시계열 SVG polyline
   - `AttackChainCard.tsx` 통합 — Top 3 가설 카드에 sparkline 동봉 (width 56 · height 14)
   - 학술 정합: MITRE ATT&CK Kill Chain (TA0001~TA0040) · Mandiant 2023 Dwell Time
   - 효과: 단일 99% 쏠림이 아닌 가설별 시간순 활성 곡선 시각화 — "어느 시점에 강했는가"
-- [ ] **N.4** — 다단계 공격 chain 추적 (담당자 미정)
+- [x] **N.4.1** — Stage Transition Matrix 백엔드 (byungwoo, 2026-05-26)
+  - `core/intake/stage_transition.py` 신설 — 8×8 매트릭스 + compute_stage_prior + advance_to_next_stage
+  - `core/intake/clue_tree.py` — ClueTree 에 `confirmed_hypotheses`, `stage` 필드 추가 (legacy 호환)
+  - `core/intake/clue_tree_service.py:advance_stage` — 다음 stage 진입 + baseline 갱신 + 후보 재계산
+  - `core/intake/clue_tree_service._build_response` — `stage`/`confirmed_hypotheses`/`is_multistage`/`chain_description` 4 필드 추가
+  - `POST /api/clue-tree/advance-stage` 엔드포인트
+  - `tests/test_stage_transition.py` 15/15 PASS · 전체 313/313 · e2e 47/47 · Phase M e2e 19/47 동일
+  - **라이브 검증**: Stage 2 (CRED 확정) → PRIV 30%/DATA 20%/INSIDER 15%/RANSOM 12% / Stage 3 (CRED+PRIV) → DATA 31.6%/RANSOM 26.3%
+- [ ] **N.4.2** — Step 3 Stage 2 UI (MultiStageBoard + 자동/수동 진입 버튼)
+- [ ] **N.4.3** — V-7 보고서 multi-stage chain 통합
+
+---
+
+## 23. Phase N.4 — Multi-Stage Attack Chain (paradigm 완성형, 2026-05-26 byungwoo)
+
+> *사용자 비전 (2026-05-26):*
+> *"특정 단계 도달 후 그 사고유형에서 시작해서 연관된 다른 공격도 찾아가는걸 해보면 좋겠는데"*
+> *"확정된 첫 사고유형의 위치가 시작점이 되도록. 확정 가설 빼고 이 사고유형이랑 밀접한 연관 가진 다른 사고유형 가중치가 조금 더 높으면 좋을거같은데"*
+
+### 23.1 동기
+
+paradigm §21.1 ② "복합 공격이 정상" 비전의 진짜 완성. 현재 Phase M chain UI 가 "동시 가능성" 만 보여줌. N.4 는 **시간순 단계 전이** 를 추적 — Stage 1 확정 → Stage 2 새 baseline → ...
+
+### 23.2 학술 정합
+
+- **MITRE ATT&CK Flow** (2023) — 9 published flows phase transition 빈도
+- **Mandiant M-Trends 2024** — DATA → RANSOM 0.50 double extortion 정석
+- **Verizon DBIR 2024** — 사고 패턴별 후속 단계 분포
+- **1-step Markov Chain on ATT&CK Tactics** — 상태 = 가설, 전이 = 매트릭스
+- **Atomic Red Team** (Phase H.1 외부 데이터) — 단일 기법 atomic chain 빈도
+
+### 23.3 알고리즘
+
+```
+1. Stage 1 진행 (paradigm §1~§22)
+   → CREDENTIAL_THEFT 92% 확정 (Robust Floor 1% N.2 적용)
+   → 사용자 [확정하고 다음 단계 추적] 클릭
+
+2. POST /api/clue-tree/advance-stage { confirmed_hypothesis: "CREDENTIAL_THEFT" }
+   → confirmed_hypotheses = ["CREDENTIAL_THEFT"]
+   → stage = 2
+   → posterior_current = STAGE_TRANSITION_MATRIX["CREDENTIAL_THEFT"]
+                       = {PRIV: 0.30, DATA: 0.20, INSIDER: 0.15, RANSOM: 0.12, ...}
+   → CRED 자기 자신은 0 (anchor freeze)
+   → confidence_reached = False (새 stage 진행 위해 reset)
+
+3. Stage 2 단서 누적 (기존 expand_tree 동작 그대로)
+   → Top 3 chain 시각화 (sparkline N.3)
+   → confidence_reached 시 다시 [확정] 가능
+
+4. 반복 — Stage 3 (예: PRIV 확정 → DATA 31.6%/RANSOM 26.3%)
+```
+
+### 23.4 매트릭스 핵심 패턴
+
+| 확정 → 다음 (Top 1) | 가중치 | 근거 |
+|---|---|---|
+| PHISH → CRED | 0.40 | ATT&CK Flow #4 Storm-0558 정석 |
+| CRED → PRIV | 0.30 | 탈취된 자격으로 권한 상승 |
+| PRIV → DATA | 0.30 | 권한 상승 후 유출 (탈취 목적) |
+| MISCFG → DATA | 0.30 | CSA Top Threats — public 노출 직결 |
+| AUDIT → RANSOM | 0.35 | 흔적 지움 → 랜섬 동반 |
+| **DATA → RANSOM** | **0.50** | Mandiant 2024 double extortion |
+| **RANSOM → DATA** | **0.45** | 협박용 백업 (역방향) |
+| INSIDER → DATA | 0.30 | 내부자 유출 정석 |
+
+### 23.5 영향 / 위험
+
+- **paradigm §16 정합**: 사용자가 [확정] 클릭해야 진행 — 자동 종료 X 정책 그대로
+- **결정성 100%**: 같은 확정 시퀀스 → 같은 stage prior. 정적 매트릭스 (AI 비판단)
+- **legacy 호환**: ClueTree 의 `confirmed_hypotheses`/`stage` 필드는 default [], 1 — 기존 트리 자연 호환
+- **시연 임팩트**: "CRED → PRIV → DATA 3단계 복합 공격" 같은 자동 chain 보고서 — 경쟁 시스템 (CrowdStrike·Mandiant) 단일 케이스 종결 대비 차별화 최대
 
 **팀원 위임**: byungwoo (팀장) 가 구현 안 함. §22 팀원 구현 가이드 참조.
 

@@ -146,6 +146,7 @@ async def post_map(req: CaseIdRequest, db: Session = Depends(get_db)) -> dict:
     if case is None:
         raise _case_not_found()
     stats = AttackMapper.map_case(db, req.caseId)
+    db.expire_all()  # map_case commit 후 세션 캐시 갱신 — 신규 attack_events 반영
 
     # 매핑 결과 일부 events 응답에 포함 (계약서)
     rows = list(

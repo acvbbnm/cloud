@@ -163,14 +163,20 @@ class ReportGenerator:
         path = cls._json_path(case_id)
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
 
     @classmethod
     def save(cls, case_id: str, report: dict) -> None:
         path = cls._json_path(case_id)
-        path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        try:
+            path.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError as e:
+            raise RuntimeError(f"보고서 저장 실패 ({case_id}): {e}") from e
 
     # ── 초안 생성 ───────────────────────────────────────
     @classmethod

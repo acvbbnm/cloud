@@ -312,7 +312,8 @@ const IncidentTypeCompass = ({
     let dy = 0;
     for (const t of INCIDENT_TYPES_ORDER) {
       const norm = (calibrated[t] ?? 0) / weightSum;
-      const anchor = anchors.find((a) => a.type === t)!;
+      const anchor = anchors.find((a) => a.type === t);
+      if (!anchor) continue;
       dx += norm * (anchor.x - center);
       dy += norm * (anchor.y - center);
     }

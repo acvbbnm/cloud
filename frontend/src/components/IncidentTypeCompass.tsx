@@ -142,7 +142,10 @@ interface TrailPoint {
   y: number;
   clueKey: string;
   label: string;
+  /** 전역 누적 depth (라벨 표시용 — 1,2,3,4 연속). */
   depth: number;
+  /** stage 내 순번 (좌표 반지름 계산용 — stage 전환 시 1 부터 재시작). */
+  stageDepth: number;
   posterior: HypothesisScores;
   /** Phase P (KBW, 2026-05-27) — 노드 stage. */
   stage: number;
@@ -152,11 +155,9 @@ const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : 
 
 /** root → currentLeaf path 수집.
  *
- * Phase P.18 (2026-05-27 사용자 피드백 — "페이즈 변경/회귀 권고 시 중앙 점·점선 사라짐"):
- *   backend `parent_id` 체인이 중간에 끊겨 root 도달 못하는 케이스(stage advance/회귀
- *   경합 등) 가 관측됨. while 이 root 전에 종료되면 trail[0] 이 root 가 아니고,
- *   isRoot 분기 + 중앙 ◆ 안내가 모두 실패 → 사용자가 "중앙 점이 사라졌다" 인상.
- *   안전망: root 노드가 tree.nodes 에 있으면 chain 의 첫 노드로 강제 prepend.
+ * P.18 안전망: backend parent_id 체인이 중간에 끊겨 root 도달 못하는 케이스에서
+ * trail[0] 이 root 가 아니고 isRoot 분기 + 중앙 ◆ 가 모두 실패하는 증상 방어.
+ * root 노드가 tree.nodes 에 있으면 chain 의 첫 노드로 강제 prepend.
  */
 const collectPath = (
   nodes: Record<string, SerializedClueTreeNode>,
@@ -172,8 +173,6 @@ const collectPath = (
     cur = nodes[cur].parent_id;
   }
   chain.reverse();
-  // P.18 안전망: chain 첫 노드가 root 가 아니면 root 명시 prepend.
-  // (depth 비교가 가장 안전 — root.node_id 와 일치하지 않더라도 depth=0 가 root 의미)
   if (rootNode && chain[0]?.node_id !== rootNode.node_id) {
     chain.unshift(rootNode);
   }
@@ -287,13 +286,21 @@ const IncidentTypeCompass = ({
   }, [center, R]);
 
   // 사후확률 → 무게중심 (anchor 들의 가중평균).
-  // depth 별 temperature 평탄화 + 최대 반지름 클램프 — 초반 부드러운 진입.
+  //
+  // ⚠ 재설계 (2026-05-27, KBW — "노드 바깥 퍼지고 끊김" 버그 수정):
+  //   좌표는 **posterior + stageDepth 만** 으로 결정론적 계산.
+  //   zone/regress 전역 상태 의존 제거 (이전 zone 2 boost R*0.55 가 Zone 전환·
+  //   회귀 on/off·stage 전환 시 점을 외곽으로 강제 이동 → 점프·뭉침의 원흉).
+  //   Zone 2 강조는 외곽 원·배지 시각으로만 — 점 위치는 건드리지 않음.
+  //
+  //   stageDepth = 그 stage 내 단서 순번. stage 전환 시 1 부터 재시작 →
+  //   "다시 중앙에서 시작" 자연 표현 (radiusForDepth 가 작은 반지름부터).
   const posteriorToXY = (
     posterior: HypothesisScores,
-    depth: number,
+    stageDepth: number,
   ): { x: number; y: number } => {
-    // depth 별 T 적용 → 평탄화된 분포로 무게중심 계산
-    const T = temperatureForDepth(depth);
+    // stageDepth 별 T 적용 → 평탄화된 분포로 무게중심 계산
+    const T = temperatureForDepth(stageDepth);
     const calibrated = tempered(posterior, T);
 
     // 사고유형 8 의 확률 정규화 (UNCLASSIFIED 제외 — calibrated 에서 이미 정규화됨)
@@ -309,71 +316,56 @@ const IncidentTypeCompass = ({
       dx += norm * (anchor.x - center);
       dy += norm * (anchor.y - center);
     }
-    // depth 별 최대 반지름 클램프 (단서 적을 땐 중심 근처)
-    const maxR = radiusForDepth(depth);
+    // stageDepth 별 최대 반지름 클램프 (단서 적을 땐 중심 근처, 누적되면 외곽).
+    const maxR = radiusForDepth(stageDepth);
     const r = Math.sqrt(dx * dx + dy * dy);
     if (r > maxR && r > 0) {
       const scale = maxR / r;
       dx *= scale;
       dy *= scale;
     }
-    // Phase M.2 — Zone 2 진입 시 점을 외부 원 부근으로 끌어올림 (paradigm §21.6).
-    // 회귀 권고 중에는 boost 해제 (자연 위치로 복귀 — 사용자에게 모호함 시각화).
-    // 방향은 보존하고 반지름만 최소 R*0.55 보장 (내부 원 밖, 외부 원 근처).
-    if (zone === 2 && !regressSuggested && r > 0) {
-      const minR = R * 0.55;
-      const curR = Math.sqrt(dx * dx + dy * dy);
-      if (curR < minR) {
-        const scale = minR / curR;
-        dx *= scale;
-        dy *= scale;
-      }
-    }
     return { x: center + dx, y: center + dy };
   };
 
   // 궤적 — root → 각 채택 단서 → current.
-  // Phase P (KBW, 2026-05-27) — stage 경계에서 중앙(center)으로 reset point 삽입.
-  // 사용자 피드백: "다음 사고유형 단서 찾는거의 경우 다시 중앙에서 시작 다른색"
+  //
+  // ⚠ 재설계 (2026-05-27, KBW): RESET 마커 삽입 제거.
+  //   이전엔 stage 전환 시 중앙(center) RESET 마커를 trail 에 끼워넣어
+  //   polyline 이 외곽→중앙→외곽 으로 점프 + segment 끊김 발생.
+  //   대신 stageDepth (stage 내 순번) 를 부여해 stage 전환 시 좌표가 자연히
+  //   중앙 근처(작은 반지름)에서 다시 시작하도록 함. 마커 불필요.
   const trail: TrailPoint[] = useMemo(() => {
     const path = collectPath(tree.nodes, tree.root_id, currentLeafId);
-    const points: TrailPoint[] = [];
-    let prevStage = 1;
-    path.forEach((node, idx) => {
+    // stage 별 순번 카운터 — stage 전환 시 1 부터 재시작
+    const stageCounter: Record<number, number> = {};
+    return path.map((node) => {
       const nodeStage = node.stage ?? 1;
-      // stage 전환 시점 — 새 stage 시작 직전 "중앙 reset 마커" 삽입.
-      // 이로써 trail polyline 이 외곽 → 중앙 → 새 방향 으로 꺾임.
-      if (idx > 0 && nodeStage > prevStage) {
-        points.push({
-          x: center,
-          y: center,
-          clueKey: `__STAGE_RESET_${nodeStage}__`,
-          label: `◆ Stage ${nodeStage} 시작`,
-          depth: 0,
-          posterior: { ...node.posterior_after, UNCLASSIFIED: 0 } as HypothesisScores,
-          stage: nodeStage,
-        });
+      const isRoot = node.clue_key === '__ROOT__';
+      // root 는 stageDepth 0, 그 외는 stage 내 순번 증가
+      let stageDepth = 0;
+      if (!isRoot) {
+        stageCounter[nodeStage] = (stageCounter[nodeStage] ?? 0) + 1;
+        stageDepth = stageCounter[nodeStage];
       }
-      const xy = posteriorToXY(node.posterior_after, node.depth);
-      points.push({
+      const xy = posteriorToXY(node.posterior_after, stageDepth);
+      return {
         x: xy.x,
         y: xy.y,
         clueKey: node.clue_key,
-        label: node.clue_key === '__ROOT__' ? '◆ 시작' : node.label,
+        label: isRoot ? '◆ 시작' : node.label,
         depth: node.depth,
+        stageDepth,
         posterior: node.posterior_after,
         stage: nodeStage,
-      });
-      prevStage = nodeStage;
+      };
     });
-    return points;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tree.nodes, tree.root_id, currentLeafId, anchors, center]);
 
-  /** trail 을 stage 별 세그먼트로 분할 — polyline 색 다르게 그릴 수 있도록.
-   *  Phase P.12 (2026-05-27 사용자 피드백: "또 노드 끊어짐 현상 페이즈2 바뀔때"):
-   *    Stage 경계점을 양쪽 segment 에 *공유* 시켜 시각적 연속성 보장.
-   *    또한 단일 점 segment 도 그려지도록 인접 점 추가 (이전 끊김의 진짜 원인). */
+  /** trail 을 stage 별 세그먼트로 분할 — stage 마다 독립 polyline (다른 색).
+   *  재설계 (2026-05-27, KBW): 경계점 공유·RESET 마커 모두 제거. 순수 stage group.
+   *  stage 전환 = 새 색 polyline 이 중앙 근처에서 시작 (stageDepth 1 부터).
+   *  단일 점 stage 는 polyline 없이 점만 렌더 (아래 trail.map 이 처리). */
   const trailSegments = useMemo(() => {
     if (trail.length < 2) return [];
     const segs: TrailPoint[][] = [];
@@ -382,10 +374,7 @@ const IncidentTypeCompass = ({
     for (let i = 1; i < trail.length; i++) {
       const p = trail[i];
       if (p.stage !== curStage) {
-        // Stage 경계 — 새 점도 *이전 segment 의 마지막 점* 으로 추가 (연결성 ↑)
-        cur.push(p);
         segs.push(cur);
-        // 새 segment 는 경계점부터 시작
         cur = [p];
         curStage = p.stage;
       } else {
@@ -654,34 +643,30 @@ const IncidentTypeCompass = ({
                 points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
                 fill="none"
                 stroke={sc.fill}
-                // Phase P.18 (2026-05-27) — 사용자 피드백 "점선이 다 사라진다" 캡쳐:
-                //   trail 점들끼리 연결선이 안 보이는 케이스 (점간 거리 짧을 때 점 영역에
-                //   polyline 이 묻히거나, stage 1 청록색이 점과 같은 색이라 묻힘).
-                //   strokeWidth 2.8→3.2 (latest) / 2.4→2.8 (past), opacity 0.92→1.0 / 0.78→0.85.
                 strokeWidth={isLatest ? 3.2 : 2.8}
                 strokeOpacity={isLatest ? 1.0 : 0.85}
+                // Phase P.17 (사용자 피드백: "회귀권고에서도 오류가 있어 노드가 깨지는데")
+                //   기존 dasharray "6 2" 가 점간 거리 짧을 때 (depth 1-3 근방) 끊겨 보임 →
+                //   회귀권고/Zone1 케이스에서 polyline 이 안 보이는 버그.
+                //   변경: 모든 segment 실선. stage 구분은 stroke 색 + opacity 로만.
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             );
           })}
 
-          {/* 궤적 점 — 각 채택 단서. stage 별 색상. */}
+          {/* 궤적 점 — 각 채택 단서. stage 별 색상.
+              재설계 (2026-05-27, KBW): RESET 마커 분기 제거. stage 첫 단서
+              (stageDepth===1 AND stage>1) 에 "Stage N" 배지만 표시. */}
           {trail.map((t, i) => {
             const isCurrent = i === trail.length - 1;
             const isRoot = i === 0;
-            const isResetMarker = t.clueKey.startsWith('__STAGE_RESET_');
+            const isStageStart = t.stage > 1 && t.stageDepth === 1;
             const sc = stageColor(t.stage);
             return (
               <g key={`trail-${i}`}>
                 {isCurrent && (
-                  <circle
-                    cx={t.x}
-                    cy={t.y}
-                    r={14}
-                    fill={sc.fill}
-                    opacity={0.18}
-                  >
+                  <circle cx={t.x} cy={t.y} r={14} fill={sc.fill} opacity={0.18}>
                     <animate
                       attributeName="r"
                       values="10;16;10"
@@ -690,59 +675,32 @@ const IncidentTypeCompass = ({
                     />
                   </circle>
                 )}
-                {/* stage reset 마커 — 중앙에 큰 ◆ + stage 라벨 */}
-                {isResetMarker ? (
-                  <>
-                    <circle
-                      cx={t.x}
-                      cy={t.y}
-                      r={10}
-                      fill={sc.fill}
-                      fillOpacity={0.18}
-                      stroke={sc.stroke}
-                      strokeWidth={1.5}
-                      strokeDasharray="3 2"
-                    />
-                    <text
-                      x={t.x}
-                      y={t.y + 4}
-                      fill={sc.stroke}
-                      fontSize={13}
-                      fontWeight={800}
-                      textAnchor="middle"
-                      style={{ fontFamily: 'system-ui, sans-serif' }}
-                    >
-                      ◆
-                    </text>
-                    <text
-                      x={t.x}
-                      y={t.y - 16}
-                      fill={sc.stroke}
-                      fontSize={10}
-                      fontWeight={700}
-                      textAnchor="middle"
-                      style={{ fontFamily: 'system-ui, sans-serif' }}
-                    >
-                      {sc.label} 시작
-                    </text>
-                  </>
-                ) : (
-                  <circle
-                    cx={t.x}
-                    cy={t.y}
-                    r={isCurrent ? 6 : isRoot ? 4.5 : 4}
-                    fill={isCurrent ? sc.fill : isRoot ? '#FF9500' : sc.fill}
-                    fillOpacity={isCurrent ? 1 : isRoot ? 1 : 0.55}
-                    stroke={isCurrent ? sc.stroke : isRoot ? '#FFB04D' : sc.fill}
-                    strokeWidth={isCurrent ? 1.5 : 1}
-                    style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
-                  />
+                <circle
+                  cx={t.x}
+                  cy={t.y}
+                  r={isCurrent ? 6 : isRoot ? 4.5 : 4}
+                  fill={isRoot ? '#FF9500' : sc.fill}
+                  fillOpacity={isCurrent ? 1 : isRoot ? 1 : 0.55}
+                  stroke={isCurrent ? sc.stroke : isRoot ? '#FFB04D' : sc.fill}
+                  strokeWidth={isCurrent ? 1.5 : 1}
+                  style={isCurrent ? { transition: 'cx 360ms ease, cy 360ms ease' } : undefined}
+                />
+                {/* stage 첫 단서 — "Stage N 시작" 배지 (중앙 마커 대신) */}
+                {isStageStart && (
+                  <text
+                    x={t.x}
+                    y={t.y - 14}
+                    fill={sc.stroke}
+                    fontSize={9.5}
+                    fontWeight={700}
+                    textAnchor="middle"
+                    style={{ fontFamily: 'system-ui, sans-serif' }}
+                  >
+                    {sc.label} 시작
+                  </text>
                 )}
-                {/* depth 번호 (reset 마커 제외)
-                 *  Phase P.17 — trail index `i` 대신 t.depth 사용.
-                 *  RESET 마커가 삽입되면 i 가 점프 (1,2,4) → 사용자 혼란.
-                 *  depth 는 실제 단서 순서라 RESET 무관하게 1,2,3,4 연속. */}
-                {!isRoot && !isResetMarker && (
+                {/* depth 번호 — 전역 단서 순서 (1,2,3,4 연속) */}
+                {!isRoot && (
                   <text
                     x={t.x + 8}
                     y={t.y - 6}
@@ -755,7 +713,7 @@ const IncidentTypeCompass = ({
                   </text>
                 )}
                 {/* 현재 위치 단서 라벨 */}
-                {isCurrent && !isRoot && !isResetMarker && (
+                {isCurrent && !isRoot && (
                   <text
                     x={t.x}
                     y={t.y + 22}
@@ -773,10 +731,7 @@ const IncidentTypeCompass = ({
           })}
 
           {/* 중앙 ◆ 표식 (uniform 시작점) — 단서 0개 OR root 부재 fallback.
-           *  Phase P.18 (2026-05-27) — 사용자 피드백 "가장 가운데 점이 없어졌네요" 캡쳐:
-           *    backend parent_id 체인이 끊겨 trail 에 root(depth=0) 가 없는 케이스에서
-           *    중앙 ◆ 가 사라져 "수사 시작" 시각 anchor 자체가 없어지는 인상.
-           *    조건 확장: trail 첫 점이 root depth=0 가 아니면 항상 중앙 ◆ 표시. */}
+           *  P.18 안전망: backend parent_id 손상으로 trail[0].depth>0 인 경우에도 표시. */}
           {(trail.length <= 1 || (trail[0]?.depth ?? 0) > 0) && (
             <g>
               <text

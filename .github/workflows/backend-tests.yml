@@ -38,7 +38,8 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          # 핵심 백엔드만 — chromadb / sentence-transformers / ollama 는 fallback 동작
+          # 핵심 백엔드만 — chromadb / sentence-transformers / ollama / pgmpy / networkx 는
+          # optional. 미설치 시 코드 fallback + 해당 테스트 pytest.importorskip 으로 skip.
           pip install fastapi 'uvicorn[standard]' python-multipart sqlalchemy \
             jinja2 python-docx pydantic requests httpx python-dotenv reportlab \
             pytest

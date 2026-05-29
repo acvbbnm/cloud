@@ -13,6 +13,10 @@ import math
 
 import pytest
 
+# networkx 미설치 환경 (CI 가벼운 deps) 에서는 graph_analytics 가 fallback(None) 으로
+# 동작하므로 본 모듈 전체 skip. 로컬·실배포는 requirements.txt 의 networkx 설치됨.
+pytest.importorskip("networkx")
+
 from core.board.graph_analytics import (
     analyze_board,
     build_graph,

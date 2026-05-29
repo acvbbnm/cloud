@@ -54,10 +54,12 @@ class Settings:
     ]
 
     # ── Ollama (sLLM) ──
-    # 기본 모델: gpt-oss:20b (OpenAI 오픈웨이트, 추론·한국어 모두 우수).
-    # 시스템 RAM 16GB 미만이면 환경변수로 더 작은 모델 지정 권장 (예: llama3.1:8b).
+    # 기본 모델: llama3.1:8b — 시연 표준 (8GB+ RAM 에서 동작, 한국어 양호).
+    #   GPU 가속 환경이면 .env 에서 gpt-oss:20b 로 올려 사용 가능 (추론 품질 ↑).
+    #   ⚠ default 를 20b 로 두면 .env 누락/시스템 env override 시 미설치 모델로
+    #     fail → 셰르파 무응답. 안전하게 설치 보장 모델(8b)을 default 로. (2026-05-28)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-oss:20b")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.1:8b")
     # SNF-02 기본 30초. CPU 전용 / 8B+ 모델 환경에서는 .env 에서 늘려 사용 (예: 120).
     LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "30"))
 

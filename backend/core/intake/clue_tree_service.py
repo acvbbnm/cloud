@@ -280,6 +280,28 @@ def expand_tree(
 
     catalog = load_catalog()
     clue_entry = catalog.get("clues", {}).get(clue_key)
+
+    # P.21 (2026-05-29) — log_analysis 의 catalog 미수록 TECHNIQUE 폴백.
+    # attack_rules/rules.json 이 emit 하는 기법 33개 vs clue_catalog 의
+    # TECHNIQUE:* 엔트리 27개 갭 → 16 기법이 미수록 → "+ 단서 추가" 클릭 시 400.
+    # bayes_net.technique_likelihood 는 부모/자식/uniform 폴백을 이미 내장하므로
+    # 합성 entry 로 안전하게 채택 가능 (변별력 없는 기법은 자연스레 posterior 보존).
+    synthetic_likelihood: Optional[dict[str, float]] = None
+    if (
+        clue_entry is None
+        and source == "log_analysis"
+        and clue_key.startswith("TECHNIQUE:")
+    ):
+        technique_id = clue_key.split(":", 1)[1]
+        if technique_id:
+            synthetic_likelihood = bayes_net.technique_likelihood(technique_id)
+            clue_entry = {
+                "label": label_override or f"기법 {technique_id}",
+                "category": "TECHNIQUE",
+                "value": technique_id,
+                "has_weights": True,
+            }
+
     if clue_entry is None:
         raise ValueError(f"clue_key {clue_key} 가 카탈로그에 없음")
 
@@ -288,7 +310,10 @@ def expand_tree(
 
     # 베이즈 갱신 — Phase H.4 mode 분기
     posterior_before = dict(tree.posterior_current)
-    if _is_bayes_net_mode():
+    if synthetic_likelihood is not None:
+        # P.21 — 합성 entry: technique_likelihood 가 이미 정규화된 P(T|H) 반환
+        likelihood = synthetic_likelihood
+    elif _is_bayes_net_mode():
         # BN 모드 — clue_to_attack 매핑 + Noisy-OR DAG 추론 (H.3)
         likelihood = bayes_net.clue_likelihood_via_bn(clue_key)
     else:

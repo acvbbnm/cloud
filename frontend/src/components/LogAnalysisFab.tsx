@@ -144,6 +144,9 @@ const LogAnalysisFab = () => {
         parent_node_id: useClueTreeStore.getState().response!.current_leaf_id,
         clue_key: clueKey,
         source: 'log_analysis',
+        label_override: g.technique_name
+          ? `${g.technique_id} — ${g.technique_name}`
+          : g.technique_id,
       });
       markAdopted(clueKey);
       showToast(

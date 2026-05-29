@@ -131,7 +131,7 @@ export const useTriageStore = create<TriageStoreState>()(
         isTerminal: s.isTerminal,
       }),
       // 구버전 → 신버전 마이그레이션: 5종 scores 를 9종으로 확장 (점수 보존 + 누락 키 0)
-      migrate: (persistedState: unknown, fromVersion: number) => {
+      migrate: (persistedState: unknown, _fromVersion: number) => {
         const s = (persistedState ?? {}) as Partial<TriageStoreState>;
         const newScores = initialScores();
         if (s.hypothesisScores) {
@@ -142,9 +142,8 @@ export const useTriageStore = create<TriageStoreState>()(
             }
           }
         }
-        console.info(
-          `[useTriageStore] migrate v${fromVersion} → v2 — hypothesisScores 9종으로 확장`,
-        );
+        // 버그 #13 fix — CLAUDE.md 금지 #6 (console 디버깅 커밋 금지). 마이그레이션
+        // 동작은 유지하되 프로덕션 로그 제거. (구버전 → v2, hypothesisScores 9종 확장)
         return {
           currentNodeId: s.currentNodeId ?? null,
           completedPath: s.completedPath ?? [],

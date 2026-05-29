@@ -193,7 +193,11 @@ const V3OCSF = () => {
               <Pagination
                 page={page}
                 totalPages={totalPages}
-                onPageChange={setPage}
+                onPageChange={(p) => {
+                  // 버그 #10 fix — 페이지 변경 시 selectedIdx 리셋 (범위 밖 접근 방어)
+                  setPage(p);
+                  setSelectedIdx(0);
+                }}
                 className="ml-auto"
               />
             )}

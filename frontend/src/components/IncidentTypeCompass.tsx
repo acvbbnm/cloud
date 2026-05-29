@@ -153,20 +153,30 @@ interface TrailPoint {
 
 const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
-/** root → currentLeaf path 수집. */
+/** root → currentLeaf path 수집.
+ *
+ * P.18 안전망: backend parent_id 체인이 중간에 끊겨 root 도달 못하는 케이스에서
+ * trail[0] 이 root 가 아니고 isRoot 분기 + 중앙 ◆ 가 모두 실패하는 증상 방어.
+ * root 노드가 tree.nodes 에 있으면 chain 의 첫 노드로 강제 prepend.
+ */
 const collectPath = (
   nodes: Record<string, SerializedClueTreeNode>,
   rootId: string,
   leafId: string,
 ): SerializedClueTreeNode[] => {
-  if (!nodes[leafId]) return nodes[rootId] ? [nodes[rootId]] : [];
+  const rootNode = nodes[rootId] ?? null;
+  if (!nodes[leafId]) return rootNode ? [rootNode] : [];
   const chain: SerializedClueTreeNode[] = [];
   let cur: string | null = leafId;
   while (cur && nodes[cur]) {
     chain.push(nodes[cur]);
     cur = nodes[cur].parent_id;
   }
-  return chain.reverse();
+  chain.reverse();
+  if (rootNode && chain[0]?.node_id !== rootNode.node_id) {
+    chain.unshift(rootNode);
+  }
+  return chain;
 };
 
 const IncidentTypeCompass = ({
@@ -302,7 +312,8 @@ const IncidentTypeCompass = ({
     let dy = 0;
     for (const t of INCIDENT_TYPES_ORDER) {
       const norm = (calibrated[t] ?? 0) / weightSum;
-      const anchor = anchors.find((a) => a.type === t)!;
+      const anchor = anchors.find((a) => a.type === t);
+      if (!anchor) continue;
       dx += norm * (anchor.x - center);
       dy += norm * (anchor.y - center);
     }
@@ -633,8 +644,8 @@ const IncidentTypeCompass = ({
                 points={seg.map((t) => `${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(' ')}
                 fill="none"
                 stroke={sc.fill}
-                strokeWidth={isLatest ? 2.8 : 2.4}
-                strokeOpacity={isLatest ? 0.92 : 0.78}
+                strokeWidth={isLatest ? 3.2 : 2.8}
+                strokeOpacity={isLatest ? 1.0 : 0.85}
                 // Phase P.17 (사용자 피드백: "회귀권고에서도 오류가 있어 노드가 깨지는데")
                 //   기존 dasharray "6 2" 가 점간 거리 짧을 때 (depth 1-3 근방) 끊겨 보임 →
                 //   회귀권고/Zone1 케이스에서 polyline 이 안 보이는 버그.
@@ -720,8 +731,9 @@ const IncidentTypeCompass = ({
             );
           })}
 
-          {/* 중앙 ◆ 표식 (uniform 시작점) — 단서 0개일 때만 */}
-          {trail.length <= 1 && (
+          {/* 중앙 ◆ 표식 (uniform 시작점) — 단서 0개 OR root 부재 fallback.
+           *  P.18 안전망: backend parent_id 손상으로 trail[0].depth>0 인 경우에도 표시. */}
+          {(trail.length <= 1 || (trail[0]?.depth ?? 0) > 0) && (
             <g>
               <text
                 x={center}

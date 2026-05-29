@@ -400,3 +400,110 @@ def path_from_root(tree: ClueTree, node_id: Optional[str] = None) -> list[ClueTr
         path.append(node)
         cur = node.parent_id
     return list(reversed(path))
+
+
+# ─────────────────────────────────────────────────────────────
+# P.19 (2026-05-28, hard) — Invariant Healing
+# ─────────────────────────────────────────────────────────────
+#
+# 배경 — P.18 (easy) 의 프론트 안전망 (collectPath root 강제 prepend, 중앙 ◆
+# fallback, polyline 가시성) 은 시각적 손상을 막지만 백엔드 데이터 정합성
+# 자체는 보장하지 않는다. 사용자 캡쳐 (라벨 1·2·4 + root 없음) 의 진짜 원인은
+# tree.nodes 의 parent_id 체인이 어딘가에서 끊긴 케이스로 의심되며, 정상 호출
+# 경로 (expand_tree → append_clue_node ValueError 검증, advance_stage 보존)
+# 에서는 발생할 위치가 없다. 따라서 진짜 원인은 다음 중 하나로 추정한다:
+#   1. 옛 버전에서 저장된 triage_state JSON 의 잔존 손상 (역호환 이슈)
+#   2. 직렬화/역직렬화 사이클 중 외부 요인 (DB JSON 조작, 동시성 등)
+#   3. 추후 추가될 진입점이 invariant 를 깨뜨림 (회귀 방어)
+#
+# 정책 — 응답·저장·로드 시점에 invariant 를 강제 보장 (in-memory healing 우선).
+# 깨진 노드는 root 로 재연결하고 warning 로그로 발생 위치 식별 가능하게 한다.
+
+
+def heal_tree_invariants(tree: ClueTree, *, logger=None) -> int:
+    """ClueTree invariant 검증 + 자동 복구.
+
+    검증 항목:
+      1. root_id 노드가 tree.nodes 에 존재 (없으면 빈 root 재생성)
+      2. 모든 비-root 노드의 parent_id 가 tree.nodes 에 존재
+         (orphan 이면 tree.root_id 로 재연결)
+      3. root 노드의 parent_id 가 None (외부 변경 흔적 복구)
+      4. current_leaf_id 가 tree.nodes 에 존재 (없으면 root_id 로 fallback)
+
+    in-memory healing 만 수행 — caller 가 명시적으로 save 호출해야 영구 반영.
+    이는 진짜 원인 추적을 위해 원본 손상 흔적을 즉시 덮어쓰지 않으려는 의도.
+
+    Args:
+        tree: 검증·복구 대상 ClueTree (mutated in-place)
+        logger: optional logging.Logger — 복구 이벤트 기록용
+
+    Returns:
+        복구된 invariant 위반 건수 (0 = 정합).
+    """
+    healed = 0
+
+    # 1. root 노드 존재 보장
+    if tree.root_id not in tree.nodes:
+        if logger:
+            logger.error(
+                "heal_tree_invariants: root_id=%s NOT IN nodes — recreating empty root (case=%s)",
+                tree.root_id,
+                tree.case_id,
+            )
+        now = datetime.utcnow().isoformat() + "Z"
+        tree.nodes[tree.root_id] = ClueTreeNode(
+            node_id=tree.root_id,
+            parent_id=None,
+            depth=0,
+            clue_key="__ROOT__",
+            category="ROOT",
+            value="recreated",
+            label="수사 시작 (heal: 복구된 root)",
+            source="heal",
+            score_delta={},
+            posterior_after=dict(tree.posterior_current),
+            accepted_at=now,
+            children_candidates=[],
+        )
+        healed += 1
+
+    # 2·3. parent_id 정합성
+    for nid, n in tree.nodes.items():
+        if nid == tree.root_id:
+            # root 는 parent_id 가 None 이어야 정상
+            if n.parent_id is not None:
+                if logger:
+                    logger.warning(
+                        "heal_tree_invariants: root %s has non-None parent_id=%s — resetting (case=%s)",
+                        nid,
+                        n.parent_id,
+                        tree.case_id,
+                    )
+                n.parent_id = None
+                healed += 1
+            continue
+        if n.parent_id is None or n.parent_id not in tree.nodes:
+            if logger:
+                logger.warning(
+                    "heal_tree_invariants: %s (depth=%d, clue=%s) orphan parent_id=%s → reattach to root (case=%s)",
+                    nid,
+                    n.depth,
+                    n.clue_key,
+                    n.parent_id,
+                    tree.case_id,
+                )
+            n.parent_id = tree.root_id
+            healed += 1
+
+    # 4. current_leaf_id 존재 보장
+    if tree.current_leaf_id and tree.current_leaf_id not in tree.nodes:
+        if logger:
+            logger.warning(
+                "heal_tree_invariants: current_leaf_id=%s NOT IN nodes — fallback to root_id (case=%s)",
+                tree.current_leaf_id,
+                tree.case_id,
+            )
+        tree.current_leaf_id = tree.root_id
+        healed += 1
+
+    return healed

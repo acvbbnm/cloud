@@ -39,7 +39,7 @@ const nowLocalIso = (): string => {
  */
 const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
   const { title, severity, tlp, setTitle, setSeverity, setTlp } = useCaseStore();
-  const [occurredAt, setOccurredAt] = useState<string>(nowLocalIso);
+  const [occurredAt, setOccurredAt] = useState<string>(nowLocalIso());
 
   // tlp 기본값: AMBER (조직 내부 공유 — TheHive 5 권장)
   const currentTlp: TLP = tlp ?? 'AMBER';

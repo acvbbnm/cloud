@@ -73,11 +73,14 @@ def invalidate_catalog_cache() -> None:
 
 
 # ─────────────────────────────────────────────────────────────
-# Likelihood 변환 (bayesian.py 와 동일 정책 — Laplace add-k=5)
+# Likelihood 변환 (bayesian.py 와 동일 정책 — Laplace add-k=2, 2026-05-28)
 # ─────────────────────────────────────────────────────────────
 
 
-SMOOTHING = 5.0
+SMOOTHING = 2.0
+# 2026-05-28 byungwoo — 5.0→2.0 조정. 8 가설 시스템에서 add-k=5 는 너무 강한 평탄화
+# (smoothing 40 > 평균 raw 35) → P(c|h) 압축 → IG ≈ 0.05 bits (단서 1개 효과 미미).
+# 2.0 으로 낮춰 IG ≈ 0.08-0.13 bits, Zone 2 트리거 안정성 ↑. Laplace 정합 유지.
 
 
 def weights_to_likelihood(weights: dict[str, float]) -> dict[str, float]:

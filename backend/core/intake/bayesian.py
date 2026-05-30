@@ -117,12 +117,15 @@ def weights_to_likelihood(weights: dict[str, int]) -> dict[str, float]:
     ----
         likelihood_h = (weight_h + smoothing) / (sum_weights + smoothing × num_types)
 
-    smoothing 5 = Laplace add-k. 가중치 0 인 사고유형도 base 확률 보존
-    (관측되지 않은 답변 → 0 곱하면 posterior 가 영구히 0 으로 수렴, 회복 불가).
+    smoothing 2 = Laplace add-k (2026-05-28 5.0→2.0, info_gain.py 와 동기).
+    가중치 0 인 사고유형도 base 확률 보존 (관측되지 않은 답변 → 0 곱하면
+    posterior 가 영구히 0 으로 수렴, 회복 불가). 8 가설 system 에서 add-k=5 는
+    smoothing 합 40 > 평균 raw 35 로 평탄화 과도 → IG ~0.05 bits (단서 1개 효과
+    미미) → 2.0 으로 낮춰 IG ~0.10 bits 회복.
 
     입력 weights 는 weights.json 의 한 답변 dict (예: 'Q5-CRED:tor_vpn' 의 8 사고유형 점수).
     """
-    smoothing = 5.0
+    smoothing = 2.0
     # UNCLASSIFIED·source 키 등은 제외하고 사고유형 점수만
     sco = {k: float(v) for k, v in weights.items() if isinstance(v, (int, float))}
     if "UNCLASSIFIED" in sco:

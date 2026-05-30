@@ -137,20 +137,39 @@ def main() -> int:
         if len(no_label) > 10:
             print(f"     ... +{len(no_label)-10}개")
 
-    # ── 4. 중복 slug ──
+    # ── 4. 중복 slug — weights/label 비교로 "진짜 동일" vs "의도된 별개" 구분 ──
     slug_map = defaultdict(list)
     for k in clues:
         if ":" in k:
             slug = k.split(":", 1)[1]
             slug_map[slug].append(k)
-    dups = {s: ks for s, ks in slug_map.items() if len(ks) > 1}
-    print(f"\n[4] 중복 slug (같은 value 가 여러 prefix): {len(dups)}건", "✓" if not dups else "⚠")
-    if dups:
-        warn += 1
-        for s, ks in list(dups.items())[:5]:
-            print(f"     - slug='{s}': {ks}")
-        if len(dups) > 5:
-            print(f"     ... +{len(dups)-5}개")
+    dup_slugs = {s: ks for s, ks in slug_map.items() if len(ks) > 1}
+
+    real_dup = []      # weights·label 모두 동일 → 진짜 중복 (FAIL 대상)
+    intended = []      # weights 다름 → 의도된 별개 (INFO)
+    for s, ks in dup_slugs.items():
+        first = clues[ks[0]]
+        all_same = all(
+            clues[k].get("weights") == first.get("weights")
+            and clues[k].get("label") == first.get("label")
+            for k in ks[1:]
+        )
+        if all_same:
+            real_dup.append((s, ks))
+        else:
+            intended.append((s, ks))
+
+    print(f"\n[4] slug 중복 검사 ({len(dup_slugs)} slug 가 다중 prefix):")
+    print(f"     · 진짜 중복 (weights·label 동일): {len(real_dup)}건", "✓" if not real_dup else "✗")
+    if real_dup:
+        fail += 1
+        for s, ks in real_dup[:5]:
+            print(f"       - slug='{s}': {ks}")
+    print(f"     · 의도된 별개 (weights 다름 — false-positive): {len(intended)}건", "(INFO)")
+    for s, ks in intended[:5]:
+        # 어느 weights 가 다른지 1-라인 차이 표시
+        ws = [(k, max(clues[k].get("weights", {}).values() or [0])) for k in ks]
+        print(f"       - slug='{s}': {[f'{k}(max={mw})' for k, mw in ws]}")
 
     # ── 5. prefix 표준 분포 ──
     prefix_cnt = Counter(_classify_prefix(k) for k in clues)

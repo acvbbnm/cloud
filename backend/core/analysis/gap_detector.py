@@ -15,7 +15,7 @@ multi-type (2026-05-31): 단서 루프에서 2개 이상의 사고유형이 확�
 응답 `perType` 배열로 유형별 결과를 내려주고, gap_results 에는 기존과 동일하게
 전체(worst) 1행만 적재해 report_generator 등 기존 소비자 호환을 유지한다.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import distinct, select
@@ -35,6 +35,135 @@ _INTERPRETATION_THRESHOLD = 0.3  # 매핑률 30% 미만이면 INTERPRETATION 후
 
 # 갭 심각도 순위 (작을수록 심각) — 전체(worst) 판정에 사용.
 _SEVERITY_RANK = {"COLLECTION": 0, "INTERPRETATION": 1, "EVIDENCE": 2, "NONE": 3}
+
+# ───────────────────────────────────────────────────────────────
+# P.25 (2026-05-31) — GapDetector v2 부가 진단 4종 복구.
+# P.24 (jingyu d39b1e0 머지) 의 theirs 적용 시 손실된 geunhyung a96365b 함수
+# 4개를 jingyu multi-type 위에 재추가. detect() 응답 dict 에 backward-compat
+# optional 필드로 동봉.
+# ───────────────────────────────────────────────────────────────
+
+# [R4] priority 가중치 — Naver Cloud 보안관제 실무 우선순위 체계 반영.
+# priority 는 1(낮음)~10(높음). P1(>=10)=critical, P2(7~9)=high, P3(4~6)=mid, P4(<=3)=low.
+_PRIORITY_WEIGHTS: dict[int, int] = {
+    10: 10, 9: 7, 8: 7, 7: 7,
+    6: 3, 5: 3, 4: 3,
+    3: 1, 2: 1, 1: 1,
+}
+
+# [R1] ATT&CK for Cloud kill-chain 주요 9 tactic — 논문 매트릭스 구조 반영.
+_KILL_CHAIN_TACTICS: list[str] = [
+    "Initial Access", "Execution", "Persistence", "Privilege Escalation",
+    "Defense Evasion", "Credential Access", "Discovery",
+    "Lateral Movement", "Exfiltration", "Impact",
+]
+
+# [R3] anti-forensic 시간 갭 임계값 — 30분 이상 공백을 의심 구간으로 표시.
+_TIME_GAP_THRESHOLD_MINUTES = 30
+
+
+def _priority_weight(priority: int) -> int:
+    """priority(1~10) → 가중치. 매핑되지 않은 값은 1로 폴백."""
+    return _PRIORITY_WEIGHTS.get(int(priority or 0), 1)
+
+
+def _compute_priority_score(
+    required_targets: list[CollectionTargetModel],
+    collected_ids: set[str],
+) -> dict:
+    """[R4] priority 가중 점수 — 단순 count 보다 P1 누락의 위험을 강하게 반영."""
+    total_w = sum(_priority_weight(t.priority) for t in required_targets)
+    collected_w = sum(
+        _priority_weight(t.priority) for t in required_targets if t.target_id in collected_ids
+    )
+    missing_w = total_w - collected_w
+    percent = round(collected_w / total_w * 100, 2) if total_w else 0.0
+    return {
+        "collected": collected_w,
+        "missing": missing_w,
+        "total": total_w,
+        "percent": percent,
+    }
+
+
+def _compute_tactic_coverage(db: Session, case_id: str) -> dict:
+    """[R1] ATT&CK kill-chain 단계별 커버리지 — 논문의 매트릭스 매핑 구조 반영."""
+    rows = list(
+        db.execute(
+            select(AttackEventModel.tactic)
+            .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
+            .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+            .where(RawEventModel.case_id == case_id)
+        ).scalars()
+    )
+    by_tactic: dict[str, int] = {}
+    for t in rows:
+        by_tactic[t] = by_tactic.get(t, 0) + 1
+    covered_tactics = set(by_tactic.keys())
+    missing = [t for t in _KILL_CHAIN_TACTICS if t not in covered_tactics]
+    total = len(set(_KILL_CHAIN_TACTICS) | covered_tactics)
+    return {
+        "covered": len(covered_tactics),
+        "total": total,
+        "byTactic": by_tactic,
+        "missingTactics": missing,
+    }
+
+
+def _detect_time_gaps(db: Session, case_id: str) -> list[dict]:
+    """[R3] anti-forensic 후보 시간 공백 — SentinelOne 'log deletion is forensic evidence'."""
+    times = sorted(
+        db.execute(
+            select(OCSFEventModel.time)
+            .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+            .where(RawEventModel.case_id == case_id)
+            .where(OCSFEventModel.time.is_not(None))
+        ).scalars()
+    )
+    if len(times) < 2:
+        return []
+    span = times[-1] - times[0]
+    if span < timedelta(minutes=_TIME_GAP_THRESHOLD_MINUTES * 2):
+        return []
+    gaps: list[dict] = []
+    for prev, curr in zip(times[:-1], times[1:]):
+        diff = curr - prev
+        mins = diff.total_seconds() / 60.0
+        if mins >= _TIME_GAP_THRESHOLD_MINUTES:
+            gaps.append({
+                "from": prev.isoformat(),
+                "to": curr.isoformat(),
+                "durationMinutes": round(mins, 1),
+                "suspicion": "anti_forensic_candidate",
+            })
+    return gaps
+
+
+def _detect_bad_config(
+    required_targets: list[CollectionTargetModel],
+    corroborating_targets: list[CollectionTargetModel],
+    collected_ids: set[str],
+) -> list[str]:
+    """[R2] Google Cloud bad log configuration heuristic — REQUIRED 0 + CORROBORATING > 0 비대칭."""
+    signals: list[str] = []
+    req_collected = sum(1 for t in required_targets if t.target_id in collected_ids)
+    cor_collected = sum(1 for t in corroborating_targets if t.target_id in collected_ids)
+    if required_targets and req_collected == 0 and cor_collected > 0:
+        signals.append(
+            f"필수 감사 로그 {len(required_targets)}건 전부 미수집인데 "
+            f"보조 로그만 {cor_collected}건 수집됨 — CSP 감사 추적 비활성화 의심 "
+            "(Google Cloud bad-log-config 패턴)."
+        )
+    elif required_targets and corroborating_targets:
+        req_rate = req_collected / len(required_targets)
+        cor_rate = cor_collected / len(corroborating_targets) if corroborating_targets else 0
+        if cor_rate - req_rate > 0.2:
+            signals.append(
+                f"REQUIRED 수집률 {round(req_rate * 100, 1)}% < "
+                f"CORROBORATING 수집률 {round(cor_rate * 100, 1)}% — "
+                "핵심 로그 우선순위 역전. 감사 정책 점검 필요."
+            )
+    return signals
 
 
 class GapDetector:
@@ -243,6 +372,46 @@ class GapDetector:
             else None
         )
 
+        # ── P.25 (2026-05-31) — v2 부가 진단 4종 계산 ──
+        # 모든 사고유형의 REQUIRED/CORROBORATING target 합집합으로 priority 가중·
+        # bad-config 분석. tactic 커버리지·시간 갭은 케이스 전역 (사고유형 무관).
+        all_required_targets: list[CollectionTargetModel] = []
+        all_corroborating_targets: list[CollectionTargetModel] = []
+        seen_req_ids: set[str] = set()
+        seen_cor_ids: set[str] = set()
+        for t in types:
+            req = list(
+                db.execute(
+                    select(CollectionTargetModel)
+                    .where(CollectionTargetModel.incident_type == t)
+                    .where(CollectionTargetModel.csp.in_([case.csp, "all"]))
+                    .where(CollectionTargetModel.evidence_role == "REQUIRED")
+                ).scalars()
+            )
+            for tgt in req:
+                if tgt.target_id not in seen_req_ids:
+                    seen_req_ids.add(tgt.target_id)
+                    all_required_targets.append(tgt)
+            cor = list(
+                db.execute(
+                    select(CollectionTargetModel)
+                    .where(CollectionTargetModel.incident_type == t)
+                    .where(CollectionTargetModel.csp.in_([case.csp, "all"]))
+                    .where(CollectionTargetModel.evidence_role == "CORROBORATING")
+                ).scalars()
+            )
+            for tgt in cor:
+                if tgt.target_id not in seen_cor_ids:
+                    seen_cor_ids.add(tgt.target_id)
+                    all_corroborating_targets.append(tgt)
+
+        priority_score = _compute_priority_score(all_required_targets, collected_ids)
+        tactic_coverage = _compute_tactic_coverage(db, case_id)
+        time_gaps = _detect_time_gaps(db, case_id)
+        bad_config_signals = _detect_bad_config(
+            all_required_targets, all_corroborating_targets, collected_ids
+        )
+
         # ── DB 적재 (전체 1행만 — 기존 소비자 호환) ──
         gap = GapResultModel(
             case_id=case_id,
@@ -266,4 +435,9 @@ class GapDetector:
             # ── multi-type (2026-05-31) ──
             "incidentTypes": types,
             "perType": per_type,
+            # ── P.25 (2026-05-31) v2 부가 진단 복구 — backend → frontend V-4 패널 ──
+            "priorityScore": priority_score,           # [R4]
+            "tacticCoverage": tactic_coverage,         # [R1]
+            "timeGaps": time_gaps,                     # [R3]
+            "badConfigSignals": bad_config_signals,    # [R2]
         }

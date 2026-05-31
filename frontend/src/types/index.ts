@@ -451,6 +451,8 @@ export interface GuideV2Target {
   collection_methods: Record<string, GuideV2CollectionMethod>;
   sources: GuideV2SourceRef[];
   collected: boolean;
+  // Phase L (2026-05-31) — 단서 루프 신호(전술)와 연관되어 부스트된 단계인지
+  clue_relevant?: boolean;
 }
 
 export interface GuideV2PhaseGroup {
@@ -489,6 +491,30 @@ export interface GuideV2AppliedModifier {
   source: string;
 }
 
+// Phase L (2026-05-31) — 단서 루프 신호 요약 (UI 강조·배지·근거 표시용)
+export interface GuideV2ObservableSummary {
+  type: string;
+  count: number;
+}
+
+export interface GuideV2ClueObservable {
+  type: string;
+  value: string;
+  confidence?: string | null;
+  source?: string | null;
+}
+
+export interface GuideV2ClueSignals {
+  has_signal: boolean;
+  clue_techniques: string[]; // 채택 단서 유래 ATT&CK 기법 ID
+  evidenced_techniques: string[]; // 업로드 로그(attack_events) 유래 기법 ID
+  signal_techniques: string[]; // 위 둘의 합집합
+  signal_tactics: string[]; // 기법 → 전술 환산 (부스트 기준)
+  boosted_category_ids: string[]; // 단서 연관으로 우선순위 부스트된 카테고리
+  observables: GuideV2ClueObservable[];
+  observable_summary: GuideV2ObservableSummary[];
+}
+
 export interface GuideV2Response {
   caseId: string;
   incidentType: string;
@@ -501,6 +527,8 @@ export interface GuideV2Response {
   version: 'v2';
   // 2026-05-23 사이클 6 — V-1 Step 4 시드 풍부 메타
   seed_targets?: Array<Record<string, unknown>>;
+  // Phase L (2026-05-31) — 단서 루프 신호 요약
+  clue_signals?: GuideV2ClueSignals;
   // Phase K (2026-05-26 byungwoo) — preview 응답 식별 마커
   preview?: boolean;
 }

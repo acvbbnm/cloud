@@ -9,6 +9,7 @@ import { getGuideV2, getGuidePreview } from '@/api/intake';
 
 import type {
   GuideV2AppliedModifier,
+  GuideV2ClueSignals,
   GuideV2CollectionMethod,
   GuideV2EnvWarning,
   GuideV2PhaseGroup,
@@ -419,6 +420,9 @@ const TargetRow = ({
             <Badge tone={t.evidence_role === 'REQUIRED' ? 'red' : 'amber'} size="sm">
               {t.evidence_role === 'REQUIRED' ? '필수' : '보강'}
             </Badge>
+            {t.clue_relevant && (
+              <Badge tone="teal" size="sm">단서 연관</Badge>
+            )}
             <span
               className={`font-semibold text-[13.5px] ${
                 checked ? 'text-ink-400 line-through' : 'text-ink-100'
@@ -665,6 +669,14 @@ const MatrixView = ({
                             {boost > 0 && (
                               <span className="text-[9.5px] text-amber-300 font-semibold">↑+{boost}</span>
                             )}
+                            {t.clue_relevant && (
+                              <span
+                                className="text-[9.5px] text-brand-teal font-semibold"
+                                title="단서 루프 신호와 연관된 단계"
+                              >
+                                ●단서
+                              </span>
+                            )}
                             {isChecked && <span className="text-[10px] text-green-400"></span>}
                           </div>
                           <div className="text-[9.5px] opacity-80 mt-0.5">
@@ -794,7 +806,125 @@ const EnvWarningsCard = ({ items }: { items: GuideV2EnvWarning[] }) => {
   );
 };
 
-//  메인 
+//  단서 루프 신호 카드 (Phase L)
+const OBSERVABLE_TYPE_KO: Record<string, string> = {
+  ip: 'IP',
+  domain: '도메인',
+  url: 'URL',
+  hash: '해시',
+  email: '이메일',
+  username: '계정',
+  cve: 'CVE',
+  other: '기타',
+};
+
+// ATT&CK 기법 ID → MITRE 공식 기법 페이지 URL
+// 기반기법 T1078 → /techniques/T1078/ , 서브기법 T1078.004 → /techniques/T1078/004/
+const mitreTechniqueUrl = (tech: string): string | null => {
+  const m = tech.match(/^T(\d{4})(?:\.(\d{3}))?$/);
+  if (!m) return null;
+  const base = `T${m[1]}`;
+  return m[2]
+    ? `https://attack.mitre.org/techniques/${base}/${m[2]}/`
+    : `https://attack.mitre.org/techniques/${base}/`;
+};
+
+const ClueSignalsCard = ({ signals }: { signals: GuideV2ClueSignals | undefined }) => {
+  if (!signals || !signals.has_signal) return null;
+  const {
+    signal_techniques,
+    clue_techniques,
+    evidenced_techniques,
+    signal_tactics,
+    boosted_category_ids,
+    observable_summary,
+  } = signals;
+  const clueSet = new Set(clue_techniques);
+  const logSet = new Set(evidenced_techniques);
+
+  return (
+    <Card
+      title={<span className="text-brand-teal">단서 루프 신호 반영</span>}
+      subtitle={
+        <span className="text-[10.5px] text-ink-400">
+          단서 루프가 확보한 ATT&CK 기법·Observable 로 아래 단계 카테고리 우선순위를 가산했습니다
+          (수집 항목 자체는 표준 카탈로그 그대로)
+        </span>
+      }
+      className="mb-3"
+    >
+      <div className="space-y-2.5">
+        {observable_summary.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10.5px] text-ink-400 font-semibold">확보 Observable</span>
+            {observable_summary.map((o) => (
+              <Badge key={o.type} tone="blue" size="sm">
+                {OBSERVABLE_TYPE_KO[o.type] ?? o.type} {o.count}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {signal_tactics.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10.5px] text-ink-400 font-semibold">우선순위 가산 단계</span>
+            {signal_tactics.map((t) => (
+              <Badge key={t} tone="teal" size="sm">{t}</Badge>
+            ))}
+            {boosted_category_ids.length > 0 && (
+              <span className="text-[10px] text-ink-500">
+                · 카테고리 {boosted_category_ids.length}종 부스트
+              </span>
+            )}
+          </div>
+        )}
+
+        {signal_techniques.length > 0 && (
+          <div>
+            <span className="text-[10.5px] text-ink-400 font-semibold">확보 ATT&CK 기법</span>
+            <div className="flex items-center gap-1 flex-wrap mt-1">
+              {signal_techniques.map((tech) => {
+                const fromClue = clueSet.has(tech);
+                const fromLog = logSet.has(tech);
+                const src = fromClue && fromLog ? '단서+로그' : fromClue ? '단서' : '로그';
+                const url = mitreTechniqueUrl(tech);
+                const chipClass =
+                  'inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded border border-brand-purple/40 bg-brand-purple/10 text-brand-purple';
+                if (!url) {
+                  return (
+                    <code key={tech} className={chipClass} title={`출처: ${src}`}>
+                      {tech}
+                    </code>
+                  );
+                }
+                return (
+                  <a
+                    key={tech}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${chipClass} hover:bg-brand-purple/25 hover:border-brand-purple/70 transition-colors`}
+                    title={`출처: ${src} · MITRE ATT&CK ${tech} 페이지 열기 ↗`}
+                  >
+                    {tech}
+                    <span className="text-[8px] opacity-70">↗</span>
+                  </a>
+                );
+              })}
+            </div>
+            <div className="text-[9.5px] text-ink-500 mt-1">
+              출처 — <span className="text-brand-teal">단서</span>: 단서 루프 채택 ·{' '}
+              <span className="text-ink-300">로그</span>: 업로드 로그 ATT&CK 매핑 · 기법 클릭 시 MITRE
+              ATT&CK 페이지 ↗
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+//  메인
 const CHECKED_KEY_PREFIX = 'ai-sherpa-v2-collected:';
 const VIEW_MODE_KEY = 'ai-sherpa-v2-view-mode';
 
@@ -1060,6 +1190,9 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
           </span>
         </div>
       </div>
+
+      {/* 단서 루프 신호 반영 (Phase L) — 신호가 있을 때만 노출 */}
+      <ClueSignalsCard signals={guide.clue_signals} />
 
       {/* Kill Chain 안내 (접이식) */}
       <PhaseInfoBanner activePhases={activePhases} />

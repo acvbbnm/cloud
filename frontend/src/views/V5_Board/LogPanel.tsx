@@ -106,7 +106,13 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
                 key={l.id}
                 draggable
                 onDragStart={(e) => {
+                  // 로그도 단서와 동일 MIME 으로 → ChainGraphCanvas 가 보드 노드로 변환
+                  const payload: CluePayload = {
+                    clue_key: `log:${l.id}`,
+                    label: `[${l.ts}] ${l.ev} · ${l.ip}`,
+                  };
                   e.dataTransfer.effectAllowed = 'copy';
+                  e.dataTransfer.setData(CLUE_DRAG_MIME, JSON.stringify(payload));
                   e.dataTransfer.setData('text/plain', String(l.id));
                   onDragStart(l);
                 }}

@@ -74,6 +74,8 @@ interface ChainGraphCanvasProps {
   /** Phase P.6 — LogPanel 단서 탭에서 드래그된 단서를 보드 노드로 변환.
    *  null 이면 drop 비활성 (caseId 없을 때 등). */
   onDropClue?: (payload: CluePayload, posX: number, posY: number) => void;
+  /** 엣지 삭제 — 엣지 클릭 시 confirm 후 부모가 DELETE /api/board/edges/{id} 호출. */
+  onDeleteEdge?: (edgeId: string) => void;
 }
 
 const NODE_W = 168;
@@ -93,6 +95,7 @@ const ChainGraphCanvas = ({
   onPickEdgeEnd,
   onMoveNode,
   onDropClue,
+  onDeleteEdge,
 }: ChainGraphCanvasProps) => {
   // 영속 위치 우선 + 미설정 시 격자 배치
   const baseLayout = useMemo(() => {
@@ -384,6 +387,46 @@ const ChainGraphCanvas = ({
   }, [width, height]);
 
   const resetView = () => setViewport({ tx: 0, ty: 0, scale: 1 });
+
+  /** 🎯 모든 노드가 화면에 보이도록 viewport 자동 조정 (fit-to-view).
+   *  화면 밖으로 노드가 나간 경우 복구용. */
+  const fitView = () => {
+    if (nodes.length === 0) {
+      setViewport({ tx: 0, ty: 0, scale: 1 });
+      return;
+    }
+    // 모든 노드의 bounding box (layout + tempPos 포함)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of nodes) {
+      const p = layout.get(n.node_id);
+      if (!p) continue;
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + NODE_W);
+      maxY = Math.max(maxY, p.y + NODE_H);
+    }
+    if (!isFinite(minX)) {
+      setViewport({ tx: 0, ty: 0, scale: 1 });
+      return;
+    }
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const margin = 40;
+    const vw = sizeRef.current.width || 900;
+    const vh = sizeRef.current.height || 520;
+    const scale = Math.min(
+      (vw - margin * 2) / bw,
+      (vh - margin * 2) / bh,
+      1.2,
+    );
+    const safeScale = Math.max(0.3, scale);
+    // bounding box 중심이 viewport 중심에 오도록
+    const cxBox = (minX + maxX) / 2;
+    const cyBox = (minY + maxY) / 2;
+    const tx = vw / 2 - cxBox * safeScale;
+    const ty = vh / 2 - cyBox * safeScale;
+    setViewport({ tx, ty, scale: safeScale });
+  };
   // Phase P.11 — 휠 외 클릭으로도 zoom 가능 (사용자 피드백: "확대 기능 작동 안 함")
   const zoomBy = (factor: number) => {
     const { tx, ty, scale } = viewportRef.current;
@@ -513,7 +556,7 @@ const ChainGraphCanvas = ({
         </g>
       )}
 
-      {/* 엣지 — line + marker */}
+      {/* 엣지 — 베지어 곡선 (가독성 ↑) + marker + 삭제 핸들러 */}
       {edges.map((e) => {
         const a = layout.get(e.from_node_id);
         const b = layout.get(e.to_node_id);
@@ -522,28 +565,84 @@ const ChainGraphCanvas = ({
         const y1 = a.y + NODE_H / 2;
         const x2 = b.x + NODE_W / 2;
         const y2 = b.y + NODE_H / 2;
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        // Quadratic Bezier 제어점 — 라인 수직 방향으로 휘게
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const curve = Math.min(dist * 0.18, 50); // 거리에 비례, 최대 50px 휘어짐
+        // 수직 perpendicular 방향
+        const perpX = dist > 0 ? -dy / dist : 0;
+        const perpY = dist > 0 ? dx / dist : 0;
+        const ctrlX = midX + perpX * curve;
+        const ctrlY = midY + perpY * curve;
+        const path = `M ${x1},${y1} Q ${ctrlX},${ctrlY} ${x2},${y2}`;
+        // 라벨 위치 — 곡선 중점 보정
+        const labelX = (midX + ctrlX) / 2;
+        const labelY = (midY + ctrlY) / 2;
+        const handleEdgeClick = (ev: React.MouseEvent) => {
+          ev.stopPropagation();
+          if (!onDeleteEdge) return;
+          if (window.confirm('이 엣지를 삭제하시겠습니까?')) {
+            onDeleteEdge(e.edge_id);
+          }
+        };
         return (
-          <g key={e.edge_id}>
-            <line
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
+          <g key={e.edge_id} className="board-edge-group">
+            {/* 실제 화살표 베지어 곡선 */}
+            <path
+              d={path}
+              fill="none"
               stroke="#3D7BFF"
               strokeWidth={2}
               opacity={0.7}
               markerEnd="url(#chain-arrow)"
+              style={{ pointerEvents: 'none' }}
             />
+            {/* 클릭 hit area — 같은 곡선 위에 굵은 투명 선 (Delete 트리거) */}
+            <path
+              d={path}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={14}
+              style={{ cursor: onDeleteEdge ? 'pointer' : 'default' }}
+              onClick={handleEdgeClick}
+            >
+              <title>클릭 시 엣지 삭제 (확인 다이얼로그)</title>
+            </path>
             {e.label && (
               <text
-                x={(x1 + x2) / 2}
-                y={(y1 + y2) / 2 - 6}
+                x={labelX}
+                y={labelY - 4}
                 textAnchor="middle"
                 fill="#9aa3b2"
                 fontSize={10}
+                style={{ pointerEvents: 'none' }}
               >
                 {e.label}
               </text>
+            )}
+            {/* 중앙 삭제 ✕ 버튼 — hover 시만 표시 */}
+            {onDeleteEdge && (
+              <g
+                className="board-edge-delete-btn"
+                style={{ cursor: 'pointer', opacity: 0 }}
+                onClick={handleEdgeClick}
+              >
+                <circle cx={midX} cy={midY} r={9} fill="#1f2937" stroke="#ef4444" strokeWidth={1.5} />
+                <text
+                  x={midX}
+                  y={midY + 3.5}
+                  textAnchor="middle"
+                  fill="#ef4444"
+                  fontSize={11}
+                  fontWeight="bold"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  ×
+                </text>
+              </g>
             )}
           </g>
         );
@@ -587,6 +686,14 @@ const ChainGraphCanvas = ({
             ? '#F87171'
             : '#FBBF24';
 
+        // 노드 type 라벨 (툴팁용)
+        const typeLabel = isClue ? '단서' : n.is_ai_suggested ? 'AI 제안' : '수동 추가';
+        const tooltipText =
+          `${typeLabel} · ${n.status}\n` +
+          `${n.label}\n` +
+          (incident ? `사고유형: ${INCIDENT_KO[incident]}\n` : '') +
+          (n.attack_id ? `attack_id: ${n.attack_id.slice(0, 8)}…` : '');
+
         return (
           <g
             key={n.node_id}
@@ -594,6 +701,8 @@ const ChainGraphCanvas = ({
             onPointerDown={(e) => handleNodePointerDown(e, n)}
             style={{ cursor: edgeMode ? 'pointer' : 'grab', touchAction: 'none' }}
           >
+            {/* hover 툴팁 — 라벨 잘림 시 전체 텍스트 + 메타 표시 */}
+            <title>{tooltipText}</title>
             <rect
               width={NODE_W}
               height={NODE_H}
@@ -704,12 +813,12 @@ const ChainGraphCanvas = ({
         );
       })}
       </g>
-      {/* Phase P.11 — zoom 컨트롤 (SVG 우상단 고정 오버레이): [-] [percent] [+] [1:1] */}
+      {/* zoom 컨트롤 — [-] [percent] [+] [1:1] [🎯] */}
       <g
-        transform={`translate(${Math.max(8, width - 152)}, 8)`}
+        transform={`translate(${Math.max(8, width - 184)}, 8)`}
         style={{ cursor: 'pointer' }}
       >
-        <rect x={0} y={0} width={144} height={22} rx={4}
+        <rect x={0} y={0} width={176} height={22} rx={4}
               fill="#0f1117" stroke="#2a3441" strokeWidth={0.8} />
         {/* [-] 축소 */}
         <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(0.85); }}>
@@ -743,6 +852,21 @@ const ChainGraphCanvas = ({
           <text x={127} y={14} textAnchor="middle"
                 fill="#5EEAD4" fontSize={9} fontWeight={700}>
             1:1
+          </text>
+        </g>
+        {/* [🎯] fit-to-view — 모든 노드가 보이게 자동 조정 (화면 밖 노드 복구) */}
+        <g
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            fitView();
+          }}
+        >
+          <title>모든 노드가 보이도록 화면 맞춤 (화면 밖 노드 복구)</title>
+          <rect x={146} y={3} width={26} height={16} rx={3}
+                fill="#1a1f29" stroke="#10b981" strokeWidth={0.8} />
+          <text x={159} y={14} textAnchor="middle"
+                fill="#34d399" fontSize={11} fontWeight={700}>
+            🎯
           </text>
         </g>
       </g>

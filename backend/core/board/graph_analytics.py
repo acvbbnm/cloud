@@ -193,3 +193,52 @@ def analyze_board(
             "networkx_available": True,
         },
     }
+
+
+def auto_layout_positions(
+    node_ids: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    canvas_w: int = 900,
+    canvas_h: int = 520,
+    pad: int = 60,
+) -> dict[str, tuple[int, int]]:
+    """V-5 자동 정렬 — networkx spring_layout 결과를 canvas 좌표로 매핑.
+
+    Returns:
+        {node_id: (x, y)} — V-5 캔버스 픽셀 좌표 (좌상단 0,0 기준).
+
+    동작:
+        - networkx 미설치 → 격자 fallback (5열 그리드)
+        - 노드 1개 → 캔버스 중앙
+        - spring_layout 결정성 위해 seed=42 고정
+    """
+    if not node_ids:
+        return {}
+
+    if not _NETWORKX_AVAILABLE or len(node_ids) == 1:
+        # fallback — 격자 배치 (cols=5)
+        cols = 5
+        cell_w = (canvas_w - 2 * pad) / max(cols, 1)
+        cell_h = 110
+        out: dict[str, tuple[int, int]] = {}
+        for i, nid in enumerate(node_ids):
+            r, c = divmod(i, cols)
+            out[nid] = (int(pad + c * cell_w), int(pad + r * cell_h))
+        return out
+
+    g = nx.Graph()
+    g.add_nodes_from(node_ids)
+    g.add_edges_from(edges)
+
+    # spring_layout — k 는 노드 간 최소 거리, iterations 는 수렴 횟수
+    pos = nx.spring_layout(g, seed=42, k=0.6, iterations=80)
+
+    # [-1, 1] → 캔버스 좌표
+    out = {}
+    for nid in node_ids:
+        x, y = pos.get(nid, (0, 0))
+        cx = int(pad + (x + 1) / 2 * (canvas_w - 2 * pad))
+        cy = int(pad + (y + 1) / 2 * (canvas_h - 2 * pad))
+        out[nid] = (cx, cy)
+    return out

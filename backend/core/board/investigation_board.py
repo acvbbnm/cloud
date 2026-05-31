@@ -72,14 +72,21 @@ class InvestigationBoard:
         case: Optional[IncidentCaseModel] = None,
     ) -> dict:
         """Phase 2.5 (P6, 2026-05-25) — Dwell Time KPI.
+        2026-05-31 fix — 탐지 시각: case.occurred_at 우선, fallback case.created_at.
+
+        Mandiant 의 Dwell Time 정의: "최초 침해 → 조직이 사고를 인지(detected)"
+        → 수사관이 V-1 Step 1 에서 입력한 occurred_at 이 진짜 인지 시각.
+        case.created_at (DB INSERT 시각) 은 인지 후 시스템 등록 시각 = proxy.
 
         PDF 결론 (Mandiant Median Dwell Time 10일 → 7일 단축) 정합 지표:
-          · earliestEventTime  : min(raw_events.event_time) — 최초 침해 발생 추정
-          · caseCreatedAt      : case.created_at — 수사 접수 (탐지 시각 proxy)
+          · earliestEventTime  : min(ocsf_events.time) — 최초 침해 발생 추정
+          · detectedAt         : case.occurred_at (사용자 입력) 우선 / fallback created_at
+          · caseCreatedAt      : case.created_at — DB INSERT (proxy 보존)
           · caseClosedAt       : case.closed_at — 격리 완료 (None 이면 진행 중)
-          · dwellTimeSeconds   : 탐지 - 최초침해 (None 면 raw 이벤트 없음)
-          · containmentSeconds : 격리완료 - 탐지 (closed_at 있을 때만)
+          · dwellTimeSeconds   : 탐지(detectedAt) - 최초침해
+          · containmentSeconds : 격리완료 - 탐지(detectedAt)
           · totalSeconds       : 격리완료 - 최초침해 (전체 incident span)
+          · dwellSource        : 'occurred_at' | 'created_at' (어느 값 썼는지 표시)
 
         시연 메시징: Mandiant 7일 기준 비교 → 본 시스템이 즉시 탐지·격리 가이드 제공.
         """
@@ -96,6 +103,10 @@ class InvestigationBoard:
             .where(RawEventModel.case_id == case_id)
         ).scalar_one_or_none()
 
+        # 탐지 시점: 사용자 입력 occurred_at 우선 (Mandiant 정의 정합), 없으면 created_at fallback
+        detected_at = case.occurred_at or case.created_at
+        dwell_source = "occurred_at" if case.occurred_at else "created_at"
+
         def _secs(later: Optional[datetime], earlier: Optional[datetime]) -> Optional[int]:
             if later is None or earlier is None:
                 return None
@@ -103,13 +114,15 @@ class InvestigationBoard:
 
         return {
             "earliestEventTime": earliest.isoformat() if earliest else None,
+            "detectedAt": detected_at.isoformat() if detected_at else None,
             "caseCreatedAt": case.created_at.isoformat() if case.created_at else None,
             "caseClosedAt": case.closed_at.isoformat() if case.closed_at else None,
-            "dwellTimeSeconds": _secs(case.created_at, earliest),
-            "containmentSeconds": _secs(case.closed_at, case.created_at),
+            "dwellTimeSeconds": _secs(detected_at, earliest),
+            "containmentSeconds": _secs(case.closed_at, detected_at),
             "totalSeconds": _secs(case.closed_at, earliest),
             "benchmarkSeconds": 7 * 24 * 60 * 60,  # Mandiant M-Trends 2024 median 7일
             "benchmarkSource": "Mandiant M-Trends 2024 — median dwell time 7d (PDF 결론)",
+            "dwellSource": dwell_source,
         }
 
     @classmethod

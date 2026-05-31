@@ -12,13 +12,15 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode, createEdge } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge, deleteEdge, autoLayout } from '@/api/board';
+import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
 import type { AttackEventItem, BoardNode, BriefingResponse, SherpaSource } from '@/types';
 
 import LogPanel from './LogPanel';
-import BoardCanvas from './BoardCanvas';
+// BoardCanvas — 가독성 정리 #1 로 제거 (메인 ChainGraphCanvas 와 중복)
+// import BoardCanvas from './BoardCanvas';
 import ChainGraphCanvas from './ChainGraphCanvas';
 
 const SOURCE_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
@@ -37,7 +39,9 @@ const V5Board = () => {
   const cards = useBoardStore((s) => s.cards);
   const queryClient = useQueryClient();
 
-  const [pendingLog, setPendingLog] = useState<BoardLog | null>(null);
+  // pendingLog — BoardCanvas 제거로 더 이상 표시하지 않음.
+  // LogPanel 의 onDragStart 콜백은 유지 (drag start 감지용 noop).
+  const [, setPendingLog] = useState<BoardLog | null>(null);
   const [activeAttack, setActiveAttack] = useState<AttackEventItem | null>(null);
   const [activeBoardNode, setActiveBoardNode] = useState<BoardNode | null>(null);
   const [memo, setMemo] = useState('');
@@ -45,6 +49,10 @@ const V5Board = () => {
   // UF-04 — 엣지 생성 모드 (chain_nodes 간 화살표 연결)
   const [edgeMode, setEdgeMode] = useState(false);
   const [edgeStartId, setEdgeStartId] = useState<string | null>(null);
+  // 가독성 정리 #2 — ATT&CK 후보 그리드 접기/펼치기 토글 (기본 접힘)
+  const [attackOpen, setAttackOpen] = useState(false);
+  // 가독성 정리 #3 — 셰르파 브리핑 카드 접기 (기본 접힘, 사이드바 길이 단축)
+  const [sherpaOpen, setSherpaOpen] = useState(false);
 
   const boardQuery = useQuery({
     queryKey: ['board', caseId],
@@ -168,6 +176,49 @@ const V5Board = () => {
     },
   });
 
+  // UF-04-b — 엣지 삭제 (chain_edges) — hover ✕ 또는 라인 클릭
+  const deleteEdgeMutation = useMutation({
+    mutationFn: (edgeId: string) => deleteEdge(edgeId),
+    onSuccess: () => {
+      showToast('엣지 삭제 — 공격 체인 연결 해제');
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`엣지 삭제 실패: ${msg}`);
+    },
+  });
+
+  // 자동 정렬 — networkx spring_layout 결과로 노드 좌표 일괄 재배치
+  const autoLayoutMutation = useMutation({
+    mutationFn: () => autoLayout(caseId!),
+    onSuccess: (data) => {
+      showToast(`✨ 자동 정렬 ${data.updated_nodes}개 노드 재배치`);
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`자동 정렬 실패: ${msg}`);
+    },
+  });
+
+  // 가독성 정리 — V-5 에서 직접 ATT&CK 매핑 실행 (V-6 안 거치고)
+  const mapAttackMutation = useMutation({
+    mutationFn: () => runMap(caseId!),
+    onSuccess: (stats) => {
+      showToast(
+        `↻ 매핑 ${stats.mapped}/${stats.total_ocsf}건 (매핑률 ${Math.round((stats.mappingRate ?? 0) * 100)}%)`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['attack', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+      setAttackOpen(true); // 결과 자동 펼침
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`매핑 실패: ${msg}`);
+    },
+  });
+
   const toggleEdgeMode = () => {
     setEdgeMode((m) => !m);
     setEdgeStartId(null);
@@ -276,11 +327,8 @@ const V5Board = () => {
 
         <div className="flex gap-4">
           <div className="flex-1 min-w-0 flex flex-col gap-3">
-            {/* Phase P.7 — 옛 BoardCanvas (백엔드 미연동, 카드 시각화) 는 V-2
-                cards 가 있을 때만 노출. 메인 보드는 아래 ChainGraphCanvas. */}
-            {(cards.length > 0 || pendingLog) && (
-              <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
-            )}
+            {/* 가독성 정리 #1 — 옛 BoardCanvas 제거 (메인 ChainGraphCanvas 와 중복).
+                pendingLog 토스트는 ChainGraphCanvas 의 onDropClue 가 처리. */}
 
             {/* 메인 보드 — ATT&CK + 단서 + 엣지 통합 그래프 (SVG, UF-04) */}
             <Card
@@ -293,6 +341,14 @@ const V5Board = () => {
               }
               action={
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => autoLayoutMutation.mutate()}
+                    disabled={!caseId || boardNodes.length === 0 || autoLayoutMutation.isPending}
+                    className="text-[11px] px-2.5 py-1 rounded-lg border border-brand-teal/50 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="networkx spring_layout 으로 노드 좌표 일괄 재배치 (POST /api/board/auto-layout)"
+                  >
+                    {autoLayoutMutation.isPending ? '정렬 중…' : '✨ 자동 정렬'}
+                  </button>
                   <button
                     onClick={toggleEdgeMode}
                     disabled={boardNodes.length < 2}
@@ -339,6 +395,7 @@ const V5Board = () => {
                 onMoveNode={(nodeId, x, y) =>
                   movePositionMutation.mutate({ nodeId, x, y })
                 }
+                onDeleteEdge={(edgeId) => deleteEdgeMutation.mutate(edgeId)}
                 // Phase P.6 — LogPanel 단서 탭 drop 처리
                 onDropClue={
                   caseId
@@ -382,13 +439,42 @@ const V5Board = () => {
               )}
             </Card>
 
-            {/* ATT&CK 매핑 결과 후보 */}
+            {/* ATT&CK 매핑 결과 후보 — 가독성 정리 #2: collapsible (기본 접힘) */}
             <Card
-              title={<> ATT&CK 매핑 후보 (top {ATTACK_PAGE_SIZE})</>}
-              subtitle="최신 매핑 순. 카드 클릭 시 우측 상세 표시 + '보드 추가'"
+              title={
+                <button
+                  onClick={() => setAttackOpen((v) => !v)}
+                  className="flex items-center gap-1.5 text-left hover:text-brand-purple/80 transition-colors"
+                  title={attackOpen ? '접기' : '펼치기'}
+                >
+                  <span className="text-[11px] text-ink-400">{attackOpen ? '▼' : '▶'}</span>
+                  <span>
+                     ATT&CK 매핑 후보 ({attackItems.length}/{attackQuery.data?.total ?? 0})
+                  </span>
+                </button>
+              }
+              subtitle={
+                attackOpen
+                  ? '최신 매핑 순. 카드 클릭 시 우측 상세 표시 + "보드 추가"'
+                  : undefined
+              }
+              action={
+                <button
+                  onClick={() => mapAttackMutation.mutate()}
+                  disabled={!caseId || mapAttackMutation.isPending}
+                  className="text-[11px] px-2.5 py-1 rounded-lg border border-brand-purple/50 bg-brand-purple/10 text-brand-purple hover:bg-brand-purple/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="OCSF → ATT&CK 매핑 (POST /api/analysis/map)"
+                >
+                  {mapAttackMutation.isPending ? '매핑 중…' : '↻ 매핑 실행'}
+                </button>
+              }
               className="flex-shrink-0"
             >
-              {attackItems.length === 0 ? (
+              {!attackOpen ? (
+                <div className="text-[11.5px] text-ink-400 py-1">
+                  카드를 펼쳐 ATT&CK 후보를 보드에 추가 (top {ATTACK_PAGE_SIZE})
+                </div>
+              ) : attackItems.length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-2">
                   ATT&CK 매핑 결과가 없습니다. V-2 → V-3 정규화 → ATT&CK 매핑 (POST /api/analysis/map) 을
                   먼저 수행하세요.
@@ -511,14 +597,51 @@ const V5Board = () => {
               )}
             </Card>
 
-            <Card title={<span className="text-brand-purple"> AI 셰르파 브리핑</span>}>
-              <BriefingPanel
-                isLoading={briefQuery.isLoading}
-                isError={briefQuery.isError}
-                error={briefQuery.error}
-                data={briefQuery.data}
-                briefAttackId={briefAttackId}
-              />
+            <Card
+              title={
+                <button
+                  onClick={() => setSherpaOpen((v) => !v)}
+                  className="flex items-center gap-1.5 text-left text-brand-purple hover:opacity-80 transition-colors"
+                  title={sherpaOpen ? '접기' : '펼치기'}
+                >
+                  <span className="text-[11px] text-ink-400">{sherpaOpen ? '▼' : '▶'}</span>
+                  <span> AI 셰르파 브리핑</span>
+                  {!sherpaOpen && briefQuery.isSuccess && (
+                    <span className="ml-1 text-[10px] text-brand-teal/70">
+                       응답 준비됨
+                    </span>
+                  )}
+                  {!sherpaOpen && briefQuery.isLoading && (
+                    <span className="ml-1 text-[10px] text-brand-blue/70 animate-pulse">
+                      로딩…
+                    </span>
+                  )}
+                </button>
+              }
+              subtitle={
+                !sherpaOpen ? undefined : (
+                  <a
+                    href="/sherpa"
+                    className="text-[10px] text-ink-400 hover:text-brand-purple"
+                  >
+                    더 깊은 질의는 V-8 셰르파 페이지에서 →
+                  </a>
+                )
+              }
+            >
+              {sherpaOpen ? (
+                <BriefingPanel
+                  isLoading={briefQuery.isLoading}
+                  isError={briefQuery.isError}
+                  error={briefQuery.error}
+                  data={briefQuery.data}
+                  briefAttackId={briefAttackId}
+                />
+              ) : (
+                <div className="text-[11.5px] text-ink-400 py-1">
+                  카드 펼치면 선택 노드의 KB 컨텍스트 브리핑 표시
+                </div>
+              )}
             </Card>
 
             <Card title={<> 수사관 메모</>}>

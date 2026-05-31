@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from core.board.chain import ChainEdge, ChainNode
 from core.board.clue_bridge import bridge_clue_tree_to_board
+from core.board.graph_analytics import auto_layout_positions
 from core.board.investigation_board import InvestigationBoard
 from core.intake.clue_tree_service import _load_tree_from_case  # Phase O.3 — internal helper
 from core.intake.incident_case import IncidentCase
@@ -292,6 +293,71 @@ async def create_edge(req: CreateEdgeRequest, db: Session = Depends(get_db)) -> 
         label=req.label,
     )
     return {"status": "ok", "data": ChainEdge.serialize(edge)}
+
+
+@router.delete("/edges/{edge_id}", status_code=status.HTTP_200_OK)
+async def delete_edge(edge_id: str, db: Session = Depends(get_db)) -> dict:
+    """엣지 1개 삭제. action_logs 에 REJECT 기록 (감사 추적)."""
+    edge = ChainEdge.get_by_id(db, edge_id)
+    if edge is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "error",
+                "message": "엣지를 찾을 수 없습니다",
+                "code": "EDGE_NOT_FOUND",
+            },
+        )
+    case_id = edge.case_id
+    from_node = edge.from_node_id
+    to_node = edge.to_node_id
+    ChainEdge.delete(db, edge_id)
+    # 감사 추적 — 엣지 삭제 이력
+    log = ActionLogModel(
+        case_id=case_id,
+        actor="investigator",
+        action="REJECT",
+        target_type="chain_edge",
+        target_id=edge_id,
+        detail={"from_node_id": from_node, "to_node_id": to_node},
+    )
+    db.add(log)
+    db.commit()
+    return {"status": "ok", "data": {"edge_id": edge_id, "deleted": True}}
+
+
+@router.post("/auto-layout", status_code=status.HTTP_200_OK)
+async def auto_layout(
+    caseId: str = Query(..., description="자동 정렬 대상 사고 케이스"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """V-5 자동 정렬 — networkx spring_layout 으로 노드 좌표 일괄 재계산.
+
+    동작:
+      - chain_nodes·chain_edges 조회
+      - graph_analytics.auto_layout_positions 호출 (networkx spring_layout, seed=42)
+      - 결과 좌표를 각 chain_node.pos_x/pos_y 로 일괄 업데이트
+    """
+    state = InvestigationBoard.get_state(db, caseId)
+    if state is None:
+        raise _case_not_found()
+    nodes = state.get("nodes", [])
+    edges = state.get("edges", [])
+    node_ids = [n["node_id"] for n in nodes]
+    edge_pairs = [(e["from_node_id"], e["to_node_id"]) for e in edges]
+    positions = auto_layout_positions(node_ids, edge_pairs)
+    # 일괄 update
+    updated = 0
+    for nid, (x, y) in positions.items():
+        if ChainNode.update(db, node_id=nid, pos_x=x, pos_y=y) is not None:
+            updated += 1
+    return {
+        "status": "ok",
+        "data": {
+            "updated_nodes": updated,
+            "positions": {nid: {"x": x, "y": y} for nid, (x, y) in positions.items()},
+        },
+    }
 
 
 @router.get("")

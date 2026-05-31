@@ -72,6 +72,21 @@ export const createEdge = async (req: CreateEdgeReq) => {
   return res.data.data;
 };
 
+/** DELETE /api/board/edges/{edge_id} — 엣지 1개 삭제 (action_logs REJECT 기록). */
+export const deleteEdge = async (edgeId: string): Promise<{ edge_id: string; deleted: boolean }> => {
+  const res = await client.delete(`/api/board/edges/${edgeId}`);
+  return res.data.data;
+};
+
+/** POST /api/board/auto-layout?caseId= — networkx spring_layout 자동 정렬. */
+export const autoLayout = async (caseId: string): Promise<{
+  updated_nodes: number;
+  positions: Record<string, { x: number; y: number }>;
+}> => {
+  const res = await client.post('/api/board/auto-layout', null, { params: { caseId } });
+  return res.data.data;
+};
+
 /** Phase O.3 — POST /api/board/nodes/from-clue-tree.
  *  Evidence Tree 의 채택 단서들을 보드 노드로 일괄 이관 (멱등 + 옵션 엣지). */
 export const bridgeFromClueTree = async (

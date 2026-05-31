@@ -43,6 +43,16 @@ const V8Sherpa = () => {
   const appendDelta = useSherpaStore((s) => s.appendDelta);
   const sessionId = useSherpaStore((s) => s.sessionId);
   const setSessionId = useSherpaStore((s) => s.setSessionId);
+  const resetSherpa = useSherpaStore((s) => s.reset);
+
+  // 케이스 변경 시 대화 기록 자동 초기화 (Bug fix — 이전 케이스 messages 잔존 방지)
+  const lastCaseIdRef = useRef<string | null>(caseId ?? null);
+  useEffect(() => {
+    if (lastCaseIdRef.current && lastCaseIdRef.current !== caseId) {
+      resetSherpa();
+    }
+    lastCaseIdRef.current = caseId ?? null;
+  }, [caseId, resetSherpa]);
 
   const [input, setInput] = useState('');
   // Phase 2.3 — 스트리밍 응답 진행 중 여부 (UI disabled 토글)
@@ -108,7 +118,7 @@ const V8Sherpa = () => {
   const engineConnected = engine && engine.engine !== 'stub';
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-[calc(100vh-2rem)]">
       <PageHeader
         eyebrow="Helper · sLLM"
         title="AI 셰르파"
@@ -130,6 +140,16 @@ const V8Sherpa = () => {
                 <code className="text-ink-400 font-mono">{sessionId.slice(0, 12)}…</code>
               </span>
             )}
+            {/* Bug fix — 수동 대화 초기화 버튼 */}
+            <button
+              onClick={() => {
+                if (window.confirm('대화 기록을 초기화하시겠습니까?')) resetSherpa();
+              }}
+              className="chip hover:border-red-500/40 hover:text-red-300 transition-colors"
+              title="채팅 messages + sessionId 모두 초기화"
+            >
+              ↻ 초기화
+            </button>
           </div>
         }
       />
@@ -160,9 +180,9 @@ const V8Sherpa = () => {
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 animate-fade-up">
-        {/* 좌측: 채팅 패널 */}
-        <div className="lg:col-span-2 panel flex flex-col p-0 min-h-0">
+      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-[680px] animate-fade-up">
+        {/* 좌측: 채팅 패널 — 최소 높이 보장 (Bug fix: 찌그러짐 방지) */}
+        <div className="lg:col-span-2 panel flex flex-col p-0 min-h-[680px]">
           <div className="px-5 py-4 border-b border-ink-700/60 flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-sherpa-gradient flex items-center justify-center text-[18px]">
               

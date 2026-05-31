@@ -201,6 +201,20 @@ class ChainEdge:
         db.refresh(edge)
         return edge
 
+    @classmethod
+    def get_by_id(cls, db: Session, edge_id: str) -> Optional[ChainEdgeModel]:
+        return db.query(ChainEdgeModel).filter(ChainEdgeModel.edge_id == edge_id).first()
+
+    @classmethod
+    def delete(cls, db: Session, edge_id: str) -> bool:
+        """엣지 1개 삭제. 존재하면 True, 미존재면 False."""
+        edge = cls.get_by_id(db, edge_id)
+        if edge is None:
+            return False
+        db.delete(edge)
+        db.commit()
+        return True
+
     @staticmethod
     def serialize(edge: ChainEdgeModel) -> dict:
         return {

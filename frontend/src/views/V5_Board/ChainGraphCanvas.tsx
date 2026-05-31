@@ -78,10 +78,13 @@ interface ChainGraphCanvasProps {
   onDeleteEdge?: (edgeId: string) => void;
 }
 
-const NODE_W = 168;
-const NODE_H = 64;
+// P.31 (사용자 피드백: "글씨도 조금 작아") — 노드 + 글씨 키우기.
+//   NODE_W 168→200 (라벨 잘림 ↓), NODE_H 64→78 (배지·라벨 충분 공간).
+//   라벨 fontSize 11.5→13.5 / 배지 fontSize 9→10.5 (아래 렌더에서).
+const NODE_W = 200;
+const NODE_H = 78;
 const GAP_X = 32;
-const GAP_Y = 28;
+const GAP_Y = 30;
 const PAD = 18;
 const NODES_PER_ROW = 4;
 
@@ -684,9 +687,10 @@ const ChainGraphCanvas = ({
         // P.30 (사용자 피드백: "돋보기 아이콘 + 단서/CONFIRMED/S4 라벨 제거,
         //   단서 명칭만 식별") — 단서 노드도 일반 라벨로. 사고유형 배지 + status
         //   색상으로 이미 직관 식별 가능 (중복 메타 제거).
+        // P.31 — 글씨 + 노드 크기 확대에 맞춰 truncate 26→32 글자.
         const rawLabel = n.label;
         const labelText =
-          rawLabel.length > 26 ? `${rawLabel.slice(0, 26)}…` : rawLabel;
+          rawLabel.length > 32 ? `${rawLabel.slice(0, 32)}…` : rawLabel;
 
         // P.30 — statusColor 변수 제거 (status 텍스트 라인 제거로 미사용).
         //   status 시각은 stroke·fill (CONFIRMED 초록 / REJECTED 빨강) 으로만.
@@ -731,26 +735,28 @@ const ChainGraphCanvas = ({
                 opacity={0.95}
               />
             )}
-            {/* Phase P.7 (easy 머지) — 단서 노드 우상단 사고유형 한국어 배지 */}
+            {/* Phase P.7 (easy 머지) — 단서 노드 우상단 사고유형 한국어 배지.
+                P.31 — 배지 크기 확대 (사용자: "글씨 작아"): 52×13 → 64×17,
+                fontSize 9→10.5. 다중 배지는 우측 상세 패널 likelihood top N. */}
             {isClue && incident && (
               <>
                 <rect
-                  x={NODE_W - 56}
-                  y={4}
-                  width={52}
-                  height={13}
-                  rx={3}
+                  x={NODE_W - 68}
+                  y={5}
+                  width={64}
+                  height={17}
+                  rx={3.5}
                   fill={incidentColor}
-                  fillOpacity={0.18}
+                  fillOpacity={0.20}
                   stroke={incidentColor}
-                  strokeWidth={0.8}
+                  strokeWidth={0.9}
                 />
                 <text
-                  x={NODE_W - 30}
-                  y={13.5}
+                  x={NODE_W - 36}
+                  y={17}
                   textAnchor="middle"
                   fill={incidentColor}
-                  fontSize={9}
+                  fontSize={10.5}
                   fontWeight={700}
                   style={{ fontFamily: 'system-ui, sans-serif' }}
                 >
@@ -759,11 +765,12 @@ const ChainGraphCanvas = ({
               </>
             )}
             <text
+              // P.31 — 라벨 fontSize 11.5→13.5, 노드 확대에 맞춰 y 22→34
               x={NODE_W / 2}
-              y={22}
+              y={isClue && incident ? 42 : 34}
               textAnchor="middle"
               fill="#E6E9F0"
-              fontSize={11.5}
+              fontSize={13.5}
               fontWeight={600}
               // P.28 — line-through 제거 (사용자: "내용 삭제 대신 색깔 바꿔")
             >
@@ -772,13 +779,14 @@ const ChainGraphCanvas = ({
             {/* P.30 — "단서 · CONFIRMED · S4" 라벨 제거 (사용자 피드백).
                 status 색상 + 사고유형 배지로 이미 직관 식별. */}
             {/* 엣지 모드 라벨 */}
+            {/* P.31 — 노드 NODE_H 64→78 에 맞춰 y 56→68. fontSize 9.5→11. */}
             {isStart && (
               <text
                 x={NODE_W / 2}
-                y={56}
+                y={68}
                 textAnchor="middle"
                 fill="#10B981"
-                fontSize={9.5}
+                fontSize={11}
                 fontWeight={700}
               >
                 ↓ 엣지 시작점
@@ -787,10 +795,10 @@ const ChainGraphCanvas = ({
             {isCandidate && (
               <text
                 x={NODE_W / 2}
-                y={56}
+                y={68}
                 textAnchor="middle"
                 fill="#F59E0B"
-                fontSize={9.5}
+                fontSize={11}
                 fontWeight={700}
               >
                 + 연결 대상

@@ -12,11 +12,19 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode, createEdge, deleteEdge, autoLayout } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge, deleteEdge, autoLayout, isClueNode } from '@/api/board';
 import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
-import type { AttackEventItem, BoardNode, BriefingResponse, SherpaSource } from '@/types';
+import { explainClue } from '@/api/clueTree';
+import type {
+  AttackEventItem,
+  BoardNode,
+  BriefingResponse,
+  SherpaSource,
+  IncidentType,
+  ClueNodeMeta,
+} from '@/types';
 
 import LogPanel from './LogPanel';
 // BoardCanvas — 가독성 정리 #1 로 제거 (메인 ChainGraphCanvas 와 중복)
@@ -69,8 +77,13 @@ const V5Board = () => {
   // AI 셰르파 brief — 선택된 board 노드(attack_id 가 있는 경우) 또는
   // 선택된 ATT&CK 후보 기준. 둘 다 없으면 케이스의 최상위 위험도 attack 자동 선택
   // (백엔드가 처리). KB 검색 결과는 5분 캐싱.
+  // P.31 — 단서 노드(attack_id=null) 선택 시는 호출 자체를 비활성화
+  //   (사용자 피드백: "AI 브리핑 연결도 안 되어있는데 왜 남겨뒀어").
+  //   단서일 땐 우측 상세 패널이 explainClue 풍부 메타로 대체.
+  const activeIsClue = activeBoardNode ? isClueNode(activeBoardNode) : false;
   const briefAttackId =
     activeBoardNode?.attack_id ?? activeAttack?.attack_id ?? null;
+  const briefEnabled = !!caseId && !activeIsClue;
   const briefQuery = useQuery({
     queryKey: ['sherpa', 'brief', caseId, briefAttackId],
     queryFn: () =>
@@ -78,8 +91,23 @@ const V5Board = () => {
         caseId: caseId!,
         eventId: briefAttackId,
       }),
-    enabled: !!caseId,
+    enabled: briefEnabled,
     staleTime: 5 * 60 * 1000,
+  });
+
+  // P.31 — 단서 노드 선택 시 풍부 메타 (description / examples /
+  //   discrimination_explanation / per-사고유형 likelihood / academic_source /
+  //   how_to_find) 조회. 사용자 피드백: "상세 페이지엔 어떤 단서였는지
+  //   시스템 구성에서 보였던것 처럼 좀더 자세하게".
+  const activeClueKey: string | null =
+    activeIsClue && activeBoardNode?.meta
+      ? (activeBoardNode.meta as ClueNodeMeta).clue_key ?? null
+      : null;
+  const clueExplainQuery = useQuery({
+    queryKey: ['clueExplain', activeClueKey],
+    queryFn: () => explainClue(activeClueKey!),
+    enabled: !!activeClueKey,
+    staleTime: 10 * 60 * 1000,
   });
 
   const addNodeMutation = useMutation({
@@ -484,7 +512,27 @@ const V5Board = () => {
           {/* 우측 컬럼 */}
           <div className="w-[340px] shrink-0 flex flex-col gap-3">
             <Card title={<>ℹ️ 상세</>}>
-              {activeBoardNode ? (
+              {activeBoardNode && activeIsClue ? (
+                <ClueDetailPanel
+                  node={activeBoardNode}
+                  explain={clueExplainQuery.data}
+                  isLoading={clueExplainQuery.isLoading}
+                  isError={clueExplainQuery.isError}
+                  onConfirm={() =>
+                    updateStatusMutation.mutate({
+                      nodeId: activeBoardNode.node_id,
+                      status: 'CONFIRMED',
+                    })
+                  }
+                  onReject={() =>
+                    updateStatusMutation.mutate({
+                      nodeId: activeBoardNode.node_id,
+                      status: 'REJECTED',
+                    })
+                  }
+                  busy={updateStatusMutation.isPending}
+                />
+              ) : activeBoardNode ? (
                 <div className="text-[12.5px]">
                   <div className="font-bold text-[14px] mb-2 truncate">{activeBoardNode.label}</div>
                   <Row label="상태">
@@ -567,52 +615,60 @@ const V5Board = () => {
               )}
             </Card>
 
-            <Card
-              title={
-                <button
-                  onClick={() => setSherpaOpen((v) => !v)}
-                  className="flex items-center gap-1.5 text-left text-brand-purple hover:opacity-80 transition-colors"
-                  title={sherpaOpen ? '접기' : '펼치기'}
-                >
-                  <span className="text-[11px] text-ink-400">{sherpaOpen ? '▼' : '▶'}</span>
-                  <span> AI 셰르파 브리핑</span>
-                  {!sherpaOpen && briefQuery.isSuccess && (
-                    <span className="ml-1 text-[10px] text-brand-teal/70">
-                       응답 준비됨
-                    </span>
-                  )}
-                  {!sherpaOpen && briefQuery.isLoading && (
-                    <span className="ml-1 text-[10px] text-brand-blue/70 animate-pulse">
-                      로딩…
-                    </span>
-                  )}
-                </button>
-              }
-              subtitle={
-                !sherpaOpen ? undefined : (
-                  <a
-                    href="/sherpa"
-                    className="text-[10px] text-ink-400 hover:text-brand-purple"
+            {/* P.31 — 단서 노드 선택 시는 브리핑 카드 자체 미렌더.
+                사용자 피드백: "AI 브리핑 연결도 안되어있는데 왜 남겨뒀어".
+                단서는 attack_id 가 null 이라 brief 호출 안 됨 — 상세 패널의
+                clueExplainQuery (description / discrimination / likelihood top N
+                / academic_source / how_to_find) 가 대신 KB 컨텍스트 역할.
+                ATT&CK 노드·후보 선택 시 또는 미선택 시(케이스 최상위 자동)만 표시. */}
+            {!activeIsClue && (
+              <Card
+                title={
+                  <button
+                    onClick={() => setSherpaOpen((v) => !v)}
+                    className="flex items-center gap-1.5 text-left text-brand-purple hover:opacity-80 transition-colors"
+                    title={sherpaOpen ? '접기' : '펼치기'}
                   >
-                    더 깊은 질의는 V-8 셰르파 페이지에서 →
-                  </a>
-                )
-              }
-            >
-              {sherpaOpen ? (
-                <BriefingPanel
-                  isLoading={briefQuery.isLoading}
-                  isError={briefQuery.isError}
-                  error={briefQuery.error}
-                  data={briefQuery.data}
-                  briefAttackId={briefAttackId}
-                />
-              ) : (
-                <div className="text-[11.5px] text-ink-400 py-1">
-                  카드 펼치면 선택 노드의 KB 컨텍스트 브리핑 표시
-                </div>
-              )}
-            </Card>
+                    <span className="text-[11px] text-ink-400">{sherpaOpen ? '▼' : '▶'}</span>
+                    <span> AI 셰르파 브리핑</span>
+                    {!sherpaOpen && briefQuery.isSuccess && (
+                      <span className="ml-1 text-[10px] text-brand-teal/70">
+                         응답 준비됨
+                      </span>
+                    )}
+                    {!sherpaOpen && briefQuery.isLoading && (
+                      <span className="ml-1 text-[10px] text-brand-blue/70 animate-pulse">
+                        로딩…
+                      </span>
+                    )}
+                  </button>
+                }
+                subtitle={
+                  !sherpaOpen ? undefined : (
+                    <a
+                      href="/sherpa"
+                      className="text-[10px] text-ink-400 hover:text-brand-purple"
+                    >
+                      더 깊은 질의는 V-8 셰르파 페이지에서 →
+                    </a>
+                  )
+                }
+              >
+                {sherpaOpen ? (
+                  <BriefingPanel
+                    isLoading={briefQuery.isLoading}
+                    isError={briefQuery.isError}
+                    error={briefQuery.error}
+                    data={briefQuery.data}
+                    briefAttackId={briefAttackId}
+                  />
+                ) : (
+                  <div className="text-[11.5px] text-ink-400 py-1">
+                    카드 펼치면 선택 노드의 KB 컨텍스트 브리핑 표시
+                  </div>
+                )}
+              </Card>
+            )}
 
             <Card title={<> 수사관 메모</>}>
               <textarea
@@ -638,6 +694,237 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
     <span>{children}</span>
   </div>
 );
+
+// P.31 — 단서 노드 풍부 메타 패널.
+//   사용자 피드백: "상세 페이지엔 어떤 단서였는지 시스템 구성에서 보였던것처럼
+//   좀더 자세하게 볼 수 있게, AI 브리핑 연결도 안되어있는데 왜 남겨뒀어.
+//   그리고 왜 랜섬딱지만 붙어있어".
+// 응답:
+//   · 시스템 구성처럼 description / how_to_find (NCP·NHN) / examples / 학술 인용을
+//     Row 형식으로 풍부 표시 → V-1 가이드 체크리스트와 동일한 디자인 언어.
+//   · aggregated_likelihood top N 을 한국어 칩으로 다중 표시 →
+//     "랜섬 0.84, 자격증명 0.62, 권한상승 0.41" 처럼 변별 사고유형 모두 노출.
+//   · explainClue (GET /api/clue-tree/explain/{clue_key}) — Phase H.4 + L.2 응답
+//     사용 (decision_tree.json + clue_descriptions.json 정적 소스).
+
+const INCIDENT_KO_DETAIL: Record<IncidentType, string> = {
+  CREDENTIAL_THEFT: '자격증명 탈취',
+  PRIVILEGE_ESCALATION: '권한 상승',
+  DATA_EXFILTRATION: '데이터 유출',
+  AUDIT_LOG_TAMPERING: '로그 변조',
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 노출',
+  PHISH_INITIAL_ACCESS: '피싱 침투',
+  INSIDER_THREAT: '내부자 위협',
+  UNCLASSIFIED: '미분류',
+};
+
+interface ClueDetailPanelProps {
+  node: BoardNode;
+  explain:
+    | {
+        clue_key: string;
+        description?: string;
+        discrimination_explanation?: string;
+        academic_source?: string;
+        iso_framework?: string | null;
+        examples?: string[];
+        how_to_find?: { ncp?: string; nhn?: string; verify?: string };
+        aggregated_likelihood?: Record<string, number>;
+        techniques?: string[];
+        confidence?: string;
+      }
+    | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  onConfirm: () => void;
+  onReject: () => void;
+  busy: boolean;
+}
+
+const ClueDetailPanel = ({
+  node,
+  explain,
+  isLoading,
+  isError,
+  onConfirm,
+  onReject,
+  busy,
+}: ClueDetailPanelProps) => {
+  const meta = (node.meta ?? null) as ClueNodeMeta | null;
+  const stage = meta?.stage ?? null;
+  const source = meta?.source ?? null;
+  // aggregated_likelihood top N (0.05 이상만, 최대 5개) — 사고유형 칩.
+  const topIncidents = Object.entries(explain?.aggregated_likelihood ?? {})
+    .filter(([, v]) => typeof v === 'number' && v >= 0.05)
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .slice(0, 5) as Array<[IncidentType, number]>;
+  const sourceKo: Record<string, string> = {
+    manual_drag: '수동 드래그',
+    manual_bulk: '수동 일괄',
+    auto_seed: '자동 시드',
+    user_added: '수동 추가',
+    direct_input: '직접 입력',
+    log_analysis: '로그 분석',
+    tree_candidate: '트리 후보',
+  };
+
+  return (
+    <div className="text-[12.5px]">
+      <div className="flex items-start gap-1.5 mb-2">
+        <span className="text-[14px]">🔍</span>
+        <div className="font-bold text-[14px] flex-1 leading-tight">{node.label}</div>
+      </div>
+      <div className="text-[10.5px] text-ink-400 font-mono mb-2 truncate">
+        {meta?.clue_key ?? '—'}
+      </div>
+
+      <Row label="상태">
+        <Badge tone={node.status === 'CONFIRMED' ? 'teal' : node.status === 'REJECTED' ? 'red' : 'gray'}>
+          {node.status}
+        </Badge>
+      </Row>
+      <Row label="유형"> 단서 (clue)</Row>
+      {stage !== null && (
+        <Row label="단계">
+          <span className="font-mono text-[11.5px]">S{stage}</span>
+        </Row>
+      )}
+      {source && (
+        <Row label="입력 경로">
+          <span className="text-[11.5px]">{sourceKo[source] ?? source}</span>
+        </Row>
+      )}
+      {explain?.confidence && (
+        <Row label="신뢰도">
+          <span className="text-[11.5px]">{explain.confidence}</span>
+        </Row>
+      )}
+
+      {/* 사고유형 적합도 — top N 다중 칩.
+          사용자 피드백: "왜 랜섬딱지만 붙어있어" — 노드 위 단일 배지(=가장 강한 1개)
+          외에 이 단서가 변별하는 모든 사고유형 likelihood 노출. */}
+      <div className="mt-3 mb-1.5">
+        <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1.5">
+          사고유형 적합도 (top {topIncidents.length})
+        </div>
+        {topIncidents.length === 0 ? (
+          <div className="text-[11.5px] text-ink-500">
+            {isLoading ? '계산 중…' : '데이터 없음 (BN 미설정)'}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {topIncidents.map(([type, score]) => (
+              <span
+                key={type}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-ink-900/60 border border-ink-700/60 text-[10.5px]"
+                title={`${type} likelihood = ${score.toFixed(3)}`}
+              >
+                <span className="text-ink-200">{INCIDENT_KO_DETAIL[type] ?? type}</span>
+                <span className="font-mono text-brand-teal">{(score * 100).toFixed(0)}%</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 단서 풀이 — V-1 가이드와 동일한 시스템 구성 언어 */}
+      {isLoading && (
+        <div className="mt-2 text-[11px] text-ink-400 animate-pulse">
+          단서 메타 조회 중…
+        </div>
+      )}
+      {isError && (
+        <div className="mt-2 text-[11px] text-brand-red">
+          단서 메타 조회 실패 — KB 응답 확인 필요
+        </div>
+      )}
+      {explain?.description && (
+        <div className="mt-3">
+          <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1">정의</div>
+          <div className="text-[11.5px] leading-5 text-ink-100">{explain.description}</div>
+        </div>
+      )}
+      {explain?.discrimination_explanation && (
+        <div className="mt-3">
+          <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1">
+            변별 풀이
+          </div>
+          <div className="text-[11.5px] leading-5 text-ink-200">
+            {explain.discrimination_explanation}
+          </div>
+        </div>
+      )}
+      {explain?.how_to_find && (explain.how_to_find.ncp || explain.how_to_find.nhn || explain.how_to_find.verify) && (
+        <div className="mt-3">
+          <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1">
+            CSP 콘솔에서 찾는 법
+          </div>
+          <div className="text-[11px] leading-5 space-y-0.5">
+            {explain.how_to_find.ncp && (
+              <div><span className="text-brand-blue font-semibold">NCP</span> · {explain.how_to_find.ncp}</div>
+            )}
+            {explain.how_to_find.nhn && (
+              <div><span className="text-brand-teal font-semibold">NHN</span> · {explain.how_to_find.nhn}</div>
+            )}
+            {explain.how_to_find.verify && (
+              <div><span className="text-ink-400">검증</span> · {explain.how_to_find.verify}</div>
+            )}
+          </div>
+        </div>
+      )}
+      {explain?.examples && explain.examples.length > 0 && (
+        <div className="mt-3">
+          <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1">예시</div>
+          <ul className="text-[11px] leading-5 list-disc list-inside text-ink-200 space-y-0.5">
+            {explain.examples.slice(0, 4).map((ex, i) => (
+              <li key={i} className="truncate">{ex}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {explain?.techniques && explain.techniques.length > 0 && (
+        <div className="mt-3">
+          <div className="text-ink-400 text-[10.5px] uppercase tracking-wider mb-1">
+            연관 ATT&CK 기법
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {explain.techniques.slice(0, 6).map((t) => (
+              <Badge key={t} tone="purple">{t}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      {(explain?.academic_source || explain?.iso_framework) && (
+        <div className="mt-3 text-[10.5px] text-ink-500 leading-5 border-t border-ink-700/30 pt-2">
+          {explain.academic_source && (
+            <div><span className="text-ink-400">학술</span> · {explain.academic_source}</div>
+          )}
+          {explain.iso_framework && (
+            <div><span className="text-ink-400">ISO</span> · {explain.iso_framework}</div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={onConfirm}
+          disabled={busy || node.status === 'CONFIRMED'}
+          className="btn-primary btn-sm flex-1 disabled:opacity-40"
+        >
+           수락
+        </button>
+        <button
+          onClick={onReject}
+          disabled={busy || node.status === 'REJECTED'}
+          className="btn-danger btn-sm flex-1 disabled:opacity-40"
+        >
+           거부
+        </button>
+      </div>
+    </div>
+  );
+};
 
 interface BriefingPanelProps {
   isLoading: boolean;

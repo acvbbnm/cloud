@@ -146,40 +146,7 @@ const V2Logs = () => {
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="eyebrow">백엔드 응답</span>
-              {logsQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
-              {logsQuery.isError && <span className="tag-red">에러</span>}
-              {logsQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
-              {uploadMutation.isPending && <span className="tag-amber">업로드 중…</span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {logsQuery.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(logsQuery.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {logsQuery.isSuccess && (
-            <div className="text-ink-300 leading-6">
-              raw_events 총 <b className="text-ink-100">{totalEvents}건</b>
-              {lastStats && (
-                <>
-                  <span className="mx-2 text-ink-500">·</span>
-                  마지막 업로드 <code className="text-ink-200">{lastStats.sourceFile}</code>: total{' '}
-                  <b className="text-ink-100">{lastStats.totalEvents}</b> / matched{' '}
-                  <b className="text-brand-teal">{lastStats.matched}</b> / unmatched{' '}
-                  <b className="text-brand-amber">{lastStats.unmatched}</b>
-                  <span className="mx-2 text-ink-500">·</span>
-                  sha256 <code className="text-ink-400">{lastStats.sha256.slice(0, 16)}…</code>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KpiCard

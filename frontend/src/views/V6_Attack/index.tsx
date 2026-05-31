@@ -177,31 +177,7 @@ const V6Attack = () => {
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="eyebrow">백엔드 응답</span>
-              {attackQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
-              {attackQuery.isError && <span className="tag-red">에러</span>}
-              {attackQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
-              {mapMutation.isPending && <span className="tag-amber">매핑 중…</span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {attackQuery.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(attackQuery.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {attackQuery.isSuccess && (
-            <div className="text-ink-300 leading-6">
-              attack_events 총 <b className="text-ink-100">{total}건</b> · 페이지 <b>{page}</b>/{totalPages} ·
-              현재 페이지 기준 기법 <b className="text-ink-100">{aggregations.length}종</b> ·
-              전술 커버리지 <b className="text-ink-100">{matrixByTactic.length}전술</b>
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         <div className="grid grid-cols-3 gap-3">
           <KpiCard

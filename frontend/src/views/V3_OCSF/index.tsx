@@ -117,43 +117,7 @@ const V3OCSF = () => {
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="eyebrow">백엔드 응답</span>
-              {ocsfQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
-              {ocsfQuery.isError && <span className="tag-red">에러</span>}
-              {ocsfQuery.isSuccess && <span className="tag-teal">연결됨 </span>}
-              {normalizeMutation.isPending && <span className="tag-amber">정규화 중…</span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {ocsfQuery.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(ocsfQuery.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {ocsfQuery.isSuccess && (
-            <div className="text-ink-300 leading-6">
-              ocsf_events 총 <b className="text-ink-100">{total}건</b>
-              {stats && (
-                <>
-                  <span className="mx-2 text-ink-500">·</span>
-                  마지막 정규화 — total <b className="text-ink-100">{stats.total}</b> / normalized{' '}
-                  <b className="text-brand-teal">{stats.normalized}</b> / failed{' '}
-                  <b className="text-brand-red">{stats.failed}</b> (
-                  <b>{stats.normalizationRate}%</b>)
-                </>
-              )}
-              {total === 0 && (
-                <span className="ml-2 text-brand-amber">
-                  · 우상단 「정규화 실행」 버튼을 눌러 raw_events 를 정규화하세요.
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         <div className="grid grid-cols-3 gap-3">
           <KpiCard

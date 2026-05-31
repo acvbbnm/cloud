@@ -173,38 +173,7 @@ const V4Gap = () => {
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="eyebrow">백엔드 응답</span>
-              {!gapMutation.data && !gapMutation.isPending && (
-                <span className="tag-gray">실행 대기</span>
-              )}
-              {gapMutation.isPending && <span className="tag-amber">판정 중…</span>}
-              {gapMutation.isError && <span className="tag-red">에러</span>}
-              {gapMutation.isSuccess && <span className="tag-teal">연결됨 </span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {gapMutation.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(gapMutation.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {!gapMutation.data && !gapMutation.isPending && (
-            <div className="text-ink-300 leading-6">
-              우상단 「갭 감지 실행」 버튼을 누르면 POST <code>/api/analysis/gap</code> 으로 판정합니다.
-              실행 전에 V-3 에서 정규화 + ATT&CK 매핑이 끝나있어야 정확한 결과가 나옵니다.
-            </div>
-          )}
-          {result && (
-            <div className="text-ink-300 leading-6">
-              gap_id <code className="text-ink-200">{result.gap_id.slice(0, 8)}…</code>{' '}
-              · 판정 시각 {new Date(result.created_at).toLocaleString()}
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         {/* 결과 없음 — 초기 상태 */}
         {!result && !gapMutation.isPending && (

@@ -289,38 +289,8 @@ const V5Board = () => {
       />
 
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 flex gap-4 animate-fade-up flex-col">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="eyebrow">백엔드 응답</span>
-              {boardQuery.isLoading && <span className="tag-blue">board 로딩…</span>}
-              {boardQuery.isError && <span className="tag-red">board 에러</span>}
-              {boardQuery.isSuccess && <span className="tag-teal">board </span>}
-              {attackQuery.isLoading && <span className="tag-blue">attack 로딩…</span>}
-              {attackQuery.isError && <span className="tag-red">attack 에러</span>}
-              {attackQuery.isSuccess && <span className="tag-teal">attack </span>}
-              {addNodeMutation.isPending && <span className="tag-amber">노드 추가 중…</span>}
-              {updateStatusMutation.isPending && (
-                <span className="tag-amber">상태 변경 중…</span>
-              )}
-              {briefQuery.isLoading && <span className="tag-blue">sherpa 로딩…</span>}
-              {briefQuery.isError && <span className="tag-red">sherpa 에러</span>}
-              {briefQuery.isSuccess && <span className="tag-teal">sherpa </span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          <div className="text-ink-300 leading-6">
-            chain_nodes <b className="text-ink-100">{boardNodes.length}</b>건 · edges{' '}
-            <b className="text-ink-100">{boardEdges.length}</b>건 · ATT&CK 후보{' '}
-            <b className="text-ink-100">{attackQuery.data?.total ?? 0}</b>건
-          </div>
-          {boardQuery.isError && (
-            <div className="text-brand-red text-[11.5px] mt-1">
-              {(boardQuery.error as Error)?.message ?? 'board 호출 실패'}
-            </div>
-          )}
-        </div>
+        {/* P.29 (2026-05-31 사용자 피드백: "백엔드 응답 확인 칸 시연 시 제거") —
+            board/attack/sherpa loading·error·caseId·카운트 디버그 패널 제거. */}
 
         {/* Phase 2.5 P6 — Dwell Time KPI 카드 (Mandiant 7d 벤치마크 비교) */}
         <DwellTimeKpi kpi={boardQuery.data?.kpi} />

@@ -210,8 +210,11 @@ const IncidentTypeCompass = ({
 
   // ── 레이아웃 계산 ──
   const center = effectiveSize / 2;
-  const R = effectiveSize / 2 - 70;  // anchor 반지름 (라벨 여유 확보)
-  const labelOffset = 28;            // 라벨 외곽 offset
+  // P.26 (2026-05-31 사용자 피드백: "좌우 데이터유출/권한상승 글자 짤림") —
+  //   기존 마진 70 → 100. P3 (3시) / P6 (9시) 라벨 폭 70px (textAnchor=start/end)
+  //   가 화면 좌우 끝까지 안전하게 여유 확보.
+  const R = effectiveSize / 2 - 100;  // anchor 반지름 (좌우 라벨 짤림 fix)
+  const labelOffset = 28;             // 라벨 외곽 offset
   // depth 별 점진 확장 + 사후확률 temperature 평탄화 — 단서 누적이 적을 때
   // 모델이 너무 빨리 한 가설로 쏠리는 것을 시각만 부드럽게 표현.
   // ⚠ Bayes update 자체는 그대로 (e2e 회귀 0) — 시각화 calibration 만 적용.

@@ -20,8 +20,8 @@
       "from_partial_techniques": 27,
       "total_unique": 143
     },
-    "last_patched": "2026-05-27T07:50:23.473070Z",
-    "last_patch_op": "Phase P.10 — 일반 단서 weight cap=20 (80 단서 / 106 cell 압축)"
+    "last_patched": "2026-05-31T15:46:39.801894Z",
+    "last_patch_op": "Phase P.26 — 일반 단서 cap=15 강화 (96 단서 / 134 cell 압축)"
   },
   "clues": {
     "Q1_inception:csp_alert": {
@@ -386,10 +386,10 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 15,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 5
       },
@@ -426,13 +426,13 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "MITRE T1556 Modify Authentication [ISO 27035-1:2023 Assess & Decide]",
@@ -470,9 +470,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 5,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 5,
         "INSIDER_THREAT": 0,
@@ -498,7 +498,7 @@
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
       },
@@ -523,7 +523,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "Carnegie CERT Insider Threat Center + KrCERT/CC 2025-08 제3장 변형 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) [ISO 27035-1:2023 Assess & Decide]",
@@ -541,13 +541,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 10,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1136 Create Account [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {}
@@ -562,13 +562,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1098 + KrCERT/CC 2025-08 제3장 — 권한 도용 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -587,11 +587,11 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 5,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1070 Indicator Removal [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {}
@@ -607,12 +607,12 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1530 [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {}
@@ -628,12 +628,12 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "MITRE ATT&CK v14 — T1078 Valid Accounts + UEBA 표준 행위 분석 [ISO 27035-1:2023 Assess & Decide]",
@@ -656,7 +656,7 @@
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
@@ -675,9 +675,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 10
@@ -720,7 +720,7 @@
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 15
       },
@@ -761,7 +761,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 5,
@@ -783,13 +783,13 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "MITRE T1110 Brute Force [ISO 27035-1:2023 Assess & Decide] + Verizon DBIR 2024 Phishing→Brute Force 연쇄 패턴",
@@ -806,7 +806,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -827,7 +827,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -854,7 +854,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 0,
@@ -899,10 +899,10 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
@@ -923,7 +923,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 0,
@@ -956,7 +956,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "MITRE T1021 Remote Services + 멀티 CSP 횡적 이동 (Verkada 2021 사례) [ISO 27035-1:2023 Assess & Decide]",
@@ -1002,7 +1002,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "CERT Insider Threat Guide §4.3 + MITRE T1098 (off-hours admin activity) [ISO 27035-1:2023 Assess & Decide]",
@@ -1028,7 +1028,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "MITRE T1136.003 Create Account: Cloud Account + cascading IAM edits (Coinbase 2022 사례) [ISO 27035-1:2023 Assess & Decide]",
@@ -1052,7 +1052,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "CERT Insider Threat Guide §4.4 privilege creep + MITRE T1098.003 Additional Cloud Roles [ISO 27035-1:2023 Assess & Decide]",
@@ -1073,11 +1073,11 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "MITRE T1562.008 Disable Cloud Logs + NIST SP 800-53 AU-9 audit protection [ISO 27035-1:2023 Assess & Decide]",
@@ -1098,7 +1098,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1123,7 +1123,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1145,7 +1145,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1169,7 +1169,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1196,7 +1196,7 @@
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
       },
@@ -1212,7 +1212,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -1261,7 +1261,7 @@
         "CREDENTIAL_THEFT": 10,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
@@ -1284,7 +1284,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1351,7 +1351,7 @@
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
@@ -1375,7 +1375,7 @@
         "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
@@ -1423,7 +1423,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "CERT Insider Threat Guide §4.1 직무 범위 일탈 + NIST SP 800-53 AC-2(3) [ISO 27035-1:2023 Assess & Decide]",
@@ -1472,7 +1472,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "Verizon DBIR 2024 — 3rd-party/Partner account 침해 25%+ 비중 [ISO 27035-1:2023 Assess & Decide]",
@@ -1489,7 +1489,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -1520,7 +1520,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "CERT Insider Threat Guide §4.2 internal-origin signal [ISO 27035-1:2023 Assess & Decide]",
@@ -1535,7 +1535,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -1585,7 +1585,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -1633,7 +1633,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1658,7 +1658,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1681,7 +1681,7 @@
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
         "UNCLASSIFIED": 0
@@ -1701,7 +1701,7 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
@@ -1752,7 +1752,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "CERT Insider Threat Guide §4.2 internal endpoint origin [ISO 27035-1:2023 Assess & Decide]",
@@ -1776,7 +1776,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "내부 IP + 외부 VPN 혼용 — INSIDER 행위 위장 (CERT Insider Threat Guide §4.4) [ISO 27035-1:2023 Assess & Decide]",
@@ -1802,7 +1802,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "MITRE T1070 Indicator Removal + T1562.008 + CERT Insider Threat Guide §4.5 anti-forensics [ISO 27035-1:2023 Assess & Decide]",
@@ -1827,7 +1827,7 @@
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20,
+        "INSIDER_THREAT": 15,
         "UNCLASSIFIED": 0
       },
       "weight_source": "P5 (2026-05-25) PDF 3단계 MtL Modify-the-Land. Unit 42 Cloud IR + CERT Insider Threat §4.3 anomalous-permission. 평소 안 쓰던 IAM API → INSIDER 강한 시그널, PRIVESC 보조 시그널 [ISO 27035-1:2023 Assess & Decide]",
@@ -1845,7 +1845,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
@@ -1871,7 +1871,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 5,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
@@ -1946,7 +1946,7 @@
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -1968,9 +1968,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0,
@@ -2016,7 +2016,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 5,
@@ -2038,7 +2038,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 5,
@@ -2108,7 +2108,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
@@ -2133,7 +2133,7 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
@@ -2156,10 +2156,10 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 10,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 0
       },
@@ -2178,7 +2178,7 @@
       "source": "clue_input",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
@@ -2201,7 +2201,7 @@
       "source": "clue_input",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 5,
@@ -2225,13 +2225,13 @@
       "source": "clue_input",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "MITRE T1078 [ISO 27035-1:2023 Assess & Decide]",
@@ -2270,13 +2270,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 5,
         "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1098 [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2293,7 +2293,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 10,
@@ -2315,13 +2315,13 @@
       "source": "clue_input",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1078 [ISO 27035-1:2023 Assess & Decide]",
@@ -2339,13 +2339,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 15,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 10,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 10,
         "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "CSA #1 IAM [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2361,13 +2361,13 @@
       "source": "clue_input",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 15,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 10
       },
       "weight_source": "CSA #2 IAM [ISO 27035-1:2023 Assess & Decide]",
@@ -2388,9 +2388,9 @@
         "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "VirusTotal 매칭 — 다양한 사고유형 [ISO 27035-1:2023 Assess & Decide]",
@@ -2428,9 +2428,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 10,
         "PRIVILEGE_ESCALATION": 10,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
@@ -2451,9 +2451,9 @@
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "MITRE T1568.002 [ISO 27035-1:2023 Assess & Decide]",
@@ -2472,7 +2472,7 @@
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 10,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 10,
         "INSIDER_THREAT": 10
@@ -2493,10 +2493,10 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
-        "MISCONFIG_EXPOSURE": 20,
+        "RANSOMWARE": 15,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 15
       },
@@ -2517,13 +2517,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 15,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 10,
         "PHISH_INITIAL_ACCESS": 10,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "CSA #1 [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {}
@@ -2540,11 +2540,11 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE T1562.008 [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {}
@@ -2705,14 +2705,14 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 5,
-        "PHISH_INITIAL_ACCESS": 20,
-        "INSIDER_THREAT": 20
+        "PHISH_INITIAL_ACCESS": 15,
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Valid Accounts: Cloud Accounts [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2729,7 +2729,7 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
@@ -2753,7 +2753,7 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
@@ -2777,7 +2777,7 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
@@ -2801,7 +2801,7 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 10,
         "DATA_EXFILTRATION": 5,
         "AUDIT_LOG_TAMPERING": 0,
@@ -2826,13 +2826,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 5,
         "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Account Manipulation [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2850,7 +2850,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 0,
@@ -2874,7 +2874,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 0,
@@ -2898,7 +2898,7 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
@@ -2923,12 +2923,12 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 20,
-        "MISCONFIG_EXPOSURE": 20,
+        "RANSOMWARE": 15,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Cloud Storage Object Access [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2947,12 +2947,12 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 10,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Transfer Data to Cloud Account [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -2971,7 +2971,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
@@ -2995,7 +2995,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
@@ -3019,7 +3019,7 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
@@ -3044,11 +3044,11 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Disable Cloud Logs [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -3068,7 +3068,7 @@
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 5,
-        "AUDIT_LOG_TAMPERING": 20,
+        "AUDIT_LOG_TAMPERING": 15,
         "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
@@ -3162,13 +3162,13 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 20,
+        "PRIVILEGE_ESCALATION": 15,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 5,
         "RANSOMWARE": 5,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 20
+        "INSIDER_THREAT": 15
       },
       "weight_source": "MITRE Create Cloud Account [ISO 27035-1:2023 Assess & Decide]",
       "outcome_flags": {
@@ -3187,9 +3187,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 15
@@ -3211,9 +3211,9 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 20,
+        "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 5
@@ -3261,7 +3261,7 @@
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 10,
-        "RANSOMWARE": 20,
+        "RANSOMWARE": 15,
         "MISCONFIG_EXPOSURE": 0,
         "PHISH_INITIAL_ACCESS": 0,
         "INSIDER_THREAT": 5
@@ -3285,7 +3285,7 @@
         "DATA_EXFILTRATION": 15,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 15,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 5,
         "INSIDER_THREAT": 0
       },
@@ -3303,13 +3303,13 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 20,
+        "CREDENTIAL_THEFT": 15,
         "PRIVILEGE_ESCALATION": 0,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 10,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 20,
+        "PHISH_INITIAL_ACCESS": 15,
         "INSIDER_THREAT": 0
       },
       "weight_source": "MITRE ATT&CK v14 — T1566 Phishing [ISO 27035-1:2023 Assess & Decide]",
@@ -3331,7 +3331,7 @@
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
         "RANSOMWARE": 5,
-        "MISCONFIG_EXPOSURE": 20,
+        "MISCONFIG_EXPOSURE": 15,
         "PHISH_INITIAL_ACCESS": 5,
         "INSIDER_THREAT": 0
       },

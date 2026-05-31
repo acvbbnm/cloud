@@ -195,50 +195,134 @@ def analyze_board(
     }
 
 
+def _grid_pack(
+    node_ids: list[str],
+    *,
+    x0: int,
+    y0: int,
+    cols: int,
+    cell_w: int,
+    cell_h: int,
+) -> dict[str, tuple[int, int]]:
+    """격자 배치 헬퍼 — row-major 순서로 (x0,y0) 부터 cell_w×cell_h 셀에 배치."""
+    out: dict[str, tuple[int, int]] = {}
+    for i, nid in enumerate(node_ids):
+        r, c = divmod(i, cols)
+        out[nid] = (x0 + c * cell_w, y0 + r * cell_h)
+    return out
+
+
+def _resolve_collisions(
+    positions: dict[str, tuple[int, int]],
+    *,
+    min_gap_x: int = 200,
+    min_gap_y: int = 90,
+    max_iter: int = 30,
+) -> dict[str, tuple[int, int]]:
+    """충돌 회피 — 두 노드가 min_gap 이내면 서로 떨어뜨림 (단순 반발 시뮬).
+
+    NODE_W=168 + 여유 32 = 200, NODE_H=64 + 여유 26 = 90 가 기본값.
+    """
+    ids = list(positions.keys())
+    pos = {nid: list(p) for nid, p in positions.items()}
+    for _ in range(max_iter):
+        moved = False
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                a, b = ids[i], ids[j]
+                dx = pos[b][0] - pos[a][0]
+                dy = pos[b][1] - pos[a][1]
+                overlap_x = min_gap_x - abs(dx)
+                overlap_y = min_gap_y - abs(dy)
+                if overlap_x > 0 and overlap_y > 0:
+                    # 둘 다 겹침 — 더 작은 축으로 분리
+                    if overlap_x < overlap_y:
+                        shift = (overlap_x + 1) / 2
+                        sign = 1 if dx >= 0 else -1
+                        pos[a][0] -= int(sign * shift)
+                        pos[b][0] += int(sign * shift)
+                    else:
+                        shift = (overlap_y + 1) / 2
+                        sign = 1 if dy >= 0 else -1
+                        pos[a][1] -= int(sign * shift)
+                        pos[b][1] += int(sign * shift)
+                    moved = True
+        if not moved:
+            break
+    return {nid: (p[0], p[1]) for nid, p in pos.items()}
+
+
 def auto_layout_positions(
     node_ids: list[str],
     edges: list[tuple[str, str]],
     *,
-    canvas_w: int = 900,
-    canvas_h: int = 520,
+    canvas_w: int = 1100,
+    canvas_h: int = 620,
     pad: int = 60,
 ) -> dict[str, tuple[int, int]]:
     """V-5 자동 정렬 — networkx spring_layout 결과를 canvas 좌표로 매핑.
 
+    개선 (2026-05-31):
+      - **connected vs isolated 분리**: 엣지 없는 노드는 spring 에서 한 점에 뭉치는
+        문제가 있어 별도 격자 영역(하단)에 배치
+      - **충돌 회피**: spring 결과 후 노드 거리가 NODE_W+gap 미만이면 분리
+
     Returns:
         {node_id: (x, y)} — V-5 캔버스 픽셀 좌표 (좌상단 0,0 기준).
-
-    동작:
-        - networkx 미설치 → 격자 fallback (5열 그리드)
-        - 노드 1개 → 캔버스 중앙
-        - spring_layout 결정성 위해 seed=42 고정
     """
     if not node_ids:
         return {}
 
+    NODE_W = 168
+    NODE_H = 64
+    GAP_X = 32
+    GAP_Y = 26
+    CELL_W = NODE_W + GAP_X      # 200
+    CELL_H = NODE_H + GAP_Y      # 90
+
+    # networkx 없거나 1 노드 → 전체 격자
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:
-        # fallback — 격자 배치 (cols=5)
-        cols = 5
-        cell_w = (canvas_w - 2 * pad) / max(cols, 1)
-        cell_h = 110
-        out: dict[str, tuple[int, int]] = {}
-        for i, nid in enumerate(node_ids):
-            r, c = divmod(i, cols)
-            out[nid] = (int(pad + c * cell_w), int(pad + r * cell_h))
-        return out
+        cols = max(1, (canvas_w - 2 * pad) // CELL_W)
+        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols, cell_w=CELL_W, cell_h=CELL_H)
 
-    g = nx.Graph()
-    g.add_nodes_from(node_ids)
-    g.add_edges_from(edges)
+    # 엣지에 등장하는 노드 = connected, 그 외 = isolated
+    connected_set = set()
+    for a, b in edges:
+        connected_set.add(a)
+        connected_set.add(b)
+    connected = [n for n in node_ids if n in connected_set]
+    isolated = [n for n in node_ids if n not in connected_set]
 
-    # spring_layout — k 는 노드 간 최소 거리, iterations 는 수렴 횟수
-    pos = nx.spring_layout(g, seed=42, k=0.6, iterations=80)
+    cols_isolated = max(1, (canvas_w - 2 * pad) // CELL_W)
+    isolated_rows = (len(isolated) + cols_isolated - 1) // cols_isolated if isolated else 0
+    isolated_height = isolated_rows * CELL_H + (GAP_Y if isolated_rows > 0 else 0)
 
-    # [-1, 1] → 캔버스 좌표
-    out = {}
-    for nid in node_ids:
-        x, y = pos.get(nid, (0, 0))
-        cx = int(pad + (x + 1) / 2 * (canvas_w - 2 * pad))
-        cy = int(pad + (y + 1) / 2 * (canvas_h - 2 * pad))
-        out[nid] = (cx, cy)
+    out: dict[str, tuple[int, int]] = {}
+
+    # connected: 캔버스 상단 영역에 spring_layout
+    if connected:
+        spring_h = max(200, canvas_h - 2 * pad - isolated_height)
+        g = nx.Graph()
+        g.add_nodes_from(connected)
+        g.add_edges_from([(a, b) for a, b in edges if a in connected_set and b in connected_set])
+        spring_pos = nx.spring_layout(g, seed=42, k=1.5, iterations=120)
+        for nid in connected:
+            x, y = spring_pos.get(nid, (0, 0))
+            cx = int(pad + (x + 1) / 2 * (canvas_w - 2 * pad))
+            cy = int(pad + (y + 1) / 2 * spring_h)
+            out[nid] = (cx, cy)
+        # spring 결과 충돌 회피
+        spring_only = {nid: out[nid] for nid in connected}
+        spring_only = _resolve_collisions(spring_only)
+        out.update(spring_only)
+
+    # isolated: 캔버스 하단에 격자 배치
+    if isolated:
+        iso_y0 = canvas_h - pad - isolated_height + GAP_Y
+        iso_pos = _grid_pack(
+            isolated, x0=pad, y0=iso_y0, cols=cols_isolated,
+            cell_w=CELL_W, cell_h=CELL_H,
+        )
+        out.update(iso_pos)
+
     return out

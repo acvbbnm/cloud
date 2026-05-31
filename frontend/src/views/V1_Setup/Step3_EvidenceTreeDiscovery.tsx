@@ -42,7 +42,6 @@ import DiscoveryIntroModal, {
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
-import MultiStageBoard from '@/components/MultiStageBoard';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
@@ -460,16 +459,9 @@ const Step3_EvidenceTreeDiscovery = ({
 
       {/* 좌측 메인 — Evidence Tree 시각화 + 입력 채널 */}
       <div className="col-span-12 lg:col-span-8 space-y-3">
-        {/* Phase P (KBW, 2026-05-27) — MITRE Cloud Kill Chain 전체 단계 항상 표시
-            (확정 가설 없어도 단계 가이드로 노출 — 수사 보드 피드백 반영) */}
-        <MultiStageBoard
-          confirmedHypotheses={treeState.confirmed_hypotheses ?? []}
-          chainDescription={treeState.chain_description ?? ''}
-          stage={treeState.stage ?? 1}
-          currentPrimary={treeState.confidence.primary ?? null}
-          disabled={loading || isSubmitting}
-        />
-
+        {/* V1.fix.5 (2026-05-31) — MultiStageBoard "킬체인 7단계 전체" 제거.
+            사유: 킬체인 전체단계 채우기 어렵고 UI 노이즈가 커서 사용자가 삭제 요청.
+            기본 수사 가이드(EntryGuideBanner) 는 유지. */}
 
         {/* Phase P.2 (2026-05-26) — 기본 수사 가이드 (UNCLASSIFIED Initial Triage)
             사고유형 무관 필수 로그 점검표. 사후확률 영향 X — 단순 안내. */}

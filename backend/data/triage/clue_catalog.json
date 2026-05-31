@@ -33,16 +33,16 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 10,
-        "PRIVILEGE_ESCALATION": 10,
-        "DATA_EXFILTRATION": 5,
-        "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 5,
-        "MISCONFIG_EXPOSURE": 5,
-        "PHISH_INITIAL_ACCESS": 10,
-        "INSIDER_THREAT": 5
+        "CREDENTIAL_THEFT": 1,
+        "PRIVILEGE_ESCALATION": 1,
+        "DATA_EXFILTRATION": 1,
+        "AUDIT_LOG_TAMPERING": 1,
+        "RANSOMWARE": 1,
+        "MISCONFIG_EXPOSURE": 1,
+        "PHISH_INITIAL_ACCESS": 1,
+        "INSIDER_THREAT": 1
       },
-      "weight_source": "NIST SP 800-61r2 §3.2 표 3-2 (Sources of Precursors and Indicators — IDS/IPS·SIEM·AV·Logs) + Verizon DBIR 2024 (System Intrusion — top pattern in 2024) [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "NIST SP 800-61r2 §3.2 표 3-2 (Sources of Precursors and Indicators — IDS/IPS·SIEM·AV·Logs) + Verizon DBIR 2024 (System Intrusion — top pattern in 2024) [ISO 27035-1:2023 Assess & Decide] [메타 단서 — 발견경로, 사고유형 변별 X — V1.fix.4 평탄화]",
       "outcome_flags": {
         "outcomeIsAnonymizedSource": true,
         "outcomeSourceCategoryHint": "tor_vpn",
@@ -58,16 +58,16 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 5,
-        "DATA_EXFILTRATION": 10,
-        "AUDIT_LOG_TAMPERING": 10,
-        "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 10,
-        "PHISH_INITIAL_ACCESS": 10,
-        "INSIDER_THREAT": 5
+        "CREDENTIAL_THEFT": 1,
+        "PRIVILEGE_ESCALATION": 1,
+        "DATA_EXFILTRATION": 1,
+        "AUDIT_LOG_TAMPERING": 1,
+        "RANSOMWARE": 1,
+        "MISCONFIG_EXPOSURE": 1,
+        "PHISH_INITIAL_ACCESS": 1,
+        "INSIDER_THREAT": 1
       },
-      "weight_source": "KrCERT/CC 2025-08 제3장 — 정보 누설 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) + CSA Top Threats #7 [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "KrCERT/CC 2025-08 제3장 — 정보 누설 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) + CSA Top Threats #7 [ISO 27035-1:2023 Assess & Decide] [메타 단서 — 발견경로, 사고유형 변별 X — V1.fix.4 평탄화]",
       "outcome_flags": {
         "outcomeIsExternalReport": true
       }
@@ -81,16 +81,16 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 10,
-        "DATA_EXFILTRATION": 10,
-        "AUDIT_LOG_TAMPERING": 10,
-        "RANSOMWARE": 5,
-        "MISCONFIG_EXPOSURE": 10,
-        "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 10
+        "CREDENTIAL_THEFT": 1,
+        "PRIVILEGE_ESCALATION": 1,
+        "DATA_EXFILTRATION": 1,
+        "AUDIT_LOG_TAMPERING": 1,
+        "RANSOMWARE": 1,
+        "MISCONFIG_EXPOSURE": 1,
+        "PHISH_INITIAL_ACCESS": 1,
+        "INSIDER_THREAT": 1
       },
-      "weight_source": "CSA #1 IAM + #7 [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "CSA #1 IAM + #7 [ISO 27035-1:2023 Assess & Decide] [메타 단서 — 발견경로, 사고유형 변별 X — V1.fix.4 평탄화]",
       "outcome_flags": {
         "outcomeIsAuditDiscovery": true
       }
@@ -104,16 +104,16 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 10,
-        "DATA_EXFILTRATION": 10,
-        "AUDIT_LOG_TAMPERING": 10,
-        "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 10,
-        "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 5
+        "CREDENTIAL_THEFT": 1,
+        "PRIVILEGE_ESCALATION": 1,
+        "DATA_EXFILTRATION": 1,
+        "AUDIT_LOG_TAMPERING": 1,
+        "RANSOMWARE": 1,
+        "MISCONFIG_EXPOSURE": 1,
+        "PHISH_INITIAL_ACCESS": 1,
+        "INSIDER_THREAT": 1
       },
-      "weight_source": "MITRE T1485 + TA0040 Impact [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE T1485 + TA0040 Impact [ISO 27035-1:2023 Assess & Decide] [메타 단서 — 발견경로, 사고유형 변별 X — V1.fix.4 평탄화]",
       "outcome_flags": {
         "outcomeIsServiceAnomaly": true
       }
@@ -127,16 +127,16 @@
       "source": "decision_tree",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 0,
-        "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 0,
-        "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 0
+        "CREDENTIAL_THEFT": 1,
+        "PRIVILEGE_ESCALATION": 1,
+        "DATA_EXFILTRATION": 1,
+        "AUDIT_LOG_TAMPERING": 1,
+        "RANSOMWARE": 1,
+        "MISCONFIG_EXPOSURE": 1,
+        "PHISH_INITIAL_ACCESS": 1,
+        "INSIDER_THREAT": 1
       },
-      "weight_source": "— [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "— [ISO 27035-1:2023 Assess & Decide] [메타 단서 — 발견경로, 사고유형 변별 X — V1.fix.4 평탄화]",
       "outcome_flags": {}
     },
     "Q2A:abnormal_login": {

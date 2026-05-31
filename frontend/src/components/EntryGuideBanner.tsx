@@ -21,6 +21,7 @@
  */
 import { useEffect, useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
 import { getGuidePreview } from '@/api/intake';
 
 import type { GuideV2Response, GuideV2Target } from '@/types';
@@ -112,11 +113,19 @@ const EntryGuideBanner = ({
       <div className="px-3 py-2 border-b border-brand-teal/30 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-teal">
-            🧭 기본 수사 가이드 — 사고유형 무관
+            기본 수사 가이드 — 사고유형 무관
           </span>
-          <span className="text-[9px] text-brand-teal/70 font-mono shrink-0">
-            KISA 2.4 · NIST SP 800-86 §4.1
-          </span>
+          {/* V1.fix.6 — 인라인 라벨 → 클릭 popup 으로 (학술 근거는 숨김) */}
+          <SourceTag
+            label="ⓘ 근거"
+            title="기본 수사 가이드 학술 근거"
+            body={
+              'KISA 침해사고 대응 안내서 §2.4 초기 대응 점검표\n' +
+              'NIST SP 800-86 §4.1 Initial Triage (휘발성 증거 우선)\n\n' +
+              '이 가이드는 사고유형 분류에 사용되지 않습니다. 단지 사고 인지 직후\n' +
+              '먼저 살펴봐야 할 필수 로그 점검표입니다. 사후확률에 영향 없음.'
+            }
+          />
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -153,12 +162,8 @@ const EntryGuideBanner = ({
       {!loading && !error && guide && (
         <div className="px-3 py-2 space-y-2.5">
           <p className="text-[10.5px] text-brand-teal/90 leading-5">
-            🎯 사고유형 확정 전 <span className="font-semibold">먼저 봐야 할 필수 로그</span>{' '}
+            사고유형 확정 전 <span className="font-semibold">먼저 봐야 할 필수 로그</span>{' '}
             점검표. 아래 항목들을 콘솔·CLI 로 한 번씩 훑은 뒤 본격 단서 채택을 시작하세요.
-            <span className="text-ink-400">
-              {' '}
-              (이 가이드는 사후확률에 영향 X · 단순 안내)
-            </span>
           </p>
 
           <div className="space-y-2">
@@ -197,10 +202,8 @@ const EntryGuideBanner = ({
         </div>
       )}
 
-      <div className="px-3 py-1.5 border-t border-brand-teal/30 text-[9.5px] text-brand-teal/60 font-mono leading-4">
-        💡 이 가이드는 <span className="font-bold">사후확률 영향 X</span> — 사고유형 분류
-        용도 X, 순수 행동 가이드. 단서 채택은 아래 정찰·후보·로그 채널 사용
-      </div>
+      {/* V1.fix.6 — 하단 메타 푸터 제거 (사용자 피드백: "영향 X 같은 메타 문구 없애기").
+          학술 근거는 상단 ⓘ 근거 버튼에 통합. */}
     </div>
   );
 };

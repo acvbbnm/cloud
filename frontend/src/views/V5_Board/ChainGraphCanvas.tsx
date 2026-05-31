@@ -494,7 +494,8 @@ const ChainGraphCanvas = ({
           : 'bg-ink-950/40 border-ink-700/40')
       }
       // Phase P.7 (사용자 피드백: "공격체인그래프쪽이 너무 작다") — 영역 확장
-      style={{ maxHeight: 680, minHeight: 480, touchAction: 'none' }}
+      // P.28 (사용자 피드백: "조금만 더 확대") — 680 → 880 (200px ↑)
+      style={{ maxHeight: 880, minHeight: 540, touchAction: 'none' }}
       onDragOver={handleClueDragOver}
       onDragLeave={handleClueDragLeave}
       onDrop={handleClueDrop}
@@ -656,23 +657,29 @@ const ChainGraphCanvas = ({
         const isStart = edgeStartId === n.node_id;
         const isCandidate = edgeMode && edgeStartId !== null && edgeStartId !== n.node_id;
         const rejected = n.status === 'REJECTED';
+        const confirmed = n.status === 'CONFIRMED';
         // Phase O — 단서 노드 시각 구분 (type='clue')
         const isClue = isClueNode(n);
         // Phase P.7 (easy 머지) — 단서 노드의 사고유형 추출
         const incident = isClue ? incidentFromNode(n) : null;
         const incidentColor = incident ? INCIDENT_COLORS[incident] : '#2DD4BF';
 
-        // stroke 색상 우선순위: start > candidate > selected > rejected > clue(hypothesis) > default
+        // stroke 색상 우선순위: start > candidate > selected > confirmed/rejected > clue > default
+        // P.28 (사용자 피드백: "confirmed/reject 색깔로 직관 표시")
         let stroke = '#2A3441';
         if (isClue) stroke = incidentColor; // 사고유형 색상 (없으면 teal)
-        if (rejected) stroke = '#EF4444';
+        if (confirmed) stroke = '#22C55E';  // 초록 (CONFIRMED 강조)
+        if (rejected) stroke = '#EF4444';   // 빨강 (REJECTED 강조)
         if (sel) stroke = '#3D7BFF';
         if (isCandidate) stroke = '#F59E0B';
         if (isStart) stroke = '#10B981';
 
-        // 단서 노드 fill — 사고유형 hue 의 어두운 톤 (배경 인식성)
-        const fill = rejected ? '#1a1a1f' : isClue ? '#10181F' : '#161A21';
-        const strokeWidth = isStart || isCandidate || sel || isClue ? 2.5 : 1;
+        // P.28 — 노드 fill: CONFIRMED 초록 톤, REJECTED 빨강 톤 (이전 어두운 회색 → 식별 ↑)
+        // 사용자 피드백: "내용 삭제 대신 색깔 바꿔" — line-through 제거, opacity 정상화.
+        let fill = isClue ? '#10181F' : '#161A21';
+        if (confirmed) fill = '#0A2818';  // 매우 어두운 초록 (대비 강조)
+        if (rejected) fill = '#2A0F0F';   // 매우 어두운 빨강
+        const strokeWidth = confirmed || rejected || isStart || isCandidate || sel || isClue ? 2.5 : 1;
 
         // 단서 노드는 prefix 아이콘 + 짧은 라벨
         const rawLabel = isClue ? `🔍 ${n.label}` : n.label;
@@ -711,7 +718,8 @@ const ChainGraphCanvas = ({
               fill={fill}
               stroke={stroke}
               strokeWidth={strokeWidth}
-              opacity={rejected ? 0.55 : 1}
+              // P.28 — REJECTED 도 opacity 1 (이전 0.55 흐림 제거 — 내용 식별 우선)
+              opacity={1}
             />
             {/* Phase P.7 (easy 머지) — 단서 노드 좌측 사고유형 색상 띠 (4px) */}
             {isClue && incident && (
@@ -759,7 +767,7 @@ const ChainGraphCanvas = ({
               fill="#E6E9F0"
               fontSize={11.5}
               fontWeight={600}
-              textDecoration={rejected ? 'line-through' : 'none'}
+              // P.28 — line-through 제거 (사용자: "내용 삭제 대신 색깔 바꿔")
             >
               {labelText}
             </text>

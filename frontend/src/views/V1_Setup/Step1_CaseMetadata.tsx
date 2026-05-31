@@ -38,8 +38,20 @@ const nowLocalIso = (): string => {
  *   학술 근거: TheHive 5 Create Case + DFIR-IRIS + NIST SP 800-61r2 §3.2 scope-first.
  */
 const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
-  const { title, severity, tlp, setTitle, setSeverity, setTlp } = useCaseStore();
-  const [occurredAt, setOccurredAt] = useState<string>(nowLocalIso());
+  const {
+    title,
+    severity,
+    tlp,
+    occurredAt: storedOccurredAt,
+    setTitle,
+    setSeverity,
+    setTlp,
+    setOccurredAt,
+  } = useCaseStore();
+  // V1.fix.1 (2026-05-31) — store 에 이미 저장돼 있으면 그 값 prefill (다른 뷰 다녀와도 유지)
+  const [occurredAt, setOccurredAtLocal] = useState<string>(
+    storedOccurredAt ?? nowLocalIso(),
+  );
 
   // tlp 기본값: AMBER (조직 내부 공유 — TheHive 5 권장)
   const currentTlp: TLP = tlp ?? 'AMBER';
@@ -80,7 +92,10 @@ const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
           <input
             type="datetime-local"
             value={occurredAt}
-            onChange={(e) => setOccurredAt(e.target.value)}
+            onChange={(e) => {
+              setOccurredAtLocal(e.target.value);
+              setOccurredAt(e.target.value); // V1.fix.1 — store 동기화로 Step 2 prefill 가능
+            }}
             className="bg-ink-900 border border-ink-700 rounded-md px-3 py-2 text-[13px] text-ink-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/40 w-fit"
           />
         </div>
@@ -144,7 +159,11 @@ const Step1_CaseMetadata = ({ onPrev, onNext }: Step1Props) => {
           ← 이전
         </button>
         <button
-          onClick={() => canProceed && onNext(occurredAt)}
+          onClick={() => {
+            if (!canProceed) return;
+            setOccurredAt(occurredAt); // V1.fix.1 — 다음 진입 직전 store 확정
+            onNext(occurredAt);
+          }}
           disabled={!canProceed}
           className={`btn-primary ${!canProceed ? 'opacity-40 cursor-not-allowed' : ''}`}
         >

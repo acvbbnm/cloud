@@ -145,20 +145,35 @@ export interface MapStats {
   events: AttackEventItem[];
 }
 
+export interface GapMissingTarget {
+  target_id: string;
+  log_type: string;
+  evidence_role: EvidenceRole;
+  priority: number;
+}
+
+// multi-type (2026-05-31): 단서 루프에서 2개 이상 확정된 사고유형별 독립 갭.
+export interface GapPerType {
+  incident_type: IncidentType;
+  gap_type: GapType;
+  missing: GapMissingTarget[];
+  summary: string;
+  recommendation: string;
+  completionRate: number | null;
+}
+
 export interface GapResultResponse {
   gap_id: string;
   case_id: string;
   gap_type: GapType;
-  missing: {
-    target_id: string;
-    log_type: string;
-    evidence_role: EvidenceRole;
-    priority: number;
-  }[];
+  missing: GapMissingTarget[];
   summary: string;
   recommendation: string;
-  completionRate: number;
+  completionRate: number | null;
   created_at: string;
+  // multi-type — 확정 사고유형 목록 + 유형별 갭 판정 (단일 유형이면 1개 항목)
+  incidentTypes?: IncidentType[];
+  perType?: GapPerType[];
 }
 
 export interface PaginatedData<T> {

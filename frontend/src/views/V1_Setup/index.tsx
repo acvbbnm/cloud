@@ -41,6 +41,7 @@ const V1Setup = () => {
     setSeverity,
     setCaseId,
     setIncidentType,
+    setSecondaryIncidentTypes,
   } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
   const resetCase = useCaseStore((s) => s.reset);
@@ -285,10 +286,26 @@ const V1Setup = () => {
                 showToast('caseId 누락. Step 1 으로 돌아가 케이스를 생성하세요.');
                 return;
               }
+              // 단서 루프 multi-stage 확정 가설 누적 (paradigm §23).
+              // confirmed_hypotheses 가 2개 이상이면 각 사고유형별 독립 수집
+              // 가이드를 Step4 탭으로 제공한다. primary 를 제외한 나머지를
+              // secondaryIncidentTypes 로 영속화.
+              const confirmed =
+                useClueTreeStore.getState().response?.confirmed_hypotheses ?? [];
+              const ordered = Array.from(
+                new Set([...confirmed, confirmedIncidentType] as IncidentType[]),
+              );
+              const secondaries = ordered.filter(
+                (t) => t !== confirmedIncidentType,
+              );
+              setSecondaryIncidentTypes(secondaries);
               // M0-3 → PATCH /api/cases/{caseId} — 단서 루프 확정 사고유형 영속화
               finalizeCaseMutation.mutate({
                 caseId,
-                data: { incident_type: confirmedIncidentType as IncidentType },
+                data: {
+                  incident_type: confirmedIncidentType as IncidentType,
+                  secondary_incident_types: secondaries,
+                },
               });
             }}
             isSubmitting={finalizeCaseMutation.isPending}

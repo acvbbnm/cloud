@@ -227,6 +227,12 @@ def rank_candidates(
     cat = catalog if catalog is not None else load_catalog()
     clues: dict = cat.get("clues", {})
 
+    # V1.fix.8 (2026-05-31, byungwoo) — 변별력 0 메타 카테고리는 IG 후보 명단 자동 배제.
+    #   Q1_inception:* 는 V1.fix.4 가중치 평탄화로 likelihood uniform → IG=0.
+    #   "다음 단서 후보 Top N" 에 노출돼도 정보 가치 없음. 사고 인지 경로는
+    #   Step 2 basic 탭 `detection_route` 가 단일 입력점.
+    META_NO_IG_PREFIXES = ("Q1_inception:",)
+
     out: list[dict] = []
     for clue_key, entry in clues.items():
         if clue_key in excl_keys:
@@ -235,6 +241,8 @@ def rank_candidates(
             continue
         if not entry.get("has_weights"):
             continue
+        if clue_key.startswith(META_NO_IG_PREFIXES):
+            continue  # V1.fix.8 — 메타 카테고리 후보 배제
 
         # Phase H.4 — likelihood 함수 분기
         if likelihood_fn is not None:

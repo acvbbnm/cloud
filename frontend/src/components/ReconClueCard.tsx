@@ -223,7 +223,8 @@ const ReconClueCard = ({
           </p>
 
           {groups.map((g) => {
-            // V1.fix.4 — Q1_inception 은 메타 (사고유형 변별 X)
+            // V1.fix.8 (2026-05-31) — Q1_inception 그룹은 백엔드에서 배제 (recon-options).
+            // 만약 어떤 이유로 도착해도 메타 라벨 표시 (defensive UI).
             const isMetaGroup = g.node_id === 'Q1_inception';
             return (
               <div key={g.node_id}>

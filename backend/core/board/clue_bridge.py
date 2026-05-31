@@ -108,10 +108,28 @@ def bridge_clue_tree_to_board(
     # 멱등 — 기존 보드에 있는 clue_key 차단
     existing_keys = _collect_existing_clue_keys(db, case_id)
 
-    # anchor 가설 — tree 의 마지막 확정 가설
-    anchor_hypothesis: Optional[str] = (
-        tree.confirmed_hypotheses[-1] if tree.confirmed_hypotheses else None
-    )
+    # P.33 (2026-05-31 사용자 피드백: "현재 랜섬인 상태면 랜섬 마킹이 다
+    #   붙어버려서 7개는 자격증명 7개는 권한상승 7개는 랜섬이었는데 한번에
+    #   떡져서 나와") — anchor_hypothesis 변수(모든 단서 동일) 제거.
+    #   각 단서의 ClueTreeNode.stage 로 confirmed_hypotheses 매칭.
+    #
+    #   confirmed_hypotheses 는 stage 별 확정 사고유형 시퀀스:
+    #     stage 1 단서 → confirmed[0] (예: CREDENTIAL_THEFT)
+    #     stage 2 단서 → confirmed[1] (예: PRIVILEGE_ESCALATION)
+    #     stage 3 단서 → confirmed[2] (예: RANSOMWARE)
+    #
+    #   stage > len(confirmed) 면 미확정 (현재 진행 중 stage) → None.
+
+    def _hypothesis_for_stage(node_stage: int) -> Optional[str]:
+        if not tree.confirmed_hypotheses:
+            return None
+        idx = max(0, (node_stage or 1) - 1)
+        if idx < len(tree.confirmed_hypotheses):
+            return tree.confirmed_hypotheses[idx]
+        # 미확정 stage (현재 진행 중) — None 으로 라벨 미부착.
+        # 사용자 fix 의도: 그 stage 의 단서가 *어느* 사고유형인지 모를 때는
+        # 잘못된 (마지막 확정) 사고유형 라벨을 강제하지 않는다.
+        return None
 
     # 좌표 시작점
     base_x = _next_base_x(db, case_id)
@@ -133,10 +151,12 @@ def bridge_clue_tree_to_board(
             or tnode.clue_key
         )
 
+        # P.33 — 각 단서의 stage 로 confirmed 매칭 (마지막 가설 일괄 부착 X)
+        node_hypothesis = _hypothesis_for_stage(tnode.stage)
         meta = ChainNode.build_clue_meta(
             clue_key=tnode.clue_key,
-            stage=tree.stage,
-            hypothesis=anchor_hypothesis,
+            stage=tnode.stage,  # P.33 — tree.stage(현재) 대신 단서 본인 stage
+            hypothesis=node_hypothesis,
             source=source,
             extra={
                 "tree_node_id": tnode.node_id,

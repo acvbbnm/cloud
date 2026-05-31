@@ -67,7 +67,15 @@ TRIGGER_MIN_LIKELIHOOD: float = 0.30
 #   강한 단서 1개 + depth ≥ 3 시 정상 트리거.
 
 # 회귀 임계값 (paradigm §21.8.1)
-REGRESS_ENTROPY_THRESHOLD: float = 2.0
+#
+# V1.fix.9 (2026-05-31 byungwoo · 사용자 검증: "한 번 강등되면 다시 안 돌아간다") —
+#   entropy 임계 2.0 → 2.7 보정. 8 가설 max entropy=3.0 에서 2.0 이하는 거의 단일
+#   우세 (Top1 ≈ 0.55+) 필요 — 시연 시나리오에서 도달 어려움. 실측:
+#     · 강한 CRED 단서 1개 후 H=2.64, gap=0.32 → 정상 Zone 2 인데 regress=True
+#     · 반대방향 단서 추가 후 H=2.96, gap=0.099 → regress 마땅 (양쪽 모두 True)
+#   2.7 로 올려 "거의 uniform (Top1·Top2 미세 차)" 상태만 회귀 권고. Zone 2 안정성 ↑.
+#   paradigm doc §21.8 "트리거 임계값 — 시연 후 fit 예정" 정합.
+REGRESS_ENTROPY_THRESHOLD: float = 2.7
 REGRESS_GAP_THRESHOLD: float = 0.10
 
 # Top 몇 개 chain (paradigm §21.8 #2)

@@ -91,8 +91,10 @@ const AttackChainCard = ({
   chain,
   selectedHypothesis,
   onSelectHypothesis,
-  regressSuggested = false,
-  onRequestRegress,
+  // V1.fix.9 — regressSuggested/onRequestRegress prop 은 외부 RegressBanner 가 사용.
+  // 시그너처는 후방 호환을 위해 유지하되 내부에서는 사용 안 함.
+  regressSuggested: _regressSuggested = false,
+  onRequestRegress: _onRequestRegress,
   disabled = false,
   path,
 }: AttackChainCardProps) => {
@@ -106,26 +108,9 @@ const AttackChainCard = ({
 
   return (
     <div className="space-y-2">
-      {/* 회귀 권고 알림 */}
-      {regressSuggested && (
-        <div className="bg-amber-900/20 border border-amber-700/50 rounded px-2.5 py-1.5 text-[10.5px] text-amber-200 leading-5 flex items-start gap-2">
-          <span className="font-bold shrink-0">⤺ 회귀 권고</span>
-          <span className="flex-1">
-            entropy 상승 또는 가설 격차 축소로 다시 모호해졌습니다. 광범위 탐색
-            (Zone 1) 으로 돌아가 단서를 더 모으는 것을 권장합니다.
-          </span>
-          {onRequestRegress && (
-            <button
-              type="button"
-              onClick={onRequestRegress}
-              disabled={disabled}
-              className="text-[10px] font-mono text-amber-200 hover:text-amber-100 border border-amber-600/50 hover:border-amber-400 px-1.5 py-0.5 rounded transition-colors shrink-0 disabled:opacity-40"
-            >
-              Zone 1 로 복귀
-            </button>
-          )}
-        </div>
-      )}
+      {/* V1.fix.9 (2026-05-31) — 내부 회귀 메시지·복귀 버튼 제거.
+          Zone 강등 시 AttackChainCard 자체가 unmount 되어 메시지·다음 행동 가이드가
+          같이 사라지는 문제. 외부 RegressBanner (zone 무관) 로 통합. */}
 
       {/* Chain 시각 — 좌 PHISH → 우 RANSOM */}
       <div className="flex items-stretch gap-1.5">

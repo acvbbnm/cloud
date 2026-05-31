@@ -426,19 +426,18 @@ const IncidentTypeCompass = ({
               title={
                 zone === 2 && !regressSuggested
                   ? '코어 단서 발견 — 사고유형 chain 구체화 단계'
-                  : '광범위 탐색 — 단서 누적 중'
+                  : regressSuggested
+                    ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
+                    : '광범위 탐색 — 단서 누적 중'
               }
             >
-              {zone === 2 && !regressSuggested ? '🗺 Zone 2' : 'Zone 1'}
+              {zone === 2 && !regressSuggested
+                ? '🗺 Zone 2'
+                : regressSuggested
+                  ? 'Zone 1 (강등)'
+                  : 'Zone 1'}
             </span>
-            {regressSuggested && (
-              <span
-                className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold bg-amber-900/40 text-amber-300 border border-amber-600/40"
-                title="entropy 상승 또는 가설 격차 축소 — 광범위 탐색 복귀 권고"
-              >
-                ⤺ 회귀 권고
-              </span>
-            )}
+            {/* V1.fix.9 — 회귀 권고 배지는 RegressBanner 로 통합. 컴퍼스 헤더는 Zone 라벨만 강화. */}
             {topAnchor && (
               <>
                 {' '}· 1위

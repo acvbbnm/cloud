@@ -45,6 +45,7 @@ import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
 import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
+import RegressBanner from '@/components/RegressBanner';
 
 import { getGuidePreview } from '@/api/intake';
 
@@ -646,6 +647,19 @@ const Step3_EvidenceTreeDiscovery = ({
           </div>
         </Card>
 
+        {/* V1.fix.9 (2026-05-31) — Zone 강등 시 회귀 권고 배너 (Zone 무관 노출).
+            기존: AttackChainCard 안에 회귀 메시지 → zone=1 강등 시 카드와 함께 사라져
+                  사용자가 다음 행동 모르는 문제. 별도 배너로 분리. */}
+        {(treeState.regress_suggested || treeState.zone === 1) &&
+          treeState.regress_suggested && (
+            <RegressBanner
+              entropyBits={treeState.confidence.entropy_bits ?? 0}
+              primaryProb={treeState.confidence.primary_prob ?? 0}
+              secondaryProb={treeState.confidence.secondary_prob ?? 0}
+              regressSuggested={treeState.regress_suggested ?? false}
+            />
+          )}
+
         {/* Phase M.3 — Zone 2 진입 시 복합 가설 chain (paradigm §21.5) */}
         {treeState.zone === 2 && treeState.attack_chain && treeState.attack_chain.length > 0 && (
           <Card
@@ -656,11 +670,7 @@ const Step3_EvidenceTreeDiscovery = ({
               chain={treeState.attack_chain}
               selectedHypothesis={chainFilterHypothesis}
               onSelectHypothesis={setChainFilterHypothesis}
-              regressSuggested={treeState.regress_suggested ?? false}
-              onRequestRegress={() => {
-                setChainFilterHypothesis(null);
-                showToast('Zone 1 으로 복귀 — 광범위 탐색 모드', 2800);
-              }}
+              regressSuggested={false /* V1.fix.9 — 외부 RegressBanner 가 노출 */}
               disabled={loading || isSubmitting}
               path={treeState.path}
             />

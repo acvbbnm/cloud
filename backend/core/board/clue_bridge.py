@@ -144,12 +144,13 @@ def bridge_clue_tree_to_board(
             )
             continue
 
-        # label — clue_tree node label > catalog short_label > clue_key fallback
-        label = (
-            tnode.label
-            or ChainNode.derive_label_from_clue(tnode.clue_key)
-            or tnode.clue_key
-        )
+        # label — P.34 (사용자: "보드 정보는 intake 와 똑같은게 아니라 어떤
+        #   단서인지 설명이 나와야") — derive_label_from_clue 가 description
+        #   풀이 합성한 풍부 라벨을 만들면 그것을 우선 사용.
+        #   직접 입력 단서 (catalog 누락) 는 합성 불가 → tnode.label fallback.
+        rich = ChainNode.derive_label_from_clue(tnode.clue_key)
+        is_rich = bool(rich and " — " in rich)
+        label = rich if is_rich else (tnode.label or rich or tnode.clue_key)
 
         # P.33 — 각 단서의 stage 로 confirmed 매칭 (마지막 가설 일괄 부착 X)
         node_hypothesis = _hypothesis_for_stage(tnode.stage)

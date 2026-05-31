@@ -117,15 +117,22 @@ def weights_to_likelihood(weights: dict[str, int]) -> dict[str, float]:
     ----
         likelihood_h = (weight_h + smoothing) / (sum_weights + smoothing × num_types)
 
-    smoothing 2 = Laplace add-k (2026-05-28 5.0→2.0, info_gain.py 와 동기).
-    가중치 0 인 사고유형도 base 확률 보존 (관측되지 않은 답변 → 0 곱하면
-    posterior 가 영구히 0 으로 수렴, 회복 불가). 8 가설 system 에서 add-k=5 는
-    smoothing 합 40 > 평균 raw 35 로 평탄화 과도 → IG ~0.05 bits (단서 1개 효과
-    미미) → 2.0 으로 낮춰 IG ~0.10 bits 회복.
+    smoothing 12 (P.27 2026-05-31 사용자 피드백: "단서 2개로 60-80% 휘청") —
+    posterior 갱신 시 점진 수렴 강화. 시뮬레이션 (cap=15):
+      · k=2  : 단서 2개 → 70%  (사용자가 본 휘청)
+      · k=10 : 단서 2개 → 47%, 3개 → 69%
+      · k=12 : 단서 2개 → 43%, 3개 → 63%  (선택)
+      · k=15 : 단서 2개 → 36%, 3개 → 53%
+
+    info_gain.py 의 SMOOTHING=2 와 분리 — IG 정렬은 명확함 유지 (k=2),
+    사후확률 갱신만 점진 (k=12). 후보 정렬·시각화 의도 보존 + 휘청 완화.
+
+    학술 정합: Laplace add-k smoothing — 큰 k 는 prior 평탄화 강화 (Bayesian
+    parameter estimation 정설). Berger 1985 Robust Bayes 와도 정합.
 
     입력 weights 는 weights.json 의 한 답변 dict (예: 'Q5-CRED:tor_vpn' 의 8 사고유형 점수).
     """
-    smoothing = 2.0
+    smoothing = 12.0
     # UNCLASSIFIED·source 키 등은 제외하고 사고유형 점수만
     sco = {k: float(v) for k, v in weights.items() if isinstance(v, (int, float))}
     if "UNCLASSIFIED" in sco:

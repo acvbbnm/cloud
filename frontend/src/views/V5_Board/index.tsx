@@ -511,7 +511,11 @@ const V5Board = () => {
 
           {/* 우측 컬럼 */}
           <div className="w-[340px] shrink-0 flex flex-col gap-3">
-            <Card title={<>ℹ️ 상세</>}>
+            {/* V1.fix.13 (2026-05-31) — 상세 패널 제목·서브타이틀 보강. 사용자 피드백: "상세쪽 설명 약간 수정 필요". */}
+            <Card
+              title={<>선택 노드 상세</>}
+              subtitle="좌측 보드 노드 또는 아래 ATT&CK 후보를 클릭 → 사고유형 likelihood · KB 메타 · 수락/거부"
+            >
               {activeBoardNode && activeIsClue ? (
                 <ClueDetailPanel
                   node={activeBoardNode}
@@ -609,8 +613,16 @@ const V5Board = () => {
                   </button>
                 </div>
               ) : (
-                <div className="text-[12px] text-ink-400">
-                  공격 체인 노드 또는 ATT&CK 후보를 클릭하세요
+                <div className="text-[12px] text-ink-400 leading-5 space-y-2">
+                  <div>
+                    좌측 보드의 <span className="text-ink-200">공격 체인 노드</span> 또는 아래의{' '}
+                    <span className="text-ink-200">ATT&CK 후보</span>를 클릭하면 상세가 표시됩니다.
+                  </div>
+                  <ul className="text-[11px] text-ink-500 leading-4 space-y-0.5 pl-3">
+                    <li>· <span className="text-brand-teal/90">단서 노드</span> 클릭 → 사고유형 likelihood · KB 메타 · 학술 출처</li>
+                    <li>· <span className="text-brand-purple/90">ATT&CK 노드</span> 클릭 → 기법·전술 + AI 셰르파 KB 브리핑</li>
+                    <li>· <span className="text-amber-300/90">후보</span> 클릭 → [+ 보드 추가] 로 노드 생성</li>
+                  </ul>
                 </div>
               )}
             </Card>

@@ -97,10 +97,22 @@ def test_zone2_unlocked_when_both_satisfied() -> None:
     assert is_zone2_unlocked(tree, tree.posterior_current) is True
 
 
-def test_zone2_locked_deep_but_weak() -> None:
-    """깊이만 깊고 보스 단서 없으면 Zone 1 유지 (paradigm §21.4 ②)."""
+def test_zone2_unlocked_deep_even_with_weak_clues() -> None:
+    """V1.fix.12 (2026-05-31) — depth ≥ TRIGGER_RELAXED_DEPTH (=4) 만으로도 Zone 2.
+
+    사용자 피드백: "Zone 2 도달이 너무 느리다 — 단서 4개 정도면 도달 가까운 정도".
+    약한 단서들만 누적해도 4개 이상이면 "맵 충분히 탐색" 으로 인정. 이전에는
+    depth ≥ 3 AND max_lk ≥ 0.25 AND 조건이라 깊이만으로는 진입 불가했음.
+    """
     tree = _build_tree([WEAK_CLUE] * 6)  # depth = 6 + 약한 단서만
     assert max((n.depth for n in tree.nodes.values()), default=0) >= 5
+    # V1.fix.12 — depth ≥ 4 만으로도 Zone 2 진입 (likelihood 무관)
+    assert is_zone2_unlocked(tree, tree.posterior_current) is True
+
+
+def test_zone2_locked_below_relaxed_depth_and_weak() -> None:
+    """V1.fix.12 — depth < RELAXED (=4) 이고 강한 단서도 없으면 Zone 1 유지."""
+    tree = _build_tree([WEAK_CLUE] * 3)  # depth = 3, 약한 단서만
     assert is_zone2_unlocked(tree, tree.posterior_current) is False
 
 

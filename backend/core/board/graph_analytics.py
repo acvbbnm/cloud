@@ -273,12 +273,15 @@ def auto_layout_positions(
     if not node_ids:
         return {}
 
-    NODE_W = 168
-    NODE_H = 64
+    # V1.fix.10 (2026-05-31) — UI ChainGraphCanvas 의 NODE_W/H 와 동기화.
+    #   기존 168/64 는 UI 의 P.31 확대 (200/78) 와 불일치 → _resolve_collisions
+    #   계산 시 충돌 회피 거리가 작아 자동정렬 후 노드 겹침 발생.
+    NODE_W = 200
+    NODE_H = 78
     GAP_X = 32
-    GAP_Y = 26
-    CELL_W = NODE_W + GAP_X      # 200
-    CELL_H = NODE_H + GAP_Y      # 90
+    GAP_Y = 30
+    CELL_W = NODE_W + GAP_X      # 232
+    CELL_H = NODE_H + GAP_Y      # 108
 
     # networkx 없거나 1 노드 → 전체 격자
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:

@@ -295,6 +295,46 @@ const ChainGraphCanvas = ({
     setTempPos(new Map());
   }, [nodes]);
 
+  // V1.fix.10 (2026-05-31, byungwoo) — 자동정렬·재배치 후 노드 화면 밖 이슈.
+  //   사용자 피드백: "자동정렬 시 노드 안 보임 — 다른 곳 갔다오면 보인다."
+  //   원인: nodes 좌표가 새로 도착했는데 viewport(zoom/pan) 는 이전 상태 유지
+  //         → 새 노드 좌표가 viewport 변환 후 화면 밖에 배치됨.
+  //   조치: 모든 노드 좌표가 한꺼번에 바뀐 경우 (자동정렬 등) viewport reset.
+  //         단서 drop·드래그 같은 1개 노드 변경은 viewport 유지 (UX 안정).
+  const prevNodeIdsRef = useRef<string[]>([]);
+  const prevPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  useEffect(() => {
+    const ids = nodes.map((n) => n.node_id).sort();
+    const prevIds = prevNodeIdsRef.current;
+    const idsEqual = ids.length === prevIds.length && ids.every((id, i) => id === prevIds[i]);
+
+    // 자동정렬 감지: 노드 ID 집합 동일하지만 좌표가 다수 변경된 경우 (≥ 절반)
+    let majorReposition = false;
+    if (idsEqual && nodes.length >= 2) {
+      let changed = 0;
+      for (const n of nodes) {
+        const prev = prevPositionsRef.current.get(n.node_id);
+        if (!prev) continue;
+        const dx = (n.pos_x ?? 0) - prev.x;
+        const dy = (n.pos_y ?? 0) - prev.y;
+        if (Math.abs(dx) + Math.abs(dy) > 8) changed++;
+      }
+      majorReposition = changed >= Math.ceil(nodes.length / 2);
+    }
+
+    if (majorReposition) {
+      // 한 프레임 후 fitView — layout/sizeRef 갱신 후 안전하게
+      requestAnimationFrame(() => {
+        setViewport({ tx: 0, ty: 0, scale: 1 });
+      });
+    }
+
+    prevNodeIdsRef.current = ids;
+    const newMap = new Map<string, { x: number; y: number }>();
+    nodes.forEach((n) => newMap.set(n.node_id, { x: n.pos_x ?? 0, y: n.pos_y ?? 0 }));
+    prevPositionsRef.current = newMap;
+  }, [nodes]);
+
   // Phase P.14 (2026-05-27 사용자 피드백: "보드 넘어가면 화면 망가짐") —
   //   기존: nodes.length===0 시 <div> 반환 → SVG 영역 사라짐 → Card 비율 깨짐 +
   //         단서 drop zone 사라져서 LogPanel 단서 드래그 무의미

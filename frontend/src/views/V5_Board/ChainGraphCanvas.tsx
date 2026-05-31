@@ -681,17 +681,15 @@ const ChainGraphCanvas = ({
         if (rejected) fill = '#2A0F0F';   // 매우 어두운 빨강
         const strokeWidth = confirmed || rejected || isStart || isCandidate || sel || isClue ? 2.5 : 1;
 
-        // 단서 노드는 prefix 아이콘 + 짧은 라벨
-        const rawLabel = isClue ? `🔍 ${n.label}` : n.label;
+        // P.30 (사용자 피드백: "돋보기 아이콘 + 단서/CONFIRMED/S4 라벨 제거,
+        //   단서 명칭만 식별") — 단서 노드도 일반 라벨로. 사고유형 배지 + status
+        //   색상으로 이미 직관 식별 가능 (중복 메타 제거).
+        const rawLabel = n.label;
         const labelText =
-          rawLabel.length > 24 ? `${rawLabel.slice(0, 24)}…` : rawLabel;
+          rawLabel.length > 26 ? `${rawLabel.slice(0, 26)}…` : rawLabel;
 
-        const statusColor =
-          n.status === 'CONFIRMED'
-            ? '#34D399'
-            : n.status === 'REJECTED'
-            ? '#F87171'
-            : '#FBBF24';
+        // P.30 — statusColor 변수 제거 (status 텍스트 라인 제거로 미사용).
+        //   status 시각은 stroke·fill (CONFIRMED 초록 / REJECTED 빨강) 으로만.
 
         // 노드 type 라벨 (툴팁용)
         const typeLabel = isClue ? '단서' : n.is_ai_suggested ? 'AI 제안' : '수동 추가';
@@ -771,27 +769,8 @@ const ChainGraphCanvas = ({
             >
               {labelText}
             </text>
-            <text
-              x={NODE_W / 2}
-              y={40}
-              textAnchor="middle"
-              fontSize={10}
-            >
-              <tspan fill={isClue ? '#5EEAD4' : '#9aa3b2'}>
-                {isClue ? '단서 · ' : n.is_ai_suggested ? ' AI · ' : ' 수동 · '}
-              </tspan>
-              <tspan fill={statusColor} fontWeight={600}>
-                {n.status}
-              </tspan>
-              {isClue &&
-                n.meta &&
-                'stage' in n.meta &&
-                typeof (n.meta as { stage?: number }).stage === 'number' && (
-                  <tspan fill="#5EEAD4">
-                    {` · S${(n.meta as { stage: number }).stage}`}
-                  </tspan>
-                )}
-            </text>
+            {/* P.30 — "단서 · CONFIRMED · S4" 라벨 제거 (사용자 피드백).
+                status 색상 + 사고유형 배지로 이미 직관 식별. */}
             {/* 엣지 모드 라벨 */}
             {isStart && (
               <text

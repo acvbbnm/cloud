@@ -385,6 +385,39 @@ const IncidentTypeCompass = ({
   }, [trail]);
 
   const currentPos = trail.length > 0 ? trail[trail.length - 1] : null;
+
+  // P.32 (2026-05-31 사용자 피드백: "그림상으론 zone1 나가지도 못했는데
+  //   zone2 활성화되어있는데") — 시각화-판정 불일치 fix.
+  //
+  // 원인:
+  //   · 백엔드 zone 판정 = core_clue_likelihood ≥ 0.25 (TRIGGER_MIN_LIKELIHOOD,
+  //     zone_logic.py §11). 단서 1개만 강해도 Zone 2 promote.
+  //   · 시각화 점 위치 = posteriorToXY + radiusForDepth(stageDepth) 클램프.
+  //     stageDepth 적으면 반지름이 R*0.08 ~ R*0.35 → 내부 보조원(R*0.5) 안쪽.
+  //   · 두 신호가 같은 양(확신도)을 표현하지 않아 그림과 라벨이 모순.
+  //
+  // 해결: 시각화 zone (visualZone2) 을 점 반지름으로 재계산.
+  //   현재 점이 내부원 R*0.5 이내면 visualZone2=false → 헤더 배지·외곽원·
+  //   라벨 모두 Zone 1 톤으로 표시. 백엔드 zone 판정은 그대로 (회귀 등 다른
+  //   로직 영향 X). 시각만 일관성 맞춤.
+  //
+  // 추가 표시:
+  //   백엔드가 zone=2 인데 시각으로 아직 Zone 1 안쪽이면 "Zone 1+ · 코어 단서
+  //   검출, 단서 누적 권장" 안내 — 수사관이 다음 행동(단서 추가) 유도.
+  //
+  // KBW 회귀 방지: 점 좌표 계산 (posteriorToXY) 은 zone 의존 제거된 상태 유지.
+  //   visualZone2 는 *결과만* 읽음 — 좌표를 zone 으로 보정하지 않음.
+  const currentRadius = currentPos
+    ? Math.sqrt(
+        Math.pow(currentPos.x - center, 2) + Math.pow(currentPos.y - center, 2),
+      )
+    : 0;
+  const currentRadiusRatio = R > 0 ? currentRadius / R : 0;
+  // 시각화 zone — 점이 내부원(R*0.5) 바깥일 때만 Zone 2 시각.
+  const visualZone2 = zone === 2 && currentRadiusRatio >= 0.5;
+  // 백엔드 zone=2 인데 시각상 안쪽 — 보스단서 검출은 됐지만 무게중심은 아직.
+  const visualZoneHalf = zone === 2 && !visualZone2 && !regressSuggested;
+
   // 사후확률 1위 anchor — 우측 신뢰도 패널과 일관성 보장.
   // (이전엔 무게중심에서 가장 가까운 anchor 였으나 다른 가설들의 분포 효과로
   //  1위 사고유형과 다를 수 있어 사용자 혼란 → 1위 가설 직접 사용으로 fix)
@@ -413,27 +446,36 @@ const IncidentTypeCompass = ({
           {title}
           <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
             depth {Math.max(0, trail.length - 1)} · 8 사고유형 360°
-            {/* Phase M.2 — Zone 배지 */}
+            {/* Phase M.2 — Zone 배지.
+                P.32 — visualZone2 (점이 내부원 바깥) 일 때만 Zone 2 강조,
+                visualZoneHalf (백엔드 Zone 2 인데 점은 안쪽) 일 땐 "Zone 1+"
+                전환 안내. 사용자: "그림상 zone1 안 나갔는데 zone2 활성"  fix. */}
             <span
               className={
                 'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold ' +
-                (zone === 2 && !regressSuggested
+                (visualZone2
                   ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
-                  : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
+                  : visualZoneHalf
+                    ? 'bg-sky-900/30 text-sky-300/80 border border-sky-700/30'
+                    : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
               }
               title={
-                zone === 2 && !regressSuggested
-                  ? '코어 단서 발견 — 사고유형 chain 구체화 단계'
-                  : regressSuggested
-                    ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
-                    : '광범위 탐색 — 단서 누적 중'
+                visualZone2
+                  ? '코어 단서 발견 + 무게중심 외곽 — 사고유형 chain 구체화 단계'
+                  : visualZoneHalf
+                    ? '백엔드 Zone 2 진입 (보스 단서 검출) — 무게중심은 아직 안쪽, 단서 추가 시 외곽으로 이동'
+                    : regressSuggested
+                      ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
+                      : '광범위 탐색 — 단서 누적 중'
               }
             >
-              {zone === 2 && !regressSuggested
+              {visualZone2
                 ? '🗺 Zone 2'
-                : regressSuggested
-                  ? 'Zone 1 (강등)'
-                  : 'Zone 1'}
+                : visualZoneHalf
+                  ? 'Zone 1+ (코어단서)'
+                  : regressSuggested
+                    ? 'Zone 1 (강등)'
+                    : 'Zone 1'}
             </span>
             {/* V1.fix.9 — 회귀 권고 배지는 RegressBanner 로 통합. 컴퍼스 헤더는 Zone 라벨만 강화. */}
             {topAnchor && (
@@ -467,29 +509,33 @@ const IncidentTypeCompass = ({
           viewBox={`0 0 ${effectiveSize} ${effectiveSize}`}
           style={{ display: 'block' }}
         >
-          {/* 단위원 외곽 (Zone 2 영역 경계) — zone===2 일 때 강조 */}
+          {/* 단위원 외곽 (Zone 2 영역 경계) — visualZone2 일 때만 강조.
+              P.32 — zone === 2 가 아니라 visualZone2 사용 (점이 외곽일 때만). */}
           <circle
             cx={center}
             cy={center}
             r={R}
             fill="none"
             stroke={
-              zone === 2 && !regressSuggested
+              visualZone2
                 ? 'rgba(38, 194, 129, 0.55)'
-                : 'rgba(120, 130, 150, 0.18)'
+                : visualZoneHalf
+                  ? 'rgba(56, 189, 248, 0.30)'  // sky — 코어단서는 검출, 무게중심은 아직
+                  : 'rgba(120, 130, 150, 0.18)'
             }
-            strokeWidth={zone === 2 && !regressSuggested ? 1.5 : 1}
-            strokeDasharray={zone === 2 && !regressSuggested ? '6 4' : '3 4'}
+            strokeWidth={visualZone2 ? 1.5 : 1}
+            strokeDasharray={visualZone2 ? '6 4' : '3 4'}
             style={{ transition: 'stroke 320ms ease, stroke-width 320ms ease' }}
           />
-          {/* Phase M.2 — 내부 보조원 = Zone 1 경계 (paradigm §21.6) */}
+          {/* Phase M.2 — 내부 보조원 = Zone 1 경계 (paradigm §21.6).
+              P.32 — visualZone2 가 아닐 땐 (zone=1 또는 zone=2+안쪽) 강조 유지. */}
           <circle
             cx={center}
             cy={center}
             r={R * 0.5}
             fill="none"
             stroke={
-              zone === 1
+              !visualZone2
                 ? 'rgba(255, 149, 0, 0.32)'
                 : 'rgba(120, 130, 150, 0.10)'
             }
@@ -497,21 +543,24 @@ const IncidentTypeCompass = ({
             strokeDasharray="4 4"
             style={{ transition: 'stroke 320ms ease' }}
           />
-          {/* Zone 라벨 — 내부 원 위쪽 (Zone 1) 또는 외부 원 위쪽 (Zone 2) */}
-          {zone === 1 && (
+          {/* Zone 라벨 — visualZone2 면 외곽, 아니면 내부원 안내.
+              P.32 — visualZoneHalf 시 "Zone 1+ (코어단서)" 중간 라벨. */}
+          {!visualZone2 && (
             <text
               x={center}
               y={center - R * 0.5 - 6}
-              fill="rgba(255, 149, 0, 0.6)"
-              fontSize={9}
-              fontWeight={600}
+              fill={visualZoneHalf ? 'rgba(56, 189, 248, 0.85)' : 'rgba(255, 149, 0, 0.6)'}
+              fontSize={visualZoneHalf ? 10 : 9}
+              fontWeight={visualZoneHalf ? 700 : 600}
               textAnchor="middle"
               style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.05em' }}
             >
-              Zone 1 · 광범위 탐색
+              {visualZoneHalf
+                ? 'Zone 1+ · 코어 단서 검출 (단서 추가로 외곽 이동)'
+                : 'Zone 1 · 광범위 탐색'}
             </text>
           )}
-          {zone === 2 && !regressSuggested && (
+          {visualZone2 && (
             <text
               x={center}
               y={center - R - 10}
@@ -763,12 +812,19 @@ const IncidentTypeCompass = ({
           </div>
         )}
       </div>
-      {/* 하단 안내 — zone 별 메시지 (paradigm §21.4) */}
+      {/* 하단 안내 — zone 별 메시지 (paradigm §21.4).
+          P.32 — visualZone2 / visualZoneHalf / Zone 1 / regress 4 분기.
+          사용자 피드백: 그림 (점 위치) 과 라벨이 일치해야 함. */}
       <div className="px-2.5 py-1.5 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
-        {zone === 2 && !regressSuggested ? (
+        {visualZone2 ? (
           <>
-            🗺 <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%).
+            🗺 <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) + 무게중심 외곽.
             Top 가설 chain 으로 다음 단서를 좁혀가세요
+          </>
+        ) : visualZoneHalf ? (
+          <>
+            🛰 <span className="text-sky-300 font-semibold">Zone 1+ 전환 중</span> — 코어 단서 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) 검출됐으나 무게중심은 아직 안쪽.
+            같은 사고유형 단서 추가 시 외곽으로 이동 → Zone 2
           </>
         ) : regressSuggested ? (
           <>

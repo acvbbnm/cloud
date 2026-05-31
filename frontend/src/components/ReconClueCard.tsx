@@ -27,6 +27,7 @@
  */
 import { useEffect, useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
 import { getReconOptions } from '@/api/clueTree';
 
 import type { ReconClueGroup, ReconClueOption } from '@/types/clueTree';
@@ -80,6 +81,35 @@ const topHypothesis = (weights: Record<string, number>): [IncidentType, number] 
     }
   }
   return bestH && bestW > 0 ? [bestH, bestW] : null;
+};
+
+/** V1.fix.7 — 옵션별 popup body 텍스트 생성. */
+const buildOptionBody = (opt: ReconClueOption, isMeta: boolean): string => {
+  if (isMeta) {
+    return (
+      '이 옵션은 사고 발견 경로 메타 정보입니다.\n' +
+      '사고 유형 분류에 영향을 주지 않습니다 (가중치 평탄화 V1.fix.4).\n\n' +
+      `근거: ${opt.weight_source || '—'}`
+    );
+  }
+  // 가중치 순으로 정렬 (큰 순)
+  const sorted = Object.entries(opt.weights)
+    .filter(([, w]) => w > 0)
+    .sort(([, a], [, b]) => b - a);
+  const table = sorted
+    .map(([h, w]) => {
+      const ko = INCIDENT_KO[h as IncidentType] ?? h;
+      const bar = '█'.repeat(Math.min(8, Math.round(w / 5)));
+      return `  ${ko.padEnd(10, ' ')} +${String(w).padStart(2, ' ')}  ${bar}`;
+    })
+    .join('\n');
+  return (
+    '이 단서를 채택하면 아래 사고유형 신뢰도가 ↑\n' +
+    '(베이지안 likelihood × prior 정규화 — 가중치가 높을수록 변별력 ↑)\n\n' +
+    table +
+    '\n\n근거: ' +
+    (opt.weight_source || '—')
+  );
 };
 
 const DISMISS_KEY = 'aisherpa.reconClueCard.dismissed';
@@ -148,11 +178,20 @@ const ReconClueCard = ({
       <div className="px-3 py-2 border-b border-amber-700/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
-            📋 1차 정찰 (사고 인지 단계)
+            1차 정찰 (사고 인지 단계)
           </span>
-          <span className="text-[9px] text-amber-400/70 font-mono">
-            NIST SP 800-86 §4.1 Initial Triage
-          </span>
+          {/* V1.fix.6 — 인라인 라벨 → 클릭 popup */}
+          <SourceTag
+            label="ⓘ 근거"
+            title="1차 정찰 가이드 학술 근거"
+            body={
+              'NIST SP 800-86 §4.1 Initial Triage\n' +
+              'NIST SP 800-61r2 §3.2 Sources of Precursors and Indicators\n\n' +
+              '"어떻게 사고를 알게 됐나요?" 는 사고 발견 경로 메타 정보로 사고\n' +
+              '유형 변별력 없음 (V1.fix.4 평탄화). "어떤 이상이 있었나요?" 옵션은\n' +
+              '각 사고유형 단서 가중치 5~35로 약한 1차 정찰 신호.'
+            }
+          />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[9.5px] text-amber-300/80 font-mono">
@@ -179,66 +218,84 @@ const ReconClueCard = ({
       {!loading && !error && (
         <div className="px-3 py-2 space-y-3">
           <p className="text-[10.5px] text-amber-100/85 leading-5">
-            🎯 사고유형 무관 <span className="text-amber-300 font-semibold">약한 정찰 단서</span>
+            사고유형 무관 <span className="text-amber-300 font-semibold">약한 정찰 단서</span>
             를 2-4개 먼저 누적해 한 사고유형 쏠림을 차단합니다. 옵션 클릭 → 즉시 트리에 채택.
           </p>
 
-          {groups.map((g) => (
-            <div key={g.node_id}>
-              <div className="text-[10.5px] text-ink-200 font-semibold mb-1">
-                {g.question}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {g.options.map((opt) => {
-                  const accepted = acceptedClueKeys.has(opt.clue_key);
-                  const top = topHypothesis(opt.weights);
-                  return (
-                    <button
-                      key={opt.clue_key}
-                      type="button"
-                      onClick={() => handleClick(opt)}
-                      disabled={disabled || accepted || adoptingKey !== null}
-                      className={
-                        'text-left px-2.5 py-1.5 rounded border transition-all ' +
-                        (accepted
-                          ? 'bg-emerald-900/15 border-emerald-700/30 opacity-50 cursor-not-allowed'
-                          : adoptingKey === opt.clue_key
-                            ? 'bg-amber-900/30 border-amber-500/60'
-                            : 'bg-ink-900/40 border-ink-700/60 hover:border-amber-500/60 hover:bg-amber-900/15 cursor-pointer')
-                      }
-                      title={opt.weight_source ?? ''}
-                    >
-                      <div className="flex items-start gap-1.5">
-                        <span className="text-[10.5px] text-ink-100 font-medium flex-1 min-w-0 leading-4">
-                          {accepted ? '✓ ' : '◯ '}
-                          {opt.short_label}
-                        </span>
-                        {top && (
-                          <span
-                            className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded"
-                            style={{
-                              color: INCIDENT_COLORS[top[0]],
-                              backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,
-                            }}
-                            title={`주 변별 방향 — ${INCIDENT_KO[top[0]]} +${top[1]}`}
-                          >
-                            {INCIDENT_KO[top[0]]} +{top[1]}
-                          </span>
-                        )}
+          {groups.map((g) => {
+            // V1.fix.8 (2026-05-31) — Q1_inception 그룹은 백엔드에서 배제 (recon-options).
+            // 만약 어떤 이유로 도착해도 메타 라벨 표시 (defensive UI).
+            const isMetaGroup = g.node_id === 'Q1_inception';
+            return (
+              <div key={g.node_id}>
+                <div className="text-[10.5px] text-ink-200 font-semibold mb-1 flex items-center gap-1.5">
+                  <span>{g.question}</span>
+                  {isMetaGroup && (
+                    <span className="text-[9px] text-ink-400 font-mono border border-ink-700 px-1 py-px rounded">
+                      메타 · 사후확률 영향 없음
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {g.options.map((opt) => {
+                    const accepted = acceptedClueKeys.has(opt.clue_key);
+                    const top = isMetaGroup ? null : topHypothesis(opt.weights);
+                    return (
+                      <div
+                        key={opt.clue_key}
+                        className={
+                          'rounded border transition-all flex items-stretch ' +
+                          (accepted
+                            ? 'bg-emerald-900/15 border-emerald-700/30 opacity-60'
+                            : adoptingKey === opt.clue_key
+                              ? 'bg-amber-900/30 border-amber-500/60'
+                              : 'bg-ink-900/40 border-ink-700/60 hover:border-amber-500/60 hover:bg-amber-900/15')
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleClick(opt)}
+                          disabled={disabled || accepted || adoptingKey !== null}
+                          className="text-left px-2.5 py-1.5 flex-1 min-w-0 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-[10.5px] text-ink-100 font-medium flex-1 min-w-0 leading-4">
+                              {accepted ? '✓ ' : '◯ '}
+                              {opt.short_label}
+                            </span>
+                            {top && (
+                              <span
+                                className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded"
+                                style={{
+                                  color: INCIDENT_COLORS[top[0]],
+                                  backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,
+                                }}
+                              >
+                                {INCIDENT_KO[top[0]]} +{top[1]}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                        {/* V1.fix.7 — 옵션 출처·신뢰도 영향 popup (채택과 무관) */}
+                        <div className="border-l border-ink-700/60 flex items-center px-1.5">
+                          <SourceTag
+                            label="ⓘ"
+                            align="right"
+                            title={`${opt.short_label} — 신뢰도 영향`}
+                            body={buildOptionBody(opt, isMetaGroup)}
+                          />
+                        </div>
                       </div>
-                    </button>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      <div className="px-3 py-1.5 border-t border-amber-700/30 text-[9.5px] text-amber-300/60 font-mono leading-4">
-        💡 정찰 단서는 weights 가 약해서 (5~35) 한 사고유형에 큰 쏠림 없이 posterior 를 살짝
-        비균등으로 만듭니다. 2-4개 누적 후 자체 단서·로그 분석으로 본격 수사 진행
-      </div>
+      {/* V1.fix.6 — 하단 메타 푸터 제거 (학술 설명은 상단 ⓘ 근거 popup 으로 통합) */}
     </div>
   );
 };

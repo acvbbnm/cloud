@@ -4,9 +4,11 @@
  */
 import { useState, useRef, useEffect } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
+
 import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
-import { streamChat } from '@/api/sherpa';
+import { streamChat, getKbStats } from '@/api/sherpa';
 import type { SherpaSource } from '@/types';
 
 const quickQueries: { label: string; query: string }[] = [
@@ -36,6 +38,12 @@ const SherpaFab = () => {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 엔진 상태 — 배지에 실제 연결/모델 반영 (V-8 과 동일 쿼리키로 캐시 공유)
+  const kbQuery = useQuery({ queryKey: ['sherpa', 'kb'], queryFn: getKbStats, staleTime: 60_000 });
+  const engine = kbQuery.data?.engine;
+  const llmOnline = engine?.engine === 'ollama';
+  const modelLabel = engine?.model ? engine.model.toUpperCase() : 'LLM';
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -99,7 +107,12 @@ const SherpaFab = () => {
         <div className="px-3 py-2 bg-ink-850 border-b border-ink-700 flex items-center justify-between">
           <div className="flex items-center gap-2 font-mono">
             <span className="text-brand-amber font-bold tracking-[0.16em] text-[11px]">SHERPA</span>
-            <span className="text-[10px] text-ink-500">LLAMA-3.1 · OFFLINE</span>
+            <span className="text-[10px] text-ink-500">
+              {modelLabel} ·{' '}
+              <span className={llmOnline ? 'text-brand-teal' : 'text-amber-400'}>
+                {kbQuery.isLoading ? '확인 중…' : llmOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </span>
           </div>
           <button onClick={toggle} className="text-ink-400 hover:text-ink-100 text-[14px] leading-none">
             ×

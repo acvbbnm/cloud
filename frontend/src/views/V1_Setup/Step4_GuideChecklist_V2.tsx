@@ -5,15 +5,17 @@ import { useQuery } from '@tanstack/react-query';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import { useCaseStore } from '@/stores/useCaseStore';
-import { getGuideV2 } from '@/api/intake';
+import { getGuideV2, getGuidePreview } from '@/api/intake';
 
 import type {
   GuideV2AppliedModifier,
+  GuideV2ClueSignals,
   GuideV2CollectionMethod,
   GuideV2EnvWarning,
   GuideV2PhaseGroup,
   GuideV2SourceRef,
   GuideV2Target,
+  IncidentType,
 } from '@/types';
 
 interface Step4V2Props {
@@ -61,7 +63,11 @@ const INCIDENT_TYPE_KO: Record<string, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  MULTI_CSP_LATERAL: '멀티 CSP 횡이동',
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 오류 노출',
+  PHISH_INITIAL_ACCESS: '피싱 초기 침투',
+  INSIDER_THREAT: '내부자 위협',
+  UNCLASSIFIED: '미분류',
 };
 
 const CSP_KO: Record<string, string> = {
@@ -414,6 +420,9 @@ const TargetRow = ({
             <Badge tone={t.evidence_role === 'REQUIRED' ? 'red' : 'amber'} size="sm">
               {t.evidence_role === 'REQUIRED' ? '필수' : '보강'}
             </Badge>
+            {t.clue_relevant && (
+              <Badge tone="teal" size="sm">단서 연관</Badge>
+            )}
             <span
               className={`font-semibold text-[13.5px] ${
                 checked ? 'text-ink-400 line-through' : 'text-ink-100'
@@ -660,6 +669,14 @@ const MatrixView = ({
                             {boost > 0 && (
                               <span className="text-[9.5px] text-amber-300 font-semibold">↑+{boost}</span>
                             )}
+                            {t.clue_relevant && (
+                              <span
+                                className="text-[9.5px] text-brand-teal font-semibold"
+                                title="단서 루프 신호와 연관된 단계"
+                              >
+                                ●단서
+                              </span>
+                            )}
                             {isChecked && <span className="text-[10px] text-green-400"></span>}
                           </div>
                           <div className="text-[9.5px] opacity-80 mt-0.5">
@@ -789,22 +806,151 @@ const EnvWarningsCard = ({ items }: { items: GuideV2EnvWarning[] }) => {
   );
 };
 
-//  메인 
+//  단서 루프 신호 카드 (Phase L)
+const OBSERVABLE_TYPE_KO: Record<string, string> = {
+  ip: 'IP',
+  domain: '도메인',
+  url: 'URL',
+  hash: '해시',
+  email: '이메일',
+  username: '계정',
+  cve: 'CVE',
+  other: '기타',
+};
+
+// ATT&CK 기법 ID → MITRE 공식 기법 페이지 URL
+// 기반기법 T1078 → /techniques/T1078/ , 서브기법 T1078.004 → /techniques/T1078/004/
+const mitreTechniqueUrl = (tech: string): string | null => {
+  const m = tech.match(/^T(\d{4})(?:\.(\d{3}))?$/);
+  if (!m) return null;
+  const base = `T${m[1]}`;
+  return m[2]
+    ? `https://attack.mitre.org/techniques/${base}/${m[2]}/`
+    : `https://attack.mitre.org/techniques/${base}/`;
+};
+
+const ClueSignalsCard = ({ signals }: { signals: GuideV2ClueSignals | undefined }) => {
+  if (!signals || !signals.has_signal) return null;
+  const {
+    signal_techniques,
+    clue_techniques,
+    evidenced_techniques,
+    signal_tactics,
+    boosted_category_ids,
+    observable_summary,
+  } = signals;
+  const clueSet = new Set(clue_techniques);
+  const logSet = new Set(evidenced_techniques);
+
+  return (
+    <Card
+      title={<span className="text-brand-teal">단서 루프 신호 반영</span>}
+      subtitle={
+        <span className="text-[10.5px] text-ink-400">
+          단서 루프가 확보한 ATT&CK 기법·Observable 로 아래 단계 카테고리 우선순위를 가산했습니다
+          (수집 항목 자체는 표준 카탈로그 그대로)
+        </span>
+      }
+      className="mb-3"
+    >
+      <div className="space-y-2.5">
+        {observable_summary.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10.5px] text-ink-400 font-semibold">확보 Observable</span>
+            {observable_summary.map((o) => (
+              <Badge key={o.type} tone="blue" size="sm">
+                {OBSERVABLE_TYPE_KO[o.type] ?? o.type} {o.count}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {signal_tactics.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10.5px] text-ink-400 font-semibold">우선순위 가산 단계</span>
+            {signal_tactics.map((t) => (
+              <Badge key={t} tone="teal" size="sm">{t}</Badge>
+            ))}
+            {boosted_category_ids.length > 0 && (
+              <span className="text-[10px] text-ink-500">
+                · 카테고리 {boosted_category_ids.length}종 부스트
+              </span>
+            )}
+          </div>
+        )}
+
+        {signal_techniques.length > 0 && (
+          <div>
+            <span className="text-[10.5px] text-ink-400 font-semibold">확보 ATT&CK 기법</span>
+            <div className="flex items-center gap-1 flex-wrap mt-1">
+              {signal_techniques.map((tech) => {
+                const fromClue = clueSet.has(tech);
+                const fromLog = logSet.has(tech);
+                const src = fromClue && fromLog ? '단서+로그' : fromClue ? '단서' : '로그';
+                const url = mitreTechniqueUrl(tech);
+                const chipClass =
+                  'inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded border border-brand-purple/40 bg-brand-purple/10 text-brand-purple';
+                if (!url) {
+                  return (
+                    <code key={tech} className={chipClass} title={`출처: ${src}`}>
+                      {tech}
+                    </code>
+                  );
+                }
+                return (
+                  <a
+                    key={tech}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`${chipClass} hover:bg-brand-purple/25 hover:border-brand-purple/70 transition-colors`}
+                    title={`출처: ${src} · MITRE ATT&CK ${tech} 페이지 열기 ↗`}
+                  >
+                    {tech}
+                    <span className="text-[8px] opacity-70">↗</span>
+                  </a>
+                );
+              })}
+            </div>
+            <div className="text-[9.5px] text-ink-500 mt-1">
+              출처 — <span className="text-brand-teal">단서</span>: 단서 루프 채택 ·{' '}
+              <span className="text-ink-300">로그</span>: 업로드 로그 ATT&CK 매핑 · 기법 클릭 시 MITRE
+              ATT&CK 페이지 ↗
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+//  메인
 const CHECKED_KEY_PREFIX = 'ai-sherpa-v2-collected:';
 const VIEW_MODE_KEY = 'ai-sherpa-v2-view-mode';
 
-const loadCheckedKeys = (caseId: string): Set<string> => {
+// multi-type: 사고유형별 수집 진행을 분리 추적 (caseId:incidentType 네임스페이스).
+const checkedStorageKey = (caseId: string, incidentType: string): string =>
+  `${CHECKED_KEY_PREFIX}${caseId}:${incidentType}`;
+
+const loadCheckedKeys = (caseId: string, incidentType: string): Set<string> => {
   try {
-    const raw = localStorage.getItem(CHECKED_KEY_PREFIX + caseId);
+    const raw = localStorage.getItem(checkedStorageKey(caseId, incidentType));
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
   }
 };
 
-const saveCheckedKeys = (caseId: string, keys: Set<string>): void => {
+const saveCheckedKeys = (
+  caseId: string,
+  incidentType: string,
+  keys: Set<string>,
+): void => {
   try {
-    localStorage.setItem(CHECKED_KEY_PREFIX + caseId, JSON.stringify([...keys]));
+    localStorage.setItem(
+      checkedStorageKey(caseId, incidentType),
+      JSON.stringify([...keys]),
+    );
   } catch {
     // ignore
   }
@@ -822,21 +968,48 @@ const loadViewMode = (): ViewMode => {
 
 const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
   const caseId = useCaseStore((s) => s.caseId);
+  const primaryType = useCaseStore((s) => s.incidentType);
+  const secondaryTypes = useCaseStore((s) => s.secondaryIncidentTypes);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<GuideV2Target | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
 
+  // 단서 루프에서 확정된 사고유형 목록 — primary(케이스 확정값) + secondary(부 가설).
+  // 2개 이상이면 탭으로 각 사고유형별 독립 수집 가이드를 전환 제공.
+  const typeList = (
+    [primaryType, ...secondaryTypes].filter(Boolean) as IncidentType[]
+  ).filter((t, i, arr) => arr.indexOf(t) === i);
+  const isMulti = typeList.length >= 2;
+  const [selectedType, setSelectedType] = useState<IncidentType | null>(
+    typeList[0] ?? null,
+  );
+  // primary 가 비동기로 채워지거나 목록이 바뀌면 선택 보정.
+  useEffect(() => {
+    if (typeList.length === 0) return;
+    if (!selectedType || !typeList.includes(selectedType)) {
+      setSelectedType(typeList[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeList.join('|')]);
+
+  // primary 는 케이스에 확정 저장된 유형 → getGuideV2.
+  // secondary 는 환경 보정 미리보기 → getGuidePreview(동일 GuideV2Response 형태).
+  const activeType = selectedType ?? typeList[0] ?? null;
+  const isPrimaryActive = !!activeType && activeType === primaryType;
   const guideQuery = useQuery({
-    queryKey: ['guide-v2', caseId],
-    queryFn: () => getGuideV2(caseId!),
-    enabled: !!caseId,
+    queryKey: ['guide-v2', caseId, activeType],
+    queryFn: () =>
+      isPrimaryActive
+        ? getGuideV2(caseId!)
+        : getGuidePreview(caseId!, activeType as IncidentType),
+    enabled: !!caseId && !!activeType,
     staleTime: 30_000,
   });
 
   useEffect(() => {
-    if (caseId) setCheckedKeys(loadCheckedKeys(caseId));
-  }, [caseId]);
+    if (caseId && activeType) setCheckedKeys(loadCheckedKeys(caseId, activeType));
+  }, [caseId, activeType]);
 
   const switchView = (m: ViewMode) => {
     setViewMode(m);
@@ -845,6 +1018,14 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
     } catch {
       // ignore
     }
+  };
+
+  const handleSelectType = (t: IncidentType) => {
+    if (t === activeType) return;
+    setSelectedType(t);
+    // 가이드가 바뀌므로 우측 KB 패널/선택 초기화.
+    setSelectedKey(null);
+    setSelectedTarget(null);
   };
 
   const handleSelect = (key: string, t: GuideV2Target) => {
@@ -862,7 +1043,7 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
-      if (caseId) saveCheckedKeys(caseId, next);
+      if (caseId && activeType) saveCheckedKeys(caseId, activeType, next);
       return next;
     });
   };
@@ -909,6 +1090,56 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
 
   return (
     <div className="animate-fade-up">
+      {/* 다중 사고유형 탭 — 단서 루프에서 2개 이상 확정 시 각 유형별 독립 가이드 전환 */}
+      {isMulti && (
+        <div className="panel p-3 mb-3">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="eyebrow">단서 루프 확정 사고유형 {typeList.length}종</span>
+            <span className="text-[10.5px] text-ink-400">
+              번호를 눌러 사고유형별 수집 가이드를 전환하세요 (각각 독립 진행)
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {typeList.map((t, i) => {
+              const active = t === activeType;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleSelectType(t)}
+                  className={
+                    active
+                      ? 'flex items-center gap-1.5 px-3 py-1.5 rounded text-[11.5px] font-semibold bg-brand-teal text-ink-950 transition-colors'
+                      : 'flex items-center gap-1.5 px-3 py-1.5 rounded text-[11.5px] text-ink-300 border border-ink-700 hover:border-ink-500 hover:text-ink-100 transition-colors'
+                  }
+                  title={`${INCIDENT_TYPE_KO[t] ?? t} 수집 가이드 보기`}
+                >
+                  <span
+                    className={
+                      active
+                        ? 'inline-flex items-center justify-center w-4 h-4 rounded-full bg-ink-950/30 text-[10px] font-bold'
+                        : 'inline-flex items-center justify-center w-4 h-4 rounded-full bg-ink-800 text-[10px] font-bold'
+                    }
+                  >
+                    {i + 1}
+                  </span>
+                  {INCIDENT_TYPE_KO[t] ?? t}
+                  {t === primaryType && (
+                    <span
+                      className={
+                        active ? 'text-[9px] opacity-80' : 'text-[9px] text-brand-teal'
+                      }
+                    >
+                      주
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div className="panel p-4 border-l-[3px] border-l-brand-teal mb-3">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -959,6 +1190,9 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
           </span>
         </div>
       </div>
+
+      {/* 단서 루프 신호 반영 (Phase L) — 신호가 있을 때만 노출 */}
+      <ClueSignalsCard signals={guide.clue_signals} />
 
       {/* Kill Chain 안내 (접이식) */}
       <PhaseInfoBanner activePhases={activePhases} />

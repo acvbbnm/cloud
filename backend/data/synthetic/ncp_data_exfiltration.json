@@ -260,66 +260,6 @@
     }
   },
   {
-    "historyId": "h-p3-p3-cross-001",
-    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
-    "regionCode": "KR",
-    "regionName": "Korea, Republic of",
-    "resourceType": "Account",
-    "productName": "Object Storage",
-    "actionUserType": "SUB_ACCOUNT",
-    "actionSubAccountNo": "66306997",
-    "sourceType": "CONSOLE",
-    "domainCode": "kr",
-    "action": "Cross Account Put Object",
-    "actionResultType": "SUCCESS",
-    "eventTime": 1778640806000,
-    "content": {
-      "actionUserName": "attack-sim",
-      "sourceIp": "115.91.214.5",
-      "productData": {}
-    }
-  },
-  {
-    "historyId": "h-p3-p3-presigned-001",
-    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
-    "regionCode": "KR",
-    "regionName": "Korea, Republic of",
-    "resourceType": "Account",
-    "productName": "Object Storage",
-    "actionUserType": "SUB_ACCOUNT",
-    "actionSubAccountNo": "66306997",
-    "sourceType": "CONSOLE",
-    "domainCode": "kr",
-    "action": "Issue PreSigned URL External",
-    "actionResultType": "SUCCESS",
-    "eventTime": 1778640866000,
-    "content": {
-      "actionUserName": "attack-sim",
-      "sourceIp": "115.91.214.5",
-      "productData": {}
-    }
-  },
-  {
-    "historyId": "h-p3-p3-http-001",
-    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
-    "regionCode": "KR",
-    "regionName": "Korea, Republic of",
-    "resourceType": "Account",
-    "productName": "Object Storage",
-    "actionUserType": "SUB_ACCOUNT",
-    "actionSubAccountNo": "66306997",
-    "sourceType": "CONSOLE",
-    "domainCode": "kr",
-    "action": "HTTP Plain Upload",
-    "actionResultType": "SUCCESS",
-    "eventTime": 1778640926000,
-    "content": {
-      "actionUserName": "attack-sim",
-      "sourceIp": "115.91.214.5",
-      "productData": {}
-    }
-  },
-  {
     "historyId": "h-c90cf1a5b08c",
     "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
     "regionCode": "KR",

@@ -9,24 +9,29 @@ interface CaseState {
   incidentType: IncidentType | null;
   severity: string | null;
   currentStep: number;
-  //  dev3 신규 (Step 1 케이스 메타) 
+  //  dev3 신규 (Step 1 케이스 메타)
   title: string | null;
   tlp: TLP | null;
   observables: Observable[];
   secondaryIncidentTypes: IncidentType[]; // V-8 사후 검증 결과로 추가된 부 사고유형
+  // ── V1.fix.1 (2026-05-31 byungwoo) — Step 1 → Step 2 prefill 용 ──
+  // 백엔드 incident_cases.occurred_at 와 동일 ISO8601 datetime-local 문자열.
+  // Step 2 basic 탭에서 readonly 표시 + "← 이전" 으로 수정 안내.
+  occurredAt: string | null;
 
   setCaseId: (id: string) => void;
   setCsp: (csp: string) => void;
   setIncidentType: (type: IncidentType | null) => void;
   setSeverity: (severity: string) => void;
   setStep: (step: number) => void;
-  //  dev3 신규 액션 
+  //  dev3 신규 액션
   setTitle: (title: string) => void;
   setTlp: (tlp: TLP) => void;
   setObservables: (observables: Observable[]) => void;
   addObservable: (observable: Observable) => void;
   removeObservable: (index: number) => void;
   setSecondaryIncidentTypes: (types: IncidentType[]) => void;
+  setOccurredAt: (occurredAt: string | null) => void;
   reset: () => void;
 }
 
@@ -50,6 +55,7 @@ export const useCaseStore = create<CaseState>()(
       tlp: null,
       observables: [],
       secondaryIncidentTypes: [],
+      occurredAt: null,
 
       setCaseId: (id) => set({ caseId: id }),
       setCsp: (csp) => set({ csp }),
@@ -64,6 +70,7 @@ export const useCaseStore = create<CaseState>()(
       removeObservable: (index) =>
         set((s) => ({ observables: s.observables.filter((_, i) => i !== index) })),
       setSecondaryIncidentTypes: (types) => set({ secondaryIncidentTypes: types }),
+      setOccurredAt: (occurredAt) => set({ occurredAt }),
 
       reset: () =>
         set({
@@ -76,25 +83,27 @@ export const useCaseStore = create<CaseState>()(
           tlp: null,
           observables: [],
           secondaryIncidentTypes: [],
+          occurredAt: null,
         }),
     }),
     {
       name: 'ai-sherpa-case',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      // dev2 (v1) → dev3 (v2) 마이그레이션: 신규 필드 기본값 채움
+      // v1 → v2 (dev3 케이스 메타), v2 → v3 (V1.fix.1 occurredAt 추가) 마이그레이션
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as Partial<CaseState>;
+        const migrated = { ...state };
         if (version < 2) {
-          return {
-            ...state,
-            title: state.title ?? null,
-            tlp: state.tlp ?? null,
-            observables: state.observables ?? [],
-            secondaryIncidentTypes: state.secondaryIncidentTypes ?? [],
-          };
+          migrated.title = state.title ?? null;
+          migrated.tlp = state.tlp ?? null;
+          migrated.observables = state.observables ?? [];
+          migrated.secondaryIncidentTypes = state.secondaryIncidentTypes ?? [];
         }
-        return state;
+        if (version < 3) {
+          migrated.occurredAt = state.occurredAt ?? null;
+        }
+        return migrated;
       },
       // 액션 제외, 데이터만 영속화
       partialize: (s) => ({
@@ -107,6 +116,7 @@ export const useCaseStore = create<CaseState>()(
         tlp: s.tlp,
         observables: s.observables,
         secondaryIncidentTypes: s.secondaryIncidentTypes,
+        occurredAt: s.occurredAt,
       }),
     },
   ),

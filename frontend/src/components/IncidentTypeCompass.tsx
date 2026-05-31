@@ -32,6 +32,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { INCIDENT_TYPES_KILL_CHAIN_ORDER } from '@/types';
 import type { HypothesisScores, IncidentType } from '@/types';
 import type { SerializedClueTree, SerializedClueTreeNode } from '@/types/clueTree';
 
@@ -65,17 +66,11 @@ interface IncidentTypeCompassProps {
   coreClueLikelihood?: number;
 }
 
-// Phase P (KBW, 2026-05-27) — Kill Chain 시간순 시계방향 재배치.
-const INCIDENT_TYPES_ORDER: IncidentType[] = [
-  'PHISH_INITIAL_ACCESS',  // 12시   · Phase 1 · Initial Access
-  'CREDENTIAL_THEFT',      // 1:30   · Phase 2 · Credential Access
-  'PRIVILEGE_ESCALATION',  // 3시    · Phase 3 · Privilege Esc.
-  'INSIDER_THREAT',        // 4:30   · Phase 4 · Discovery/Lateral
-  'MISCONFIG_EXPOSURE',    // 6시    · Phase 4 · Discovery/Lateral
-  'AUDIT_LOG_TAMPERING',   // 7:30   · Phase 5 · Defense Evasion
-  'DATA_EXFILTRATION',     // 9시    · Phase 6 · Exfiltration
-  'RANSOMWARE',            // 10:30  · Phase 7 · Impact
-];
+// R.2 (hard, 2026-05-28) — 단일 소스 import (types/index.ts).
+// 사고유형 추가/순서 변경 시 types 한 곳만 수정하면 모든 컴포넌트 동기.
+// 도메인 타입 narrowing: Exclude<IncidentType, 'UNCLASSIFIED'> 라 UI 분기 안전.
+const INCIDENT_TYPES_ORDER: ReadonlyArray<Exclude<IncidentType, 'UNCLASSIFIED'>> =
+  INCIDENT_TYPES_KILL_CHAIN_ORDER;
 
 /** 사고유형별 Kill Chain phase (1~7). 컴퍼스 라벨 + 인접 검증용. */
 const KILL_CHAIN_PHASE: Record<IncidentType, number> = {
@@ -426,19 +421,18 @@ const IncidentTypeCompass = ({
               title={
                 zone === 2 && !regressSuggested
                   ? '코어 단서 발견 — 사고유형 chain 구체화 단계'
-                  : '광범위 탐색 — 단서 누적 중'
+                  : regressSuggested
+                    ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
+                    : '광범위 탐색 — 단서 누적 중'
               }
             >
-              {zone === 2 && !regressSuggested ? '🗺 Zone 2' : 'Zone 1'}
+              {zone === 2 && !regressSuggested
+                ? '🗺 Zone 2'
+                : regressSuggested
+                  ? 'Zone 1 (강등)'
+                  : 'Zone 1'}
             </span>
-            {regressSuggested && (
-              <span
-                className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold bg-amber-900/40 text-amber-300 border border-amber-600/40"
-                title="entropy 상승 또는 가설 격차 축소 — 광범위 탐색 복귀 권고"
-              >
-                ⤺ 회귀 권고
-              </span>
-            )}
+            {/* V1.fix.9 — 회귀 권고 배지는 RegressBanner 로 통합. 컴퍼스 헤더는 Zone 라벨만 강화. */}
             {topAnchor && (
               <>
                 {' '}· 1위

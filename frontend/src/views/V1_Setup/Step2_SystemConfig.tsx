@@ -1,10 +1,11 @@
 import { useState } from 'react';
 
+import { useCaseStore } from '@/stores/useCaseStore';
+
 import { CSP_META, TYPE_META } from './meta';
 
 interface SystemConfig {
-  severity: string;
-  occurred_at: string;
+  // severity·occurred_at 제거 (V1.fix.1) — Step 1 에서 받음. Step 2 는 readonly 표시.
   vpc_id: string;
   region: string;
   services: string[];
@@ -48,12 +49,8 @@ const TABS: { id: TabKey; label: string }[] = [
   { id: 'scope', label: ' 영향 범위' },
 ];
 
-const sevOptions = [
-  { id: 'critical', label: ' Critical' },
-  { id: 'high', label: ' High' },
-  { id: 'medium', label: ' Medium' },
-  { id: 'low', label: ' Low' },
-];
+// V1.fix.1 (2026-05-31 byungwoo) — 사고 인지 일시·심각도·제목·TLP 는 Step 1 단일 입력점.
+// Step 2 basic 탭은 Step 1 값을 readonly 로 표시 + "← 이전" 으로 수정 안내.
 
 const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting }: Step2Props) => {
   const cspKey = (csp ?? 'naver') as 'naver' | 'nhn' | 'all';
@@ -62,13 +59,15 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
   const isNhn = cspKey === 'nhn';
   const isAll = cspKey === 'all';
 
+  // V1.fix.1 — Step 1 store 값 (readonly 표시용)
+  const {
+    title: storedTitle,
+    severity: storedSeverity,
+    tlp: storedTlp,
+    occurredAt: storedOccurredAt,
+  } = useCaseStore();
+
   const [tab, setTab] = useState<TabKey>('basic');
-  const [severity, setSeverity] = useState('critical');
-  const [occurredAt, setOccurredAt] = useState(() => {
-    const d = new Date();
-    d.setSeconds(0, 0);
-    return d.toISOString().slice(0, 16);
-  });
   const [investigator, setInvestigator] = useState('');
   const [memo, setMemo] = useState('');
   const [detectionRoute, setDetectionRoute] = useState('SIEM 알럿');
@@ -97,8 +96,6 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
 
   const handleSubmit = () => {
     onSubmit({
-      severity,
-      occurred_at: occurredAt,
       vpc_id: vpcId,
       region,
       services,
@@ -124,6 +121,15 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
       scope_resources: scopeResources,
     });
   };
+
+  // V1.fix.1 — Step 1 값 readonly 표시 헬퍼
+  const sevLabel = storedSeverity ? storedSeverity.charAt(0).toUpperCase() + storedSeverity.slice(1) : '—';
+  const occurredAtFmt = storedOccurredAt
+    ? new Date(storedOccurredAt).toLocaleString('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit',
+      })
+    : '—';
 
   return (
     <div className="flex flex-col gap-6">
@@ -178,65 +184,75 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
 
       <div className="panel p-6 animate-fade-up">
         {tab === 'basic' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="사고 인지 일시">
-              <input
-                type="datetime-local"
-                value={occurredAt}
-                onChange={(e) => setOccurredAt(e.target.value)}
-                className="input"
-              />
-            </Field>
-            <Field label="담당 수사관">
-              <input
-                value={investigator}
-                onChange={(e) => setInvestigator(e.target.value)}
-                placeholder="이름 입력"
-                className="input"
-              />
-            </Field>
-            <Field label="사고 심각도">
-              <div className="flex flex-wrap gap-1.5">
-                {sevOptions.map((s) => {
-                  const sel = severity === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSeverity(s.id)}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
-                        sel
-                          ? 'bg-brand-blue/15 border-brand-blue/50 text-brand-blue'
-                          : 'bg-ink-900 border-ink-700 text-ink-300 hover:text-ink-100'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  );
-                })}
+          <div className="flex flex-col gap-4">
+            {/* V1.fix.1 — Step 1 케이스 메타 readonly 요약 패널 (중복 입력 차단) */}
+            <div className="panel p-3 border-l-[3px] border-l-brand-blue/60 bg-ink-900/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="eyebrow text-ink-200">Step 1 케이스 메타 (Step 1 에서 입력)</span>
+                <button
+                  type="button"
+                  onClick={onPrev}
+                  className="text-[10.5px] text-ink-400 hover:text-brand-blue transition-colors underline-offset-2 hover:underline"
+                  title="Step 1 로 돌아가서 수정"
+                >
+                  ← 수정하려면 Step 1 로
+                </button>
               </div>
-            </Field>
-            <Field label="탐지 / 신고 경로">
-              <select
-                value={detectionRoute}
-                onChange={(e) => setDetectionRoute(e.target.value)}
-                className="input"
-              >
-                <option>SIEM 알럿</option>
-                <option>내부 직원 신고</option>
-                <option>외부 제보</option>
-                <option>자동 모니터링</option>
-                <option>클라우드 보안 알림</option>
-              </select>
-            </Field>
-            <Field label="사고 초기 메모" full>
-              <textarea
-                rows={2}
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="사고 초기 상황, 특이사항 등..."
-                className="input resize-y"
-              />
-            </Field>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+                <div>
+                  <div className="text-ink-400 text-[10.5px]">사건 제목</div>
+                  <div className="text-ink-100 font-medium truncate" title={storedTitle ?? '—'}>
+                    {storedTitle ?? '—'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-ink-400 text-[10.5px]">발생 시각</div>
+                  <div className="text-ink-100 font-medium">{occurredAtFmt}</div>
+                </div>
+                <div>
+                  <div className="text-ink-400 text-[10.5px]">심각도</div>
+                  <div className="text-ink-100 font-medium">{sevLabel}</div>
+                </div>
+                <div>
+                  <div className="text-ink-400 text-[10.5px]">TLP</div>
+                  <div className="text-ink-100 font-medium">{storedTlp ?? 'AMBER'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 고유 입력 — 담당 수사관, 탐지 경로, 초기 메모 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="담당 수사관">
+                <input
+                  value={investigator}
+                  onChange={(e) => setInvestigator(e.target.value)}
+                  placeholder="이름 입력"
+                  className="input"
+                />
+              </Field>
+              <Field label="탐지 / 신고 경로">
+                <select
+                  value={detectionRoute}
+                  onChange={(e) => setDetectionRoute(e.target.value)}
+                  className="input"
+                >
+                  <option>SIEM 알럿</option>
+                  <option>내부 직원 신고</option>
+                  <option>외부 제보</option>
+                  <option>자동 모니터링</option>
+                  <option>클라우드 보안 알림</option>
+                </select>
+              </Field>
+              <Field label="사고 초기 메모" full>
+                <textarea
+                  rows={2}
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  placeholder="사고 초기 상황, 특이사항 등..."
+                  className="input resize-y"
+                />
+              </Field>
+            </div>
           </div>
         )}
 

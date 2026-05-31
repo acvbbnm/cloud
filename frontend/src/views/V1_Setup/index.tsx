@@ -38,9 +38,9 @@ const V1Setup = () => {
     tlp,
     severity,
     setCsp,
-    setSeverity,
     setCaseId,
     setIncidentType,
+    setSecondaryIncidentTypes,
   } = useCaseStore();
   const showToast = useToastStore((s) => s.show);
   const resetCase = useCaseStore((s) => s.reset);
@@ -250,13 +250,16 @@ const V1Setup = () => {
                 showToast('caseId 누락. Step 1 으로 돌아가 케이스를 생성하세요.');
                 return;
               }
-              setSeverity(config.severity);
-              // M0-2 → PATCH /api/cases/{caseId} — 시스템 구성 영속화
+              // V1.fix.1 (2026-05-31) — severity·occurred_at 은 Step 1 에서 단일 입력.
+              //   Step 2 는 system_config 만 PATCH (severity 덮어쓰기 금지).
+              // V1.fix.2 — dead 8필드 (investigator/memo/detection_route/os_type/
+              //   server_role/server_count/scope_vpc/scope_resources) PATCH 페이로드 포함.
+              //   environment_modifiers 룰에는 미사용이지만 DB 영속화 + V-7 보고서 표시용.
               systemConfigMutation.mutate({
                 caseId,
                 data: {
-                  severity: config.severity,
                   system_config: {
+                    // ── environment_modifiers 트리거 13필드 ──
                     vpc_id: config.vpc_id,
                     region: config.region,
                     services: config.services,
@@ -270,6 +273,15 @@ const V1Setup = () => {
                     data_sensitivity: config.data_sensitivity,
                     sso_enabled: config.sso_enabled,
                     multi_cloud: config.multi_cloud,
+                    // ── V1.fix.2 부가 메타 (보고서·감사 추적용) ──
+                    investigator: config.investigator,
+                    memo: config.memo,
+                    detection_route: config.detection_route,
+                    os_type: config.os_type,
+                    server_role: config.server_role,
+                    server_count: config.server_count,
+                    scope_vpc: config.scope_vpc,
+                    scope_resources: config.scope_resources,
                   },
                 },
               });
@@ -285,10 +297,26 @@ const V1Setup = () => {
                 showToast('caseId 누락. Step 1 으로 돌아가 케이스를 생성하세요.');
                 return;
               }
+              // 단서 루프 multi-stage 확정 가설 누적 (paradigm §23).
+              // confirmed_hypotheses 가 2개 이상이면 각 사고유형별 독립 수집
+              // 가이드를 Step4 탭으로 제공한다. primary 를 제외한 나머지를
+              // secondaryIncidentTypes 로 영속화.
+              const confirmed =
+                useClueTreeStore.getState().response?.confirmed_hypotheses ?? [];
+              const ordered = Array.from(
+                new Set([...confirmed, confirmedIncidentType] as IncidentType[]),
+              );
+              const secondaries = ordered.filter(
+                (t) => t !== confirmedIncidentType,
+              );
+              setSecondaryIncidentTypes(secondaries);
               // M0-3 → PATCH /api/cases/{caseId} — 단서 루프 확정 사고유형 영속화
               finalizeCaseMutation.mutate({
                 caseId,
-                data: { incident_type: confirmedIncidentType as IncidentType },
+                data: {
+                  incident_type: confirmedIncidentType as IncidentType,
+                  secondary_incident_types: secondaries,
+                },
               });
             }}
             isSubmitting={finalizeCaseMutation.isPending}

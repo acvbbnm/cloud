@@ -91,6 +91,27 @@ async def post_brief(req: BriefRequest, db: Session = Depends(get_db)) -> dict:
     return {"status": "ok", "data": data}
 
 
+def _resolve_chat_case_id(req_case_id: Optional[str], db: Session) -> Optional[str]:
+    """채팅 라우터용 caseId 정규화.
+
+    chat / chat/stream 은 본질적으로 case 의존이 없는 자연어 질의 (RAG + KB).
+    하지만 클라이언트(useCaseStore localStorage 등) 가 이전 세션의 stale caseId 를
+    보낼 수 있고, 그 case 가 DB 에 없으면 이전 가드는 404 를 반환해 채팅 자체가
+    동작하지 않는 UX 회귀를 일으켰다 (V-8 / SherpaFab "stream HTTP 404", 2026-05-29).
+
+    정책 (Phase 2.6, 2026-05-29):
+      - caseId 가 None/빈문자열 → 그대로 None 반환 (케이스 미연결 채팅)
+      - caseId 가 유효 + DB 존재 → 그대로 반환 (케이스 컨텍스트 채팅)
+      - caseId 가 유효 + DB 미존재 (stale) → None 으로 fallback (404 던지지 않음)
+
+    brief/suggest/playbook 처럼 case 컨텍스트가 본질인 라우터에는 적용하지 않음.
+    """
+    if not req_case_id:
+        return None
+    case = IncidentCase.get_by_id(db, req_case_id)
+    return req_case_id if case is not None else None
+
+
 @router.post("/chat")
 async def post_chat(req: ChatRequest, db: Session = Depends(get_db)) -> dict:
     """자연어 질의 — RAG 검색 + 응답.
@@ -99,16 +120,13 @@ async def post_chat(req: ChatRequest, db: Session = Depends(get_db)) -> dict:
     sessionId 가 없고 history 가 주어지면 stateless 클라이언트로 간주하여
     history 를 신규 세션에 미리 채우고 그 위에 query 를 더한다 (설계서 5.1절 정합).
 
-    caseId 가 주어지면 존재 여부를 검증하고, 없으면 HTTP 404.
+    caseId 는 선택 — stale 인 경우 None 으로 fallback (Phase 2.6, _resolve_chat_case_id).
     """
-    if req.caseId:
-        case = IncidentCase.get_by_id(db, req.caseId)
-        if case is None:
-            raise _case_not_found()
+    effective_case_id = _resolve_chat_case_id(req.caseId, db)
 
     history = [h.model_dump() for h in (req.history or [])]
     data = AISherpa.chat(
-        case_id=req.caseId,
+        case_id=effective_case_id,
         session_id=req.sessionId,
         query=req.query,
         history=history,
@@ -126,16 +144,13 @@ async def post_chat_stream(req: ChatRequest, db: Session = Depends(get_db)) -> S
       {"type":"done"}                                        종료
 
     UX: 100초 대기 → 첫 토큰까지 ~5초 + 점진 표시. 사용자 체감 응답시간 1/3.
-    인증·case 검증은 동기 chat 과 동일.
+    caseId 정책은 동기 chat 과 동일 (stale → None fallback).
     """
-    if req.caseId:
-        case = IncidentCase.get_by_id(db, req.caseId)
-        if case is None:
-            raise _case_not_found()
+    effective_case_id = _resolve_chat_case_id(req.caseId, db)
 
     history = [h.model_dump() for h in (req.history or [])]
     gen = AISherpa.chat_stream(
-        case_id=req.caseId,
+        case_id=effective_case_id,
         session_id=req.sessionId,
         query=req.query,
         history=history,

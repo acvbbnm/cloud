@@ -16,12 +16,24 @@ BACKEND = Path(__file__).resolve().parent.parent
 
 
 def test_gap_completion_rate_returns_none_when_no_requirements():
-    """gap_detector — required_ids 없으면 completion_rate=None 반환 (UNCLASSIFIED 보호)."""
+    """gap_detector — required_ids 없으면 completion_rate=None 반환 (UNCLASSIFIED 보호).
+
+    2026-05-28 (geunhyung GapDetector v2 머지 후): 다른 비율 계산 (percent, mapping_rate)
+    의 `else 0.0` 까지 잘못 검출되던 패턴 → completion_rate 라인만 정확히 검사.
+    """
     src = (BACKEND / "core" / "analysis" / "gap_detector.py").read_text(encoding="utf-8")
-    # else None 패턴이 있어야 함 (else 0.0 으로 회귀 차단)
-    assert "else None" in src, "completion_rate None fallback 누락"
-    # 구 동작 (else 0.0) 잔존 시 0% vs 미정의 혼동
-    assert "else 0.0\n" not in src and "else 0.0)" not in src, (
+    # completion_rate 블록만 정확히 추출 (앞뒤 5 라인 컨텍스트)
+    lines = src.split("\n")
+    block_lines: list[str] = []
+    for i, line in enumerate(lines):
+        if "completion_rate" in line and "=" in line:
+            # 다음 5 라인까지 블록으로 포함 (round/else 표현식)
+            block_lines.extend(lines[i : i + 6])
+    block = "\n".join(block_lines)
+    # completion_rate 블록에 else None 있어야 함 (UNCLASSIFIED 안전 표시)
+    assert "else None" in block, "completion_rate None fallback 누락"
+    # completion_rate 블록에 else 0.0 잔존 차단 (0% vs 미정의 혼동)
+    assert "else 0.0" not in block, (
         "completion_rate 가 여전히 0.0 fallback — UNCLASSIFIED 케이스 표시 깨짐"
     )
 

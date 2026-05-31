@@ -16,8 +16,40 @@ export type IncidentType =
   | 'MISCONFIG_EXPOSURE'
   | 'PHISH_INITIAL_ACCESS'
   | 'INSIDER_THREAT'
-  //  미분류 
+  //  미분류
   | 'UNCLASSIFIED';
+
+/**
+ * R.2 (hard, 2026-05-28) — 사고유형 Kill Chain 시계방향 배치 단일 소스.
+ *
+ * 하드코딩 감사 #5 해결: IncidentTypeCompass.tsx 가 같은 배열을 자체 정의해서
+ * 사고유형 추가/순서 변경 시 두 파일 동기화 부담이 있었음. types/index.ts 단일
+ * 소스로 통일.
+ *
+ * 12시부터 시계방향으로 MITRE Cloud Kill Chain 시간순 (Initial Access → Impact).
+ * UNCLASSIFIED 는 Kill Chain 매핑 없으므로 제외 (Exclude<...> 로 타입 narrowing).
+ *
+ *     12  PHISH_INITIAL_ACCESS    (Phase 1, Initial Access)
+ *   1:30  CREDENTIAL_THEFT        (Phase 2, Credential Access)
+ *      3  PRIVILEGE_ESCALATION    (Phase 3, Privilege Esc.)
+ *   4:30  INSIDER_THREAT          (Phase 4, Discovery/Lateral)
+ *      6  MISCONFIG_EXPOSURE      (Phase 4, Discovery/Lateral)
+ *   7:30  AUDIT_LOG_TAMPERING     (Phase 5, Defense Evasion)
+ *      9  DATA_EXFILTRATION       (Phase 6, Exfiltration)
+ *  10:30  RANSOMWARE              (Phase 7, Impact)
+ */
+export const INCIDENT_TYPES_KILL_CHAIN_ORDER: ReadonlyArray<
+  Exclude<IncidentType, 'UNCLASSIFIED'>
+> = [
+  'PHISH_INITIAL_ACCESS',
+  'CREDENTIAL_THEFT',
+  'PRIVILEGE_ESCALATION',
+  'INSIDER_THREAT',
+  'MISCONFIG_EXPOSURE',
+  'AUDIT_LOG_TAMPERING',
+  'DATA_EXFILTRATION',
+  'RANSOMWARE',
+] as const;
 
 // dev3 신규 — TheHive 5 차용 (정보 공유 등급)
 export type TLP = 'RED' | 'AMBER' | 'GREEN' | 'WHITE';
@@ -145,20 +177,61 @@ export interface MapStats {
   events: AttackEventItem[];
 }
 
+export interface GapMissingTarget {
+  target_id: string;
+  log_type: string;
+  evidence_role: EvidenceRole;
+  priority: number;
+}
+
+// multi-type (2026-05-31): 단서 루프에서 2개 이상 확정된 사고유형별 독립 갭.
+export interface GapPerType {
+  incident_type: IncidentType;
+  gap_type: GapType;
+  missing: GapMissingTarget[];
+  summary: string;
+  recommendation: string;
+  completionRate: number | null;
+}
+
 export interface GapResultResponse {
   gap_id: string;
   case_id: string;
   gap_type: GapType;
-  missing: {
-    target_id: string;
-    log_type: string;
-    evidence_role: EvidenceRole;
-    priority: number;
-  }[];
+  missing: GapMissingTarget[];
   summary: string;
   recommendation: string;
-  completionRate: number;
+  completionRate: number | null;
   created_at: string;
+  // v2 (2026-05-15) — 4개 참고자료 반영 부가 진단. backend 가 항상 포함하므로 optional 처리.
+  /** [R4 Naver Cloud 실무] priority 가중 수집 점수 (P1=10, P2=7, P3=3, P4=1) */
+  priorityScore?: {
+    collected: number;
+    missing: number;
+    total: number;
+    /** 0~100 */
+    percent: number;
+  };
+  /** [R1 ATT&CK 매트릭스 논문] kill-chain 단계 커버리지 */
+  tacticCoverage?: {
+    covered: number;
+    total: number;
+    byTactic: Record<string, number>;
+    missingTactics: string[];
+  };
+  /** [R3 SentinelOne anti-forensics] 시간 축 비정상 공백 — 로그 삭제 후보 */
+  timeGaps?: {
+    from: string;
+    to: string;
+    durationMinutes: number;
+    suspicion: 'anti_forensic_candidate' | string;
+  }[];
+  /** [R2 Google Cloud bad log config] REQUIRED vs CORROBORATING 비대칭 등 수집 구성 경고 */
+  badConfigSignals?: string[];
+  // P.24 (2026-05-31 jingyu d39b1e0 흡수) — 다중 사고유형 → 유형별 갭 판정
+  // 단일 유형이면 1개 항목. 사용자 V-1 Step3 에서 confirmed_hypotheses 다중 시 활용.
+  incidentTypes?: IncidentType[];
+  perType?: GapPerType[];
 }
 
 export interface PaginatedData<T> {
@@ -378,6 +451,8 @@ export interface GuideV2Target {
   collection_methods: Record<string, GuideV2CollectionMethod>;
   sources: GuideV2SourceRef[];
   collected: boolean;
+  // Phase L (2026-05-31) — 단서 루프 신호(전술)와 연관되어 부스트된 단계인지
+  clue_relevant?: boolean;
 }
 
 export interface GuideV2PhaseGroup {
@@ -416,6 +491,30 @@ export interface GuideV2AppliedModifier {
   source: string;
 }
 
+// Phase L (2026-05-31) — 단서 루프 신호 요약 (UI 강조·배지·근거 표시용)
+export interface GuideV2ObservableSummary {
+  type: string;
+  count: number;
+}
+
+export interface GuideV2ClueObservable {
+  type: string;
+  value: string;
+  confidence?: string | null;
+  source?: string | null;
+}
+
+export interface GuideV2ClueSignals {
+  has_signal: boolean;
+  clue_techniques: string[]; // 채택 단서 유래 ATT&CK 기법 ID
+  evidenced_techniques: string[]; // 업로드 로그(attack_events) 유래 기법 ID
+  signal_techniques: string[]; // 위 둘의 합집합
+  signal_tactics: string[]; // 기법 → 전술 환산 (부스트 기준)
+  boosted_category_ids: string[]; // 단서 연관으로 우선순위 부스트된 카테고리
+  observables: GuideV2ClueObservable[];
+  observable_summary: GuideV2ObservableSummary[];
+}
+
 export interface GuideV2Response {
   caseId: string;
   incidentType: string;
@@ -428,6 +527,8 @@ export interface GuideV2Response {
   version: 'v2';
   // 2026-05-23 사이클 6 — V-1 Step 4 시드 풍부 메타
   seed_targets?: Array<Record<string, unknown>>;
+  // Phase L (2026-05-31) — 단서 루프 신호 요약
+  clue_signals?: GuideV2ClueSignals;
   // Phase K (2026-05-26 byungwoo) — preview 응답 식별 마커
   preview?: boolean;
 }

@@ -266,10 +266,15 @@ async def recon_options() -> dict:
         }
       }
     """
-    # 정찰 카테고리 — 사고유형 무관 약한 신호 (NIST SP 800-86 Initial Triage)
+    # 정찰 카테고리 — 사고유형 무관 약한 신호 (NIST SP 800-86 Initial Triage).
+    #
+    # V1.fix.8 (2026-05-31, byungwoo) — Q1_inception 제거.
+    #   "어떻게 사고를 알게 됐나요?" 는 발견 경로 메타 정보로 사고유형 변별력 0.
+    #   V1.fix.4 평탄화 후 IG=0 단서가 됨 → "다음 단서 후보" 자리를 차지하면 안 됨.
+    #   사고 인지 경로는 Step 2 basic 탭의 `detection_route` 가 단일 입력점.
+    #   카탈로그의 Q1_inception:* entry 자체는 보존 (V-7 보고서 메타 표시용).
     RECON_CATEGORIES = [
-        ("Q1_inception", "어떻게 사고를 알게 됐나요?"),
-        ("Q2A_alert_type", "어떤 이상이 있었나요? (선택)"),
+        ("Q2A_alert_type", "어떤 이상이 있었나요?"),
     ]
 
     catalog = load_catalog()

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -33,7 +34,12 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from core.intake.modifier_eval import eval_operator, resolve_field
-from db.models import IncidentCaseModel, RawEventModel
+from db.models import (
+    AttackEventModel,
+    IncidentCaseModel,
+    OCSFEventModel,
+    RawEventModel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +192,45 @@ def _load_modifiers() -> dict:
     with open(p, encoding="utf-8") as fp:
         _cache["modifiers"] = json.load(fp)
     return _cache["modifiers"]
+
+
+def _load_technique_tactic_map() -> dict[str, str]:
+    """`attack_rules/rules.json` → {technique_id: tactic} 매핑 로딩 + 캐싱.
+
+    Phase L (2026-05-31) — 단서 루프 기법 ID 를 Kill Chain 단계(전술)로 환산하기 위함.
+    rules.json 의 tactic 은 사람이 읽는 전술명("Credential Access" 등) 으로 본 모듈의
+    _PHASE_METADATA 키 / 카테고리 kill_chain_phases 와 동일 네임스페이스.
+
+    서브기법(T1078.004)·기반기법(T1078) 양쪽 키를 모두 등록해 단서·로그가 어느 쪽
+    표기를 쓰든 전술 환산이 가능하게 한다.
+    """
+    if "tech_tactic" in _cache:
+        return _cache["tech_tactic"]  # type: ignore[return-value]
+    out: dict[str, str] = {}
+    p = settings.DATA_DIR / "attack_rules" / "rules.json"
+    if not p.exists():
+        logger.warning("attack_rules/rules.json missing: %s", p)
+        _cache["tech_tactic"] = out
+        return out
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        _cache["tech_tactic"] = out
+        return out
+    rules = doc.get("rules") if isinstance(doc, dict) else doc
+    for r in rules or []:
+        if not isinstance(r, dict):
+            continue
+        tid = r.get("technique_id")
+        tactic = r.get("tactic")
+        if not tid or not tactic:
+            continue
+        out.setdefault(tid, tactic)
+        # 기반기법 키도 등록 (서브기법만 알려진 경우의 폴백)
+        base = tid.split(".", 1)[0]
+        out.setdefault(base, tactic)
+    _cache["tech_tactic"] = out
+    return out
 
 
 def invalidate_cache() -> None:
@@ -374,18 +419,21 @@ def _apply_environment_modifiers(
 
 
 def _compute_priority(cat: dict) -> int:
-    """기본 volatility_priority + modifier 부스팅 누적."""
+    """기본 volatility_priority + modifier 부스팅 + 단서 부스팅 누적."""
     base = int(cat.get("volatility_priority", 0))
-    return base + int(cat.get("__boost", 0))
+    return base + int(cat.get("__boost", 0)) + int(cat.get("__clue_boost", 0))
 
 
 def _priority_basis(cat: dict) -> str:
     """우선순위 산출 근거 한 줄 (UI 표시용)."""
     base = int(cat.get("volatility_priority", 0))
     boost = int(cat.get("__boost", 0))
+    clue_boost = int(cat.get("__clue_boost", 0))
     basis = cat.get("volatility_basis", f"NIST 휘발성 P{base}")
     if boost > 0:
-        return f"{basis} + 환경 보정 +{boost}"
+        basis = f"{basis} + 환경 보정 +{boost}"
+    if clue_boost > 0:
+        basis = f"{basis} + 단서 연관 +{clue_boost}"
     return basis
 
 
@@ -513,6 +561,8 @@ def _group_by_phase(
                 "sources": _sources_from_kb(cat),
                 # Phase G: raw_events.action / eventId 매칭 결과
                 "collected": bool(collected_map.get(cat_id, False)),
+                # Phase L: 단서 루프 신호(전술)와 연관되어 부스트된 단계인지
+                "clue_relevant": int(cat.get("__clue_boost", 0)) > 0,
             }
             phase_targets.append(target)
 
@@ -722,6 +772,227 @@ def _load_v1_seed_targets(incident_type: str, csp: str) -> list[dict]:
 
 
 # ─────────────────────────────────────────────────────────────
+# Phase L (2026-05-31) — 단서 루프 신호 반영 (동적 우선순위·강조)
+# ─────────────────────────────────────────────────────────────
+# 가이드는 더 이상 "사고유형 + system_config" 만 보는 정적 매트릭스가 아니라,
+# 단서 루프(Evidence Tree)가 확보한 두 가지 신호를 함께 반영한다:
+#   1) 확보된 ATT&CK 기법 ID  — (a) 채택 단서 → clue_to_attack 매핑,
+#                               (b) 업로드 로그 → attack_events 매핑
+#   2) 확보된 Observable        — case.observables (ip/cve/hash/domain/...)
+# 기법은 전술(Kill Chain 단계) 로 환산해 해당 단계의 카테고리를 우선순위 부스트하고,
+# v1 seed_target 은 기법 ID 교집합으로 강조(clue_relevant)·상단 정렬한다.
+# 이 신호는 "수집 항목을 새로 만들지" 않는다 — 표준 기반 정적 카탈로그의 우선순위·강조만
+# 바꾼다(AI 가 판단하지 않는다는 원칙 유지). 신호가 없으면 기존 동작과 100% 동일.
+
+_CLUE_PHASE_BOOST = 40  # 단서 연관 단계 카테고리에 더하는 우선순위 가중치
+
+
+def _accepted_clue_keys(case: IncidentCaseModel) -> list[str]:
+    """triage_state.evidence_tree 에서 채택된(루트 제외) 단서 clue_key 목록."""
+    ts = case.triage_state or {}
+    if not isinstance(ts, dict):
+        return []
+    et = ts.get("evidence_tree")
+    if not isinstance(et, dict):
+        return []
+    nodes = et.get("nodes") or {}
+    root_id = et.get("root_id")
+    out: list[str] = []
+    for nid, node in nodes.items():
+        if not isinstance(node, dict):
+            continue
+        if nid == root_id or node.get("parent_id") is None:
+            continue  # 루트(uniform prior) 는 단서 아님
+        ck = node.get("clue_key")
+        if ck:
+            out.append(ck)
+    return out
+
+
+_TECHNIQUE_ID_RE = re.compile(r"^T\d{4}(?:\.\d{3})?$")
+
+
+def _clue_techniques(case: IncidentCaseModel) -> set[str]:
+    """채택 단서 → ATT&CK 기법 ID 집합.
+
+    두 경로를 합집합:
+      1) `TECHNIQUE:T1021` 처럼 단서 키에 기법 ID 가 직접 들어간 경우 (direct_input·log_analysis)
+      2) 일반 단서 키 → clue_to_attack 매핑 (`Q2A:abnormal_login` → [T1078.004])
+    """
+    keys = _accepted_clue_keys(case)
+    if not keys:
+        return set()
+    out: set[str] = set()
+    # 1) 키에 박힌 기법 ID 직접 추출
+    for k in keys:
+        if ":" in k:
+            _, _, val = k.partition(":")
+            val = val.strip()
+            if _TECHNIQUE_ID_RE.match(val):
+                out.add(val)
+    # 2) clue_to_attack 매핑
+    try:
+        from core.intake import bayes_net  # lazy — 순환 import·startup 비용 회피
+
+        mappings = bayes_net.load_clue_to_attack().get("mappings", {})
+    except Exception:
+        mappings = {}
+    for k in keys:
+        techs = (mappings.get(k) or {}).get("techniques") or []
+        for t in techs:
+            if t:
+                out.add(t)
+    return out
+
+
+def _evidenced_techniques(db: Session, case_id: str) -> tuple[set[str], set[str]]:
+    """업로드 로그 → attack_events 매핑된 (기법 ID 집합, 전술 집합).
+
+    attack_events 는 case_id 가 없으므로 ocsf_events → raw_events.case_id 로 조인.
+    """
+    try:
+        rows = db.execute(
+            select(AttackEventModel.technique_id, AttackEventModel.tactic)
+            .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
+            .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+            .where(RawEventModel.case_id == case_id)
+        ).all()
+    except Exception:
+        return set(), set()
+    techs: set[str] = set()
+    tactics: set[str] = set()
+    for tid, tactic in rows:
+        if tid:
+            techs.add(tid)
+        if tactic:
+            tactics.add(tactic)
+    return techs, tactics
+
+
+def _techniques_to_tactics(techniques: set[str]) -> set[str]:
+    """기법 ID 집합 → 전술명 집합 (rules.json 매핑, 서브/기반기법 폴백)."""
+    if not techniques:
+        return set()
+    tmap = _load_technique_tactic_map()
+    out: set[str] = set()
+    for t in techniques:
+        tactic = tmap.get(t) or tmap.get(t.split(".", 1)[0])
+        if tactic:
+            out.add(tactic)
+    return out
+
+
+def _normalize_observables(case: IncidentCaseModel) -> list[dict]:
+    """case.observables → 슬림 표시용 리스트."""
+    obs = case.observables or []
+    if not isinstance(obs, list):
+        return []
+    out: list[dict] = []
+    for o in obs:
+        if not isinstance(o, dict):
+            continue
+        val = o.get("value")
+        if not val:
+            continue
+        out.append({
+            "type": o.get("type") or "other",
+            "value": val,
+            "confidence": o.get("confidence"),
+            "source": o.get("source"),
+        })
+    return out
+
+
+def _collect_clue_signals(db: Session, case: IncidentCaseModel) -> dict:
+    """단서 루프 신호를 한 번에 수집해 가이드 빌더에 전달할 dict 로 반환.
+
+    Returns dict:
+        clue_techniques     : 채택 단서에서 유래한 기법 ID 집합
+        evidenced_techniques: attack_events(업로드 로그) 기법 ID 집합
+        signal_techniques   : 위 둘의 합집합
+        signal_tactics      : signal_techniques + attack_events.tactic 의 전술 집합
+        observables         : 정규화된 observable 리스트
+        observable_summary  : [{type, count}] 빈도 요약
+        has_signal          : 신호가 하나라도 있으면 True
+    """
+    clue_techs = _clue_techniques(case)
+    evidenced_techs, evidenced_tactics = _evidenced_techniques(db, case.case_id)
+    signal_techs = clue_techs | evidenced_techs
+    signal_tactics = _techniques_to_tactics(signal_techs) | evidenced_tactics
+
+    observables = _normalize_observables(case)
+    type_counts: dict[str, int] = {}
+    for o in observables:
+        type_counts[o["type"]] = type_counts.get(o["type"], 0) + 1
+    observable_summary = [
+        {"type": t, "count": c}
+        for t, c in sorted(type_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+
+    has_signal = bool(signal_techs or signal_tactics or observables)
+    return {
+        "clue_techniques": clue_techs,
+        "evidenced_techniques": evidenced_techs,
+        "signal_techniques": signal_techs,
+        "signal_tactics": signal_tactics,
+        "observables": observables,
+        "observable_summary": observable_summary,
+        "has_signal": has_signal,
+    }
+
+
+def _apply_clue_boost(categories: list[dict], signal_tactics: set[str]) -> set[str]:
+    """signal_tactics 와 겹치는 kill_chain_phases 카테고리에 단서 부스트 적용 (in-place).
+
+    Returns: 부스트된 category_id 집합 (UI 강조·정렬용).
+    """
+    boosted: set[str] = set()
+    if not signal_tactics:
+        return boosted
+    for cat in categories:
+        cat_phases = set(cat.get("kill_chain_phases", []))
+        if cat_phases & signal_tactics:
+            cat["__clue_boost"] = cat.get("__clue_boost", 0) + _CLUE_PHASE_BOOST
+            cid = cat.get("category_id")
+            if cid:
+                boosted.add(cid)
+    return boosted
+
+
+def _annotate_seed_targets(
+    seed_targets: list[dict], signal_techniques: set[str]
+) -> list[dict]:
+    """seed_target.mitre_techniques ∩ signal_techniques → matched_techniques/clue_relevant.
+
+    clue_relevant 인 항목을 (기존 REQUIRED·priority 정렬은 보존한 채) 상단으로 끌어올린다.
+    """
+    if not seed_targets:
+        return seed_targets
+    for t in seed_targets:
+        techs = t.get("mitre_techniques") or []
+        matched = sorted(
+            {
+                mt
+                for mt in techs
+                if mt in signal_techniques
+                or mt.split(".", 1)[0] in signal_techniques
+                or any(s.split(".", 1)[0] == mt for s in signal_techniques)
+            }
+        )
+        t["matched_techniques"] = matched
+        t["clue_relevant"] = bool(matched)
+    # 단서 연관 우선 → 기존 정렬 키(REQUIRED 우선, priority 내림차순) 보존
+    seed_targets.sort(
+        key=lambda x: (
+            not x.get("clue_relevant", False),
+            x.get("evidence_role") != "REQUIRED",
+            -(x.get("priority") or 0),
+        )
+    )
+    return seed_targets
+
+
+# ─────────────────────────────────────────────────────────────
 # 공개 API
 # ─────────────────────────────────────────────────────────────
 
@@ -796,6 +1067,14 @@ class CollectionGuideV2:
             categories, system_config
         )
 
+        # 3.5) Phase L — 단서 루프 신호 수집 + 동적 우선순위 부스트
+        # 채택 단서·업로드 로그의 ATT&CK 기법 → 전술 환산 → 해당 단계 카테고리 부스트.
+        # 신호가 없으면 boosted = ∅ 이라 기존 동작과 동일.
+        clue_signals = _collect_clue_signals(db, case)
+        clue_boosted_ids = _apply_clue_boost(
+            categories, clue_signals["signal_tactics"]
+        )
+
         # 4) Phase G — raw_events 매칭 기반 수집 진행도 산출
         # preview 모드에서도 동일 — 이미 업로드된 로그가 가이드 항목과 매칭되는지
         # 미리 확인 가능 (예: 사고유형 확정 전이라도 "이 가설이면 70% 수집됨")
@@ -807,7 +1086,11 @@ class CollectionGuideV2:
         grouped = _group_by_phase(categories, phases, collected_map)
 
         # 6) 사이클 6 — v1 시드 풍부 메타 (hint/cmd/mitre_techniques) 추가 노출
-        seed_targets = _load_v1_seed_targets(incident_type, csp)
+        #    Phase L — 단서 기법 ID 교집합으로 강조·상단 정렬
+        seed_targets = _annotate_seed_targets(
+            _load_v1_seed_targets(incident_type, csp),
+            clue_signals["signal_techniques"],
+        )
 
         # 7) 응답 조립 — environment_warnings 는 phase 와 분리하여 별도 영역
         return {
@@ -821,6 +1104,17 @@ class CollectionGuideV2:
             "source_standards": cls.SOURCE_STANDARDS,
             # 2026-05-23 사이클 6 — v1 시드 풍부 메타 (V-1 Step 4 가이드 표시용)
             "seed_targets": seed_targets,
+            # Phase L (2026-05-31) — 단서 루프 신호 요약 (UI 강조·배지·근거 표시용)
+            "clue_signals": {
+                "has_signal": clue_signals["has_signal"],
+                "clue_techniques": sorted(clue_signals["clue_techniques"]),
+                "evidenced_techniques": sorted(clue_signals["evidenced_techniques"]),
+                "signal_techniques": sorted(clue_signals["signal_techniques"]),
+                "signal_tactics": sorted(clue_signals["signal_tactics"]),
+                "boosted_category_ids": sorted(clue_boosted_ids),
+                "observables": clue_signals["observables"],
+                "observable_summary": clue_signals["observable_summary"],
+            },
             "version": "v2",
             # Phase K — 클라이언트가 preview 응답인지 식별 (학술·로그 트레이스용)
             "preview": preview,

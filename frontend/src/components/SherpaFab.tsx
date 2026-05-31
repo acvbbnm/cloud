@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
 import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
@@ -181,7 +182,13 @@ const SherpaFab = () => {
         '',
       ];
 
-      if (gap.current_missing?.length) {
+      if (gap.current_incident_type === 'UNCLASSIFIED') {
+        // 사고유형 미확정 — 기대 기법 목록이 없어 "누락" 계산 자체가 불가.
+        // "누락 없음" 으로 오인되지 않도록 별도 안내 (후보 사고유형으로 유도).
+        lines.push('■ 사고유형이 아직 확정되지 않아 "기대 기법 대비 누락"을 계산할 수 없습니다.');
+        lines.push('  → 아래 후보 사고유형을 참고해 V-1 단서루프에서 사고유형을 확정하면');
+        lines.push('     빠졌을 가능성이 높은 기법을 추정해 드립니다.');
+      } else if (gap.current_missing?.length) {
         lines.push('■ 빠졌을 가능성이 높은 기법 (이 사고유형의 기대 기법 중 미관측)');
         gap.current_missing.forEach((t) =>
           lines.push(`  · ${t} — V-2 로그·V-6 히트맵에서 해당 기법 흔적을 우선 확인하세요.`),
@@ -215,11 +222,23 @@ const SherpaFab = () => {
       updateLast({ text: lines.join('\n'), source: '케이스 매핑 분석' });
       setIsStreaming(false);
     } catch (e) {
-      updateLast({
-        text:
-          '매핑 분석 조회에 실패했습니다. 백엔드(/api/sherpa/validate-incident-type) 확인이 필요합니다.\n' +
-          `(상세: ${e instanceof Error ? e.message : String(e)})`,
-      });
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+      if (status === 404) {
+        // 케이스가 localStorage 엔 있지만 서버 DB 엔 없음 (stale — DB 리셋·다른 환경·만료).
+        // chat/stream 의 stale caseId fallback 과 동일 취지 — 404 를 사용자에게 노출하지 않는다.
+        updateLast({
+          text:
+            '연결된 케이스를 서버에서 찾을 수 없습니다 (만료되었거나 다른 환경의 케이스).\n' +
+            '- V-1에서 사고 케이스를 새로 생성한 뒤 V-3 정규화·V-4 ATT&CK 매핑을 수행해 주세요.\n\n' +
+            '※ 최종 판단은 수사관께서 직접 수행해 주세요.',
+        });
+      } else {
+        updateLast({
+          text:
+            '매핑 분석 조회에 실패했습니다. 백엔드(/api/sherpa/validate-incident-type) 확인이 필요합니다.\n' +
+            `(상세: ${e instanceof Error ? e.message : String(e)})`,
+        });
+      }
       setIsStreaming(false);
     }
   };

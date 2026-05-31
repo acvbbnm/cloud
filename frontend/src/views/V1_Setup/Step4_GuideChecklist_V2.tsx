@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
 import { useCaseStore } from '@/stores/useCaseStore';
-import { getGuideV2 } from '@/api/intake';
+import { getGuideV2, getGuidePreview } from '@/api/intake';
 
 import type {
   GuideV2AppliedModifier,
@@ -14,6 +14,7 @@ import type {
   GuideV2PhaseGroup,
   GuideV2SourceRef,
   GuideV2Target,
+  IncidentType,
 } from '@/types';
 
 interface Step4V2Props {
@@ -61,7 +62,11 @@ const INCIDENT_TYPE_KO: Record<string, string> = {
   PRIVILEGE_ESCALATION: '권한 상승',
   DATA_EXFILTRATION: '데이터 유출',
   AUDIT_LOG_TAMPERING: '감사 로그 변조',
-  MULTI_CSP_LATERAL: '멀티 CSP 횡이동',
+  RANSOMWARE: '랜섬웨어',
+  MISCONFIG_EXPOSURE: '설정 오류 노출',
+  PHISH_INITIAL_ACCESS: '피싱 초기 침투',
+  INSIDER_THREAT: '내부자 위협',
+  UNCLASSIFIED: '미분류',
 };
 
 const CSP_KO: Record<string, string> = {
@@ -793,18 +798,29 @@ const EnvWarningsCard = ({ items }: { items: GuideV2EnvWarning[] }) => {
 const CHECKED_KEY_PREFIX = 'ai-sherpa-v2-collected:';
 const VIEW_MODE_KEY = 'ai-sherpa-v2-view-mode';
 
-const loadCheckedKeys = (caseId: string): Set<string> => {
+// multi-type: 사고유형별 수집 진행을 분리 추적 (caseId:incidentType 네임스페이스).
+const checkedStorageKey = (caseId: string, incidentType: string): string =>
+  `${CHECKED_KEY_PREFIX}${caseId}:${incidentType}`;
+
+const loadCheckedKeys = (caseId: string, incidentType: string): Set<string> => {
   try {
-    const raw = localStorage.getItem(CHECKED_KEY_PREFIX + caseId);
+    const raw = localStorage.getItem(checkedStorageKey(caseId, incidentType));
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
   }
 };
 
-const saveCheckedKeys = (caseId: string, keys: Set<string>): void => {
+const saveCheckedKeys = (
+  caseId: string,
+  incidentType: string,
+  keys: Set<string>,
+): void => {
   try {
-    localStorage.setItem(CHECKED_KEY_PREFIX + caseId, JSON.stringify([...keys]));
+    localStorage.setItem(
+      checkedStorageKey(caseId, incidentType),
+      JSON.stringify([...keys]),
+    );
   } catch {
     // ignore
   }
@@ -822,21 +838,48 @@ const loadViewMode = (): ViewMode => {
 
 const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
   const caseId = useCaseStore((s) => s.caseId);
+  const primaryType = useCaseStore((s) => s.incidentType);
+  const secondaryTypes = useCaseStore((s) => s.secondaryIncidentTypes);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<GuideV2Target | null>(null);
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
 
+  // 단서 루프에서 확정된 사고유형 목록 — primary(케이스 확정값) + secondary(부 가설).
+  // 2개 이상이면 탭으로 각 사고유형별 독립 수집 가이드를 전환 제공.
+  const typeList = (
+    [primaryType, ...secondaryTypes].filter(Boolean) as IncidentType[]
+  ).filter((t, i, arr) => arr.indexOf(t) === i);
+  const isMulti = typeList.length >= 2;
+  const [selectedType, setSelectedType] = useState<IncidentType | null>(
+    typeList[0] ?? null,
+  );
+  // primary 가 비동기로 채워지거나 목록이 바뀌면 선택 보정.
+  useEffect(() => {
+    if (typeList.length === 0) return;
+    if (!selectedType || !typeList.includes(selectedType)) {
+      setSelectedType(typeList[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeList.join('|')]);
+
+  // primary 는 케이스에 확정 저장된 유형 → getGuideV2.
+  // secondary 는 환경 보정 미리보기 → getGuidePreview(동일 GuideV2Response 형태).
+  const activeType = selectedType ?? typeList[0] ?? null;
+  const isPrimaryActive = !!activeType && activeType === primaryType;
   const guideQuery = useQuery({
-    queryKey: ['guide-v2', caseId],
-    queryFn: () => getGuideV2(caseId!),
-    enabled: !!caseId,
+    queryKey: ['guide-v2', caseId, activeType],
+    queryFn: () =>
+      isPrimaryActive
+        ? getGuideV2(caseId!)
+        : getGuidePreview(caseId!, activeType as IncidentType),
+    enabled: !!caseId && !!activeType,
     staleTime: 30_000,
   });
 
   useEffect(() => {
-    if (caseId) setCheckedKeys(loadCheckedKeys(caseId));
-  }, [caseId]);
+    if (caseId && activeType) setCheckedKeys(loadCheckedKeys(caseId, activeType));
+  }, [caseId, activeType]);
 
   const switchView = (m: ViewMode) => {
     setViewMode(m);
@@ -845,6 +888,14 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
     } catch {
       // ignore
     }
+  };
+
+  const handleSelectType = (t: IncidentType) => {
+    if (t === activeType) return;
+    setSelectedType(t);
+    // 가이드가 바뀌므로 우측 KB 패널/선택 초기화.
+    setSelectedKey(null);
+    setSelectedTarget(null);
   };
 
   const handleSelect = (key: string, t: GuideV2Target) => {
@@ -862,7 +913,7 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
-      if (caseId) saveCheckedKeys(caseId, next);
+      if (caseId && activeType) saveCheckedKeys(caseId, activeType, next);
       return next;
     });
   };
@@ -909,6 +960,56 @@ const Step4GuideChecklistV2 = ({ onPrev, onComplete }: Step4V2Props) => {
 
   return (
     <div className="animate-fade-up">
+      {/* 다중 사고유형 탭 — 단서 루프에서 2개 이상 확정 시 각 유형별 독립 가이드 전환 */}
+      {isMulti && (
+        <div className="panel p-3 mb-3">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className="eyebrow">단서 루프 확정 사고유형 {typeList.length}종</span>
+            <span className="text-[10.5px] text-ink-400">
+              번호를 눌러 사고유형별 수집 가이드를 전환하세요 (각각 독립 진행)
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {typeList.map((t, i) => {
+              const active = t === activeType;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => handleSelectType(t)}
+                  className={
+                    active
+                      ? 'flex items-center gap-1.5 px-3 py-1.5 rounded text-[11.5px] font-semibold bg-brand-teal text-ink-950 transition-colors'
+                      : 'flex items-center gap-1.5 px-3 py-1.5 rounded text-[11.5px] text-ink-300 border border-ink-700 hover:border-ink-500 hover:text-ink-100 transition-colors'
+                  }
+                  title={`${INCIDENT_TYPE_KO[t] ?? t} 수집 가이드 보기`}
+                >
+                  <span
+                    className={
+                      active
+                        ? 'inline-flex items-center justify-center w-4 h-4 rounded-full bg-ink-950/30 text-[10px] font-bold'
+                        : 'inline-flex items-center justify-center w-4 h-4 rounded-full bg-ink-800 text-[10px] font-bold'
+                    }
+                  >
+                    {i + 1}
+                  </span>
+                  {INCIDENT_TYPE_KO[t] ?? t}
+                  {t === primaryType && (
+                    <span
+                      className={
+                        active ? 'text-[9px] opacity-80' : 'text-[9px] text-brand-teal'
+                      }
+                    >
+                      주
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div className="panel p-4 border-l-[3px] border-l-brand-teal mb-3">
         <div className="flex items-center gap-2 mb-1 flex-wrap">

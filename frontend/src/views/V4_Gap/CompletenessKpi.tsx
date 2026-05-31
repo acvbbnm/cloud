@@ -1,14 +1,23 @@
 interface CompletenessKpiProps {
-  rate: number;
+  rate: number | null;
   label: string;
 }
 
 const CompletenessKpi = ({ rate, label }: CompletenessKpiProps) => {
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
-  const filled = (rate / 100) * circumference;
+  // 필수 증거 미정의(UNCLASSIFIED 등) — rate null → 게이지 빈 채로 "N/A".
+  const safeRate = rate ?? 0;
+  const filled = (safeRate / 100) * circumference;
   const offset = circumference - filled;
-  const color = rate === 100 ? '#14D9B0' : rate >= 60 ? '#FBB13B' : '#FF4D6D';
+  const color =
+    rate === null
+      ? '#5B6478'
+      : safeRate === 100
+      ? '#14D9B0'
+      : safeRate >= 60
+      ? '#FBB13B'
+      : '#FF4D6D';
 
   return (
     <div className="panel p-6 flex flex-col items-center gap-3 min-w-[220px]">
@@ -33,10 +42,10 @@ const CompletenessKpi = ({ rate, label }: CompletenessKpiProps) => {
           textAnchor="middle"
           dominantBaseline="central"
           fill={color}
-          fontSize="34"
+          fontSize={rate === null ? 22 : 34}
           fontWeight="800"
         >
-          {rate}%
+          {rate === null ? 'N/A' : `${rate}%`}
         </text>
       </svg>
       <div className="text-[13px] font-bold" style={{ color }}>

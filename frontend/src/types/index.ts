@@ -177,19 +177,31 @@ export interface MapStats {
   events: AttackEventItem[];
 }
 
+export interface GapMissingTarget {
+  target_id: string;
+  log_type: string;
+  evidence_role: EvidenceRole;
+  priority: number;
+}
+
+// multi-type (2026-05-31): 단서 루프에서 2개 이상 확정된 사고유형별 독립 갭.
+export interface GapPerType {
+  incident_type: IncidentType;
+  gap_type: GapType;
+  missing: GapMissingTarget[];
+  summary: string;
+  recommendation: string;
+  completionRate: number | null;
+}
+
 export interface GapResultResponse {
   gap_id: string;
   case_id: string;
   gap_type: GapType;
-  missing: {
-    target_id: string;
-    log_type: string;
-    evidence_role: EvidenceRole;
-    priority: number;
-  }[];
+  missing: GapMissingTarget[];
   summary: string;
   recommendation: string;
-  completionRate: number;
+  completionRate: number | null;
   created_at: string;
   // v2 (2026-05-15) — 4개 참고자료 반영 부가 진단. backend 가 항상 포함하므로 optional 처리.
   /** [R4 Naver Cloud 실무] priority 가중 수집 점수 (P1=10, P2=7, P3=3, P4=1) */
@@ -216,6 +228,10 @@ export interface GapResultResponse {
   }[];
   /** [R2 Google Cloud bad log config] REQUIRED vs CORROBORATING 비대칭 등 수집 구성 경고 */
   badConfigSignals?: string[];
+  // P.24 (2026-05-31 jingyu d39b1e0 흡수) — 다중 사고유형 → 유형별 갭 판정
+  // 단일 유형이면 1개 항목. 사용자 V-1 Step3 에서 confirmed_hypotheses 다중 시 활용.
+  incidentTypes?: IncidentType[];
+  perType?: GapPerType[];
 }
 
 export interface PaginatedData<T> {

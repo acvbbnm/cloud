@@ -148,3 +148,38 @@ export const getIncidentTypeValidation = async (
   });
   return res.data.data;
 };
+
+/**
+ * 매핑 갭 분석 — SherpaFab "빠진 고리" 버튼용 (validate-incident-type 풀 응답).
+ *
+ * getIncidentTypeValidation 과 같은 엔드포인트지만, 백엔드가 실제로 반환하는
+ * observed_*·current_missing·candidate_types(type/score_ratio) 까지 정확히 받는다.
+ * (기존 IncidentTypeValidation 타입은 일부 필드만 정의 + V8 ReviewCard 가 의존하므로
+ *  건드리지 않고 별도 타입으로 분리.)
+ */
+export interface MappingGapAnalysis {
+  caseId: string;
+  status: 'CONSISTENT' | 'REVIEW_NEEDED';
+  current_incident_type: string;
+  current_match: number;
+  current_expected: number;
+  current_missing: string[];
+  observed_techniques: string[];
+  observed_count: number;
+  extra_techniques: string[];
+  candidate_types: Array<{
+    type: string;
+    matched: number;
+    expected: number;
+    score_ratio: number;
+    reason: string;
+  }>;
+  message: string;
+}
+
+export const getMappingGapAnalysis = async (caseId: string): Promise<MappingGapAnalysis> => {
+  const res = await client.get('/api/sherpa/validate-incident-type', {
+    params: { caseId },
+  });
+  return res.data.data;
+};

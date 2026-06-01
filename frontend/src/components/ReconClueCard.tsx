@@ -58,31 +58,6 @@ const INCIDENT_KO: Record<IncidentType, string> = {
   UNCLASSIFIED: '미분류',
 };
 
-const INCIDENT_COLORS: Record<IncidentType, string> = {
-  CREDENTIAL_THEFT: '#5BA3F0',
-  PRIVILEGE_ESCALATION: '#A56BE6',
-  DATA_EXFILTRATION: '#E66BC2',
-  AUDIT_LOG_TAMPERING: '#E68A6B',
-  RANSOMWARE: '#E63B3B',
-  MISCONFIG_EXPOSURE: '#E6A03B',
-  PHISH_INITIAL_ACCESS: '#6BE69E',
-  INSIDER_THREAT: '#3BC2E6',
-  UNCLASSIFIED: '#7A8294',
-};
-
-/** 옵션의 top 사고유형 + 해당 weight (변별 방향 시각화용). */
-const topHypothesis = (weights: Record<string, number>): [IncidentType, number] | null => {
-  let bestH: IncidentType | null = null;
-  let bestW = -1;
-  for (const [h, w] of Object.entries(weights)) {
-    if (w > bestW) {
-      bestW = w;
-      bestH = h as IncidentType;
-    }
-  }
-  return bestH && bestW > 0 ? [bestH, bestW] : null;
-};
-
 /** V1.fix.7 — 옵션별 popup body 텍스트 생성. */
 const buildOptionBody = (opt: ReconClueOption, isMeta: boolean): string => {
   if (isMeta) {
@@ -239,7 +214,6 @@ const ReconClueCard = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {g.options.map((opt) => {
                     const accepted = acceptedClueKeys.has(opt.clue_key);
-                    const top = isMetaGroup ? null : topHypothesis(opt.weights);
                     return (
                       <div
                         key={opt.clue_key}
@@ -275,19 +249,6 @@ const ReconClueCard = ({
                               {accepted ? '✓ ' : '◯ '}
                               {opt.short_label}
                             </span>
-                            {top && (
-                              // V1.fix.19 — 가중치 숫자 (+10) 제거. 사고유형만 깔끔 표시.
-                              // 가중치 상세는 ⓘ popup 에서 확인 가능.
-                              <span
-                                className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded whitespace-nowrap"
-                                style={{
-                                  color: INCIDENT_COLORS[top[0]],
-                                  backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,
-                                }}
-                              >
-                                {INCIDENT_KO[top[0]]}
-                              </span>
-                            )}
                           </div>
                         </button>
                         {/* V1.fix.7 — 옵션 출처·신뢰도 영향 popup (채택과 무관) */}

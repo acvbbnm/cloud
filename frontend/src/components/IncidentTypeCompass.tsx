@@ -64,6 +64,17 @@ interface IncidentTypeCompassProps {
   regressSuggested?: boolean;
   /** 보스 단서 likelihood (시각화 보조 — 0 ~ 1). */
   coreClueLikelihood?: number;
+  // ─── P.35.4 (2026-05-31) — trail point 클릭 핸들러 ──────────────
+  /** trail point 클릭 — 부모가 단서 detail / 적재 로그 매칭 표시.
+   *  사용자 비전: "컴파스 점 클릭하면 그 로그에 대한 정보가 자세히 보이게". */
+  onTrailPointClick?: (point: {
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  }) => void;
+  /** 강조 표시할 단서 (외부 LogPanel 클릭 시 그 단서 점에 ring 추가). */
+  highlightedClueKey?: string | null;
 }
 
 // R.2 (hard, 2026-05-28) — 단일 소스 import (types/index.ts).
@@ -188,6 +199,8 @@ const IncidentTypeCompass = ({
   regressSuggested = false,
   // V1.fix.17 — coreClueLikelihood 하단 부연 라벨 삭제로 미사용. 시그너처는 호환 유지.
   coreClueLikelihood: _coreClueLikelihood = 0,
+  onTrailPointClick,
+  highlightedClueKey,
 }: IncidentTypeCompassProps) => {
   // ── 반응형: 부모 컨테이너 width 추적 ──
   const containerRef = useRef<HTMLDivElement>(null);
@@ -681,14 +694,53 @@ const IncidentTypeCompass = ({
             const isRoot = i === 0;
             const isStageStart = t.stage > 1 && t.stageDepth === 1;
             const sc = stageColor(t.stage);
+            // P.35.4 — 단서 점 클릭 detail + 외부 highlight ring
+            const isClickable = !isRoot && onTrailPointClick && !disabled;
+            const isHighlighted = highlightedClueKey && t.clueKey === highlightedClueKey;
             return (
-              <g key={`trail-${i}`}>
+              <g
+                key={`trail-${i}`}
+                style={isClickable ? { cursor: 'pointer' } : undefined}
+                onClick={
+                  isClickable
+                    ? (e) => {
+                        e.stopPropagation();
+                        onTrailPointClick({
+                          clue_key: t.clueKey,
+                          label: t.label,
+                          stage: t.stage,
+                          posterior: t.posterior,
+                        });
+                      }
+                    : undefined
+                }
+              >
                 {isCurrent && (
                   <circle cx={t.x} cy={t.y} r={14} fill={sc.fill} opacity={0.18}>
                     <animate
                       attributeName="r"
                       values="10;16;10"
                       dur="1.8s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+                {/* 외부 LogPanel 클릭 시 매칭 단서에 ring 강조 */}
+                {isHighlighted && (
+                  <circle
+                    cx={t.x}
+                    cy={t.y}
+                    r={11}
+                    fill="none"
+                    stroke="#FBBF24"
+                    strokeWidth={2}
+                    strokeDasharray="3 2"
+                    opacity={0.95}
+                  >
+                    <animate
+                      attributeName="r"
+                      values="9;13;9"
+                      dur="1.4s"
                       repeatCount="indefinite"
                     />
                   </circle>

@@ -39,6 +39,7 @@ import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuid
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
+import EvidenceLogPanel, { type LoadedLog } from '@/components/EvidenceLogPanel';
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
@@ -172,6 +173,20 @@ const Step3_EvidenceTreeDiscovery = ({
     null,
   );
 
+  // ── P.35.2 (2026-05-31) — 분석 로그 적재 상태 ──
+  //   사용자: "분석한 로그를 적재할 수 있는 칸 + 로그를 단서로 올리기".
+  //   메모리 상태 (zustand 분리는 후속). 적재 로그는 컴파스 점 클릭 시
+  //   매칭 detail 표시 + 단서 채택 시 source='log_analysis' 로 마킹.
+  const [loadedLogs, setLoadedLogs] = useState<LoadedLog[]>([]);
+  // P.35.4 — 컴파스 점 클릭 → trail point detail (clue_key 매칭 로그 + 시각·posterior)
+  const [selectedTrailPoint, setSelectedTrailPoint] = useState<{
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  } | null>(null);
+  const [highlightedClueKey, setHighlightedClueKey] = useState<string | null>(null);
+
   /** HypothesisScoreBar 행 클릭 → preview 로딩 + inline expand 토글. */
   const handleClickIncidentType = async (type: IncidentType) => {
     // 같은 행 다시 클릭 = 닫기
@@ -267,6 +282,31 @@ const Step3_EvidenceTreeDiscovery = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
+
+  // ── P.35.2 분석 로그 적재/제거 핸들러 ──
+  const handleLoadLog = (log: LoadedLog) => {
+    setLoadedLogs((prev) =>
+      prev.find((l) => l.loaded_id === log.loaded_id) ? prev : [...prev, log],
+    );
+  };
+  const handleUnloadLog = (loaded_id: string) => {
+    setLoadedLogs((prev) => prev.filter((l) => l.loaded_id !== loaded_id));
+  };
+
+  // ── P.35.3 로그 → 단서 채택 핸들러 ──
+  // 적재 로그의 observable(ACCOUNT/IP_ADDRESS) 을 handleDirectClueAdd 흐름에 위임.
+  // source='log_analysis' 로 마킹 → 트리 노드 meta 에 출처 기록.
+  const handleAdoptFromLog = (obs: Observable, log: LoadedLog) => {
+    // 사용자 가시화 — 어느 로그에서 추출됐는지 note 에 부여 (이미 있으면 보강)
+    const enriched: Observable = {
+      ...obs,
+      note: obs.note
+        ? `${obs.note} (로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'})`
+        : `로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'}`,
+    };
+    // 백엔드는 source='direct_input' 만 지원하므로 direct_input 흐름 재사용 (note 로 기원 추적)
+    handleDirectClueAdd(enriched);
+  };
 
   // ── 단서 채택 핸들러 (트리 후보 / IG 후보 클릭) ──
   // ⚠ closure stale 방지 — getState() 로 최신 current_leaf_id 직접 조회
@@ -573,9 +613,61 @@ const Step3_EvidenceTreeDiscovery = ({
               zone={treeState.zone ?? 1}
               regressSuggested={treeState.regress_suggested ?? false}
               coreClueLikelihood={treeState.core_clue_likelihood ?? 0}
+              // P.35.4 — 점 클릭 → trail point detail (적재 로그 매칭)
+              onTrailPointClick={setSelectedTrailPoint}
+              highlightedClueKey={highlightedClueKey}
             />
           )}
         </Card>
+
+        {/* P.35.4 — 컴파스 점 클릭 시 trail point detail 카드 */}
+        {selectedTrailPoint && mainView === 'compass' && (
+          <Card
+            title="🎯 단서 점 정보"
+            subtitle="컴파스에서 클릭한 단서 — 적재 로그와 매칭"
+            action={
+              <button
+                onClick={() => setSelectedTrailPoint(null)}
+                className="text-[10.5px] text-ink-500 hover:text-ink-200 font-mono"
+              >
+                × 닫기
+              </button>
+            }
+          >
+            <TrailPointDetail
+              point={selectedTrailPoint}
+              loadedLogs={loadedLogs}
+              onSelectLog={() => setHighlightedClueKey(null /* 로그 선택 후 강조 초기화 */)}
+            />
+          </Card>
+        )}
+
+        {/* P.35.2 — 분석 로그 적재 카드 (full width row) */}
+        {caseId && (
+          <Card
+            title="🔬 분석 로그 적재함"
+            subtitle="V-2 분석 결과 → 적재 → 단서로 채택. 다음 단서 후보를 실제 로그로 검증"
+          >
+            <EvidenceLogPanel
+              caseId={caseId}
+              loadedLogs={loadedLogs}
+              onLoad={handleLoadLog}
+              onUnload={handleUnloadLog}
+              onAdoptFromLog={handleAdoptFromLog}
+              onLogSelect={(l) => {
+                // 적재 row 클릭 — 컴파스에서 매칭 단서 강조 (clue_key 추론은 후속)
+                // 현재는 detail 영역만 활성화 (TrailPointDetail 가 매칭 표시)
+                setSelectedTrailPoint({
+                  clue_key: `__loaded__:${l.loaded_id}`,
+                  label: l.label,
+                  stage: 1,
+                  posterior: scoresForBar,
+                });
+              }}
+              disabled={loading || isSubmitting}
+            />
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div id="direct-input-card" className="rounded transition-all">
@@ -754,6 +846,129 @@ const Step3_EvidenceTreeDiscovery = ({
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ── P.35.4 (2026-05-31) — 컴파스 trail point detail 패널 ──
+//   사용자: "캠퍼스에서 점을 클릭하면 그 로그에 대한 정보가 자세히 보이게".
+//   동작:
+//     · 점 클릭 → onTrailPointClick 으로 부모 (Step3) 가 selectedTrailPoint 갱신
+//     · 이 컴포넌트가 selectedTrailPoint.clue_key 와 매칭되는 적재 로그 검색
+//     · 매칭 있으면 타임스탬프·기법·source 정보 노출 / 없으면 단서 메타만
+interface TrailPointDetailProps {
+  point: {
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  };
+  loadedLogs: LoadedLog[];
+  onSelectLog?: (log: LoadedLog) => void;
+}
+
+const TrailPointDetail = ({ point, loadedLogs, onSelectLog }: TrailPointDetailProps) => {
+  // 적재 로그 매칭 — 간단 휴리스틱: __loaded__ prefix 면 loaded_id 매칭,
+  //   그 외엔 clue_key 의 value 가 로그 fields 에 포함되는지.
+  const matchedLogs = (() => {
+    if (point.clue_key.startsWith('__loaded__:')) {
+      const lid = point.clue_key.slice('__loaded__:'.length);
+      const m = loadedLogs.find((l) => l.loaded_id === lid);
+      return m ? [m] : [];
+    }
+    // clue_key 형식: "TYPE:value" — value 가 fields 안에 있으면 매칭
+    const parts = point.clue_key.split(':');
+    const value = parts.length > 1 ? parts.slice(1).join(':') : point.clue_key;
+    return loadedLogs.filter((l) =>
+      Object.values(l.fields).some((v) =>
+        v != null && String(v).toLowerCase().includes(value.toLowerCase()),
+      ),
+    );
+  })();
+
+  // top-3 사고유형
+  const topIncidents = Object.entries(point.posterior)
+    .filter(([k, v]) => k !== 'UNCLASSIFIED' && typeof v === 'number' && v >= 0.05)
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .slice(0, 3) as Array<[IncidentType, number]>;
+
+  return (
+    <div className="space-y-2.5 text-[11.5px]">
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">단서</div>
+        <div className="font-semibold text-ink-100">{point.label}</div>
+        <div className="font-mono text-[10px] text-ink-500 mt-0.5">
+          {point.clue_key} · Stage {point.stage}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">
+          이 시점 사고유형 적합도 (top {topIncidents.length})
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {topIncidents.map(([type, p]) => (
+            <span
+              key={type}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-ink-700/60 bg-ink-900/60 text-[10.5px]"
+            >
+              <span>{INCIDENT_TYPE_KO[type] ?? type}</span>
+              <span className="font-mono text-brand-teal">{(p * 100).toFixed(1)}%</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">
+          연결된 분석 로그 ({matchedLogs.length})
+        </div>
+        {matchedLogs.length === 0 ? (
+          <div className="text-[10.5px] text-ink-500 italic">
+            매칭되는 적재 로그 없음 — 단서 카탈로그 키 또는 로그 fields 검토
+          </div>
+        ) : (
+          <ul className="space-y-1">
+            {matchedLogs.map((l) => (
+              <li
+                key={l.loaded_id}
+                className="bg-ink-950/40 border border-ink-700/40 rounded px-2 py-1.5 cursor-pointer hover:border-brand-teal/40"
+                onClick={() => onSelectLog?.(l)}
+              >
+                <div className="flex items-start gap-1.5">
+                  <span
+                    className={`text-[9px] font-mono px-1 py-px rounded shrink-0 ${
+                      l.source === 'attack'
+                        ? 'bg-purple-900/40 text-purple-200 border border-purple-700/40'
+                        : 'bg-sky-900/40 text-sky-200 border border-sky-700/40'
+                    }`}
+                  >
+                    {l.source === 'attack' ? 'ATT&CK' : 'OCSF'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-ink-100 truncate">{l.label}</div>
+                    <div className="text-[10px] text-ink-500 font-mono">
+                      🕒 {l.time?.slice(0, 19) ?? '시각 없음'}
+                      {l.technique_id ? ` · ${l.technique_id}` : ''}
+                    </div>
+                  </div>
+                </div>
+                {/* fields detail */}
+                <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] font-mono">
+                  {Object.entries(l.fields).map(([k, v]) =>
+                    v == null ? null : (
+                      <div key={k} className="truncate">
+                        <span className="text-ink-500">{k}:</span>{' '}
+                        <span className="text-ink-200">{String(v).slice(0, 32)}</span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

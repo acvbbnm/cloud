@@ -350,23 +350,15 @@ const NextCluePanel = ({
             return (
               <li
                 key={c.candidate_id}
+                // P.35.1 (2026-05-31 사용자 피드백: "다음 단서 후보는 제안만,
+                //   실제 로그 분석 후 추가가 정합. 클릭으로 직접 추가는 차단")
+                //   → 카드 클릭은 추천 이유 확장만, 채택은 별도 [+] 버튼 분리.
+                //   role=button 제거, cursor 도 단순 default (hover 시 풀이 토글).
                 className={`bg-ink-900/60 border border-ink-700/70 rounded-lg px-2.5 py-2 transition-colors ${
                   disabled
                     ? 'opacity-50'
-                    : 'hover:border-brand-teal/60 hover:bg-ink-900/80 cursor-pointer'
+                    : 'hover:border-brand-teal/40 hover:bg-ink-900/80'
                 }`}
-                onClick={() => {
-                  if (!disabled && onAdoptCandidate) onAdoptCandidate(c);
-                }}
-                role="button"
-                tabIndex={disabled ? -1 : 0}
-                onKeyDown={(e) => {
-                  if (disabled) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onAdoptCandidate?.(c);
-                  }
-                }}
               >
                 <div className="flex items-start gap-1.5 mb-1">
                   <span className="text-[10px] text-ink-500 mt-0.5 font-mono">
@@ -433,8 +425,10 @@ const NextCluePanel = ({
                   </div>
                 )}
 
-                {/* ── 추천 이유 상세 토글 (explain_clue API) ── */}
-                <div className="mt-1.5 pt-1 border-t border-ink-800/80 flex items-center justify-between">
+                {/* P.35.1 — 추천 이유 토글 + 명시적 [+ 단서로 채택] 버튼.
+                    카드 클릭 = 채택 흐름 차단 (사용자: "실제 로그 분석 후
+                    추가가 정합"). 버튼 명시화로 우발 클릭 방지. */}
+                <div className="mt-1.5 pt-1 border-t border-ink-800/80 flex items-center justify-between gap-1.5">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -446,9 +440,18 @@ const NextCluePanel = ({
                   >
                     {expandedClueKey === c.clue_key ? '▲' : '▼'} 추천 이유
                   </button>
-                  <span className="text-[9px] text-ink-600 font-mono">
-                    클릭하면 채택
-                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!disabled && onAdoptCandidate) onAdoptCandidate(c);
+                    }}
+                    disabled={disabled}
+                    className="text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-brand-teal/40 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="실제 로그 분석 없이 후보를 단서 트리에 즉시 채택 — 비권장 (로그 적재 후 채택이 정합)"
+                  >
+                    + 단서로 채택
+                  </button>
                 </div>
 
                 {expandedClueKey === c.clue_key && (

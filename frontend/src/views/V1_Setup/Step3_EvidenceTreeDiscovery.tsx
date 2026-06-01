@@ -43,7 +43,6 @@ import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
-import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
 import RegressBanner from '@/components/RegressBanner';
 
@@ -379,32 +378,9 @@ const Step3_EvidenceTreeDiscovery = ({
     return generic[obs.type] ?? null;
   };
 
-  // ── 부분 로그 분석 → 단서 후보 자동 채택 ──
-  const handlePartialAnalysisResult = (
-    techniqueIds: string[],
-    _filenames: string[],
-    _scores: HypothesisScores,
-  ): void => {
-    if (!caseId || !treeState) return;
-    // 비동기 적용 (각 기법을 순차 expand — 카탈로그에 없으면 skip)
-    (async () => {
-      for (const tid of techniqueIds) {
-        const clueKey = `TECHNIQUE:${tid}`;
-        try {
-          await expandTree({
-            caseId,
-            parent_node_id:
-              useClueTreeStore.getState().response?.current_leaf_id ??
-              treeState.current_leaf_id,
-            clue_key: clueKey,
-            source: 'log_analysis',
-          });
-        } catch (_e) {
-          // 카탈로그에 없는 기법은 무시 (정상 흐름)
-        }
-      }
-    })();
-  };
+  // V1.fix.20 — handlePartialAnalysisResult 제거 (부분 로그 분석 카드 폐기).
+  //   해당 기능은 좌측 [로그] 토글로 대체. PartialLogAnalysis 컴포넌트 자체는
+  //   파일 보존 (다른 위치 재사용 가능성).
 
   // ── 확정 핸들러 ──
   const handleConfirm = () => {
@@ -613,15 +589,14 @@ const Step3_EvidenceTreeDiscovery = ({
             />
           </Card>
           </div>
-          <Card title="부분 로그 분석" subtitle="ATT&CK 기법 → 단서 후보 자동 추가">
-            <PartialLogAnalysis
-              caseId={caseId}
-              currentScores={scoresForBar}
-              mappedTechniques={[]}
-              onAnalyzed={handlePartialAnalysisResult}
-              disabled={loading}
-            />
-          </Card>
+          {/* V1.fix.20 (2026-06-01) — 부분 로그 분석 카드 제거.
+              사용자 피드백: "옆에 로그 토글 있으니 삭제, 그 자리에 단서들을 수사 보드로 보내는 거 넣자".
+              BridgeToBoardCard 를 좌측 메인 영역으로 이동. */}
+          <BridgeToBoardCard
+            caseId={caseId}
+            acceptedClueCount={Math.max(0, treeState.path.length - 1)}
+            onToast={showToast}
+          />
         </div>
       </div>
 
@@ -756,13 +731,8 @@ const Step3_EvidenceTreeDiscovery = ({
           </Card>
         )}
 
-        {/* Phase O.4 (2026-05-26) — 단서들을 V-5 보드로 일괄 이관 카드.
-            path.length - 1 = root 제외 채택 단서 수. 0 이면 자체 미노출. */}
-        <BridgeToBoardCard
-          caseId={caseId}
-          acceptedClueCount={Math.max(0, treeState.path.length - 1)}
-          onToast={showToast}
-        />
+        {/* V1.fix.20 — BridgeToBoardCard 를 좌측 메인 영역 (단서 직접 입력 옆) 으로 이동.
+            우측 영역은 신뢰도·가설·IG 후보·확정으로 집중. */}
 
         <div className="flex gap-2">
           <button

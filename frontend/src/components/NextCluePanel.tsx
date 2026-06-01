@@ -393,11 +393,10 @@ const NextCluePanel = ({
                   />
                 </div>
 
-                {c.rationale && (
-                  <div className="text-[9.5px] text-ink-400 leading-4 mb-1">
-                    {c.rationale}
-                  </div>
-                )}
+                {/* V1.fix.20 — rationale ("CREDENTIAL_THEFT 변별력 최고 P(c|h)=0.38")
+                    인라인 노출 제거. 옵션 클릭으로 확장되는 단서 풀이 패널
+                    (description/discrimination_explanation/aggregated_likelihood) 에서
+                    대체 표시. 사용자 피드백: "단서 후보쪽에서 이런 것도 없애주면 좋겠다". */}
 
                 {/* Phase H.4 — ATT&CK 기법 badge (clue_to_attack 매핑) */}
                 {c.techniques && c.techniques.length > 0 && (

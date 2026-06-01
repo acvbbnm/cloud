@@ -216,7 +216,8 @@ const NextCluePanel = ({
   onPickClueType,
   igCandidates,
   onAdoptCandidate,
-  entropyBits,
+  // V1.fix.17 — entropy bits 인라인 표시 제거 (RegressBanner 가 전담). 시그너처 호환 유지.
+  entropyBits: _entropyBits,
   disabled,
   onRefreshCandidates,
   scoringMode,
@@ -273,15 +274,14 @@ const NextCluePanel = ({
                 chain · {INCIDENT_TYPE_KO[chainFilterHypothesis]}
               </span>
             )}
-            {entropyBits !== undefined && (
-              <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
-                entropy {entropyBits.toFixed(2)} bits · {displayCandidates.length}
-                {isChainMode && displayCandidates.length !== igCandidates.length && (
-                  <span className="text-ink-600">/{igCandidates.length}</span>
-                )}
-                개
-              </span>
-            )}
+            {/* V1.fix.17 — entropy bits 인라인 노출 제거 (RegressBanner·검증 스크립트에서만 사용). 후보 개수만 표시. */}
+            <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
+              {displayCandidates.length}
+              {isChainMode && displayCandidates.length !== igCandidates.length && (
+                <span className="text-ink-600">/{igCandidates.length}</span>
+              )}
+              개
+            </span>
           </span>
           {onRefreshCandidates && (
             <button

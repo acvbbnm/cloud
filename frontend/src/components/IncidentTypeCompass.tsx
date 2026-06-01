@@ -186,7 +186,8 @@ const IncidentTypeCompass = ({
   disabled = false,
   zone = 1,
   regressSuggested = false,
-  coreClueLikelihood = 0,
+  // V1.fix.17 — coreClueLikelihood 하단 부연 라벨 삭제로 미사용. 시그너처는 호환 유지.
+  coreClueLikelihood: _coreClueLikelihood = 0,
 }: IncidentTypeCompassProps) => {
   // ── 반응형: 부모 컨테이너 width 추적 ──
   const containerRef = useRef<HTMLDivElement>(null);
@@ -444,56 +445,24 @@ const IncidentTypeCompass = ({
       <div className="px-2.5 py-1.5 border-b border-ink-700 flex items-center justify-between shrink-0">
         <span className="text-[10px] text-ink-400 font-mono font-semibold uppercase tracking-[0.14em]">
           {title}
-          <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
-            depth {Math.max(0, trail.length - 1)} · 8 사고유형 360°
-            {/* Phase M.2 — Zone 배지.
-                P.32 — visualZone2 (점이 내부원 바깥) 일 때만 Zone 2 강조,
-                visualZoneHalf (백엔드 Zone 2 인데 점은 안쪽) 일 땐 "Zone 1+"
-                전환 안내. 사용자: "그림상 zone1 안 나갔는데 zone2 활성"  fix. */}
-            <span
-              className={
-                'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold ' +
-                (visualZone2
-                  ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
-                  : visualZoneHalf
-                    ? 'bg-sky-900/30 text-sky-300/80 border border-sky-700/30'
-                    : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
-              }
-              title={
-                visualZone2
-                  ? '코어 단서 발견 + 무게중심 외곽 — 사고유형 chain 구체화 단계'
-                  : visualZoneHalf
-                    ? '백엔드 Zone 2 진입 (보스 단서 검출) — 무게중심은 아직 안쪽, 단서 추가 시 외곽으로 이동'
-                    : regressSuggested
-                      ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
-                      : '광범위 탐색 — 단서 누적 중'
-              }
-            >
-              {visualZone2
-                ? 'Zone 2'
+          {/* V1.fix.17 (2026-06-01) — "depth N · 8 사고유형 360°" + "Zone 1+ (코어단서)
+              · 1위 권한 상승(84.6%)" 부연 라벨 제거. 사용자: "다른 곳에서 확인 가능".
+              Zone 배지만 간결하게 유지 (1·2 구분만). */}
+          <span
+            className={
+              'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold normal-case tracking-normal ' +
+              (visualZone2
+                ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
                 : visualZoneHalf
-                  ? 'Zone 1+ (코어단서)'
-                  : regressSuggested
-                    ? 'Zone 1 (강등)'
-                    : 'Zone 1'}
-            </span>
-            {/* V1.fix.9 — 회귀 권고 배지는 RegressBanner 로 통합. 컴퍼스 헤더는 Zone 라벨만 강화. */}
-            {topAnchor && (
-              <>
-                {' '}· 1위
-                <span
-                  className="ml-1"
-                  style={{ color: topAnchor.color }}
-                >
-                  {INCIDENT_KO[topAnchor.type]}
-                </span>
-                {currentPos && (
-                  <span className="ml-1 text-ink-500">
-                    ({((currentPos.posterior[topAnchor.type] ?? 0) * 100).toFixed(1)}%)
-                  </span>
-                )}
-              </>
-            )}
+                  ? 'bg-sky-900/30 text-sky-300/80 border border-sky-700/30'
+                  : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
+            }
+          >
+            {visualZone2
+              ? 'Zone 2'
+              : regressSuggested
+                ? 'Zone 1'
+                : 'Zone 1'}
           </span>
         </span>
         {headerRight}
@@ -812,35 +781,17 @@ const IncidentTypeCompass = ({
           </div>
         )}
       </div>
-      {/* 하단 안내 — zone 별 메시지 (paradigm §21.4).
-          P.32 — visualZone2 / visualZoneHalf / Zone 1 / regress 4 분기.
-          사용자 피드백: 그림 (점 위치) 과 라벨이 일치해야 함. */}
+      {/* V1.fix.17 (2026-06-01) — 하단 zone 별 부연 안내 제거.
+          사용자 피드백: "Zone 1+ 전환 중 ... 무게중심 외곽 등은 다른 곳에서 확인 가능".
+          Zone 상태 + 회귀 권고는 RegressBanner + 상단 Zone 배지로 충분히 표시됨.
+          여기는 confidence 도달 시 사고유형 방향 안내만 유지. */}
       <div className="px-2.5 py-1.5 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
-        {visualZone2 ? (
-          <>
-            <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) + 무게중심 외곽.
-            Top 가설 chain 으로 다음 단서를 좁혀가세요
-          </>
-        ) : visualZoneHalf ? (
-          <>
-            <span className="text-sky-300 font-semibold">Zone 1+ 전환 중</span> — 코어 단서 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) 검출됐으나 무게중심은 아직 안쪽.
-            같은 사고유형 단서 추가 시 외곽으로 이동 → Zone 2
-          </>
-        ) : regressSuggested ? (
-          <>
-            ⤺ <span className="text-amber-300 font-semibold">회귀 권고</span> — entropy 상승/가설 격차 축소로 다시 모호.
-            Zone 1 으로 돌아가 광범위 탐색 권장
-          </>
-        ) : (
-          <>
-            <span className="text-amber-300 font-semibold">Zone 1</span> — 사후확률 가중 무게중심.
-            맵 탐색 (depth ≥ 3) + 코어 단서 (P(c|h) ≥ 45%) 모두 충족 시 Zone 2 진입
-          </>
-        )}
-        {confidenceReached && primaryIncident && (
-          <span className="ml-2 text-brand-teal font-semibold">
-            · {INCIDENT_KO[primaryIncident]} 방향 도달 ✓
+        {confidenceReached && primaryIncident ? (
+          <span className="text-brand-teal font-semibold">
+            {INCIDENT_KO[primaryIncident]} 방향 도달 ✓
           </span>
+        ) : (
+          <span className="text-ink-500">단서를 누적하면 사고유형 방향으로 이동합니다</span>
         )}
       </div>
     </div>

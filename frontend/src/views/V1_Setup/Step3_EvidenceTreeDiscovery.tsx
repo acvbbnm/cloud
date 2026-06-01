@@ -505,11 +505,11 @@ const Step3_EvidenceTreeDiscovery = ({
         )}
 
         <Card
-          title={mainView === 'tree' ? 'Evidence Tree — 단서로 맵 밝히기' : '사고유형 컴퍼스 — 360° 방향 수렴'}
+          title={mainView === 'tree' ? 'Evidence Tree' : '사고유형 컴퍼스'}
           subtitle={
             mainView === 'tree'
               ? '현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기'
-              : '단서마다 사후확률 무게중심이 한 사고유형 방향으로 이동 — 미로 헤쳐나가듯'
+              : '단서 채택 시 사고유형 방향으로 이동'
           }
           action={
             <div className="flex items-center gap-1">
@@ -627,7 +627,7 @@ const Step3_EvidenceTreeDiscovery = ({
 
       {/* 우측 sticky — 신뢰도 + 가설 + IG 후보 */}
       <div className="col-span-12 lg:col-span-4 space-y-3">
-        <Card title="현재 신뢰도" subtitle={`entropy ${treeState.confidence.entropy_bits.toFixed(2)} bits`}>
+        <Card title="현재 신뢰도">
           <ConfidenceGauge scores={scoresForBar} scoringMode="bayesian" />
           <div className="mt-3">
             <HypothesisScoreBar

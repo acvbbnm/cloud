@@ -276,6 +276,8 @@ const ReconClueCard = ({
                               {opt.short_label}
                             </span>
                             {top && (
+                              // V1.fix.19 — 가중치 숫자 (+10) 제거. 사고유형만 깔끔 표시.
+                              // 가중치 상세는 ⓘ popup 에서 확인 가능.
                               <span
                                 className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded whitespace-nowrap"
                                 style={{
@@ -283,7 +285,7 @@ const ReconClueCard = ({
                                   backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,
                                 }}
                               >
-                                {INCIDENT_KO[top[0]]} +{top[1]}
+                                {INCIDENT_KO[top[0]]}
                               </span>
                             )}
                           </div>

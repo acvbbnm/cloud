@@ -228,8 +228,8 @@ export interface GapResultResponse {
   }[];
   /** [R2 Google Cloud bad log config] REQUIRED vs CORROBORATING 비대칭 등 수집 구성 경고 */
   badConfigSignals?: string[];
-  // P.24 (2026-05-31 jingyu d39b1e0 흡수) — 다중 사고유형 → 유형별 갭 판정
-  // 단일 유형이면 1개 항목. 사용자 V-1 Step3 에서 confirmed_hypotheses 다중 시 활용.
+  // multi-type — 확정 사고유형 목록 + 유형별 갭 판정 (단일 유형이면 1개 항목)
+  // P.24 (2026-05-31 jingyu d39b1e0 흡수) — confirmed_hypotheses 다중 시 활용.
   incidentTypes?: IncidentType[];
   perType?: GapPerType[];
 }

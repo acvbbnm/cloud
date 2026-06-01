@@ -253,18 +253,18 @@ const GuidePreviewModal = ({
               </details>
             )}
 
-            {/* 학술 인용 */}
+            {/* 학술 인용 — 토글식 */}
             {sourceStandards.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-ink-700/40">
-                <div className="text-[9.5px] text-ink-500 font-semibold uppercase tracking-wider mb-1">
+              <details className="mt-4 pt-3 border-t border-ink-700/40">
+                <summary className="text-[9.5px] text-ink-500 font-semibold uppercase tracking-wider mb-1 cursor-pointer select-none">
                   학술 인용 ({sourceStandards.length})
-                </div>
-                <ul className="space-y-0.5 text-[9.5px] text-ink-500 leading-4">
+                </summary>
+                <ul className="mt-1 space-y-0.5 text-[9.5px] text-ink-500 leading-4">
                   {sourceStandards.map((s, i) => (
                     <li key={i}>· {s}</li>
                   ))}
                 </ul>
-              </div>
+              </details>
             )}
           </>
         )}

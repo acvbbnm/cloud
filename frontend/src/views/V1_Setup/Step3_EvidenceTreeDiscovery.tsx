@@ -287,18 +287,77 @@ const Step3_EvidenceTreeDiscovery = ({
   //   load/unload 는 useEvidenceLogStore action 으로 직접 호출.
   //   V-2/V-3/V-6 가 store.load(), V-1 적재함의 [×] 가 store.unload().
 
-  // ── P.35.3 로그 → 단서 채택 핸들러 ──
-  // 적재 로그의 observable(ACCOUNT/IP_ADDRESS) 을 handleDirectClueAdd 흐름에 위임.
-  // source='log_analysis' 로 마킹 → 트리 노드 meta 에 출처 기록.
-  const handleAdoptFromLog = (obs: Observable, log: LoadedLog) => {
-    // 사용자 가시화 — 어느 로그에서 추출됐는지 note 에 부여 (이미 있으면 보강)
+  // ── P.39 (2026-05-31 사용자: "로그 분석해온 거 단서로 채택하면 그 로그에
+  //   대해서 분석 진행해서 단서 확률들이 올라가야") — 적재 로그 채택 시
+  //   ATT&CK 기법 가중치 활용. ──
+  //
+  // 가중치 차이 (weights.json):
+  //   · IP_ADDRESS:generic / ACCOUNT:generic = 5점 (3-4 사고유형 균등) → posterior 미동
+  //   · TECHNIQUE:{technique_id} = 25-35점 (사고유형별 변별) → posterior 가시적 갱신
+  //     (백엔드 expand_tree §P.21 가 source='log_analysis' + TECHNIQUE:* 키를
+  //      합성 entry 로 처리 — bayes_net.technique_likelihood 정규화)
+  //
+  // 동작:
+  //   · log.technique_id 가 있으면 (LogAnalysisFab 적재) → TECHNIQUE:{id} 채택
+  //     트리 라벨에 raw observable 정보 부착 → 화면상 raw 신호 + 강한 가중치
+  //   · log.technique_id 가 없으면 (V-2 raw / V-3 OCSF 등) → 기존 generic 흐름
+  const handleAdoptFromLog = async (obs: Observable, log: LoadedLog) => {
+    const originDesc = `로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'}`;
+
+    // technique_id 있으면 ATT&CK 기법 가중치 직접 활용
+    if (log.technique_id && caseId) {
+      const current = useClueTreeStore.getState().response;
+      if (!current) return;
+      const techniqueKey = `TECHNIQUE:${log.technique_id}`;
+      // 트리 노드 라벨 — raw observable + 시각 + ATT&CK hint
+      const overrideLabel = `${obs.type}: ${obs.value} (${log.technique_id}, ${log.time?.slice(11, 19) ?? '시각'})`;
+      try {
+        const res = await expandTree({
+          caseId,
+          parent_node_id: current.current_leaf_id,
+          clue_key: techniqueKey,
+          source: 'log_analysis',
+          label_override: overrideLabel,
+        });
+        addObservable({
+          ...obs,
+          note: obs.note ? `${obs.note} — ${originDesc}` : originDesc,
+        });
+        // 갱신된 1위 가설 토스트
+        const top = (() => {
+          const sorted = (
+            Object.entries(res.posterior_current) as [IncidentType, number][]
+          ).filter(([k]) => k !== 'UNCLASSIFIED');
+          sorted.sort((a, b) => b[1] - a[1]);
+          return sorted[0];
+        })();
+        if (top) {
+          showToast(
+            `채택 — 1위 ${INCIDENT_TYPE_KO[top[0]]} ${(top[1] * 100).toFixed(1)}% (${log.technique_id} 가중치 반영)`,
+            3200,
+          );
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // technique 채택 실패 시 — observable 단서로 fallback (legacy 흐름)
+        showToast(
+          `${log.technique_id} 채택 실패 — observable fallback: ${msg}`,
+          3500,
+        );
+        const enriched: Observable = {
+          ...obs,
+          note: obs.note ? `${obs.note} (${originDesc})` : originDesc,
+        };
+        handleDirectClueAdd(enriched);
+      }
+      return;
+    }
+
+    // technique_id 없음 — observable generic 채택 (기존 흐름)
     const enriched: Observable = {
       ...obs,
-      note: obs.note
-        ? `${obs.note} (로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'})`
-        : `로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'}`,
+      note: obs.note ? `${obs.note} (${originDesc})` : originDesc,
     };
-    // 백엔드는 source='direct_input' 만 지원하므로 direct_input 흐름 재사용 (note 로 기원 추적)
     handleDirectClueAdd(enriched);
   };
 

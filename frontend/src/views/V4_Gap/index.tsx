@@ -303,7 +303,7 @@ const V4Gap = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* [R4] Naver Cloud — priority 가중 점수 */}
               {result.priorityScore && (
-                <Card title={<>📊 우선순위 가중 수집률</>}>
+                <Card title={<>우선순위 가중 수집률</>}>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[28px] font-extrabold text-ink-100">
                       {result.priorityScore.percent}%
@@ -328,7 +328,7 @@ const V4Gap = () => {
 
               {/* [R1] 논문 — ATT&CK kill-chain 커버리지 */}
               {result.tacticCoverage && (
-                <Card title={<>🎯 ATT&CK 단계 커버리지</>}>
+                <Card title={<>ATT&CK 단계 커버리지</>}>
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-[28px] font-extrabold text-ink-100">
                       {result.tacticCoverage.covered}
@@ -388,7 +388,7 @@ const V4Gap = () => {
 
               {/* [R2] Google Cloud — bad log config 신호 */}
               {result.badConfigSignals && result.badConfigSignals.length > 0 && (
-                <Card title={<>⚙️ 수집 구성 경고 — {result.badConfigSignals.length}건</>} borderColor="#FFB020">
+                <Card title={<>수집 구성 경고 — {result.badConfigSignals.length}건</>} borderColor="#FFB020">
                   <ul className="flex flex-col gap-1.5 list-disc list-inside text-[12px] text-ink-200 leading-6">
                     {result.badConfigSignals.map((s, i) => (
                       <li key={i}>{s}</li>

@@ -138,7 +138,7 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
           {/* Timeline 막대 — 최초 침해 → 탐지 → 격리 3 단계 */}
           <div>
             <div className="flex items-center justify-between text-[10px] text-ink-400 mb-1.5">
-              <span>📍 Timeline</span>
+              <span>Timeline</span>
               <span className="font-mono text-ink-500">
                 총 {formatDuration(totalSeconds)}
               </span>

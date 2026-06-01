@@ -470,7 +470,7 @@ const IncidentTypeCompass = ({
               }
             >
               {visualZone2
-                ? '🗺 Zone 2'
+                ? 'Zone 2'
                 : visualZoneHalf
                   ? 'Zone 1+ (코어단서)'
                   : regressSuggested
@@ -570,7 +570,7 @@ const IncidentTypeCompass = ({
               textAnchor="middle"
               style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em' }}
             >
-              🗺 Zone 2 · 사고유형 chain 구체화
+              Zone 2 · 사고유형 chain 구체화
             </text>
           )}
 
@@ -818,12 +818,12 @@ const IncidentTypeCompass = ({
       <div className="px-2.5 py-1.5 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
         {visualZone2 ? (
           <>
-            🗺 <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) + 무게중심 외곽.
+            <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) + 무게중심 외곽.
             Top 가설 chain 으로 다음 단서를 좁혀가세요
           </>
         ) : visualZoneHalf ? (
           <>
-            🛰 <span className="text-sky-300 font-semibold">Zone 1+ 전환 중</span> — 코어 단서 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) 검출됐으나 무게중심은 아직 안쪽.
+            <span className="text-sky-300 font-semibold">Zone 1+ 전환 중</span> — 코어 단서 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) 검출됐으나 무게중심은 아직 안쪽.
             같은 사고유형 단서 추가 시 외곽으로 이동 → Zone 2
           </>
         ) : regressSuggested ? (
@@ -833,7 +833,7 @@ const IncidentTypeCompass = ({
           </>
         ) : (
           <>
-            🧭 <span className="text-amber-300 font-semibold">Zone 1</span> — 사후확률 가중 무게중심.
+            <span className="text-amber-300 font-semibold">Zone 1</span> — 사후확률 가중 무게중심.
             맵 탐색 (depth ≥ 3) + 코어 단서 (P(c|h) ≥ 45%) 모두 충족 시 Zone 2 진입
           </>
         )}

@@ -436,7 +436,7 @@ const ClueTreeView = ({
         ) : depth === 0 && leafCands === 0 ? (
           /* Cold-start — root 만 있고 후보 0개 */
           <div className="h-full flex flex-col items-center justify-center gap-3 px-6">
-            <div className="text-[16px]">🔦</div>
+            <div className="text-[16px]"></div>
             <div className="text-[12px] text-brand-amber font-semibold text-center">
               어두운 맵 — 첫 단서를 입력하세요
             </div>

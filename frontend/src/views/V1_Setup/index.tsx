@@ -50,11 +50,11 @@ const V1Setup = () => {
   // 2026-05-26 (사용자 피드백): intake 진행 상황을 다른 뷰 왕복에도 유지.
   //   - V-1 step 을 useCaseStore.currentStep 과 동기화 → localStorage 영속화
   //   - 이전 mount-시-auto-reset 동작 제거 (다른 뷰에서 돌아오면 그대로 이어감)
-  //   - 명시적 [🔄 새 케이스] 버튼으로만 리셋 가능 (헤더)
+  //   - 명시적 [새 케이스] 버튼으로만 리셋 가능 (헤더)
   const step = useCaseStore((s) => s.currentStep);
   const setStep = useCaseStore((s) => s.setStep);
 
-  /** 명시적 새 케이스 시작 — 사용자가 헤더의 [🔄 새 케이스] 클릭 시. */
+  /** 명시적 새 케이스 시작 — 사용자가 헤더의 [새 케이스] 클릭 시. */
   const startNewCase = () => {
     if (caseId) {
       const ok = window.confirm(
@@ -153,7 +153,7 @@ const V1Setup = () => {
                 className="text-[10.5px] text-ink-400 hover:text-amber-300 border border-ink-700 hover:border-amber-500/60 px-2 py-0.5 rounded transition-colors"
                 title="모든 진행 상황 초기화 + V-1 처음부터"
               >
-                🔄 새 케이스
+                새 케이스
               </button>
             )}
             {stepLabels.map((s, i) => {

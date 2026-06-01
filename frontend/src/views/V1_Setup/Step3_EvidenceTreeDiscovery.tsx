@@ -149,7 +149,7 @@ const Step3_EvidenceTreeDiscovery = ({
   useEffect(() => {
     if (treeState?.regress_suggested && !regressNotified) {
       showToast(
-        '⤺ 회귀 권고 — 가설이 다시 모호해졌습니다. 광범위 탐색 (Zone 1) 으로 복귀 권장',
+        '회귀 권고 — 가설이 다시 모호해졌습니다. 광범위 탐색 (Zone 1) 으로 복귀 권장',
         4500,
       );
       setRegressNotified(true);
@@ -537,7 +537,7 @@ const Step3_EvidenceTreeDiscovery = ({
                   }`}
                   title="사고유형 360° 컴퍼스"
                 >
-                  🧭 컴퍼스
+                  컴퍼스
                 </button>
               </div>
               <button
@@ -663,7 +663,7 @@ const Step3_EvidenceTreeDiscovery = ({
         {/* Phase M.3 — Zone 2 진입 시 복합 가설 chain (paradigm §21.5) */}
         {treeState.zone === 2 && treeState.attack_chain && treeState.attack_chain.length > 0 && (
           <Card
-            title="🗺 Zone 2 — 복합 가설 chain"
+            title="복합 가설 chain"
             subtitle="ATT&CK Kill Chain 시간순 · 카드 클릭 → 해당 가설 변별 단서 필터"
           >
             <AttackChainCard

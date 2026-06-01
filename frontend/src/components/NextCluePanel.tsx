@@ -16,6 +16,7 @@
  */
 import { useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
 import { explainClue } from '@/api/clueTree';
 
 import type { ClueType, HypothesisScores, IncidentType, NextClueSuggestion } from '@/types';
@@ -308,17 +309,32 @@ const NextCluePanel = ({
 
         {igCandidates.length === 0 ? (
           <div className="bg-amber-900/15 border border-amber-700/40 rounded px-2.5 py-2 text-[10.5px] text-amber-200 leading-5">
-            🔦 <span className="font-semibold">첫 단서 입력 대기 중</span>
+            <span className="font-semibold">첫 단서 입력 대기 중</span>
             <div className="text-[9.5px] text-ink-400 mt-1 leading-4">
-              Uniform prior 상태 — 좌측 <span className="text-brand-teal">단서 직접 입력</span>{' '}
+              좌측 <span className="text-brand-teal">단서 직접 입력</span>{' '}
               또는 <span className="text-brand-teal">부분 로그 분석</span> 으로
-              시작하면 변별력 있는 IG 후보가 등장합니다.
+              시작하면 변별력 있는 후보가 등장합니다.
             </div>
           </div>
         ) : (
+          // V1.fix.16 — 학술 부연 (Shannon/Pearl) 은 SourceTag popup 으로 이동 (위 Card subtitle 영역).
           <p className="text-[9.5px] text-ink-500 leading-4 mb-2">
-            Information Gain (Shannon 1948 + Pearl marginalization) 큰 순.
-            각 막대는 정규화된 변별력 — 클릭 시 단서 채택.
+            변별력 큰 순 정렬 — 막대 클릭 시 단서 채택.
+            <SourceTag
+              className="ml-1"
+              label="ⓘ"
+              title="다음 단서 후보 정렬 근거"
+              body={
+                'Information Gain (변별력) 큰 순으로 정렬합니다.\n\n' +
+                '계산:\n' +
+                '  IG = H(prior) − E[H(posterior | clue)]\n' +
+                '  H = Shannon entropy (Shannon 1948)\n' +
+                '  음성 관찰 (clue 미관찰) 도 marginalization 으로 반영 (Pearl 1988)\n\n' +
+                '막대 길이 = 정규화된 변별력 (0~1).\n' +
+                '클릭 시 단서 채택 → 베이지안 사후확률 업데이트.\n\n' +
+                '근거: Shannon 1948 IG · Pearl 1988 BBN · BAN (IEEE 2023)'
+              }
+            />
           </p>
         )}
 
@@ -457,11 +473,11 @@ const NextCluePanel = ({
                       const perTech = ex.per_technique_likelihood ?? {};
                       return (
                         <>
-                          {/* Phase L.2 — 📖 정의 */}
+                          {/* Phase L.2 — 정의 */}
                           {ex.description && (
                             <div className="bg-ink-950/50 border-l-2 border-brand-teal/60 pl-2 py-1">
                               <div className="text-[9px] text-brand-teal font-semibold mb-0.5">
-                                📖 단서 정의
+                                단서 정의
                               </div>
                               <div className="text-[10px] text-ink-200 leading-4">
                                 {ex.description}
@@ -469,11 +485,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 🔍 어디서 찾나 (NCP/NHN/verify) */}
+                          {/* Phase L.2 — 어디서 찾나 (NCP/NHN/verify) */}
                           {ex.how_to_find && (ex.how_to_find.ncp || ex.how_to_find.nhn) && (
                             <div className="bg-ink-950/50 border-l-2 border-blue-500/60 pl-2 py-1">
                               <div className="text-[9px] text-blue-300 font-semibold mb-0.5">
-                                🔍 어디서 찾나
+                                어디서 찾나
                               </div>
                               <div className="space-y-0.5 text-[9.5px] leading-4">
                                 {ex.how_to_find.ncp && (
@@ -498,11 +514,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 📋 예시 */}
+                          {/* Phase L.2 — 예시 */}
                           {ex.examples && ex.examples.length > 0 && (
                             <div className="bg-ink-950/50 border-l-2 border-amber-500/60 pl-2 py-1">
                               <div className="text-[9px] text-amber-300 font-semibold mb-0.5">
-                                📋 예시
+                                예시
                               </div>
                               <ul className="text-[9.5px] text-ink-300 leading-4 space-y-0.5">
                                 {ex.examples.slice(0, 4).map((eg, i) => (
@@ -514,11 +530,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 💡 변별 풀이 */}
+                          {/* Phase L.2 — 변별 풀이 */}
                           {ex.discrimination_explanation && (
                             <div className="bg-ink-950/50 border-l-2 border-emerald-500/60 pl-2 py-1">
                               <div className="text-[9px] text-emerald-300 font-semibold mb-0.5">
-                                💡 왜 변별력 있나
+                                왜 변별력 있나
                               </div>
                               <div className="text-[9.5px] text-ink-300 leading-4">
                                 {ex.discrimination_explanation}
@@ -526,11 +542,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 📚 학술 근거 */}
+                          {/* Phase L.2 — 학술 근거 */}
                           {(ex.academic_source || ex.iso_framework) && (
                             <div className="bg-ink-950/50 border-l-2 border-purple-500/60 pl-2 py-1">
                               <div className="text-[9px] text-purple-300 font-semibold mb-0.5">
-                                📚 학술 근거
+                                학술 근거
                               </div>
                               <div className="text-[9.5px] text-ink-400 leading-4">
                                 {ex.academic_source}

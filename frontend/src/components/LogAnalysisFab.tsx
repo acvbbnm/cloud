@@ -200,8 +200,7 @@ const LogAnalysisFab = () => {
         title="실시간 로그 분석 — 국내 CSP 로그 → ATT&CK 단서"
         className="fixed bottom-32 right-5 w-11 h-11 rounded-full bg-brand-amber text-ink-975 z-[999] font-mono text-[14px] font-bold flex items-center justify-center border border-brand-amber hover:bg-amber-400 transition-colors shadow-lg"
       >
-        📊
-      </button>
+              </button>
 
       {/* Drawer (우측 slide-in) */}
       {open && (
@@ -220,7 +219,7 @@ const LogAnalysisFab = () => {
             <div className="px-4 py-3 border-b border-ink-700 bg-ink-850 flex items-center justify-between">
               <div>
                 <div className="text-[13px] font-semibold text-ink-100">
-                  📊 실시간 로그 분석
+                  실시간 로그 분석
                 </div>
                 <div className="text-[10.5px] text-ink-400 mt-0.5">
                   NCP/NHN 로그 → OCSF → ATT&CK 매핑 → 단서 채택

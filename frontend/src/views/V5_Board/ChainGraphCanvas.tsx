@@ -431,7 +431,7 @@ const ChainGraphCanvas = ({
 
   const resetView = () => setViewport({ tx: 0, ty: 0, scale: 1 });
 
-  /** 🎯 모든 노드가 화면에 보이도록 viewport 자동 조정 (fit-to-view).
+  /** 모든 노드가 화면에 보이도록 viewport 자동 조정 (fit-to-view).
    *  화면 밖으로 노드가 나간 경우 복구용. */
   const fitView = () => {
     if (nodes.length === 0) {
@@ -576,7 +576,7 @@ const ChainGraphCanvas = ({
             fontSize={14}
             fontWeight={600}
           >
-            🔍 단서를 여기로 드래그하거나
+            단서를 여기로 드래그하거나
           </text>
           <text
             x={baseWidth / 2}
@@ -595,7 +595,7 @@ const ChainGraphCanvas = ({
             fontSize={10}
             fontFamily="monospace"
           >
-            우측 LogPanel 의 [🔍 단서] 탭 활용
+            우측 LogPanel 의 [단서] 탭 활용
           </text>
         </g>
       )}
@@ -848,7 +848,7 @@ const ChainGraphCanvas = ({
         );
       })}
       </g>
-      {/* zoom 컨트롤 — [-] [percent] [+] [1:1] [🎯] */}
+      {/* zoom 컨트롤 — [-] [percent] [+] [1:1] [] */}
       <g
         transform={`translate(${Math.max(8, width - 184)}, 8)`}
         style={{ cursor: 'pointer' }}
@@ -889,7 +889,7 @@ const ChainGraphCanvas = ({
             1:1
           </text>
         </g>
-        {/* [🎯] fit-to-view — 모든 노드가 보이게 자동 조정 (화면 밖 노드 복구) */}
+        {/* [] fit-to-view — 모든 노드가 보이게 자동 조정 (화면 밖 노드 복구) */}
         <g
           onPointerDown={(e) => {
             e.stopPropagation();
@@ -901,8 +901,7 @@ const ChainGraphCanvas = ({
                 fill="#1a1f29" stroke="#10b981" strokeWidth={0.8} />
           <text x={159} y={14} textAnchor="middle"
                 fill="#34d399" fontSize={11} fontWeight={700}>
-            🎯
-          </text>
+                      </text>
         </g>
       </g>
     </svg>

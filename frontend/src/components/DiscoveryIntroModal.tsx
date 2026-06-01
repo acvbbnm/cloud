@@ -69,7 +69,7 @@ const DiscoveryIntroModal = ({
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[16px] font-bold text-ink-100">
             {isEvidence
-              ? '🔦 어두운 맵을 단서로 밝혀가는 수사'
+              ? '어두운 맵을 단서로 밝혀가는 수사'
               : '어떤 단서를 입력해야 할까요?'}
           </h2>
           <button
@@ -91,7 +91,7 @@ const DiscoveryIntroModal = ({
 
             <div className="bg-ink-950/60 border border-amber-700/30 rounded-lg px-4 py-3 mb-4">
               <div className="text-[12px] text-amber-200 font-semibold mb-2">
-                🗺 진행 흐름
+                진행 흐름
               </div>
               <ol className="space-y-1.5 text-[11.5px] text-ink-300 leading-5 list-decimal list-inside">
                 <li>
@@ -119,7 +119,7 @@ const DiscoveryIntroModal = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
               <div className="bg-ink-950 border border-ink-700/60 rounded-lg px-3 py-2">
                 <div className="text-[11px] font-semibold text-ink-100 mb-1">
-                  📍 단서 후보 시각화
+                  단서 후보 시각화
                 </div>
                 <div className="text-[10.5px] text-ink-400 leading-4">
                   현재 leaf 의 점선 회색 후보 — 클릭하면 채택<br />
@@ -137,7 +137,7 @@ const DiscoveryIntroModal = ({
               </div>
               <div className="bg-ink-950 border border-ink-700/60 rounded-lg px-3 py-2">
                 <div className="text-[11px] font-semibold text-ink-100 mb-1">
-                  🎯 동적 후보 개수
+                  동적 후보 개수
                 </div>
                 <div className="text-[10.5px] text-ink-400 leading-4">
                   entropy 따라 5/3/2 개 동적 노출<br />

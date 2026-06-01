@@ -29,12 +29,15 @@ const EventPreviewTable = ({ events, selected, onToggle, onToggleAll }: EventPre
   const evidenceHas = useEvidenceLogStore((s) => s.has);
   const showToast = useToastStore((s) => s.show);
 
+  // P.38 — 빈값 가드 통일 (`-`/``/`null` 플레이스홀더 차단)
+  const isMeaningful = (v: string | null | undefined): v is string =>
+    !!v && v !== '-' && v.trim() !== '' && v.toLowerCase() !== 'null';
   const buildRawLog = (evt: PreviewEvent) => {
     const obs: Observable[] = [];
-    if (evt.user && evt.user !== '-') {
+    if (isMeaningful(evt.user)) {
       obs.push({ type: 'ACCOUNT', value: evt.user, note: evt.ev });
     }
-    if (evt.ip && evt.ip !== '-') {
+    if (isMeaningful(evt.ip)) {
       obs.push({ type: 'IP_ADDRESS', value: evt.ip, note: evt.ev });
     }
     return {

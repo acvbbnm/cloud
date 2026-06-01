@@ -15,15 +15,20 @@ import { getOcsf, runNormalize } from '@/api/analysis';
 
 import type { Observable, OCSFEventItem } from '@/types';
 
+/** 빈값 ("-"/"" / "null") 가드 — backend OCSF 정규화에서 actor·ip 가
+ *  플레이스홀더로 채워지면 칩이 의미없으므로 push 차단. P.38 (LogAnalysisFab) 과 동일. */
+const isMeaningfulValue = (v: string | null | undefined): v is string =>
+  !!v && v !== '-' && v.trim() !== '' && v.toLowerCase() !== 'null';
+
 /** P.36 — OCSFEventItem → 적재함 LoadedLog. actor_user_name → ACCOUNT,
- *   src_endpoint_ip → IP_ADDRESS observable 추출. */
+ *   src_endpoint_ip → IP_ADDRESS observable 추출. P.38 — 빈값 가드. */
 const buildOcsfLoadedLog = (e: OCSFEventItem) => {
   const obs: Observable[] = [];
-  if (e.actor_user_name) {
-    obs.push({ type: 'ACCOUNT', value: e.actor_user_name, note: e.activity_name });
+  if (isMeaningfulValue(e.actor_user_name)) {
+    obs.push({ type: 'ACCOUNT', value: e.actor_user_name!, note: e.activity_name });
   }
-  if (e.src_endpoint_ip) {
-    obs.push({ type: 'IP_ADDRESS', value: e.src_endpoint_ip, note: e.activity_name });
+  if (isMeaningfulValue(e.src_endpoint_ip)) {
+    obs.push({ type: 'IP_ADDRESS', value: e.src_endpoint_ip!, note: e.activity_name });
   }
   return {
     loaded_id: `ocsf-${e.ocsf_id}`,

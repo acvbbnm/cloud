@@ -215,7 +215,8 @@ const NextCluePanel = ({
   suggestions,
   onPickClueType,
   igCandidates,
-  onAdoptCandidate,
+  // P.36 — onAdoptCandidate 미사용 (채택 버튼 제거됨). prop 시그너처는 호환 유지.
+  onAdoptCandidate: _onAdoptCandidate,
   // V1.fix.17 — entropy bits 인라인 표시 제거 (RegressBanner 가 전담). 시그너처 호환 유지.
   entropyBits: _entropyBits,
   disabled,
@@ -425,10 +426,12 @@ const NextCluePanel = ({
                   </div>
                 )}
 
-                {/* P.35.1 — 추천 이유 토글 + 명시적 [+ 단서로 채택] 버튼.
-                    카드 클릭 = 채택 흐름 차단 (사용자: "실제 로그 분석 후
-                    추가가 정합"). 버튼 명시화로 우발 클릭 방지. */}
-                <div className="mt-1.5 pt-1 border-t border-ink-800/80 flex items-center justify-between gap-1.5">
+                {/* P.36 (사용자: "단서로 추가 버튼이 생기면 안돼지 — 저거는
+                    로그가 아니라 어떤 정보도 안 담겨있으니까 후보로만 볼 수
+                    있도록 추천 이유같은것만 보여주는 형식으로") — 채택 버튼
+                    완전 제거. 카드는 추천 이유 토글만 노출. 채택은 V-2 분석
+                    결과 → V-1 적재함 → 단서 채택 경로에서만 가능. */}
+                <div className="mt-1.5 pt-1 border-t border-ink-800/80">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -439,18 +442,6 @@ const NextCluePanel = ({
                     title="이 단서가 왜 추천되는지 자세히 보기"
                   >
                     {expandedClueKey === c.clue_key ? '▲' : '▼'} 추천 이유
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!disabled && onAdoptCandidate) onAdoptCandidate(c);
-                    }}
-                    disabled={disabled}
-                    className="text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-brand-teal/40 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="실제 로그 분석 없이 후보를 단서 트리에 즉시 채택 — 비권장 (로그 적재 후 채택이 정합)"
-                  >
-                    + 단서로 채택
                   </button>
                 </div>
 

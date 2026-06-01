@@ -10,6 +10,7 @@ import KpiCard from '@/components/KpiCard';
 import Badge from '@/components/Badge';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
+import { useEvidenceLogStore } from '@/stores/useEvidenceLogStore';
 import { getAttack, runMap } from '@/api/analysis';
 import type { AttackEventItem } from '@/types';
 
@@ -80,6 +81,36 @@ const V6Attack = () => {
     queryFn: () => getAttack(caseId!, page, FETCH_PAGE_SIZE),
     enabled: !!caseId,
   });
+
+  // P.36 — V-1 적재함 push
+  const loadEvidence = useEvidenceLogStore((s) => s.load);
+  const evidenceHas = useEvidenceLogStore((s) => s.has);
+
+  /** AttackEventItem 1건 → 적재함 LoadedLog. 기법 ID 는 6종 ClueType 미매칭
+   *  이라 observable 추출 없음. timestamp + 기법 메타만 적재. */
+  const buildAttackLog = (e: AttackEventItem) => ({
+    loaded_id: `att-${e.attack_id}`,
+    source: 'attack' as const,
+    source_id: e.attack_id,
+    time: e.event_time,
+    label: `${e.activity_name ?? e.technique_id} · ${e.tactic}`,
+    observables: [],
+    technique_id: e.technique_id,
+    fields: {
+      technique_id: e.technique_id,
+      technique_name: e.technique_name,
+      tactic: e.tactic,
+      activity_name: e.activity_name,
+      rule_id: e.rule_id,
+      event_time: e.event_time,
+    },
+  });
+
+  // techTable 의 row 가 *집계* 라 첫 발생 attack_event 를 representative 로 적재
+  const firstAttackForTech = (tactic: string, technique_id: string): AttackEventItem | undefined =>
+    (attackQuery.data?.items ?? []).find(
+      (e) => e.tactic === tactic && e.technique_id === technique_id,
+    );
 
   const mapMutation = useMutation({
     mutationFn: () => runMap(caseId!),
@@ -261,22 +292,57 @@ const V6Attack = () => {
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">전술</th>
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">이벤트 수</th>
                     <th className="text-left px-3 py-3 border-b border-ink-700/60">탐지 빈도</th>
+                    {/* P.36 — V-1 적재함 push */}
+                    <th className="text-left px-3 py-3 border-b border-ink-700/60">적재</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {techTable.map((t) => (
-                    <tr key={`${t.tactic}-${t.technique_id}`} className="border-b border-ink-700/30 hover:bg-brand-blue/[0.04]">
-                      <td className="px-3 py-2.5">
-                        <Badge tone="purple">{t.technique_id}</Badge>
-                      </td>
-                      <td className="px-3 py-2.5 font-medium">{t.technique_name ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-ink-200">{t.tactic}</td>
-                      <td className="px-3 py-2.5 font-mono text-ink-100">{t.count}</td>
-                      <td className="px-3 py-2.5">
-                        <Badge tone={sevTone(t.count)}>{countLabel(t.count)}</Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {techTable.map((t) => {
+                    const ev = firstAttackForTech(t.tactic, t.technique_id);
+                    const log = ev ? buildAttackLog(ev) : null;
+                    const already = log ? evidenceHas(log.loaded_id) : false;
+                    return (
+                      <tr
+                        key={`${t.tactic}-${t.technique_id}`}
+                        className="border-b border-ink-700/30 hover:bg-brand-blue/[0.04]"
+                      >
+                        <td className="px-3 py-2.5">
+                          <Badge tone="purple">{t.technique_id}</Badge>
+                        </td>
+                        <td className="px-3 py-2.5 font-medium">{t.technique_name ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-ink-200">{t.tactic}</td>
+                        <td className="px-3 py-2.5 font-mono text-ink-100">{t.count}</td>
+                        <td className="px-3 py-2.5">
+                          <Badge tone={sevTone(t.count)}>{countLabel(t.count)}</Badge>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {log ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (loadEvidence(log)) {
+                                  showToast(`➜ V-1 적재함: ${t.technique_id}`);
+                                } else {
+                                  showToast('이미 적재됨');
+                                }
+                              }}
+                              disabled={already}
+                              className="text-[10.5px] font-mono px-2 py-0.5 rounded border border-brand-teal/40 text-brand-teal hover:bg-brand-teal/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={
+                                already
+                                  ? '이미 적재됨'
+                                  : '첫 발생 attack_event 를 V-1 Step3 적재함에 추가'
+                              }
+                            >
+                              {already ? '✓' : '➜ 적재함'}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-ink-600">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

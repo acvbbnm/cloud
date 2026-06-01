@@ -39,7 +39,7 @@ import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuid
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
-import EvidenceLogPanel, { type LoadedLog } from '@/components/EvidenceLogPanel';
+import EvidenceLogPanel from '@/components/EvidenceLogPanel';
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
@@ -51,6 +51,7 @@ import { getGuidePreview } from '@/api/intake';
 
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useClueTreeStore } from '@/stores/useClueTreeStore';
+import { useEvidenceLogStore, type LoadedLog } from '@/stores/useEvidenceLogStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import type { ClueCandidate, ClueTreeResponse } from '@/types/clueTree';
@@ -173,11 +174,10 @@ const Step3_EvidenceTreeDiscovery = ({
     null,
   );
 
-  // ── P.35.2 (2026-05-31) — 분석 로그 적재 상태 ──
-  //   사용자: "분석한 로그를 적재할 수 있는 칸 + 로그를 단서로 올리기".
-  //   메모리 상태 (zustand 분리는 후속). 적재 로그는 컴파스 점 클릭 시
-  //   매칭 detail 표시 + 단서 채택 시 source='log_analysis' 로 마킹.
-  const [loadedLogs, setLoadedLogs] = useState<LoadedLog[]>([]);
+  // ── P.36 (2026-05-31 정정) — 적재함은 useEvidenceLogStore 가 보관 ──
+  //   V-2/V-3/V-6 의 row 가 store.load() 로 push, V-1 은 store.logs 만 표시.
+  //   사용자: "적재함은 우리 토글에서 로그 업로드/분석한 거 그거를 추가".
+  const loadedLogs = useEvidenceLogStore((s) => s.logs);
   // P.35.4 — 컴파스 점 클릭 → trail point detail (clue_key 매칭 로그 + 시각·posterior)
   const [selectedTrailPoint, setSelectedTrailPoint] = useState<{
     clue_key: string;
@@ -283,15 +283,9 @@ const Step3_EvidenceTreeDiscovery = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 
-  // ── P.35.2 분석 로그 적재/제거 핸들러 ──
-  const handleLoadLog = (log: LoadedLog) => {
-    setLoadedLogs((prev) =>
-      prev.find((l) => l.loaded_id === log.loaded_id) ? prev : [...prev, log],
-    );
-  };
-  const handleUnloadLog = (loaded_id: string) => {
-    setLoadedLogs((prev) => prev.filter((l) => l.loaded_id !== loaded_id));
-  };
+  // ── P.36 — handleLoadLog / handleUnloadLog 제거 ──
+  //   load/unload 는 useEvidenceLogStore action 으로 직접 호출.
+  //   V-2/V-3/V-6 가 store.load(), V-1 적재함의 [×] 가 store.unload().
 
   // ── P.35.3 로그 → 단서 채택 핸들러 ──
   // 적재 로그의 observable(ACCOUNT/IP_ADDRESS) 을 handleDirectClueAdd 흐름에 위임.
@@ -649,14 +643,9 @@ const Step3_EvidenceTreeDiscovery = ({
             subtitle="V-2 분석 결과 → 적재 → 단서로 채택. 다음 단서 후보를 실제 로그로 검증"
           >
             <EvidenceLogPanel
-              caseId={caseId}
-              loadedLogs={loadedLogs}
-              onLoad={handleLoadLog}
-              onUnload={handleUnloadLog}
               onAdoptFromLog={handleAdoptFromLog}
               onLogSelect={(l) => {
-                // 적재 row 클릭 — 컴파스에서 매칭 단서 강조 (clue_key 추론은 후속)
-                // 현재는 detail 영역만 활성화 (TrailPointDetail 가 매칭 표시)
+                // 적재 row 클릭 — 컴파스 detail 영역에 매칭 단서 표시
                 setSelectedTrailPoint({
                   clue_key: `__loaded__:${l.loaded_id}`,
                   label: l.label,

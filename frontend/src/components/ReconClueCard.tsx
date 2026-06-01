@@ -257,15 +257,27 @@ const ReconClueCard = ({
                           onClick={() => handleClick(opt)}
                           disabled={disabled || accepted || adoptingKey !== null}
                           className="text-left px-2.5 py-1.5 flex-1 min-w-0 cursor-pointer disabled:cursor-not-allowed"
+                          title={opt.short_label}
                         >
                           <div className="flex items-start gap-1.5">
-                            <span className="text-[10.5px] text-ink-100 font-medium flex-1 min-w-0 leading-4">
+                            {/* V1.fix.18 — 라벨 두 줄 wrap (이전: 한 줄로 옆 카드 영역 침범).
+                                line-clamp-2 + break-words + 충분한 leading 으로 2줄 표시. */}
+                            <span
+                              className="text-[10.5px] text-ink-100 font-medium flex-1 min-w-0 leading-[1.3]"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                wordBreak: 'break-word',
+                              }}
+                            >
                               {accepted ? '✓ ' : '◯ '}
                               {opt.short_label}
                             </span>
                             {top && (
                               <span
-                                className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded"
+                                className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded whitespace-nowrap"
                                 style={{
                                   color: INCIDENT_COLORS[top[0]],
                                   backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,

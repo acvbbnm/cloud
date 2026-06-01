@@ -157,10 +157,9 @@ def bridge_clue_tree_to_board(
         idx = max(0, (node_stage or 1) - 1)
         if idx < len(tree.confirmed_hypotheses):
             return tree.confirmed_hypotheses[idx]
-        # 미확정 stage (현재 진행 중) — None 으로 라벨 미부착.
-        # 사용자 fix 의도: 그 stage 의 단서가 *어느* 사고유형인지 모를 때는
-        # 잘못된 (마지막 확정) 사고유형 라벨을 강제하지 않는다.
-        return None
+        # fix (2026-05-31) — stage > len(confirmed) 면 마지막 확정 가설을
+        # anchor 로 사용. 현재 stage 의 단서들은 직전 확정 가설을 추적 중.
+        return tree.confirmed_hypotheses[-1]
 
     # 기존 보드 노드 좌표 수집 — 충돌 회피용
     existing_positions: list[tuple[int, int]] = [
@@ -190,10 +189,13 @@ def bridge_clue_tree_to_board(
         label = rich if is_rich else (tnode.label or rich or tnode.clue_key)
 
         # P.33 — 각 단서의 stage 로 confirmed 매칭 (마지막 가설 일괄 부착 X)
-        node_hypothesis = _hypothesis_for_stage(tnode.stage)
+        # fix (2026-05-31) — tnode.stage 가 default 1 (명시 안 됨) 이면 tree.stage 사용.
+        # 명시적으로 stage 가 다른 값으로 설정된 경우만 그 값 그대로 보존.
+        effective_stage = tnode.stage if tnode.stage > 1 else tree.stage
+        node_hypothesis = _hypothesis_for_stage(effective_stage)
         meta = ChainNode.build_clue_meta(
             clue_key=tnode.clue_key,
-            stage=tnode.stage,  # P.33 — tree.stage(현재) 대신 단서 본인 stage
+            stage=effective_stage,
             hypothesis=node_hypothesis,
             source=source,
             extra={

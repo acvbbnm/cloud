@@ -155,12 +155,17 @@ const DiscoveryIntroModal = ({
               </div>
             </div>
 
-            <div className="bg-ink-950/60 border border-ink-700/40 rounded-lg px-3 py-2 mb-4 text-[10.5px] text-ink-400 leading-5">
-              <b className="text-ink-200">학술 근거</b>: Jaynes 1968 Max Entropy ·
-              Pearl 1988 Bayesian Belief Propagation · Shannon 1948 Information Gain ·
-              MITRE ATT&CK · Verizon DBIR. 결정성 100% (같은 단서 시퀀스 → 같은
-              사후확률). AI 는 검색·요약·제안만, 결정은 수사관.
-            </div>
+            <details className="bg-ink-950/60 border border-ink-700/40 rounded-lg px-3 py-2 mb-4">
+              <summary className="text-[10.5px] text-ink-300 font-semibold cursor-pointer select-none">
+                학술 근거 (펼치기)
+              </summary>
+              <div className="mt-2 text-[10.5px] text-ink-400 leading-5">
+                Jaynes 1968 Max Entropy · Pearl 1988 Bayesian Belief Propagation ·
+                Shannon 1948 Information Gain · MITRE ATT&CK · Verizon DBIR. 결정성
+                100% (같은 단서 시퀀스 → 같은 사후확률). AI 는 검색·요약·제안만,
+                결정은 수사관.
+              </div>
+            </details>
           </>
         ) : (
           // ── Legacy additive/bayesian 안내 (기존 6종 단서 카탈로그) ──

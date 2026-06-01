@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
 import { useCaseStore } from '@/stores/useCaseStore';
 
 import { CSP_META, TYPE_META } from './meta';
@@ -402,11 +403,25 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
 
         {tab === 'security' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* V1.fix.14 (2026-06-01) — 사용자 피드백 "내부 동작 로직이 그대로 노출".
+                헤더 학술 라벨 + 각 필드 priority boost 룰을 ⓘ 근거 popup 으로 이동. */}
             <div className="md:col-span-2 pb-2 mb-1 border-b border-ink-700/60 flex items-center gap-2 flex-wrap">
-              <span className="eyebrow text-brand-teal"> 보안 정책 (V2 가이드 환경 보정)</span>
+              <span className="eyebrow text-brand-teal">보안 정책</span>
               <span className="text-[10.5px] text-ink-400">
-                입력값이 수집 가이드 V2 의 우선순위·추가 항목에 즉시 반영됩니다 (KISA 2.4 + NIST SP 800-86 3 기반).
+                입력값이 다음 단계 수집 가이드의 우선순위에 즉시 반영됩니다.
               </span>
+              <SourceTag
+                label="ⓘ 근거"
+                title="V2 가이드 환경 보정 — 학술 근거"
+                body={
+                  'KISA 침해사고 대응 안내서 §2.4 초기 대응 점검표\n' +
+                  'NIST SP 800-86 §3 (휘발성 계층 + 환경 인자별 우선순위 조정)\n' +
+                  'CSA Top Threats 2024 (#2 IAM, #7 Disclosure)\n' +
+                  'Google Threat Horizons Report H1 2024\n\n' +
+                  '아래 5개 입력값이 다음 단계의 수집 가이드 항목 우선순위·\n' +
+                  '추가 항목에 즉시 반영됩니다 (environment_modifiers.json m-004~m-011).'
+                }
+              />
             </div>
 
             <Field
@@ -414,6 +429,18 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 <span className="flex items-center gap-1.5">
                   MFA (다중 인증) 적용 현황
                   <span className="tag-red text-[10px]">필수 확인</span>
+                  <SourceTag
+                    label="ⓘ"
+                    title="MFA 환경 보정 룰"
+                    body={
+                      'MFA 적용 여부는 자격증명 단일 실패 지점 위험과 직결.\n\n' +
+                      '입력에 따른 가이드 보정:\n' +
+                      '  · 미적용 → 인증 로그 + 실패 인증 로그 우선순위 ↑↑\n' +
+                      '  · 부분 적용 → 인증 로그 우선순위 ↑\n' +
+                      '  · 적용/미확인 → 영향 없음\n\n' +
+                      '근거: CSA Top Threats 2024 #2 IAM, MITRE T1078.004'
+                    }
+                  />
                 </span>
               }
             >
@@ -423,24 +450,52 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 <option>미적용</option>
                 <option>미확인</option>
               </select>
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                • 미적용 → 1.5.1 인증 + 1.5.4 실패 인증 priority +2 (CSA #2 IAM)
-                <br />• 부분 적용 → 1.5.1 priority +1
-              </p>
             </Field>
 
-            <Field label="SSO (외부 IdP 연동)">
+            <Field
+              label={
+                <span className="flex items-center gap-1.5">
+                  SSO (외부 IdP 연동)
+                  <SourceTag
+                    label="ⓘ"
+                    title="SSO 환경 보정 룰"
+                    body={
+                      'SSO 사용 시 IdP 측 침해가 클라우드 IAM 까지 전파될 수 있음.\n\n' +
+                      '입력에 따른 가이드 보정:\n' +
+                      '  · 있음 → API 액세스 + 위험 기반 검색 우선순위 ↑\n' +
+                      '  · 없음/미확인 → 영향 없음\n\n' +
+                      '근거: CSA Top Threats 2024 #2 IAM, Google Threat Horizons H1 2024'
+                    }
+                  />
+                </span>
+              }
+            >
               <select value={ssoEnabled} onChange={(e) => setSsoEnabled(e.target.value)} className="input">
                 <option>없음</option>
                 <option>있음 (외부 IdP 연동)</option>
                 <option>미확인</option>
               </select>
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                • 있음 → 1.5.5 API 액세스 + 1.5.7 위험 기반 검색 priority +1
-              </p>
             </Field>
 
-            <Field label="IAM 사용자 계정 수 (대략)">
+            <Field
+              label={
+                <span className="flex items-center gap-1.5">
+                  IAM 사용자 계정 수 (대략)
+                  <SourceTag
+                    label="ⓘ"
+                    title="IAM 계정 수 환경 보정 룰"
+                    body={
+                      '대규모 IAM 환경은 권한 변경·계정 생성 이벤트 잡음이 많아\n' +
+                      '탐지 난이도가 올라감.\n\n' +
+                      '입력에 따른 가이드 보정:\n' +
+                      '  · 50명 이상 → 권한 + 계정 생성 로그 우선순위 ↑\n' +
+                      '  · 그 미만 → 영향 없음\n\n' +
+                      '근거: Google Threat Horizons H1 2024, KISA §3.3 불법 자원 사용'
+                    }
+                  />
+                </span>
+              }
+            >
               <input
                 type="number"
                 min={0}
@@ -448,9 +503,6 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 onChange={(e) => setIamAccountCount(Number(e.target.value) || 0)}
                 className="input"
               />
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                • 50명 이상 → 1.5.2 권한 + 1.5.3 계정 생성 priority +1 (대규모 환경 노이즈)
-              </p>
             </Field>
 
             <Field
@@ -458,6 +510,18 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 <span className="flex items-center gap-1.5">
                   감사 로그 보존 기간 (일)
                   <span className="tag-yellow text-[10px]">휘발성</span>
+                  <SourceTag
+                    label="ⓘ"
+                    title="감사 로그 보존 기간 환경 보정 룰"
+                    body={
+                      '보존 기간이 짧으면 사건 발견 시점 이전 로그가 이미 폐기됐을\n' +
+                      '가능성이 큼 (사후 분석 제약).\n\n' +
+                      '입력에 따른 가이드 보정:\n' +
+                      '  · 90일 미만 → "보존 부족 즉시 추출" 권고 항목 자동 추가\n' +
+                      '  · 90일 이상 → 영향 없음\n\n' +
+                      '근거: NIST SP 800-86 §3.1 휘발성, KISA §2.6'
+                    }
+                  />
                 </span>
               }
             >
@@ -468,12 +532,28 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 onChange={(e) => setAuditLogRetentionDays(Number(e.target.value) || 0)}
                 className="input"
               />
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                • 90일 미만 →  CT-RETENTION-WARNING 항목 추가 (NIST SP 800-86 3.1 휘발성)
-              </p>
             </Field>
 
-            <Field label="민감 데이터 보유" full>
+            <Field
+              label={
+                <span className="flex items-center gap-1.5">
+                  민감 데이터 보유
+                  <SourceTag
+                    label="ⓘ"
+                    title="민감 데이터 환경 보정 룰"
+                    body={
+                      '개인정보·민감정보 보유 시 데이터 유출 영향이 크고, 감사\n' +
+                      '로그 위·변조 탐지 우선순위도 높여야 함.\n\n' +
+                      '입력에 따른 가이드 보정:\n' +
+                      '  · 있음 → 파일 스토리지 로그 ↑↑, 로깅 메타 ↑\n' +
+                      '  · 없음/미확인 → 영향 없음\n\n' +
+                      '근거: CSA #7 Accidental Disclosure, KISA §3.3 정보 누설'
+                    }
+                  />
+                </span>
+              }
+              full
+            >
               <select
                 value={dataSensitivity}
                 onChange={(e) => setDataSensitivity(e.target.value)}
@@ -483,15 +563,25 @@ const Step2_SystemConfig = ({ csp, incidentType, onPrev, onSubmit, isSubmitting 
                 <option>있음 (개인정보·민감정보)</option>
                 <option>미확인</option>
               </select>
-              <p className="text-[10.5px] text-ink-400 mt-1">
-                • 있음 → 1.4 파일 스토리지 priority +2, 1.7 로깅 메타 +1 (CSA #7 Accidental Disclosure)
-              </p>
             </Field>
 
             {isAll && (
-              <div className="md:col-span-2 panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px]">
-                <span className="eyebrow text-brand-teal">자동 인식</span>{' '}
-                CSP 전체(naver + nhn) 선택 — <strong>멀티 클라우드 환경</strong>으로 분류되어 1.5.5 API 액세스 + Lateral Movement 단계 priority +2 가 적용됩니다 (m-010).
+              <div className="md:col-span-2 panel p-3 border-l-[3px] border-l-brand-teal text-[11.5px] flex items-start gap-2">
+                <div className="flex-1">
+                  <span className="eyebrow text-brand-teal">자동 인식</span>{' '}
+                  CSP 전체(naver + nhn) 선택 — <strong>멀티 클라우드 환경</strong>으로 분류되어 추가 보정이 적용됩니다.
+                </div>
+                <SourceTag
+                  label="ⓘ"
+                  title="멀티 클라우드 환경 보정"
+                  body={
+                    '동일 자격증명·IP 가 양쪽 CSP 에 등장 시 횡이동 가능성 ↑.\n\n' +
+                    '입력에 따른 가이드 보정:\n' +
+                    '  · API 액세스 로그 우선순위 ↑\n' +
+                    '  · Lateral Movement 단계 가중치 ↑↑\n\n' +
+                    '근거: CSA Top Threats #11 APT, 실 데이터 분석 (NCP·NHN 동일 IP)'
+                  }
+                />
               </div>
             )}
           </div>

@@ -83,12 +83,17 @@ def test_zone2_locked_when_depth_below_min() -> None:
     assert is_zone2_unlocked(tree, tree.posterior_current) is False
 
 
-def test_zone2_locked_when_likelihood_below_min() -> None:
-    """depth ≥ 3 + 약한 단서만 → Zone 1."""
+def test_zone2_unlocked_at_relaxed_depth_even_weak() -> None:
+    """V1.fix.22 (2026-06-01) — RELAXED_DEPTH=3 이라 depth=3 + 약한 단서만으로도 Zone 2.
+
+    이전에는 depth=3 일 때 강한 단서 (lk ≥ 0.25) 필요. 사용자: "Zone 1 외곽 도달
+    더 빠르게" → RELAXED 4→3 으로 완화. 깊이만으로 Zone 2 진입.
+    """
     tree = _build_tree([WEAK_CLUE, WEAK_CLUE, WEAK_CLUE])  # depth = 3
     assert max((n.depth for n in tree.nodes.values()), default=0) >= TRIGGER_MIN_DEPTH
     assert core_clue_likelihood(tree) < TRIGGER_MIN_LIKELIHOOD
-    assert is_zone2_unlocked(tree, tree.posterior_current) is False
+    # V1.fix.22 — depth = RELAXED_DEPTH (=3) 만으로 Zone 2 진입
+    assert is_zone2_unlocked(tree, tree.posterior_current) is True
 
 
 def test_zone2_unlocked_when_both_satisfied() -> None:
@@ -110,9 +115,9 @@ def test_zone2_unlocked_deep_even_with_weak_clues() -> None:
     assert is_zone2_unlocked(tree, tree.posterior_current) is True
 
 
-def test_zone2_locked_below_relaxed_depth_and_weak() -> None:
-    """V1.fix.12 — depth < RELAXED (=4) 이고 강한 단서도 없으면 Zone 1 유지."""
-    tree = _build_tree([WEAK_CLUE] * 3)  # depth = 3, 약한 단서만
+def test_zone2_locked_below_min_depth() -> None:
+    """V1.fix.22 — depth < TRIGGER_MIN_DEPTH (=3) 면 Zone 1 유지."""
+    tree = _build_tree([WEAK_CLUE] * 2)  # depth = 2
     assert is_zone2_unlocked(tree, tree.posterior_current) is False
 
 

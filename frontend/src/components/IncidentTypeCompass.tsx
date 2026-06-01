@@ -220,31 +220,33 @@ const IncidentTypeCompass = ({
   // 모델이 너무 빨리 한 가설로 쏠리는 것을 시각만 부드럽게 표현.
   // ⚠ Bayes update 자체는 그대로 (e2e 회귀 0) — 시각화 calibration 만 적용.
   //
-  // 사용자 비전 (2026-05-26):
-  //   1. "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고 향하는 방향"
-  //   2. "초기 이동 방향이 너무 큼 — 한 사고유형으로 치우치는 경향"
-  //   → SATURATION_DEPTH 15 (이전 10), temperature scaling 추가.
+  // 사용자 비전:
+  //   1. "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고 향하는 방향" (2026-05-26)
+  //   2. "초기 이동 방향이 너무 큼 — 한 사고유형으로 치우치는 경향" (2026-05-26)
+  //   3. V1.fix.22 (2026-06-01) — "노드를 많이 움직이게 + Zone 1 (외곽) 에 더 빨리 도달".
+  //      SATURATION 15 → 8, MIN_RADIUS 8% → 22%, temperature 시작 4 → 2.5.
+  //      효과: 단서 1개 채택 시 22% 반지름 (즉시 가시), 8개에서 최대 도달.
   //
   // 학술 정합: P^(1/T) softmax temperature (calibration) — Platt 1999, Guo 2017.
-  const SATURATION_DEPTH = 15;
-  const MIN_RADIUS_FACTOR = 0.08;  // depth 1 → 8% 반지름 (이전 12% → 더 안쪽)
+  const SATURATION_DEPTH = 8;        // V1.fix.22 — 15 → 8 (8 단서에서 외곽 도달)
+  const MIN_RADIUS_FACTOR = 0.22;    // V1.fix.22 — 0.08 → 0.22 (초기부터 잘 보임)
 
   /** depth 별 무게중심 최대 반지름 — sqrt 곡선 (초반 점진 + 후반 saturation). */
   const radiusForDepth = (depth: number): number => {
     if (depth <= 0) return 0;
     const t = Math.min(1, depth / SATURATION_DEPTH);
-    const factor = MIN_RADIUS_FACTOR + (0.85 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
+    const factor = MIN_RADIUS_FACTOR + (0.90 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
     return R * factor;
   };
 
-  /** depth 별 temperature — 깊을수록 T↓ (실제 분포에 가깝게).
-   *  depth 1 → T=4 (매우 평탄), depth 5 → T=2.5, depth 10 → T=1.5, depth 15+ → T=1 (그대로). */
+  /** depth 별 temperature — V1.fix.22: 2.5 → 1 으로 빠르게 감소 (초기부터 우세 가설 반영).
+   *  depth 1 → T≈2.3, depth 4 → T≈1.6, depth 8+ → T=1 (그대로). */
   const temperatureForDepth = (depth: number): number => {
-    if (depth <= 0) return 5;
+    if (depth <= 0) return 3;
     if (depth >= SATURATION_DEPTH) return 1;
-    // 4 → 1 으로 선형 감소
+    // 2.5 → 1 으로 선형 감소
     const t = depth / SATURATION_DEPTH;
-    return 4 - 3 * t;
+    return 2.5 - 1.5 * t;
   };
 
   /** P^(1/T) 으로 분포 평탄화. T>1 = 평탄, T=1 = 그대로. */

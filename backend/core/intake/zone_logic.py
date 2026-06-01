@@ -59,16 +59,19 @@ KILL_CHAIN_ORDER: dict[str, int] = {
 
 TRIGGER_MIN_DEPTH: int = 3
 TRIGGER_MIN_LIKELIHOOD: float = 0.25
-# V1.fix.12 (2026-05-31 byungwoo · 사용자: "Zone 2 도달 너무 느리다 — 4개면 도달") —
-#   depth ≥ TRIGGER_RELAXED_DEPTH 만으로 Zone 2 진입 (likelihood 무관). 약한 단서
-#   여러 개 누적도 "맵 충분히 탐색" 으로 인정. is_zone2_unlocked OR 분기.
-TRIGGER_RELAXED_DEPTH: int = 4
+# V1.fix.12 (2026-05-31) — depth ≥ TRIGGER_RELAXED_DEPTH 만으로 Zone 2 진입
+#   (likelihood 무관). 약한 단서 여러 개 누적도 "맵 충분히 탐색" 으로 인정.
+# V1.fix.22 (2026-06-01 사용자: "Zone 1 (외곽) 도달 더 빠르게") — 4 → 3.
+#   단서 3개 누적만으로도 Zone 2 진입. 컴퍼스 무게중심 외곽 도달도 8 depth 에서
+#   max radius (이전 15) — 시연 시 빠르게 결과 시각화.
+TRIGGER_RELAXED_DEPTH: int = 3
 #
 # 변경 이력:
 #   · P.10 (cap=20): TRIGGER 0.40→0.30
 #   · P.13: 0.40→0.30 calibration
 #   · P.26 (cap=15): 0.30→0.25 추가 calibration
 #   · V1.fix.12: RELAXED_DEPTH=4 추가 (OR 조건)
+#   · V1.fix.22: RELAXED_DEPTH 4→3 (시연 가속)
 
 # 회귀 임계값 (paradigm §21.8.1)
 #

@@ -74,19 +74,8 @@ const V7Report = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportQuery.data]);
 
-  const regenerateMutation = useMutation({
-    mutationFn: () => createReport({ caseId: caseId!, regenerate: true }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['report', caseId], updated);
-      setDirty(new Set());
-      showToast('AI 초안 재생성 완료');
-    },
-    onError: (err: unknown) => {
-      showToast(
-        `재생성 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    },
-  });
+  // V1.fix.21 — "AI 초안 재생성" 버튼 제거. 초안 자동 생성 (mount 시 createReport)
+  //   만으로 충분. 재생성 mutation 도 제거.
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -106,18 +95,8 @@ const V7Report = () => {
     },
   });
 
-  const finalizeMutation = useMutation({
-    mutationFn: () => patchReport(caseId!, { status: 'finalized' }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['report', caseId], updated);
-      showToast('보고서 최종화 완료 (FINALIZE_REPORT 적재)');
-    },
-    onError: (err: unknown) => {
-      showToast(
-        `최종화 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    },
-  });
+  // V1.fix.21 — "최종화" 버튼 제거. DOCX 다운로드로 외부 보고 흐름 종결.
+  //   status='finalized' 전환은 V-8 사후 검증 등 별도 흐름에서 처리.
 
   const exportMutation = useMutation({
     mutationFn: () => downloadReportDocx(caseId!),
@@ -202,18 +181,8 @@ const V7Report = () => {
         }
         actions={
           <>
-            <button
-              onClick={() => regenerateMutation.mutate()}
-              disabled={
-                isFinalized ||
-                regenerateMutation.isPending ||
-                reportQuery.isLoading
-              }
-              className="btn-ghost disabled:opacity-40"
-              title="ATT&CK 매핑·갭·로그 데이터로 8섹션을 다시 생성"
-            >
-              {regenerateMutation.isPending ? '생성 중…' : ' AI 초안 재생성'}
-            </button>
+            {/* V1.fix.21 — "AI 초안 재생성" 버튼 제거 (사용자 피드백). 초안은 1회
+                자동 생성 후 사용자 편집·저장·DOCX 다운로드 흐름으로 충분. */}
             <button
               onClick={() => saveMutation.mutate()}
               disabled={
@@ -226,20 +195,13 @@ const V7Report = () => {
             <button
               onClick={() => exportMutation.mutate()}
               disabled={!report || exportMutation.isPending}
-              className="btn-ghost disabled:opacity-40"
+              className="btn-primary disabled:opacity-40"
             >
               {exportMutation.isPending ? '다운로드 중…' : ' DOCX'}
             </button>
-            <button
-              onClick={() => finalizeMutation.mutate()}
-              disabled={
-                !report || isFinalized || finalizeMutation.isPending || dirtyCount > 0
-              }
-              className="btn-primary disabled:opacity-40"
-              title={dirtyCount > 0 ? '미저장 변경이 있습니다. 저장 후 최종화하세요.' : ''}
-            >
-              {finalizeMutation.isPending ? '최종화 중…' : ' 최종화'}
-            </button>
+            {/* V1.fix.21 — "최종화" 버튼 제거 (사용자 피드백). DOCX 다운로드로 외부
+                보고 흐름 종결. status='finalized' 상태 전환은 V-8 등 사후 검증
+                과정에서 별도 처리. */}
           </>
         }
       />

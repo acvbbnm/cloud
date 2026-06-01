@@ -30,11 +30,42 @@ from core.board.chain import ChainEdge, ChainNode
 from core.intake.clue_tree import ClueTree, path_from_root
 from db.models import ChainNodeModel
 
-# ── 좌표 상수 (시연 안정성 — 보드 캔버스 1200×800 가정) ──
-BRIDGE_BASE_Y = 200
-BRIDGE_X_STEP = 240
-BRIDGE_Y_JITTER = 60
+# ── 좌표 상수 (보드 캔버스 1100×620 격자 배치) ──
+# NODE_W=168, NODE_H=64 + 충분한 여유 (X 200, Y 95 셀)
+BRIDGE_BASE_X = 80
+BRIDGE_BASE_Y = 80
+BRIDGE_CELL_W = 200
+BRIDGE_CELL_H = 95
+BRIDGE_COLS = 5         # 5열 (가로 = 80 + 5*200 = 1080 < 1100 OK)
+BRIDGE_X_STEP = 240     # legacy — _next_base_x 가 max(pos_x)+step 으로 사용
 BRIDGE_FALLBACK_X = 80  # 기존 노드 없을 때 시작 x
+
+
+def _is_overlap(
+    x: int, y: int, taken: list[tuple[int, int]],
+    *, gap_x: int = 200, gap_y: int = 95,
+) -> bool:
+    """주어진 (x, y) 가 기존 노드 위치 중 어느 것과 겹치면 True."""
+    return any(abs(x - tx) < gap_x and abs(y - ty) < gap_y for tx, ty in taken)
+
+
+def _next_free_slot(
+    taken: list[tuple[int, int]],
+    *, start_idx: int = 0,
+) -> tuple[int, int]:
+    """비어 있는 격자 셀 좌표 반환. row-major 순서로 탐색.
+
+    겹침이 없을 때까지 격자를 늘려가며 자리 확보 (최대 200 슬롯).
+    """
+    for i in range(start_idx, start_idx + 200):
+        r, c = divmod(i, BRIDGE_COLS)
+        x = BRIDGE_BASE_X + c * BRIDGE_CELL_W
+        y = BRIDGE_BASE_Y + r * BRIDGE_CELL_H
+        if not _is_overlap(x, y, taken):
+            return x, y
+    # fallback — 200 슬롯 다 차면 그냥 row-major
+    r, c = divmod(start_idx, BRIDGE_COLS)
+    return BRIDGE_BASE_X + c * BRIDGE_CELL_W, BRIDGE_BASE_Y + r * BRIDGE_CELL_H
 
 
 def _collect_existing_clue_keys(db: Session, case_id: str) -> set[str]:
@@ -113,13 +144,19 @@ def bridge_clue_tree_to_board(
         tree.confirmed_hypotheses[-1] if tree.confirmed_hypotheses else None
     )
 
-    # 좌표 시작점
-    base_x = _next_base_x(db, case_id)
+    # 기존 보드 노드 좌표 수집 — 충돌 회피용
+    existing_positions: list[tuple[int, int]] = [
+        (n.pos_x, n.pos_y)
+        for n in db.query(ChainNodeModel)
+        .filter(ChainNodeModel.case_id == case_id)
+        .all()
+        if n.pos_x is not None and n.pos_y is not None
+    ]
 
     created_nodes: list[ChainNodeModel] = []
     skipped: list[dict] = []
 
-    for idx, tnode in enumerate(path):
+    for tnode in path:
         if tnode.clue_key in existing_keys:
             skipped.append(
                 {"clue_key": tnode.clue_key, "reason": "already_on_board"}
@@ -145,8 +182,9 @@ def bridge_clue_tree_to_board(
             },
         )
 
-        pos_x = base_x + idx * BRIDGE_X_STEP
-        pos_y = BRIDGE_BASE_Y + (idx % 2) * BRIDGE_Y_JITTER
+        # 격자 빈 자리 자동 탐색 (기존 노드 + 같은 호출 내 추가 노드 모두 회피)
+        pos_x, pos_y = _next_free_slot(existing_positions)
+        existing_positions.append((pos_x, pos_y))
 
         node = ChainNode.create(
             db,

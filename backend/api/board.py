@@ -15,12 +15,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.board.chain import ChainEdge, ChainNode
-from core.board.clue_bridge import bridge_clue_tree_to_board
+from core.board.clue_bridge import _next_free_slot, bridge_clue_tree_to_board
 from core.board.graph_analytics import auto_layout_positions
 from core.board.investigation_board import InvestigationBoard
 from core.intake.clue_tree_service import _load_tree_from_case  # Phase O.3 — internal helper
 from core.intake.incident_case import IncidentCase
-from db.models import ActionLogModel, AttackEventModel
+from db.models import ActionLogModel, AttackEventModel, ChainNodeModel
 from db.session import get_db
 
 router = APIRouter(prefix="/api/board", tags=["board"])
@@ -161,14 +161,24 @@ async def create_node(req: CreateNodeRequest, db: Session = Depends(get_db)) -> 
     else:
         meta = req.meta
 
+    # 좌표 자동 보정 — 미지정/충돌 시 빈 격자 자리 찾기 (V-5 노드 겹침 fix)
+    pos_x, pos_y = req.pos_x, req.pos_y
+    if pos_x is None or pos_y is None:
+        existing = [
+            (n.pos_x, n.pos_y)
+            for n in db.query(ChainNodeModel).filter_by(case_id=req.caseId).all()
+            if n.pos_x is not None and n.pos_y is not None
+        ]
+        pos_x, pos_y = _next_free_slot(existing)
+
     node = ChainNode.create(
         db,
         case_id=req.caseId,
         label=label,
         attack_id=req.attack_id,
         is_ai_suggested=req.is_ai_suggested,
-        pos_x=req.pos_x,
-        pos_y=req.pos_y,
+        pos_x=pos_x,
+        pos_y=pos_y,
         meta=meta,
     )
     return {"status": "ok", "data": ChainNode.serialize(node)}

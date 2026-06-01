@@ -278,7 +278,12 @@ def test_bridge_no_anchor_hypothesis_when_unconfirmed(db_session, case) -> None:
 
 
 def test_bridge_x_starts_right_of_existing(db_session, case) -> None:
-    # 기존 attack 노드 1개 (pos_x=500)
+    """기존 노드가 있을 때 신규 노드들이 그것과 겹치지 않음 (V-5 격자 회피).
+
+    2026-05-31 — 옛 동작 (기존 노드 우측에서 시작) 에서 격자 + 충돌 회피로 변경.
+    핵심 보장은 동일: 신규 노드가 기존 노드와 겹치지 않음.
+    """
+    # 기존 노드 1개 (pos_x=500, pos_y=100)
     ChainNode.create(
         db_session,
         case_id=case.case_id,
@@ -291,12 +296,23 @@ def test_bridge_x_starts_right_of_existing(db_session, case) -> None:
     tree = _make_tree_with_path(case.case_id)
     result = bridge_clue_tree_to_board(db_session, case.case_id, tree)
 
-    xs = [n["pos_x"] for n in result["created_nodes"]]
-    # 첫 노드 x = 500 + BRIDGE_X_STEP (240) = 740
-    assert xs[0] == 500 + BRIDGE_X_STEP
-    # 이후 노드는 step 만큼 증가
-    assert xs[1] - xs[0] == BRIDGE_X_STEP
-    assert xs[2] - xs[1] == BRIDGE_X_STEP
+    # 모든 신규 노드가 기존 노드 (500, 100) 와 겹치지 않아야 함 (200×95 셀 기준)
+    for n in result["created_nodes"]:
+        dx = abs(n["pos_x"] - 500)
+        dy = abs(n["pos_y"] - 100)
+        assert dx >= 200 or dy >= 95, (
+            f"신규 노드 ({n['pos_x']},{n['pos_y']}) 가 기존 (500,100) 과 겹침"
+        )
+
+    # 신규 노드 끼리도 겹치지 않음
+    coords = [(n["pos_x"], n["pos_y"]) for n in result["created_nodes"]]
+    for i in range(len(coords)):
+        for j in range(i + 1, len(coords)):
+            dx = abs(coords[i][0] - coords[j][0])
+            dy = abs(coords[i][1] - coords[j][1])
+            assert dx >= 200 or dy >= 95, (
+                f"신규 노드 끼리 겹침: {coords[i]} ↔ {coords[j]}"
+            )
 
 
 def test_bridge_x_fallback_when_no_existing(db_session, case) -> None:

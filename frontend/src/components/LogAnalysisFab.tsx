@@ -19,12 +19,13 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useClueTreeStore } from '@/stores/useClueTreeStore';
+import { useEvidenceLogStore } from '@/stores/useEvidenceLogStore';
 import { useLogAnalysisStore } from '@/stores/useLogAnalysisStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { analyzeLogs } from '@/api/triage';
 
-import type { HypothesisScores } from '@/types';
+import type { HypothesisScores, Observable } from '@/types';
 
 // 8 사고유형 + UNCLASSIFIED 모두 0 으로 시작 (analyzeLogs 의 baseline)
 const EMPTY_SCORES: HypothesisScores = {
@@ -89,18 +90,23 @@ const LogAnalysisFab = () => {
   const toggle = useLogAnalysisStore((s) => s.toggle);
   const result = useLogAnalysisStore((s) => s.result);
   const setResult = useLogAnalysisStore((s) => s.setResult);
-  const adoptedKeys = useLogAnalysisStore((s) => s.adoptedKeys);
-  const markAdopted = useLogAnalysisStore((s) => s.markAdopted);
-
+  // P.37 — adoptedKeys/markAdopted (legacy 단서 직접 채택) 는 미사용.
+  //   loadedSet 으로 적재함 store 기반 멱등 검사로 대체.
   const clueTree = useClueTreeStore((s) => s.response);
-  const expandTree = useClueTreeStore((s) => s.expand);
+
+  // P.37 (2026-05-31 사용자: "내가 말한건 저 토글 열어서 분석된 로그를 분석
+  //   로그 적재함에 추가하는 형태") — expandTree 즉시 호출 X. useEvidenceLogStore
+  //   에 push, V-1 Step3 적재함에서 단서 채택은 별도 단계.
+  const loadEvidence = useEvidenceLogStore((s) => s.load);
+  const evidenceHas = useEvidenceLogStore((s) => s.has);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // V-1 Step 3 단서 트리 활성 여부 (단서 추가 버튼 활성 조건)
-  const canAdopt = Boolean(caseId && clueTree && clueTree.scoring_mode);
+  // 적재 가능 — 케이스만 있으면 가능 (V-1 Step3 진행 무관).
+  // 적재함은 어디서나 push 가능, 단서 채택은 V-1 Step3 에서.
+  const canLoad = Boolean(caseId);
 
   const techniqueGroups = result ? groupByTechnique(result.mapped_events) : [];
 
@@ -131,42 +137,79 @@ const LogAnalysisFab = () => {
     }
   };
 
-  const handleAdoptTechnique = async (g: TechniqueGroup) => {
-    if (!canAdopt || !caseId || !clueTree) return;
-    const clueKey = `TECHNIQUE:${g.technique_id}`;
-    if (adoptedKeys.has(clueKey)) {
-      showToast(`이미 채택됨: ${g.technique_id}`, 2500);
-      return;
-    }
-    try {
-      await expandTree({
-        caseId,
-        parent_node_id: useClueTreeStore.getState().response!.current_leaf_id,
-        clue_key: clueKey,
-        source: 'log_analysis',
-        label_override: g.technique_name
-          ? `${g.technique_id} — ${g.technique_name}`
-          : g.technique_id,
+  /** P.37 — TechniqueGroup → 적재함 LoadedLog 변환.
+   *
+   *   첫 발생 이벤트의 actor_user_name·src_endpoint_ip 를 observable 로 추출,
+   *   group 메타 (count, technique_name, tactic, first_actor, first_ip, first_time)
+   *   를 fields 에 보관. loaded_id = 첫 발생 attack_id 기반 (멱등).
+   */
+  const buildGroupLog = (g: TechniqueGroup) => {
+    const first = g.events[0];
+    const obs: Observable[] = [];
+    if (first?.actor_user_name) {
+      obs.push({
+        type: 'ACCOUNT',
+        value: first.actor_user_name,
+        note: g.technique_name ?? g.technique_id,
       });
-      markAdopted(clueKey);
+    }
+    if (first?.src_endpoint_ip) {
+      obs.push({
+        type: 'IP_ADDRESS',
+        value: first.src_endpoint_ip,
+        note: g.technique_name ?? g.technique_id,
+      });
+    }
+    return {
+      loaded_id: `tech-${g.technique_id}`,
+      source: 'attack' as const,
+      source_id: first?.attack_id ?? g.technique_id,
+      time: first?.time ?? null,
+      label: g.technique_name
+        ? `${g.technique_id} — ${g.technique_name}`
+        : g.technique_id,
+      observables: obs,
+      technique_id: g.technique_id,
+      fields: {
+        technique_id: g.technique_id,
+        technique_name: g.technique_name,
+        tactic: g.tactic,
+        count: g.count,
+        first_actor: first?.actor_user_name ?? null,
+        first_ip: first?.src_endpoint_ip ?? null,
+        first_time: first?.time ?? null,
+        first_activity: first?.activity_name ?? null,
+      },
+    };
+  };
+
+  /** P.37 — [➜ 적재함] 클릭 — expandTree X, evidence store push 만.
+   *   단서 채택은 V-1 Step3 적재함에서 observable 칩 클릭으로. */
+  const handleLoadTechnique = (g: TechniqueGroup) => {
+    if (!canLoad) return;
+    const log = buildGroupLog(g);
+    if (loadEvidence(log)) {
       showToast(
-        `+ 단서 채택: ${g.technique_id}${g.technique_name ? ` (${g.technique_name})` : ''}`,
+        `➜ V-1 적재함: ${g.technique_id}${g.technique_name ? ` (${g.technique_name})` : ''}`,
         2800,
       );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showToast(`채택 실패 — ${g.technique_id}: ${msg}`, 4000);
+    } else {
+      showToast(`이미 적재됨: ${g.technique_id}`, 2200);
     }
   };
 
-  const handleAdoptAll = async () => {
-    if (!canAdopt) return;
+  const handleLoadAll = () => {
+    if (!canLoad) return;
+    let added = 0;
     for (const g of techniqueGroups) {
-      const clueKey = `TECHNIQUE:${g.technique_id}`;
-      if (adoptedKeys.has(clueKey)) continue;
-      // 순차 expand — 각 기법 확실히 추가
-      await handleAdoptTechnique(g);
+      if (loadEvidence(buildGroupLog(g))) added += 1;
     }
+    showToast(
+      added > 0
+        ? `➜ V-1 적재함에 ${added}건 추가 (${techniqueGroups.length - added}건 이미 적재됨)`
+        : `모든 기법 이미 적재됨 (${techniqueGroups.length}건)`,
+      3000,
+    );
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -242,10 +285,10 @@ const LogAnalysisFab = () => {
                   ⚠ 케이스 미선택 — V-1 에서 케이스 진입 후 사용
                 </div>
               )}
-              {caseId && !canAdopt && (
+              {caseId && !clueTree && (
                 <div className="bg-blue-900/20 border border-blue-700/50 rounded px-3 py-2 text-[11px] text-blue-200 leading-5">
-                  ℹ V-1 Step 3 (단서 트리) 진행 중이 아닙니다 — 분석은 가능하지만
-                  단서 추가는 V-1 에서만 가능합니다.
+                  ℹ 적재함 push 만 가능 — V-1 Step3 에서 적재된 로그의 observable
+                  칩을 클릭해 단서 채택.
                 </div>
               )}
 
@@ -319,13 +362,14 @@ const LogAnalysisFab = () => {
                     <>
                       <div className="space-y-1.5">
                         {techniqueGroups.map((g) => {
-                          const clueKey = `TECHNIQUE:${g.technique_id}`;
-                          const adopted = adoptedKeys.has(clueKey);
+                          // P.37 — adoptedKeys 대신 evidenceHas (적재함 멱등 검사)
+                          const loadedId = `tech-${g.technique_id}`;
+                          const loaded = evidenceHas(loadedId);
                           return (
                             <div
                               key={g.technique_id}
                               className={`bg-ink-900/60 border rounded-lg px-2.5 py-2 ${
-                                adopted
+                                loaded
                                   ? 'border-emerald-700/60'
                                   : 'border-ink-700/70'
                               }`}
@@ -354,24 +398,24 @@ const LogAnalysisFab = () => {
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => handleAdoptTechnique(g)}
-                                  disabled={!canAdopt || adopted}
+                                  onClick={() => handleLoadTechnique(g)}
+                                  disabled={!canLoad || loaded}
                                   className={`text-[9.5px] font-mono whitespace-nowrap px-2 py-0.5 rounded border transition-colors ${
-                                    adopted
+                                    loaded
                                       ? 'border-emerald-600/70 text-emerald-300 bg-emerald-900/30 cursor-default'
-                                      : canAdopt
+                                      : canLoad
                                       ? 'border-brand-teal/50 text-brand-teal hover:bg-brand-teal/10'
                                       : 'border-ink-700 text-ink-500 cursor-not-allowed opacity-50'
                                   }`}
                                   title={
-                                    !canAdopt
-                                      ? 'V-1 Step 3 에서만 단서 추가 가능'
-                                      : adopted
-                                      ? '이미 채택됨'
-                                      : '단서 트리에 추가'
+                                    !canLoad
+                                      ? '활성 케이스 없음 (V-1 사고 접수 후 가능)'
+                                      : loaded
+                                      ? '이미 V-1 적재함에 있음'
+                                      : 'V-1 Step3 적재함에 추가 — 거기서 observable 칩으로 단서 채택'
                                   }
                                 >
-                                  {adopted ? '✓ 채택됨' : '+ 단서 추가'}
+                                  {loaded ? '✓ 적재됨' : '➜ 적재함'}
                                 </button>
                               </div>
                             </div>
@@ -379,15 +423,15 @@ const LogAnalysisFab = () => {
                         })}
                       </div>
 
-                      {canAdopt && techniqueGroups.some(
-                        (g) => !adoptedKeys.has(`TECHNIQUE:${g.technique_id}`),
+                      {canLoad && techniqueGroups.some(
+                        (g) => !evidenceHas(`tech-${g.technique_id}`),
                       ) && (
                         <button
                           type="button"
-                          onClick={handleAdoptAll}
+                          onClick={handleLoadAll}
                           className="w-full text-[11px] font-semibold bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors"
                         >
-                          미채택 기법 모두 단서 추가 →
+                          미적재 기법 모두 V-1 적재함에 추가 →
                         </button>
                       )}
                     </>

@@ -245,66 +245,13 @@ const V7Report = () => {
       />
 
       <PageBody className="animate-fade-up">
-        {/* 백엔드 응답 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px] mb-4">
-          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="eyebrow">백엔드 응답</span>
-              {reportQuery.isLoading && (
-                <span className="tag-blue">report 로딩…</span>
-              )}
-              {reportQuery.isError && (
-                <span className="tag-red">report 에러</span>
-              )}
-              {reportQuery.isSuccess && <span className="tag-teal">report </span>}
-              {regenerateMutation.isPending && (
-                <span className="tag-amber">AI 초안 생성 중…</span>
-              )}
-              {saveMutation.isPending && (
-                <span className="tag-amber">PATCH 중…</span>
-              )}
-              {finalizeMutation.isPending && (
-                <span className="tag-amber">FINALIZE 중…</span>
-              )}
-              {exportMutation.isPending && (
-                <span className="tag-amber">DOCX 다운로드 중…</span>
-              )}
-            </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거.
+            isFinalized 안내만 유지 (사용자 가이드 — 디버그 X 사용자 액션 컨텍스트). */}
+        {isFinalized && (
+          <div className="text-brand-teal text-[11.5px] mt-1 mb-4">
+            최종화된 보고서입니다. 추가 편집 불가. DOCX 다운로드만 가능.
           </div>
-          <div className="text-ink-300 leading-6">
-            보고서 상태{' '}
-            <b className="text-ink-100">{status}</b>
-            {report?.created_at && (
-              <>
-                {' '}· 생성{' '}
-                <code className="text-ink-400 font-mono text-[10.5px]">
-                  {report.created_at.slice(0, 19).replace('T', ' ')}
-                </code>
-              </>
-            )}
-            {' '}· 8섹션{' '}
-            <b className="text-ink-100">{totalChars.toLocaleString()}</b>
-            {' '}chars
-            {dirtyCount > 0 && (
-              <>
-                {' '}·{' '}
-                <span className="text-amber-400">
-                  미저장 {Array.from(dirty).join(', ')}
-                </span>
-              </>
-            )}
-          </div>
-          {reportQuery.isError && (
-            <div className="text-brand-red text-[11.5px] mt-1">
-              {(reportQuery.error as Error)?.message ?? 'report 호출 실패'}
-            </div>
-          )}
-          {isFinalized && (
-            <div className="text-brand-teal text-[11.5px] mt-1">
-               최종화된 보고서입니다. 추가 편집 불가. DOCX 다운로드만 가능.
-            </div>
-          )}
-        </div>
+        )}
 
         {reportQuery.isLoading && !report ? (
           <div className="panel p-8 text-center text-ink-400 text-[13px]">

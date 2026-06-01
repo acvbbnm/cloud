@@ -11,6 +11,8 @@
  */
 import { useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
+
 import type { BoardKpi } from '@/types';
 
 const BENCHMARK_DAYS = 7;
@@ -63,16 +65,34 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
 
   return (
     <div className={`panel p-3 border-l-[3px] ${borderColor} text-[12px]`}>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-2">
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="eyebrow text-[10px] hover:text-brand-teal transition-colors flex items-center gap-1"
+          className="eyebrow text-[10px] hover:text-brand-teal transition-colors flex items-center gap-1 min-w-0"
           title={expanded ? '접기' : '타임라인 펼치기'}
         >
           <span>{expanded ? '▼' : '▶'}</span>
-          Dwell Time (PDF 결론 §)
+          탐지 지연 시간 (Dwell Time)
         </button>
-        <span className="text-[9.5px] text-ink-500 font-mono">Mandiant M-Trends 2024</span>
+        {/* V1.fix.11 (2026-05-31) — "왜 수사보드에 있는지" 의문 → 클릭 popup 으로 의미·계산식·왜 보는지 설명 */}
+        <SourceTag
+          label="ⓘ"
+          align="right"
+          title="Dwell Time — 탐지 지연 시간 KPI"
+          body={
+            'Dwell Time 은 침해 발생 시점부터 탐지까지 걸린 시간을 측정하는\n' +
+            '보안 사고 핵심 KPI 입니다. Mandiant M-Trends 2024 의 글로벌 중앙값\n' +
+            '(7일) 과 비교해 본 조직의 탐지 역량을 평가합니다.\n\n' +
+            '계산:\n' +
+            '  Dwell Time = 사고 케이스 생성시각 − 최초 침해 이벤트시각\n' +
+            '  (= 탐지 시각 − 최초 침해 시각)\n\n' +
+            '왜 수사보드에 있는가:\n' +
+            '  · 본 케이스의 탐지 역량을 글로벌 평균과 즉시 비교\n' +
+            '  · 보고서·발표에 인용 가능한 학술 정합 KPI\n' +
+            '  · 벤치마크 초과 시 탐지 체계 보강 권고 (V-7 보고서 §결론)\n\n' +
+            '근거: Mandiant M-Trends 2024 (Global median dwell time 7일)'
+          }
+        />
       </div>
 
       <div className="flex items-baseline gap-2 mb-1">

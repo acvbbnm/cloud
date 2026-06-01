@@ -78,10 +78,13 @@ interface ChainGraphCanvasProps {
   onDeleteEdge?: (edgeId: string) => void;
 }
 
-const NODE_W = 168;
-const NODE_H = 64;
+// P.31 (사용자 피드백: "글씨도 조금 작아") — 노드 + 글씨 키우기.
+//   NODE_W 168→200 (라벨 잘림 ↓), NODE_H 64→78 (배지·라벨 충분 공간).
+//   라벨 fontSize 11.5→13.5 / 배지 fontSize 9→10.5 (아래 렌더에서).
+const NODE_W = 200;
+const NODE_H = 78;
 const GAP_X = 32;
-const GAP_Y = 28;
+const GAP_Y = 30;
 const PAD = 18;
 const NODES_PER_ROW = 4;
 
@@ -292,6 +295,46 @@ const ChainGraphCanvas = ({
     setTempPos(new Map());
   }, [nodes]);
 
+  // V1.fix.10 (2026-05-31, byungwoo) — 자동정렬·재배치 후 노드 화면 밖 이슈.
+  //   사용자 피드백: "자동정렬 시 노드 안 보임 — 다른 곳 갔다오면 보인다."
+  //   원인: nodes 좌표가 새로 도착했는데 viewport(zoom/pan) 는 이전 상태 유지
+  //         → 새 노드 좌표가 viewport 변환 후 화면 밖에 배치됨.
+  //   조치: 모든 노드 좌표가 한꺼번에 바뀐 경우 (자동정렬 등) viewport reset.
+  //         단서 drop·드래그 같은 1개 노드 변경은 viewport 유지 (UX 안정).
+  const prevNodeIdsRef = useRef<string[]>([]);
+  const prevPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  useEffect(() => {
+    const ids = nodes.map((n) => n.node_id).sort();
+    const prevIds = prevNodeIdsRef.current;
+    const idsEqual = ids.length === prevIds.length && ids.every((id, i) => id === prevIds[i]);
+
+    // 자동정렬 감지: 노드 ID 집합 동일하지만 좌표가 다수 변경된 경우 (≥ 절반)
+    let majorReposition = false;
+    if (idsEqual && nodes.length >= 2) {
+      let changed = 0;
+      for (const n of nodes) {
+        const prev = prevPositionsRef.current.get(n.node_id);
+        if (!prev) continue;
+        const dx = (n.pos_x ?? 0) - prev.x;
+        const dy = (n.pos_y ?? 0) - prev.y;
+        if (Math.abs(dx) + Math.abs(dy) > 8) changed++;
+      }
+      majorReposition = changed >= Math.ceil(nodes.length / 2);
+    }
+
+    if (majorReposition) {
+      // 한 프레임 후 fitView — layout/sizeRef 갱신 후 안전하게
+      requestAnimationFrame(() => {
+        setViewport({ tx: 0, ty: 0, scale: 1 });
+      });
+    }
+
+    prevNodeIdsRef.current = ids;
+    const newMap = new Map<string, { x: number; y: number }>();
+    nodes.forEach((n) => newMap.set(n.node_id, { x: n.pos_x ?? 0, y: n.pos_y ?? 0 }));
+    prevPositionsRef.current = newMap;
+  }, [nodes]);
+
   // Phase P.14 (2026-05-27 사용자 피드백: "보드 넘어가면 화면 망가짐") —
   //   기존: nodes.length===0 시 <div> 반환 → SVG 영역 사라짐 → Card 비율 깨짐 +
   //         단서 drop zone 사라져서 LogPanel 단서 드래그 무의미
@@ -494,7 +537,8 @@ const ChainGraphCanvas = ({
           : 'bg-ink-950/40 border-ink-700/40')
       }
       // Phase P.7 (사용자 피드백: "공격체인그래프쪽이 너무 작다") — 영역 확장
-      style={{ maxHeight: 680, minHeight: 480, touchAction: 'none' }}
+      // P.28 (사용자 피드백: "조금만 더 확대") — 680 → 880 (200px ↑)
+      style={{ maxHeight: 880, minHeight: 540, touchAction: 'none' }}
       onDragOver={handleClueDragOver}
       onDragLeave={handleClueDragLeave}
       onDrop={handleClueDrop}
@@ -656,35 +700,40 @@ const ChainGraphCanvas = ({
         const isStart = edgeStartId === n.node_id;
         const isCandidate = edgeMode && edgeStartId !== null && edgeStartId !== n.node_id;
         const rejected = n.status === 'REJECTED';
+        const confirmed = n.status === 'CONFIRMED';
         // Phase O — 단서 노드 시각 구분 (type='clue')
         const isClue = isClueNode(n);
         // Phase P.7 (easy 머지) — 단서 노드의 사고유형 추출
         const incident = isClue ? incidentFromNode(n) : null;
         const incidentColor = incident ? INCIDENT_COLORS[incident] : '#2DD4BF';
 
-        // stroke 색상 우선순위: start > candidate > selected > rejected > clue(hypothesis) > default
+        // stroke 색상 우선순위: start > candidate > selected > confirmed/rejected > clue > default
+        // P.28 (사용자 피드백: "confirmed/reject 색깔로 직관 표시")
         let stroke = '#2A3441';
         if (isClue) stroke = incidentColor; // 사고유형 색상 (없으면 teal)
-        if (rejected) stroke = '#EF4444';
+        if (confirmed) stroke = '#22C55E';  // 초록 (CONFIRMED 강조)
+        if (rejected) stroke = '#EF4444';   // 빨강 (REJECTED 강조)
         if (sel) stroke = '#3D7BFF';
         if (isCandidate) stroke = '#F59E0B';
         if (isStart) stroke = '#10B981';
 
-        // 단서 노드 fill — 사고유형 hue 의 어두운 톤 (배경 인식성)
-        const fill = rejected ? '#1a1a1f' : isClue ? '#10181F' : '#161A21';
-        const strokeWidth = isStart || isCandidate || sel || isClue ? 2.5 : 1;
+        // P.28 — 노드 fill: CONFIRMED 초록 톤, REJECTED 빨강 톤 (이전 어두운 회색 → 식별 ↑)
+        // 사용자 피드백: "내용 삭제 대신 색깔 바꿔" — line-through 제거, opacity 정상화.
+        let fill = isClue ? '#10181F' : '#161A21';
+        if (confirmed) fill = '#0A2818';  // 매우 어두운 초록 (대비 강조)
+        if (rejected) fill = '#2A0F0F';   // 매우 어두운 빨강
+        const strokeWidth = confirmed || rejected || isStart || isCandidate || sel || isClue ? 2.5 : 1;
 
-        // 단서 노드는 prefix 아이콘 + 짧은 라벨
-        const rawLabel = isClue ? `🔍 ${n.label}` : n.label;
+        // P.30 (사용자 피드백: "돋보기 아이콘 + 단서/CONFIRMED/S4 라벨 제거,
+        //   단서 명칭만 식별") — 단서 노드도 일반 라벨로. 사고유형 배지 + status
+        //   색상으로 이미 직관 식별 가능 (중복 메타 제거).
+        // P.31 — 글씨 + 노드 크기 확대에 맞춰 truncate 26→32 글자.
+        const rawLabel = n.label;
         const labelText =
-          rawLabel.length > 24 ? `${rawLabel.slice(0, 24)}…` : rawLabel;
+          rawLabel.length > 32 ? `${rawLabel.slice(0, 32)}…` : rawLabel;
 
-        const statusColor =
-          n.status === 'CONFIRMED'
-            ? '#34D399'
-            : n.status === 'REJECTED'
-            ? '#F87171'
-            : '#FBBF24';
+        // P.30 — statusColor 변수 제거 (status 텍스트 라인 제거로 미사용).
+        //   status 시각은 stroke·fill (CONFIRMED 초록 / REJECTED 빨강) 으로만.
 
         // 노드 type 라벨 (툴팁용)
         const typeLabel = isClue ? '단서' : n.is_ai_suggested ? 'AI 제안' : '수동 추가';
@@ -711,7 +760,8 @@ const ChainGraphCanvas = ({
               fill={fill}
               stroke={stroke}
               strokeWidth={strokeWidth}
-              opacity={rejected ? 0.55 : 1}
+              // P.28 — REJECTED 도 opacity 1 (이전 0.55 흐림 제거 — 내용 식별 우선)
+              opacity={1}
             />
             {/* Phase P.7 (easy 머지) — 단서 노드 좌측 사고유형 색상 띠 (4px) */}
             {isClue && incident && (
@@ -725,26 +775,28 @@ const ChainGraphCanvas = ({
                 opacity={0.95}
               />
             )}
-            {/* Phase P.7 (easy 머지) — 단서 노드 우상단 사고유형 한국어 배지 */}
+            {/* Phase P.7 (easy 머지) — 단서 노드 우상단 사고유형 한국어 배지.
+                P.31 — 배지 크기 확대 (사용자: "글씨 작아"): 52×13 → 64×17,
+                fontSize 9→10.5. 다중 배지는 우측 상세 패널 likelihood top N. */}
             {isClue && incident && (
               <>
                 <rect
-                  x={NODE_W - 56}
-                  y={4}
-                  width={52}
-                  height={13}
-                  rx={3}
+                  x={NODE_W - 68}
+                  y={5}
+                  width={64}
+                  height={17}
+                  rx={3.5}
                   fill={incidentColor}
-                  fillOpacity={0.18}
+                  fillOpacity={0.20}
                   stroke={incidentColor}
-                  strokeWidth={0.8}
+                  strokeWidth={0.9}
                 />
                 <text
-                  x={NODE_W - 30}
-                  y={13.5}
+                  x={NODE_W - 36}
+                  y={17}
                   textAnchor="middle"
                   fill={incidentColor}
-                  fontSize={9}
+                  fontSize={10.5}
                   fontWeight={700}
                   style={{ fontFamily: 'system-ui, sans-serif' }}
                 >
@@ -753,45 +805,28 @@ const ChainGraphCanvas = ({
               </>
             )}
             <text
+              // P.31 — 라벨 fontSize 11.5→13.5, 노드 확대에 맞춰 y 22→34
               x={NODE_W / 2}
-              y={22}
+              y={isClue && incident ? 42 : 34}
               textAnchor="middle"
               fill="#E6E9F0"
-              fontSize={11.5}
+              fontSize={13.5}
               fontWeight={600}
-              textDecoration={rejected ? 'line-through' : 'none'}
+              // P.28 — line-through 제거 (사용자: "내용 삭제 대신 색깔 바꿔")
             >
               {labelText}
             </text>
-            <text
-              x={NODE_W / 2}
-              y={40}
-              textAnchor="middle"
-              fontSize={10}
-            >
-              <tspan fill={isClue ? '#5EEAD4' : '#9aa3b2'}>
-                {isClue ? '단서 · ' : n.is_ai_suggested ? ' AI · ' : ' 수동 · '}
-              </tspan>
-              <tspan fill={statusColor} fontWeight={600}>
-                {n.status}
-              </tspan>
-              {isClue &&
-                n.meta &&
-                'stage' in n.meta &&
-                typeof (n.meta as { stage?: number }).stage === 'number' && (
-                  <tspan fill="#5EEAD4">
-                    {` · S${(n.meta as { stage: number }).stage}`}
-                  </tspan>
-                )}
-            </text>
+            {/* P.30 — "단서 · CONFIRMED · S4" 라벨 제거 (사용자 피드백).
+                status 색상 + 사고유형 배지로 이미 직관 식별. */}
             {/* 엣지 모드 라벨 */}
+            {/* P.31 — 노드 NODE_H 64→78 에 맞춰 y 56→68. fontSize 9.5→11. */}
             {isStart && (
               <text
                 x={NODE_W / 2}
-                y={56}
+                y={68}
                 textAnchor="middle"
                 fill="#10B981"
-                fontSize={9.5}
+                fontSize={11}
                 fontWeight={700}
               >
                 ↓ 엣지 시작점
@@ -800,10 +835,10 @@ const ChainGraphCanvas = ({
             {isCandidate && (
               <text
                 x={NODE_W / 2}
-                y={56}
+                y={68}
                 textAnchor="middle"
                 fill="#F59E0B"
-                fontSize={9.5}
+                fontSize={11}
                 fontWeight={700}
               >
                 + 연결 대상

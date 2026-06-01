@@ -157,28 +157,7 @@ const V8Sherpa = () => {
       {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
       {caseId && <IncidentTypeReviewCard caseId={caseId} />}
 
-      {/* 백엔드 응답 패널 (V-2~6 동일 스타일) */}
-      <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 pt-2">
-        <div className="bg-ink-950/60 border border-ink-700/60 rounded-xl px-4 py-3 text-[11.5px] text-ink-300 flex items-center gap-4 flex-wrap">
-          <b className="text-brand-teal">백엔드 응답 </b>
-          <span>
-            caseId: <code className="text-ink-400 font-mono">{caseId ?? '— (케이스 미선택)'}</code>
-          </span>
-          <span>
-            engine:{' '}
-            <code className="text-ink-400 font-mono">{engine?.engine ?? '?'}</code>
-            {engine?.note && <span className="text-ink-500 ml-1">· {engine.note}</span>}
-          </span>
-          <span>
-            KB:{' '}
-            {kbQuery.data
-              ? Object.entries(kbQuery.data.byKb)
-                  .map(([k, v]) => `${KB_LABEL[k] ?? k} ${v}`)
-                  .join(' · ')
-              : '로딩…'}
-          </span>
-        </div>
-      </div>
+      {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
       <div className="max-w-[1280px] mx-auto w-full px-8 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-[680px] animate-fade-up">
         {/* 좌측: 채팅 패널 — 최소 높이 보장 (Bug fix: 찌그러짐 방지) */}

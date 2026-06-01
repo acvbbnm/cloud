@@ -141,11 +141,18 @@ async def create_node(req: CreateNodeRequest, db: Session = Depends(get_db)) -> 
                 },
             )
 
-    # 라벨 자동 생성 — attack > clue > unnamed
+    # 라벨 자동 생성 — P.34 (사용자: "보드 정보는 intake 와 똑같은게 아니라
+    #   어떤 로그인지 어떤 단서인지 설명이 나와야") — clue_key 가 있으면 풍부
+    #   라벨 (description 풀이 합성) 을 사용자 명시 req.label 보다 우선.
+    #   사용자 명시 라벨은 catalog 누락 케이스 fallback.
+    #   ATT&CK 노드는 derive_label_from_attack (technique_name 합성, P.34) 우선.
+    rich_clue = ChainNode.derive_label_from_clue(req.clue_key) if req.clue_key else None
+    is_rich_clue = bool(rich_clue and " — " in rich_clue)
     label = (
-        req.label
-        or ChainNode.derive_label_from_attack(db, req.attack_id)
-        or ChainNode.derive_label_from_clue(req.clue_key)
+        ChainNode.derive_label_from_attack(db, req.attack_id)
+        or (rich_clue if is_rich_clue else None)
+        or req.label
+        or rich_clue
         or "(unnamed)"
     )
 

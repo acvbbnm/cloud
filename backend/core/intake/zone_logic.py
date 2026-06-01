@@ -58,13 +58,17 @@ KILL_CHAIN_ORDER: dict[str, int] = {
 
 
 TRIGGER_MIN_DEPTH: int = 3
-TRIGGER_MIN_LIKELIHOOD: float = 0.30
-# Phase P.10 (2026-05-27) — 일반 단서 cap=20 적용 후 실측:
-#   weights_to_likelihood(max_w=20, 8 가설) ≈ 0.22 ~ 0.33 분포
-#   강한 변별 단서 (T1552.005, T1110, fail_then_success 등) max_lk ≈ 0.31~0.33
-# Phase P.13 (2026-05-27 사용자 피드백: "Zone 열리는게 안 보였어") — 0.40→0.30.
-#   cap=20 의 상한 likelihood (0.33) 미만이면 Zone 2 진입 불가 → 0.30 으로 낮춰
-#   강한 단서 1개 + depth ≥ 3 시 정상 트리거.
+TRIGGER_MIN_LIKELIHOOD: float = 0.25
+# V1.fix.12 (2026-05-31 byungwoo · 사용자: "Zone 2 도달 너무 느리다 — 4개면 도달") —
+#   depth ≥ TRIGGER_RELAXED_DEPTH 만으로 Zone 2 진입 (likelihood 무관). 약한 단서
+#   여러 개 누적도 "맵 충분히 탐색" 으로 인정. is_zone2_unlocked OR 분기.
+TRIGGER_RELAXED_DEPTH: int = 4
+#
+# 변경 이력:
+#   · P.10 (cap=20): TRIGGER 0.40→0.30
+#   · P.13: 0.40→0.30 calibration
+#   · P.26 (cap=15): 0.30→0.25 추가 calibration
+#   · V1.fix.12: RELAXED_DEPTH=4 추가 (OR 조건)
 
 # 회귀 임계값 (paradigm §21.8.1)
 #
@@ -121,20 +125,28 @@ def core_clue_likelihood(tree: ClueTree) -> float:
 
 
 def is_zone2_unlocked(tree: ClueTree, posterior: dict[str, float]) -> bool:
-    """게임 RPG 비유 — 맵 탐색 + 보스 단서 모두 충족 (paradigm §21.4).
+    """게임 RPG 비유 — 맵 탐색 + 보스 단서 (paradigm §21.4 · V1.fix.12 보정).
 
-    ① 맵 탐색: 트리 최대 depth ≥ TRIGGER_MIN_DEPTH (단서 N개 채택)
-    ② 보스 단서: 채택된 단서 중 max(P(c|h)) ≥ TRIGGER_MIN_LIKELIHOOD
+    Zone 2 진입 조건 (OR):
+      A. **맵 충분히 탐색**: depth ≥ TRIGGER_RELAXED_DEPTH (=4)
+         → 약한 단서들만 누적해도 4개 이상이면 진입. 사용자 피드백: "Zone 2
+            도달이 너무 느리다 — 단서 4개 정도면 도달 가까운 정도"
+      B. **보스 단서 발견**: depth ≥ TRIGGER_MIN_DEPTH (=3) AND
+                            max(P(c|h)) ≥ TRIGGER_MIN_LIKELIHOOD (=0.25)
+         → 강한 단서 1개로 빠른 진입 (기존 동작 유지).
 
-    posterior 인자는 향후 확장 (예: confidence 결합 트리거) 대비. 현재는 깊이·
-    likelihood 만 사용.
+    posterior 인자는 향후 확장 (예: confidence 결합 트리거) 대비.
     """
     # ① 맵 탐색 — 트리 깊이 (root depth=0 이므로 채택 단서 수 = max depth)
     depth = max((n.depth for n in tree.nodes.values()), default=0)
     if depth < TRIGGER_MIN_DEPTH:
         return False
 
-    # ② 보스 단서 — 가장 강한 likelihood
+    # V1.fix.12 — depth ≥ 4 만으로도 Zone 2 (likelihood 무관)
+    if depth >= TRIGGER_RELAXED_DEPTH:
+        return True
+
+    # ② 보스 단서 — 가장 강한 likelihood (depth=3 일 때)
     return core_clue_likelihood(tree) >= TRIGGER_MIN_LIKELIHOOD
 
 

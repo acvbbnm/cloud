@@ -284,11 +284,24 @@ def pick_top_candidates(
     use_marginalization: bool = True,
     likelihood_fn: Optional[LikelihoodFn] = None,
 ) -> list[dict]:
-    """rank_candidates 상위 k 개만 반환 (편의 함수)."""
+    """rank_candidates 상위 k 개만 반환 (편의 함수).
+
+    fix (2026-05-31, Phase D 회귀): 상위 k 안에 outcome_flags 가진 후보가
+    하나도 없으면, 다음 순위의 outcome_flags 후보 1개로 마지막 후보를 교체.
+    Google Chronicle 패턴 (outcome_flags 전파) 가시화 보장.
+    """
     ranked = rank_candidates(
         posterior,
         exclude_clue_keys=exclude_clue_keys,
         use_marginalization=use_marginalization,
         likelihood_fn=likelihood_fn,
     )
-    return ranked[:k]
+    top = ranked[:k]
+    has_flags = any(bool(c.get("outcome_flags")) for c in top)
+    if not has_flags and len(ranked) > k:
+        # 상위 k 밖에서 첫 outcome_flags 후보 찾아 마지막 자리에 swap
+        for cand in ranked[k:]:
+            if cand.get("outcome_flags"):
+                top = top[:-1] + [cand] if top else [cand]
+                break
+    return top

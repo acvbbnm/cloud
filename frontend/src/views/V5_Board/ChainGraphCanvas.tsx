@@ -727,15 +727,15 @@ const ChainGraphCanvas = ({
         // P.30 (사용자 피드백: "돋보기 아이콘 + 단서/CONFIRMED/S4 라벨 제거,
         //   단서 명칭만 식별") — 단서 노드도 일반 라벨로. 사고유형 배지 + status
         //   색상으로 이미 직관 식별 가능 (중복 메타 제거).
-        // P.31 — 글씨 + 노드 크기 확대에 맞춰 truncate 26→32 글자.
+        // P.31 — 글씨 + 노드 크기 확대 (NODE_W=200).
+        // 한글 1자 ≈ 13px, 영문 1자 ≈ 7px. padding 16 → 라벨 영역 ~184px.
+        // 한글 비율 동적 truncate: 한글 100%면 14자 / 영문 100%면 26자.
         const rawLabel = n.label;
-        // 한글 1자 ≈ 13px, 영문 1자 ≈ 7px. NODE_W=168, padding 16 → 라벨 영역 ~152px.
-        // 한글 비율 추정 → 최대 글자수 동적 결정 (한국어 12자 / 영문 22자 정도).
         const koreanRatio =
           (rawLabel.match(/[가-힣]/g) || []).length / Math.max(1, rawLabel.length);
-        const maxLen = Math.round(22 - koreanRatio * 10); // 한글 100%면 12, 영문 100%면 22
-        const labelText =
-          rawLabel.length > maxLen ? `${rawLabel.slice(0, maxLen)}…` : rawLabel;
+        const maxLen = Math.round(26 - koreanRatio * 12);
+        const truncated = rawLabel.length > maxLen;
+        const labelText = truncated ? `${rawLabel.slice(0, maxLen)}…` : rawLabel;
 
         // P.30 — statusColor 변수 제거 (status 텍스트 라인 제거로 미사용).
         //   status 시각은 stroke·fill (CONFIRMED 초록 / REJECTED 빨강) 으로만.
@@ -817,9 +817,11 @@ const ChainGraphCanvas = ({
               fill="#E6E9F0"
               fontSize={13.5}
               fontWeight={600}
-              // 안전망 — 라벨 길이 추정 잘못해도 SVG 가 NODE_W-16 폭으로 강제 fit
-              textLength={NODE_W - 16}
-              lengthAdjust="spacingAndGlyphs"
+              // 안전망 — truncate 된 경우만 SVG 가 NODE_W-16 폭으로 압축 fit
+              // (짧은 라벨은 자연 크기 유지 → 글자 사이 인위적 늘림 방지)
+              {...(truncated
+                ? { textLength: NODE_W - 16, lengthAdjust: 'spacingAndGlyphs' as const }
+                : {})}
               // P.28 — line-through 제거 (사용자: "내용 삭제 대신 색깔 바꿔")
             >
               {labelText}

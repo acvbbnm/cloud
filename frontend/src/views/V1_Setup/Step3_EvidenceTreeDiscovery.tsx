@@ -39,11 +39,11 @@ import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuid
 import DiscoveryIntroModal, {
   hasDismissedDiscoveryIntro,
 } from '@/components/DiscoveryIntroModal';
+import EvidenceLogPanel from '@/components/EvidenceLogPanel';
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
 import IncidentTypeCompass from '@/components/IncidentTypeCompass';
 import NextCluePanel from '@/components/NextCluePanel';
-import PartialLogAnalysis from '@/components/PartialLogAnalysis';
 import ReconClueCard, { hasDismissedRecon } from '@/components/ReconClueCard';
 import RegressBanner from '@/components/RegressBanner';
 
@@ -51,6 +51,7 @@ import { getGuidePreview } from '@/api/intake';
 
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useClueTreeStore } from '@/stores/useClueTreeStore';
+import { useEvidenceLogStore, type LoadedLog } from '@/stores/useEvidenceLogStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import type { ClueCandidate, ClueTreeResponse } from '@/types/clueTree';
@@ -149,7 +150,7 @@ const Step3_EvidenceTreeDiscovery = ({
   useEffect(() => {
     if (treeState?.regress_suggested && !regressNotified) {
       showToast(
-        '⤺ 회귀 권고 — 가설이 다시 모호해졌습니다. 광범위 탐색 (Zone 1) 으로 복귀 권장',
+        '회귀 권고 — 가설이 다시 모호해졌습니다. 광범위 탐색 (Zone 1) 으로 복귀 권장',
         4500,
       );
       setRegressNotified(true);
@@ -172,6 +173,19 @@ const Step3_EvidenceTreeDiscovery = ({
   const [fullGuideModalType, setFullGuideModalType] = useState<IncidentType | null>(
     null,
   );
+
+  // ── P.36 (2026-05-31 정정) — 적재함은 useEvidenceLogStore 가 보관 ──
+  //   V-2/V-3/V-6 의 row 가 store.load() 로 push, V-1 은 store.logs 만 표시.
+  //   사용자: "적재함은 우리 토글에서 로그 업로드/분석한 거 그거를 추가".
+  const loadedLogs = useEvidenceLogStore((s) => s.logs);
+  // P.35.4 — 컴파스 점 클릭 → trail point detail (clue_key 매칭 로그 + 시각·posterior)
+  const [selectedTrailPoint, setSelectedTrailPoint] = useState<{
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  } | null>(null);
+  const [highlightedClueKey, setHighlightedClueKey] = useState<string | null>(null);
 
   /** HypothesisScoreBar 행 클릭 → preview 로딩 + inline expand 토글. */
   const handleClickIncidentType = async (type: IncidentType) => {
@@ -268,6 +282,84 @@ const Step3_EvidenceTreeDiscovery = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
+
+  // ── P.36 — handleLoadLog / handleUnloadLog 제거 ──
+  //   load/unload 는 useEvidenceLogStore action 으로 직접 호출.
+  //   V-2/V-3/V-6 가 store.load(), V-1 적재함의 [×] 가 store.unload().
+
+  // ── P.39 (2026-05-31 사용자: "로그 분석해온 거 단서로 채택하면 그 로그에
+  //   대해서 분석 진행해서 단서 확률들이 올라가야") — 적재 로그 채택 시
+  //   ATT&CK 기법 가중치 활용. ──
+  //
+  // 가중치 차이 (weights.json):
+  //   · IP_ADDRESS:generic / ACCOUNT:generic = 5점 (3-4 사고유형 균등) → posterior 미동
+  //   · TECHNIQUE:{technique_id} = 25-35점 (사고유형별 변별) → posterior 가시적 갱신
+  //     (백엔드 expand_tree §P.21 가 source='log_analysis' + TECHNIQUE:* 키를
+  //      합성 entry 로 처리 — bayes_net.technique_likelihood 정규화)
+  //
+  // 동작:
+  //   · log.technique_id 가 있으면 (LogAnalysisFab 적재) → TECHNIQUE:{id} 채택
+  //     트리 라벨에 raw observable 정보 부착 → 화면상 raw 신호 + 강한 가중치
+  //   · log.technique_id 가 없으면 (V-2 raw / V-3 OCSF 등) → 기존 generic 흐름
+  const handleAdoptFromLog = async (obs: Observable, log: LoadedLog) => {
+    const originDesc = `로그 ${log.source}:${log.source_id.slice(0, 8)} · ${log.time?.slice(0, 16) ?? '시각 없음'}`;
+
+    // technique_id 있으면 ATT&CK 기법 가중치 직접 활용
+    if (log.technique_id && caseId) {
+      const current = useClueTreeStore.getState().response;
+      if (!current) return;
+      const techniqueKey = `TECHNIQUE:${log.technique_id}`;
+      // 트리 노드 라벨 — raw observable + 시각 + ATT&CK hint
+      const overrideLabel = `${obs.type}: ${obs.value} (${log.technique_id}, ${log.time?.slice(11, 19) ?? '시각'})`;
+      try {
+        const res = await expandTree({
+          caseId,
+          parent_node_id: current.current_leaf_id,
+          clue_key: techniqueKey,
+          source: 'log_analysis',
+          label_override: overrideLabel,
+        });
+        addObservable({
+          ...obs,
+          note: obs.note ? `${obs.note} — ${originDesc}` : originDesc,
+        });
+        // 갱신된 1위 가설 토스트
+        const top = (() => {
+          const sorted = (
+            Object.entries(res.posterior_current) as [IncidentType, number][]
+          ).filter(([k]) => k !== 'UNCLASSIFIED');
+          sorted.sort((a, b) => b[1] - a[1]);
+          return sorted[0];
+        })();
+        if (top) {
+          showToast(
+            `채택 — 1위 ${INCIDENT_TYPE_KO[top[0]]} ${(top[1] * 100).toFixed(1)}% (${log.technique_id} 가중치 반영)`,
+            3200,
+          );
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // technique 채택 실패 시 — observable 단서로 fallback (legacy 흐름)
+        showToast(
+          `${log.technique_id} 채택 실패 — observable fallback: ${msg}`,
+          3500,
+        );
+        const enriched: Observable = {
+          ...obs,
+          note: obs.note ? `${obs.note} (${originDesc})` : originDesc,
+        };
+        handleDirectClueAdd(enriched);
+      }
+      return;
+    }
+
+    // technique_id 없음 — observable generic 채택 (기존 흐름)
+    const enriched: Observable = {
+      ...obs,
+      note: obs.note ? `${obs.note} (${originDesc})` : originDesc,
+    };
+    handleDirectClueAdd(enriched);
+  };
 
   // ── 단서 채택 핸들러 (트리 후보 / IG 후보 클릭) ──
   // ⚠ closure stale 방지 — getState() 로 최신 current_leaf_id 직접 조회
@@ -379,32 +471,9 @@ const Step3_EvidenceTreeDiscovery = ({
     return generic[obs.type] ?? null;
   };
 
-  // ── 부분 로그 분석 → 단서 후보 자동 채택 ──
-  const handlePartialAnalysisResult = (
-    techniqueIds: string[],
-    _filenames: string[],
-    _scores: HypothesisScores,
-  ): void => {
-    if (!caseId || !treeState) return;
-    // 비동기 적용 (각 기법을 순차 expand — 카탈로그에 없으면 skip)
-    (async () => {
-      for (const tid of techniqueIds) {
-        const clueKey = `TECHNIQUE:${tid}`;
-        try {
-          await expandTree({
-            caseId,
-            parent_node_id:
-              useClueTreeStore.getState().response?.current_leaf_id ??
-              treeState.current_leaf_id,
-            clue_key: clueKey,
-            source: 'log_analysis',
-          });
-        } catch (_e) {
-          // 카탈로그에 없는 기법은 무시 (정상 흐름)
-        }
-      }
-    })();
-  };
+  // V1.fix.20 — handlePartialAnalysisResult 제거 (부분 로그 분석 카드 폐기).
+  //   해당 기능은 좌측 [로그] 토글로 대체. PartialLogAnalysis 컴포넌트 자체는
+  //   파일 보존 (다른 위치 재사용 가능성).
 
   // ── 확정 핸들러 ──
   const handleConfirm = () => {
@@ -505,11 +574,11 @@ const Step3_EvidenceTreeDiscovery = ({
         )}
 
         <Card
-          title={mainView === 'tree' ? 'Evidence Tree — 단서로 맵 밝히기' : '사고유형 컴퍼스 — 360° 방향 수렴'}
+          title={mainView === 'tree' ? 'Evidence Tree' : '사고유형 컴퍼스'}
           subtitle={
             mainView === 'tree'
               ? '현재 leaf 의 점선 후보 클릭 → 단서 채택 → 트리 자라기'
-              : '단서마다 사후확률 무게중심이 한 사고유형 방향으로 이동 — 미로 헤쳐나가듯'
+              : '단서 채택 시 사고유형 방향으로 이동'
           }
           action={
             <div className="flex items-center gap-1">
@@ -537,7 +606,7 @@ const Step3_EvidenceTreeDiscovery = ({
                   }`}
                   title="사고유형 360° 컴퍼스"
                 >
-                  🧭 컴퍼스
+                  컴퍼스
                 </button>
               </div>
               <button
@@ -597,9 +666,56 @@ const Step3_EvidenceTreeDiscovery = ({
               zone={treeState.zone ?? 1}
               regressSuggested={treeState.regress_suggested ?? false}
               coreClueLikelihood={treeState.core_clue_likelihood ?? 0}
+              // P.35.4 — 점 클릭 → trail point detail (적재 로그 매칭)
+              onTrailPointClick={setSelectedTrailPoint}
+              highlightedClueKey={highlightedClueKey}
             />
           )}
         </Card>
+
+        {/* P.35.4 — 컴파스 점 클릭 시 trail point detail 카드 */}
+        {selectedTrailPoint && mainView === 'compass' && (
+          <Card
+            title="🎯 단서 점 정보"
+            subtitle="컴파스에서 클릭한 단서 — 적재 로그와 매칭"
+            action={
+              <button
+                onClick={() => setSelectedTrailPoint(null)}
+                className="text-[10.5px] text-ink-500 hover:text-ink-200 font-mono"
+              >
+                × 닫기
+              </button>
+            }
+          >
+            <TrailPointDetail
+              point={selectedTrailPoint}
+              loadedLogs={loadedLogs}
+              onSelectLog={() => setHighlightedClueKey(null /* 로그 선택 후 강조 초기화 */)}
+            />
+          </Card>
+        )}
+
+        {/* P.35.2 — 분석 로그 적재 카드 (full width row) */}
+        {caseId && (
+          <Card
+            title="🔬 분석 로그 적재함"
+            subtitle="V-2 분석 결과 → 적재 → 단서로 채택. 다음 단서 후보를 실제 로그로 검증"
+          >
+            <EvidenceLogPanel
+              onAdoptFromLog={handleAdoptFromLog}
+              onLogSelect={(l) => {
+                // 적재 row 클릭 — 컴파스 detail 영역에 매칭 단서 표시
+                setSelectedTrailPoint({
+                  clue_key: `__loaded__:${l.loaded_id}`,
+                  label: l.label,
+                  stage: 1,
+                  posterior: scoresForBar,
+                });
+              }}
+              disabled={loading || isSubmitting}
+            />
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div id="direct-input-card" className="rounded transition-all">
@@ -613,21 +729,20 @@ const Step3_EvidenceTreeDiscovery = ({
             />
           </Card>
           </div>
-          <Card title="부분 로그 분석" subtitle="ATT&CK 기법 → 단서 후보 자동 추가">
-            <PartialLogAnalysis
-              caseId={caseId}
-              currentScores={scoresForBar}
-              mappedTechniques={[]}
-              onAnalyzed={handlePartialAnalysisResult}
-              disabled={loading}
-            />
-          </Card>
+          {/* V1.fix.20 (2026-06-01) — 부분 로그 분석 카드 제거.
+              사용자 피드백: "옆에 로그 토글 있으니 삭제, 그 자리에 단서들을 수사 보드로 보내는 거 넣자".
+              BridgeToBoardCard 를 좌측 메인 영역으로 이동. */}
+          <BridgeToBoardCard
+            caseId={caseId}
+            acceptedClueCount={Math.max(0, treeState.path.length - 1)}
+            onToast={showToast}
+          />
         </div>
       </div>
 
       {/* 우측 sticky — 신뢰도 + 가설 + IG 후보 */}
       <div className="col-span-12 lg:col-span-4 space-y-3">
-        <Card title="현재 신뢰도" subtitle={`entropy ${treeState.confidence.entropy_bits.toFixed(2)} bits`}>
+        <Card title="현재 신뢰도">
           <ConfidenceGauge scores={scoresForBar} scoringMode="bayesian" />
           <div className="mt-3">
             <HypothesisScoreBar
@@ -663,7 +778,7 @@ const Step3_EvidenceTreeDiscovery = ({
         {/* Phase M.3 — Zone 2 진입 시 복합 가설 chain (paradigm §21.5) */}
         {treeState.zone === 2 && treeState.attack_chain && treeState.attack_chain.length > 0 && (
           <Card
-            title="🗺 Zone 2 — 복합 가설 chain"
+            title="복합 가설 chain"
             subtitle="ATT&CK Kill Chain 시간순 · 카드 클릭 → 해당 가설 변별 단서 필터"
           >
             <AttackChainCard
@@ -756,13 +871,8 @@ const Step3_EvidenceTreeDiscovery = ({
           </Card>
         )}
 
-        {/* Phase O.4 (2026-05-26) — 단서들을 V-5 보드로 일괄 이관 카드.
-            path.length - 1 = root 제외 채택 단서 수. 0 이면 자체 미노출. */}
-        <BridgeToBoardCard
-          caseId={caseId}
-          acceptedClueCount={Math.max(0, treeState.path.length - 1)}
-          onToast={showToast}
-        />
+        {/* V1.fix.20 — BridgeToBoardCard 를 좌측 메인 영역 (단서 직접 입력 옆) 으로 이동.
+            우측 영역은 신뢰도·가설·IG 후보·확정으로 집중. */}
 
         <div className="flex gap-2">
           <button
@@ -784,6 +894,129 @@ const Step3_EvidenceTreeDiscovery = ({
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ── P.35.4 (2026-05-31) — 컴파스 trail point detail 패널 ──
+//   사용자: "캠퍼스에서 점을 클릭하면 그 로그에 대한 정보가 자세히 보이게".
+//   동작:
+//     · 점 클릭 → onTrailPointClick 으로 부모 (Step3) 가 selectedTrailPoint 갱신
+//     · 이 컴포넌트가 selectedTrailPoint.clue_key 와 매칭되는 적재 로그 검색
+//     · 매칭 있으면 타임스탬프·기법·source 정보 노출 / 없으면 단서 메타만
+interface TrailPointDetailProps {
+  point: {
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  };
+  loadedLogs: LoadedLog[];
+  onSelectLog?: (log: LoadedLog) => void;
+}
+
+const TrailPointDetail = ({ point, loadedLogs, onSelectLog }: TrailPointDetailProps) => {
+  // 적재 로그 매칭 — 간단 휴리스틱: __loaded__ prefix 면 loaded_id 매칭,
+  //   그 외엔 clue_key 의 value 가 로그 fields 에 포함되는지.
+  const matchedLogs = (() => {
+    if (point.clue_key.startsWith('__loaded__:')) {
+      const lid = point.clue_key.slice('__loaded__:'.length);
+      const m = loadedLogs.find((l) => l.loaded_id === lid);
+      return m ? [m] : [];
+    }
+    // clue_key 형식: "TYPE:value" — value 가 fields 안에 있으면 매칭
+    const parts = point.clue_key.split(':');
+    const value = parts.length > 1 ? parts.slice(1).join(':') : point.clue_key;
+    return loadedLogs.filter((l) =>
+      Object.values(l.fields).some((v) =>
+        v != null && String(v).toLowerCase().includes(value.toLowerCase()),
+      ),
+    );
+  })();
+
+  // top-3 사고유형
+  const topIncidents = Object.entries(point.posterior)
+    .filter(([k, v]) => k !== 'UNCLASSIFIED' && typeof v === 'number' && v >= 0.05)
+    .sort((a, b) => (b[1] as number) - (a[1] as number))
+    .slice(0, 3) as Array<[IncidentType, number]>;
+
+  return (
+    <div className="space-y-2.5 text-[11.5px]">
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">단서</div>
+        <div className="font-semibold text-ink-100">{point.label}</div>
+        <div className="font-mono text-[10px] text-ink-500 mt-0.5">
+          {point.clue_key} · Stage {point.stage}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">
+          이 시점 사고유형 적합도 (top {topIncidents.length})
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {topIncidents.map(([type, p]) => (
+            <span
+              key={type}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-ink-700/60 bg-ink-900/60 text-[10.5px]"
+            >
+              <span>{INCIDENT_TYPE_KO[type] ?? type}</span>
+              <span className="font-mono text-brand-teal">{(p * 100).toFixed(1)}%</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-ink-400 text-[9.5px] uppercase tracking-wider mb-1">
+          연결된 분석 로그 ({matchedLogs.length})
+        </div>
+        {matchedLogs.length === 0 ? (
+          <div className="text-[10.5px] text-ink-500 italic">
+            매칭되는 적재 로그 없음 — 단서 카탈로그 키 또는 로그 fields 검토
+          </div>
+        ) : (
+          <ul className="space-y-1">
+            {matchedLogs.map((l) => (
+              <li
+                key={l.loaded_id}
+                className="bg-ink-950/40 border border-ink-700/40 rounded px-2 py-1.5 cursor-pointer hover:border-brand-teal/40"
+                onClick={() => onSelectLog?.(l)}
+              >
+                <div className="flex items-start gap-1.5">
+                  <span
+                    className={`text-[9px] font-mono px-1 py-px rounded shrink-0 ${
+                      l.source === 'attack'
+                        ? 'bg-purple-900/40 text-purple-200 border border-purple-700/40'
+                        : 'bg-sky-900/40 text-sky-200 border border-sky-700/40'
+                    }`}
+                  >
+                    {l.source === 'attack' ? 'ATT&CK' : 'OCSF'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-ink-100 truncate">{l.label}</div>
+                    <div className="text-[10px] text-ink-500 font-mono">
+                      🕒 {l.time?.slice(0, 19) ?? '시각 없음'}
+                      {l.technique_id ? ` · ${l.technique_id}` : ''}
+                    </div>
+                  </div>
+                </div>
+                {/* fields detail */}
+                <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] font-mono">
+                  {Object.entries(l.fields).map(([k, v]) =>
+                    v == null ? null : (
+                      <div key={k} className="truncate">
+                        <span className="text-ink-500">{k}:</span>{' '}
+                        <span className="text-ink-200">{String(v).slice(0, 32)}</span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

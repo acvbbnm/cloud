@@ -59,16 +59,19 @@ KILL_CHAIN_ORDER: dict[str, int] = {
 
 TRIGGER_MIN_DEPTH: int = 3
 TRIGGER_MIN_LIKELIHOOD: float = 0.25
-# V1.fix.12 (2026-05-31 byungwoo · 사용자: "Zone 2 도달 너무 느리다 — 4개면 도달") —
-#   depth ≥ TRIGGER_RELAXED_DEPTH 만으로 Zone 2 진입 (likelihood 무관). 약한 단서
-#   여러 개 누적도 "맵 충분히 탐색" 으로 인정. is_zone2_unlocked OR 분기.
-TRIGGER_RELAXED_DEPTH: int = 4
+# V1.fix.12 (2026-05-31) — depth ≥ TRIGGER_RELAXED_DEPTH 만으로 Zone 2 진입
+#   (likelihood 무관). 약한 단서 여러 개 누적도 "맵 충분히 탐색" 으로 인정.
+# V1.fix.22 (2026-06-01 사용자: "Zone 1 (외곽) 도달 더 빠르게") — 4 → 3.
+#   단서 3개 누적만으로도 Zone 2 진입. 컴퍼스 무게중심 외곽 도달도 8 depth 에서
+#   max radius (이전 15) — 시연 시 빠르게 결과 시각화.
+TRIGGER_RELAXED_DEPTH: int = 3
 #
 # 변경 이력:
 #   · P.10 (cap=20): TRIGGER 0.40→0.30
 #   · P.13: 0.40→0.30 calibration
 #   · P.26 (cap=15): 0.30→0.25 추가 calibration
 #   · V1.fix.12: RELAXED_DEPTH=4 추가 (OR 조건)
+#   · V1.fix.22: RELAXED_DEPTH 4→3 (시연 가속)
 
 # 회귀 임계값 (paradigm §21.8.1)
 #
@@ -158,30 +161,27 @@ def is_zone2_unlocked(tree: ClueTree, posterior: dict[str, float]) -> bool:
 def should_regress(posterior: dict[str, float], stage: int = 1) -> bool:
     """Zone 2 → Zone 1 자동 회귀 조건 (paradigm §21.8.1).
 
-    1. entropy ≥ REGRESS_ENTROPY_THRESHOLD (uniform 근처 — 다시 모호)
-    2. Top1 vs Top2 gap < REGRESS_GAP_THRESHOLD (우세 사라짐)
+    조건 (AND — V1.fix.20 강화):
+      1. entropy ≥ REGRESS_ENTROPY_THRESHOLD (uniform 근처 — 다시 모호) AND
+      2. Top1 vs Top2 gap < REGRESS_GAP_THRESHOLD (우세 사라짐)
 
-    둘 중 하나라도 True 면 회귀 권고. UI 는 자동 강제 X — 알림만 + 사용자
-    [Zone 1 으로 회귀] 버튼.
+    V1.fix.20 (2026-06-01 사용자: "회귀 권고가 너무 쉽게 나온다") —
+      기존 OR 분기 (둘 중 하나만 충족) 를 AND 로 변경. entropy 와 gap 둘 다
+      모호 상태일 때만 권고. 한쪽만 충족 (예: gap 0.09 인데 H=2.0) 은 한쪽
+      가설이 충분히 우세하므로 회귀 불필요.
 
     Phase N.4 정합 (2026-05-26): stage ≥ 2 에서는 회귀 권고 OFF.
-      이유 — Multi-Stage 진입 직후 새 baseline (anchor 가설 0 + 나머지 12-30%
-      분포) 은 entropy 가 자연스레 높음. 이건 "다시 모호" 가 아니라 "새 광범위
-      탐색 시작" 이 정상 상태. 사용자 입장에서 "막 확정했는데 왜 회귀?!" 인지
-      부조화를 차단.
+      Multi-Stage 새 baseline 의 entropy 자연 높음을 회귀로 오인 차단.
     """
     if stage >= 2:
         return False
 
     H = posterior_entropy(posterior)
-    if H >= REGRESS_ENTROPY_THRESHOLD:
-        return True
-
     top = top_n(posterior, n=2)
-    if len(top) >= 2 and (top[0][1] - top[1][1]) < REGRESS_GAP_THRESHOLD:
-        return True
+    gap = (top[0][1] - top[1][1]) if len(top) >= 2 else 1.0
 
-    return False
+    # V1.fix.20 — AND 조건. 둘 다 모호일 때만 회귀.
+    return H >= REGRESS_ENTROPY_THRESHOLD and gap < REGRESS_GAP_THRESHOLD
 
 
 # ─────────────────────────────────────────────────────────────

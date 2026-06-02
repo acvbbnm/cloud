@@ -422,11 +422,7 @@ const HypothesisScoreBar = ({
             ? `자동 확정 ${effAutoSkip}% + gap 20%p`
             : `auto_skip ${effAutoSkip}점 + gap 30 — 자동 확정`}
         </div>
-        {isBayesian && (
-          <div className="text-[9px] text-ink-600 mt-1">
-            베이즈 모드 — Verizon DBIR prior + Laplace smoothing likelihood
-          </div>
-        )}
+        {/* V1.fix.17 — "베이즈 모드 학술 부연" 인라인 노출 제거 (사용자 피드백) */}
       </div>
     </div>
   );

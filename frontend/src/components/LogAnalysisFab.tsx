@@ -19,12 +19,13 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useClueTreeStore } from '@/stores/useClueTreeStore';
+import { useEvidenceLogStore } from '@/stores/useEvidenceLogStore';
 import { useLogAnalysisStore } from '@/stores/useLogAnalysisStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { analyzeLogs } from '@/api/triage';
 
-import type { HypothesisScores } from '@/types';
+import type { HypothesisScores, Observable } from '@/types';
 
 // 8 사고유형 + UNCLASSIFIED 모두 0 으로 시작 (analyzeLogs 의 baseline)
 const EMPTY_SCORES: HypothesisScores = {
@@ -89,19 +90,33 @@ const LogAnalysisFab = () => {
   const toggle = useLogAnalysisStore((s) => s.toggle);
   const result = useLogAnalysisStore((s) => s.result);
   const setResult = useLogAnalysisStore((s) => s.setResult);
-  const adoptedKeys = useLogAnalysisStore((s) => s.adoptedKeys);
-  const markAdopted = useLogAnalysisStore((s) => s.markAdopted);
-
+  // P.37 — adoptedKeys/markAdopted (legacy 단서 직접 채택) 는 미사용.
+  //   loadedSet 으로 적재함 store 기반 멱등 검사로 대체.
   const clueTree = useClueTreeStore((s) => s.response);
-  const expandTree = useClueTreeStore((s) => s.expand);
+
+  // P.37 (2026-05-31 사용자: "내가 말한건 저 토글 열어서 분석된 로그를 분석
+  //   로그 적재함에 추가하는 형태") — expandTree 즉시 호출 X. useEvidenceLogStore
+  //   에 push, V-1 Step3 적재함에서 단서 채택은 별도 단계.
+  const loadEvidence = useEvidenceLogStore((s) => s.load);
+  const evidenceHas = useEvidenceLogStore((s) => s.has);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // V-1 Step 3 단서 트리 활성 여부 (단서 추가 버튼 활성 조건)
-  const canAdopt = Boolean(caseId && clueTree && clueTree.scoring_mode);
+  // 적재 가능 — 케이스만 있으면 가능 (V-1 Step3 진행 무관).
+  // 적재함은 어디서나 push 가능, 단서 채택은 V-1 Step3 에서.
+  const canLoad = Boolean(caseId);
 
+  // P.38 — 기법 그룹화 제거. raw event 그대로 시각 오름차순 정렬 (사고 진행 흐름).
+  //   groupByTechnique 는 보조 통계용으로 보존 (헤더 "N 기법 식별").
+  const mappedEvents: MappedEvent[] = result
+    ? [...(result.mapped_events as MappedEvent[])].sort((a, b) => {
+        const ta = a.time ?? '';
+        const tb = b.time ?? '';
+        return ta.localeCompare(tb);
+      })
+    : [];
   const techniqueGroups = result ? groupByTechnique(result.mapped_events) : [];
 
   const handleFile = async (file: File) => {
@@ -131,42 +146,75 @@ const LogAnalysisFab = () => {
     }
   };
 
-  const handleAdoptTechnique = async (g: TechniqueGroup) => {
-    if (!canAdopt || !caseId || !clueTree) return;
-    const clueKey = `TECHNIQUE:${g.technique_id}`;
-    if (adoptedKeys.has(clueKey)) {
-      showToast(`이미 채택됨: ${g.technique_id}`, 2500);
-      return;
+  /** P.38 (2026-05-31 사용자: "단서가 단서다워야지 — 미리 다 ATT&CK 매핑
+   *   끝나 있으면 사고유형 찾기 의미 없음") — MappedEvent → raw event 단위
+   *   LoadedLog. 표시·적재 모두 raw OCSF 관점 (시각·user·ip·activity 가 주),
+   *   ATT&CK 기법은 보조 hint.
+   *
+   *   빈값 가드 — backend OCSF 정규화에서 actor·ip 가 "-"/"" 같은 플레이스홀더로
+   *   채워지면 칩이 의미 없으므로 push 차단 (P.37 의 `ACCOUNT: -` 버그 fix).
+   */
+  const isMeaningful = (v: string | null | undefined): v is string =>
+    !!v && v !== '-' && v.trim() !== '' && v.toLowerCase() !== 'null';
+
+  const buildEventLog = (ev: MappedEvent) => {
+    const obs: Observable[] = [];
+    if (isMeaningful(ev.actor_user_name)) {
+      obs.push({ type: 'ACCOUNT', value: ev.actor_user_name!, note: ev.activity_name ?? undefined });
     }
-    try {
-      await expandTree({
-        caseId,
-        parent_node_id: useClueTreeStore.getState().response!.current_leaf_id,
-        clue_key: clueKey,
-        source: 'log_analysis',
-        label_override: g.technique_name
-          ? `${g.technique_id} — ${g.technique_name}`
-          : g.technique_id,
-      });
-      markAdopted(clueKey);
+    if (isMeaningful(ev.src_endpoint_ip)) {
+      obs.push({ type: 'IP_ADDRESS', value: ev.src_endpoint_ip!, note: ev.activity_name ?? undefined });
+    }
+    return {
+      loaded_id: `ev-${ev.attack_id}`,
+      source: 'ocsf' as const,  // raw OCSF event 관점 (ATT&CK 는 보조 hint)
+      source_id: ev.attack_id,
+      time: ev.time,
+      // 라벨 = raw 활동명 (수사관이 *해석할* 신호) — ATT&CK 기법명은 hint 로 fields 에
+      label: ev.activity_name || ev.rule_id || ev.attack_id.slice(0, 12),
+      observables: obs,
+      technique_id: ev.technique_id,  // 적재함 row 의 hint 배지로 활용
+      fields: {
+        time: ev.time,
+        actor_user: ev.actor_user_name,
+        src_ip: ev.src_endpoint_ip,
+        activity_name: ev.activity_name,
+        // ATT&CK 보조 hint (적재함 detail 에서 마지막에 노출, 적재함 list 라벨엔 X)
+        attack_hint_technique: ev.technique_id,
+        attack_hint_name: ev.technique_name,
+        attack_hint_tactic: ev.tactic,
+        attack_rule_id: ev.rule_id,
+      },
+    };
+  };
+
+  /** P.38 — [➜ 적재함] 클릭 — 개별 raw event 적재. */
+  const handleLoadEvent = (ev: MappedEvent) => {
+    if (!canLoad) return;
+    const log = buildEventLog(ev);
+    if (loadEvidence(log)) {
       showToast(
-        `+ 단서 채택: ${g.technique_id}${g.technique_name ? ` (${g.technique_name})` : ''}`,
-        2800,
+        `➜ V-1 적재함: ${ev.activity_name ?? ev.attack_id.slice(0, 8)}`,
+        2500,
       );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showToast(`채택 실패 — ${g.technique_id}: ${msg}`, 4000);
+    } else {
+      showToast('이미 적재됨', 1800);
     }
   };
 
-  const handleAdoptAll = async () => {
-    if (!canAdopt) return;
-    for (const g of techniqueGroups) {
-      const clueKey = `TECHNIQUE:${g.technique_id}`;
-      if (adoptedKeys.has(clueKey)) continue;
-      // 순차 expand — 각 기법 확실히 추가
-      await handleAdoptTechnique(g);
+  const handleLoadAll = () => {
+    if (!canLoad || !result) return;
+    let added = 0;
+    for (const ev of result.mapped_events as MappedEvent[]) {
+      if (loadEvidence(buildEventLog(ev))) added += 1;
     }
+    const total = result.mapped_events.length;
+    showToast(
+      added > 0
+        ? `➜ V-1 적재함에 ${added}건 추가 (${total - added}건 이미 적재됨)`
+        : `모든 이벤트 이미 적재됨 (${total}건)`,
+      3000,
+    );
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -200,8 +248,7 @@ const LogAnalysisFab = () => {
         title="실시간 로그 분석 — 국내 CSP 로그 → ATT&CK 단서"
         className="fixed bottom-32 right-5 w-11 h-11 rounded-full bg-brand-amber text-ink-975 z-[999] font-mono text-[14px] font-bold flex items-center justify-center border border-brand-amber hover:bg-amber-400 transition-colors shadow-lg"
       >
-        📊
-      </button>
+              </button>
 
       {/* Drawer (우측 slide-in) */}
       {open && (
@@ -220,7 +267,7 @@ const LogAnalysisFab = () => {
             <div className="px-4 py-3 border-b border-ink-700 bg-ink-850 flex items-center justify-between">
               <div>
                 <div className="text-[13px] font-semibold text-ink-100">
-                  📊 실시간 로그 분석
+                  실시간 로그 분석
                 </div>
                 <div className="text-[10.5px] text-ink-400 mt-0.5">
                   NCP/NHN 로그 → OCSF → ATT&CK 매핑 → 단서 채택
@@ -243,10 +290,10 @@ const LogAnalysisFab = () => {
                   ⚠ 케이스 미선택 — V-1 에서 케이스 진입 후 사용
                 </div>
               )}
-              {caseId && !canAdopt && (
+              {caseId && !clueTree && (
                 <div className="bg-blue-900/20 border border-blue-700/50 rounded px-3 py-2 text-[11px] text-blue-200 leading-5">
-                  ℹ V-1 Step 3 (단서 트리) 진행 중이 아닙니다 — 분석은 가능하지만
-                  단서 추가는 V-1 에서만 가능합니다.
+                  ℹ 적재함 push 만 가능 — V-1 Step3 에서 적재된 로그의 observable
+                  칩을 클릭해 단서 채택.
                 </div>
               )}
 
@@ -312,67 +359,90 @@ const LogAnalysisFab = () => {
                     </div>
                   </div>
 
-                  {techniqueGroups.length === 0 ? (
+                  {mappedEvents.length === 0 ? (
                     <div className="text-[11px] text-ink-500 italic text-center py-4">
-                      매핑된 ATT&CK 기법 없음 — 로그 형식 또는 룰 갭 확인 필요
+                      매핑된 이벤트 없음 — 로그 형식 또는 룰 갭 확인 필요
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-1.5">
-                        {techniqueGroups.map((g) => {
-                          const clueKey = `TECHNIQUE:${g.technique_id}`;
-                          const adopted = adoptedKeys.has(clueKey);
+                      {/* P.38 — raw event row (시각·user·ip·activity 주, ATT&CK hint 부) */}
+                      <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                        {mappedEvents.map((ev) => {
+                          const loadedId = `ev-${ev.attack_id}`;
+                          const loaded = evidenceHas(loadedId);
+                          const hasActor = isMeaningful(ev.actor_user_name);
+                          const hasIp = isMeaningful(ev.src_endpoint_ip);
                           return (
                             <div
-                              key={g.technique_id}
+                              key={ev.attack_id}
                               className={`bg-ink-900/60 border rounded-lg px-2.5 py-2 ${
-                                adopted
-                                  ? 'border-emerald-700/60'
-                                  : 'border-ink-700/70'
+                                loaded ? 'border-emerald-700/60' : 'border-ink-700/70'
                               }`}
                             >
                               <div className="flex items-start justify-between gap-2 mb-1">
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10.5px] font-mono text-purple-300 font-semibold">
-                                      {g.technique_id}
+                                  {/* 1행: 시각 + 활동명 (사용자가 *해석할* raw 신호) */}
+                                  <div className="text-[10.5px] text-ink-100 leading-4">
+                                    <span className="font-mono text-ink-400">
+                                      {ev.time?.slice(0, 19) ?? '시각 없음'}
                                     </span>
-                                    <span className="text-[9px] font-mono text-ink-500 bg-ink-800/80 px-1 py-px rounded">
-                                      {g.tactic}
+                                    <span className="mx-1 text-ink-600">·</span>
+                                    <span className="font-medium">
+                                      {ev.activity_name ?? ev.rule_id}
                                     </span>
                                   </div>
-                                  {g.technique_name && (
-                                    <div className="text-[10.5px] text-ink-200 mt-0.5">
-                                      {g.technique_name}
-                                    </div>
-                                  )}
-                                  <div className="text-[9.5px] text-ink-500 font-mono mt-0.5">
-                                    발생 {g.count}건
-                                    {g.events[0]?.actor_user_name && (
-                                      <> · 행위자 {g.events[0].actor_user_name}</>
+                                  {/* 2행: actor / ip (관찰가능값) */}
+                                  <div className="text-[10px] text-ink-300 font-mono mt-0.5 leading-4 truncate">
+                                    {hasActor && (
+                                      <span>
+                                        <span className="text-ink-500">user</span> {ev.actor_user_name}
+                                      </span>
+                                    )}
+                                    {hasActor && hasIp && (
+                                      <span className="text-ink-600 mx-1.5">·</span>
+                                    )}
+                                    {hasIp && (
+                                      <span>
+                                        <span className="text-ink-500">ip</span> {ev.src_endpoint_ip}
+                                      </span>
+                                    )}
+                                    {!hasActor && !hasIp && (
+                                      <span className="text-ink-600 italic">
+                                        관찰 가능값 없음
+                                      </span>
+                                    )}
+                                  </div>
+                                  {/* 3행: ATT&CK 보조 hint (작게, 흐리게 — 수사관 해석 검증용) */}
+                                  <div className="text-[9px] text-ink-500 font-mono mt-1">
+                                    <span className="text-ink-600">hint:</span>{' '}
+                                    <span className="text-purple-400/80">
+                                      {ev.technique_id}
+                                    </span>
+                                    {ev.tactic && (
+                                      <span className="text-ink-600"> · {ev.tactic}</span>
                                     )}
                                   </div>
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => handleAdoptTechnique(g)}
-                                  disabled={!canAdopt || adopted}
+                                  onClick={() => handleLoadEvent(ev)}
+                                  disabled={!canLoad || loaded}
                                   className={`text-[9.5px] font-mono whitespace-nowrap px-2 py-0.5 rounded border transition-colors ${
-                                    adopted
+                                    loaded
                                       ? 'border-emerald-600/70 text-emerald-300 bg-emerald-900/30 cursor-default'
-                                      : canAdopt
+                                      : canLoad
                                       ? 'border-brand-teal/50 text-brand-teal hover:bg-brand-teal/10'
                                       : 'border-ink-700 text-ink-500 cursor-not-allowed opacity-50'
                                   }`}
                                   title={
-                                    !canAdopt
-                                      ? 'V-1 Step 3 에서만 단서 추가 가능'
-                                      : adopted
-                                      ? '이미 채택됨'
-                                      : '단서 트리에 추가'
+                                    !canLoad
+                                      ? '활성 케이스 없음 (V-1 사고 접수 후 가능)'
+                                      : loaded
+                                      ? '이미 V-1 적재함에 있음'
+                                      : 'raw event 를 V-1 Step3 적재함에 추가 — 거기서 observable 칩으로 단서 채택'
                                   }
                                 >
-                                  {adopted ? '✓ 채택됨' : '+ 단서 추가'}
+                                  {loaded ? '✓ 적재됨' : '➜ 적재함'}
                                 </button>
                               </div>
                             </div>
@@ -380,17 +450,18 @@ const LogAnalysisFab = () => {
                         })}
                       </div>
 
-                      {canAdopt && techniqueGroups.some(
-                        (g) => !adoptedKeys.has(`TECHNIQUE:${g.technique_id}`),
-                      ) && (
-                        <button
-                          type="button"
-                          onClick={handleAdoptAll}
-                          className="w-full text-[11px] font-semibold bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors"
-                        >
-                          미채택 기법 모두 단서 추가 →
-                        </button>
-                      )}
+                      {canLoad &&
+                        mappedEvents.some(
+                          (ev) => !evidenceHas(`ev-${ev.attack_id}`),
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={handleLoadAll}
+                            className="w-full text-[11px] font-semibold bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors"
+                          >
+                            미적재 이벤트 모두 V-1 적재함에 추가 →
+                          </button>
+                        )}
                     </>
                   )}
                 </>

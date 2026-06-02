@@ -126,7 +126,7 @@ const MultiStageBoard = ({
   const headerText =
     confirmedHypotheses.length > 0
       ? `🔗 다단계 공격 추적 — Stage ${stage}`
-      : '🛰 MITRE Cloud Kill Chain — 전체 단계';
+      : 'MITRE Cloud Kill Chain — 전체 단계';
 
   return (
     <div className="border border-emerald-700/40 bg-emerald-900/10 rounded-lg overflow-hidden">

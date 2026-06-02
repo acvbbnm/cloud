@@ -188,7 +188,7 @@ const AttackChainCard = ({
           </>
         ) : (
           <>
-            🗺 Zone 2 — Top 3 가설을 Kill Chain 시간순으로. 카드 클릭 → 해당 가설
+            Zone 2 — Top 3 가설을 Kill Chain 시간순으로. 카드 클릭 → 해당 가설
             변별 단서로 후보 필터링
           </>
         )}

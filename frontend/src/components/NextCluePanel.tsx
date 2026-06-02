@@ -16,6 +16,7 @@
  */
 import { useState } from 'react';
 
+import SourceTag from '@/components/SourceTag';
 import { explainClue } from '@/api/clueTree';
 
 import type { ClueType, HypothesisScores, IncidentType, NextClueSuggestion } from '@/types';
@@ -214,8 +215,10 @@ const NextCluePanel = ({
   suggestions,
   onPickClueType,
   igCandidates,
-  onAdoptCandidate,
-  entropyBits,
+  // P.36 — onAdoptCandidate 미사용 (채택 버튼 제거됨). prop 시그너처는 호환 유지.
+  onAdoptCandidate: _onAdoptCandidate,
+  // V1.fix.17 — entropy bits 인라인 표시 제거 (RegressBanner 가 전담). 시그너처 호환 유지.
+  entropyBits: _entropyBits,
   disabled,
   onRefreshCandidates,
   scoringMode,
@@ -272,15 +275,14 @@ const NextCluePanel = ({
                 chain · {INCIDENT_TYPE_KO[chainFilterHypothesis]}
               </span>
             )}
-            {entropyBits !== undefined && (
-              <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
-                entropy {entropyBits.toFixed(2)} bits · {displayCandidates.length}
-                {isChainMode && displayCandidates.length !== igCandidates.length && (
-                  <span className="text-ink-600">/{igCandidates.length}</span>
-                )}
-                개
-              </span>
-            )}
+            {/* V1.fix.17 — entropy bits 인라인 노출 제거 (RegressBanner·검증 스크립트에서만 사용). 후보 개수만 표시. */}
+            <span className="ml-2 text-[9.5px] normal-case tracking-normal text-ink-500">
+              {displayCandidates.length}
+              {isChainMode && displayCandidates.length !== igCandidates.length && (
+                <span className="text-ink-600">/{igCandidates.length}</span>
+              )}
+              개
+            </span>
           </span>
           {onRefreshCandidates && (
             <button
@@ -308,17 +310,32 @@ const NextCluePanel = ({
 
         {igCandidates.length === 0 ? (
           <div className="bg-amber-900/15 border border-amber-700/40 rounded px-2.5 py-2 text-[10.5px] text-amber-200 leading-5">
-            🔦 <span className="font-semibold">첫 단서 입력 대기 중</span>
+            <span className="font-semibold">첫 단서 입력 대기 중</span>
             <div className="text-[9.5px] text-ink-400 mt-1 leading-4">
-              Uniform prior 상태 — 좌측 <span className="text-brand-teal">단서 직접 입력</span>{' '}
+              좌측 <span className="text-brand-teal">단서 직접 입력</span>{' '}
               또는 <span className="text-brand-teal">부분 로그 분석</span> 으로
-              시작하면 변별력 있는 IG 후보가 등장합니다.
+              시작하면 변별력 있는 후보가 등장합니다.
             </div>
           </div>
         ) : (
+          // V1.fix.16 — 학술 부연 (Shannon/Pearl) 은 SourceTag popup 으로 이동 (위 Card subtitle 영역).
           <p className="text-[9.5px] text-ink-500 leading-4 mb-2">
-            Information Gain (Shannon 1948 + Pearl marginalization) 큰 순.
-            각 막대는 정규화된 변별력 — 클릭 시 단서 채택.
+            변별력 큰 순 정렬 — 막대 클릭 시 단서 채택.
+            <SourceTag
+              className="ml-1"
+              label="ⓘ"
+              title="다음 단서 후보 정렬 근거"
+              body={
+                'Information Gain (변별력) 큰 순으로 정렬합니다.\n\n' +
+                '계산:\n' +
+                '  IG = H(prior) − E[H(posterior | clue)]\n' +
+                '  H = Shannon entropy (Shannon 1948)\n' +
+                '  음성 관찰 (clue 미관찰) 도 marginalization 으로 반영 (Pearl 1988)\n\n' +
+                '막대 길이 = 정규화된 변별력 (0~1).\n' +
+                '클릭 시 단서 채택 → 베이지안 사후확률 업데이트.\n\n' +
+                '근거: Shannon 1948 IG · Pearl 1988 BBN · BAN (IEEE 2023)'
+              }
+            />
           </p>
         )}
 
@@ -334,23 +351,15 @@ const NextCluePanel = ({
             return (
               <li
                 key={c.candidate_id}
+                // P.35.1 (2026-05-31 사용자 피드백: "다음 단서 후보는 제안만,
+                //   실제 로그 분석 후 추가가 정합. 클릭으로 직접 추가는 차단")
+                //   → 카드 클릭은 추천 이유 확장만, 채택은 별도 [+] 버튼 분리.
+                //   role=button 제거, cursor 도 단순 default (hover 시 풀이 토글).
                 className={`bg-ink-900/60 border border-ink-700/70 rounded-lg px-2.5 py-2 transition-colors ${
                   disabled
                     ? 'opacity-50'
-                    : 'hover:border-brand-teal/60 hover:bg-ink-900/80 cursor-pointer'
+                    : 'hover:border-brand-teal/40 hover:bg-ink-900/80'
                 }`}
-                onClick={() => {
-                  if (!disabled && onAdoptCandidate) onAdoptCandidate(c);
-                }}
-                role="button"
-                tabIndex={disabled ? -1 : 0}
-                onKeyDown={(e) => {
-                  if (disabled) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onAdoptCandidate?.(c);
-                  }
-                }}
               >
                 <div className="flex items-start gap-1.5 mb-1">
                   <span className="text-[10px] text-ink-500 mt-0.5 font-mono">
@@ -377,11 +386,10 @@ const NextCluePanel = ({
                   />
                 </div>
 
-                {c.rationale && (
-                  <div className="text-[9.5px] text-ink-400 leading-4 mb-1">
-                    {c.rationale}
-                  </div>
-                )}
+                {/* V1.fix.20 — rationale ("CREDENTIAL_THEFT 변별력 최고 P(c|h)=0.38")
+                    인라인 노출 제거. 옵션 클릭으로 확장되는 단서 풀이 패널
+                    (description/discrimination_explanation/aggregated_likelihood) 에서
+                    대체 표시. 사용자 피드백: "단서 후보쪽에서 이런 것도 없애주면 좋겠다". */}
 
                 {/* Phase H.4 — ATT&CK 기법 badge (clue_to_attack 매핑) */}
                 {c.techniques && c.techniques.length > 0 && (
@@ -418,8 +426,12 @@ const NextCluePanel = ({
                   </div>
                 )}
 
-                {/* ── 추천 이유 상세 토글 (explain_clue API) ── */}
-                <div className="mt-1.5 pt-1 border-t border-ink-800/80 flex items-center justify-between">
+                {/* P.36 (사용자: "단서로 추가 버튼이 생기면 안돼지 — 저거는
+                    로그가 아니라 어떤 정보도 안 담겨있으니까 후보로만 볼 수
+                    있도록 추천 이유같은것만 보여주는 형식으로") — 채택 버튼
+                    완전 제거. 카드는 추천 이유 토글만 노출. 채택은 V-2 분석
+                    결과 → V-1 적재함 → 단서 채택 경로에서만 가능. */}
+                <div className="mt-1.5 pt-1 border-t border-ink-800/80">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -431,9 +443,6 @@ const NextCluePanel = ({
                   >
                     {expandedClueKey === c.clue_key ? '▲' : '▼'} 추천 이유
                   </button>
-                  <span className="text-[9px] text-ink-600 font-mono">
-                    클릭하면 채택
-                  </span>
                 </div>
 
                 {expandedClueKey === c.clue_key && (
@@ -457,11 +466,11 @@ const NextCluePanel = ({
                       const perTech = ex.per_technique_likelihood ?? {};
                       return (
                         <>
-                          {/* Phase L.2 — 📖 정의 */}
+                          {/* Phase L.2 — 정의 */}
                           {ex.description && (
                             <div className="bg-ink-950/50 border-l-2 border-brand-teal/60 pl-2 py-1">
                               <div className="text-[9px] text-brand-teal font-semibold mb-0.5">
-                                📖 단서 정의
+                                단서 정의
                               </div>
                               <div className="text-[10px] text-ink-200 leading-4">
                                 {ex.description}
@@ -469,11 +478,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 🔍 어디서 찾나 (NCP/NHN/verify) */}
+                          {/* Phase L.2 — 어디서 찾나 (NCP/NHN/verify) */}
                           {ex.how_to_find && (ex.how_to_find.ncp || ex.how_to_find.nhn) && (
                             <div className="bg-ink-950/50 border-l-2 border-blue-500/60 pl-2 py-1">
                               <div className="text-[9px] text-blue-300 font-semibold mb-0.5">
-                                🔍 어디서 찾나
+                                어디서 찾나
                               </div>
                               <div className="space-y-0.5 text-[9.5px] leading-4">
                                 {ex.how_to_find.ncp && (
@@ -498,11 +507,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 📋 예시 */}
+                          {/* Phase L.2 — 예시 */}
                           {ex.examples && ex.examples.length > 0 && (
                             <div className="bg-ink-950/50 border-l-2 border-amber-500/60 pl-2 py-1">
                               <div className="text-[9px] text-amber-300 font-semibold mb-0.5">
-                                📋 예시
+                                예시
                               </div>
                               <ul className="text-[9.5px] text-ink-300 leading-4 space-y-0.5">
                                 {ex.examples.slice(0, 4).map((eg, i) => (
@@ -514,11 +523,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 💡 변별 풀이 */}
+                          {/* Phase L.2 — 변별 풀이 */}
                           {ex.discrimination_explanation && (
                             <div className="bg-ink-950/50 border-l-2 border-emerald-500/60 pl-2 py-1">
                               <div className="text-[9px] text-emerald-300 font-semibold mb-0.5">
-                                💡 왜 변별력 있나
+                                왜 변별력 있나
                               </div>
                               <div className="text-[9.5px] text-ink-300 leading-4">
                                 {ex.discrimination_explanation}
@@ -526,11 +535,11 @@ const NextCluePanel = ({
                             </div>
                           )}
 
-                          {/* Phase L.2 — 📚 학술 근거 */}
+                          {/* Phase L.2 — 학술 근거 */}
                           {(ex.academic_source || ex.iso_framework) && (
                             <div className="bg-ink-950/50 border-l-2 border-purple-500/60 pl-2 py-1">
                               <div className="text-[9px] text-purple-300 font-semibold mb-0.5">
-                                📚 학술 근거
+                                학술 근거
                               </div>
                               <div className="text-[9.5px] text-ink-400 leading-4">
                                 {ex.academic_source}

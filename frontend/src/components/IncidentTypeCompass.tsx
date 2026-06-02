@@ -64,6 +64,17 @@ interface IncidentTypeCompassProps {
   regressSuggested?: boolean;
   /** 보스 단서 likelihood (시각화 보조 — 0 ~ 1). */
   coreClueLikelihood?: number;
+  // ─── P.35.4 (2026-05-31) — trail point 클릭 핸들러 ──────────────
+  /** trail point 클릭 — 부모가 단서 detail / 적재 로그 매칭 표시.
+   *  사용자 비전: "컴파스 점 클릭하면 그 로그에 대한 정보가 자세히 보이게". */
+  onTrailPointClick?: (point: {
+    clue_key: string;
+    label: string;
+    stage: number;
+    posterior: HypothesisScores;
+  }) => void;
+  /** 강조 표시할 단서 (외부 LogPanel 클릭 시 그 단서 점에 ring 추가). */
+  highlightedClueKey?: string | null;
 }
 
 // R.2 (hard, 2026-05-28) — 단일 소스 import (types/index.ts).
@@ -186,7 +197,10 @@ const IncidentTypeCompass = ({
   disabled = false,
   zone = 1,
   regressSuggested = false,
-  coreClueLikelihood = 0,
+  // V1.fix.17 — coreClueLikelihood 하단 부연 라벨 삭제로 미사용. 시그너처는 호환 유지.
+  coreClueLikelihood: _coreClueLikelihood = 0,
+  onTrailPointClick,
+  highlightedClueKey,
 }: IncidentTypeCompassProps) => {
   // ── 반응형: 부모 컨테이너 width 추적 ──
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,31 +233,33 @@ const IncidentTypeCompass = ({
   // 모델이 너무 빨리 한 가설로 쏠리는 것을 시각만 부드럽게 표현.
   // ⚠ Bayes update 자체는 그대로 (e2e 회귀 0) — 시각화 calibration 만 적용.
   //
-  // 사용자 비전 (2026-05-26):
-  //   1. "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고 향하는 방향"
-  //   2. "초기 이동 방향이 너무 큼 — 한 사고유형으로 치우치는 경향"
-  //   → SATURATION_DEPTH 15 (이전 10), temperature scaling 추가.
+  // 사용자 비전:
+  //   1. "단서 10개 정도는 찾아봐야 어느정도 갈피를 잡고 향하는 방향" (2026-05-26)
+  //   2. "초기 이동 방향이 너무 큼 — 한 사고유형으로 치우치는 경향" (2026-05-26)
+  //   3. V1.fix.22 (2026-06-01) — "노드를 많이 움직이게 + Zone 1 (외곽) 에 더 빨리 도달".
+  //      SATURATION 15 → 8, MIN_RADIUS 8% → 22%, temperature 시작 4 → 2.5.
+  //      효과: 단서 1개 채택 시 22% 반지름 (즉시 가시), 8개에서 최대 도달.
   //
   // 학술 정합: P^(1/T) softmax temperature (calibration) — Platt 1999, Guo 2017.
-  const SATURATION_DEPTH = 15;
-  const MIN_RADIUS_FACTOR = 0.08;  // depth 1 → 8% 반지름 (이전 12% → 더 안쪽)
+  const SATURATION_DEPTH = 8;        // V1.fix.22 — 15 → 8 (8 단서에서 외곽 도달)
+  const MIN_RADIUS_FACTOR = 0.22;    // V1.fix.22 — 0.08 → 0.22 (초기부터 잘 보임)
 
   /** depth 별 무게중심 최대 반지름 — sqrt 곡선 (초반 점진 + 후반 saturation). */
   const radiusForDepth = (depth: number): number => {
     if (depth <= 0) return 0;
     const t = Math.min(1, depth / SATURATION_DEPTH);
-    const factor = MIN_RADIUS_FACTOR + (0.85 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
+    const factor = MIN_RADIUS_FACTOR + (0.90 - MIN_RADIUS_FACTOR) * Math.sqrt(t);
     return R * factor;
   };
 
-  /** depth 별 temperature — 깊을수록 T↓ (실제 분포에 가깝게).
-   *  depth 1 → T=4 (매우 평탄), depth 5 → T=2.5, depth 10 → T=1.5, depth 15+ → T=1 (그대로). */
+  /** depth 별 temperature — V1.fix.22: 2.5 → 1 으로 빠르게 감소 (초기부터 우세 가설 반영).
+   *  depth 1 → T≈2.3, depth 4 → T≈1.6, depth 8+ → T=1 (그대로). */
   const temperatureForDepth = (depth: number): number => {
-    if (depth <= 0) return 5;
+    if (depth <= 0) return 3;
     if (depth >= SATURATION_DEPTH) return 1;
-    // 4 → 1 으로 선형 감소
+    // 2.5 → 1 으로 선형 감소
     const t = depth / SATURATION_DEPTH;
-    return 4 - 3 * t;
+    return 2.5 - 1.5 * t;
   };
 
   /** P^(1/T) 으로 분포 평탄화. T>1 = 평탄, T=1 = 그대로. */
@@ -444,56 +460,24 @@ const IncidentTypeCompass = ({
       <div className="px-2.5 py-1.5 border-b border-ink-700 flex items-center justify-between shrink-0">
         <span className="text-[10px] text-ink-400 font-mono font-semibold uppercase tracking-[0.14em]">
           {title}
-          <span className="ml-2 text-[9.5px] text-ink-500 normal-case tracking-normal">
-            depth {Math.max(0, trail.length - 1)} · 8 사고유형 360°
-            {/* Phase M.2 — Zone 배지.
-                P.32 — visualZone2 (점이 내부원 바깥) 일 때만 Zone 2 강조,
-                visualZoneHalf (백엔드 Zone 2 인데 점은 안쪽) 일 땐 "Zone 1+"
-                전환 안내. 사용자: "그림상 zone1 안 나갔는데 zone2 활성"  fix. */}
-            <span
-              className={
-                'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold ' +
-                (visualZone2
-                  ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
-                  : visualZoneHalf
-                    ? 'bg-sky-900/30 text-sky-300/80 border border-sky-700/30'
-                    : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
-              }
-              title={
-                visualZone2
-                  ? '코어 단서 발견 + 무게중심 외곽 — 사고유형 chain 구체화 단계'
-                  : visualZoneHalf
-                    ? '백엔드 Zone 2 진입 (보스 단서 검출) — 무게중심은 아직 안쪽, 단서 추가 시 외곽으로 이동'
-                    : regressSuggested
-                      ? 'Zone 2 → 1 자동 강등 (entropy/gap 회귀 트리거)'
-                      : '광범위 탐색 — 단서 누적 중'
-              }
-            >
-              {visualZone2
-                ? '🗺 Zone 2'
+          {/* V1.fix.17 (2026-06-01) — "depth N · 8 사고유형 360°" + "Zone 1+ (코어단서)
+              · 1위 권한 상승(84.6%)" 부연 라벨 제거. 사용자: "다른 곳에서 확인 가능".
+              Zone 배지만 간결하게 유지 (1·2 구분만). */}
+          <span
+            className={
+              'ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-semibold normal-case tracking-normal ' +
+              (visualZone2
+                ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40'
                 : visualZoneHalf
-                  ? 'Zone 1+ (코어단서)'
-                  : regressSuggested
-                    ? 'Zone 1 (강등)'
-                    : 'Zone 1'}
-            </span>
-            {/* V1.fix.9 — 회귀 권고 배지는 RegressBanner 로 통합. 컴퍼스 헤더는 Zone 라벨만 강화. */}
-            {topAnchor && (
-              <>
-                {' '}· 1위
-                <span
-                  className="ml-1"
-                  style={{ color: topAnchor.color }}
-                >
-                  {INCIDENT_KO[topAnchor.type]}
-                </span>
-                {currentPos && (
-                  <span className="ml-1 text-ink-500">
-                    ({((currentPos.posterior[topAnchor.type] ?? 0) * 100).toFixed(1)}%)
-                  </span>
-                )}
-              </>
-            )}
+                  ? 'bg-sky-900/30 text-sky-300/80 border border-sky-700/30'
+                  : 'bg-amber-900/30 text-amber-300/80 border border-amber-700/30')
+            }
+          >
+            {visualZone2
+              ? 'Zone 2'
+              : regressSuggested
+                ? 'Zone 1'
+                : 'Zone 1'}
           </span>
         </span>
         {headerRight}
@@ -570,7 +554,7 @@ const IncidentTypeCompass = ({
               textAnchor="middle"
               style={{ fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em' }}
             >
-              🗺 Zone 2 · 사고유형 chain 구체화
+              Zone 2 · 사고유형 chain 구체화
             </text>
           )}
 
@@ -710,14 +694,53 @@ const IncidentTypeCompass = ({
             const isRoot = i === 0;
             const isStageStart = t.stage > 1 && t.stageDepth === 1;
             const sc = stageColor(t.stage);
+            // P.35.4 — 단서 점 클릭 detail + 외부 highlight ring
+            const isClickable = !isRoot && onTrailPointClick && !disabled;
+            const isHighlighted = highlightedClueKey && t.clueKey === highlightedClueKey;
             return (
-              <g key={`trail-${i}`}>
+              <g
+                key={`trail-${i}`}
+                style={isClickable ? { cursor: 'pointer' } : undefined}
+                onClick={
+                  isClickable
+                    ? (e) => {
+                        e.stopPropagation();
+                        onTrailPointClick({
+                          clue_key: t.clueKey,
+                          label: t.label,
+                          stage: t.stage,
+                          posterior: t.posterior,
+                        });
+                      }
+                    : undefined
+                }
+              >
                 {isCurrent && (
                   <circle cx={t.x} cy={t.y} r={14} fill={sc.fill} opacity={0.18}>
                     <animate
                       attributeName="r"
                       values="10;16;10"
                       dur="1.8s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                )}
+                {/* 외부 LogPanel 클릭 시 매칭 단서에 ring 강조 */}
+                {isHighlighted && (
+                  <circle
+                    cx={t.x}
+                    cy={t.y}
+                    r={11}
+                    fill="none"
+                    stroke="#FBBF24"
+                    strokeWidth={2}
+                    strokeDasharray="3 2"
+                    opacity={0.95}
+                  >
+                    <animate
+                      attributeName="r"
+                      values="9;13;9"
+                      dur="1.4s"
                       repeatCount="indefinite"
                     />
                   </circle>
@@ -812,35 +835,17 @@ const IncidentTypeCompass = ({
           </div>
         )}
       </div>
-      {/* 하단 안내 — zone 별 메시지 (paradigm §21.4).
-          P.32 — visualZone2 / visualZoneHalf / Zone 1 / regress 4 분기.
-          사용자 피드백: 그림 (점 위치) 과 라벨이 일치해야 함. */}
+      {/* V1.fix.17 (2026-06-01) — 하단 zone 별 부연 안내 제거.
+          사용자 피드백: "Zone 1+ 전환 중 ... 무게중심 외곽 등은 다른 곳에서 확인 가능".
+          Zone 상태 + 회귀 권고는 RegressBanner + 상단 Zone 배지로 충분히 표시됨.
+          여기는 confidence 도달 시 사고유형 방향 안내만 유지. */}
       <div className="px-2.5 py-1.5 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
-        {visualZone2 ? (
-          <>
-            🗺 <span className="text-emerald-300 font-semibold">Zone 2</span> — 코어 단서 발견 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) + 무게중심 외곽.
-            Top 가설 chain 으로 다음 단서를 좁혀가세요
-          </>
-        ) : visualZoneHalf ? (
-          <>
-            🛰 <span className="text-sky-300 font-semibold">Zone 1+ 전환 중</span> — 코어 단서 (P(c|h)={(coreClueLikelihood * 100).toFixed(0)}%) 검출됐으나 무게중심은 아직 안쪽.
-            같은 사고유형 단서 추가 시 외곽으로 이동 → Zone 2
-          </>
-        ) : regressSuggested ? (
-          <>
-            ⤺ <span className="text-amber-300 font-semibold">회귀 권고</span> — entropy 상승/가설 격차 축소로 다시 모호.
-            Zone 1 으로 돌아가 광범위 탐색 권장
-          </>
-        ) : (
-          <>
-            🧭 <span className="text-amber-300 font-semibold">Zone 1</span> — 사후확률 가중 무게중심.
-            맵 탐색 (depth ≥ 3) + 코어 단서 (P(c|h) ≥ 45%) 모두 충족 시 Zone 2 진입
-          </>
-        )}
-        {confidenceReached && primaryIncident && (
-          <span className="ml-2 text-brand-teal font-semibold">
-            · {INCIDENT_KO[primaryIncident]} 방향 도달 ✓
+        {confidenceReached && primaryIncident ? (
+          <span className="text-brand-teal font-semibold">
+            {INCIDENT_KO[primaryIncident]} 방향 도달 ✓
           </span>
+        ) : (
+          <span className="text-ink-500">단서를 누적하면 사고유형 방향으로 이동합니다</span>
         )}
       </div>
     </div>

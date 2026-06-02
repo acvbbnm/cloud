@@ -53,11 +53,11 @@ const BridgeToBoardCard = ({
 
       if (created === 0 && skipped > 0) {
         onToast(
-          `📋 이미 모든 단서가 보드에 있습니다 (skip ${skipped}건). V-5 보드로 이동해 조합해보세요.`,
+          `이미 모든 단서가 보드에 있습니다 (skip ${skipped}건). V-5 보드로 이동해 조합해보세요.`,
           4500,
         );
       } else {
-        const parts = [`🗺 보드에 단서 노드 ${created}개 생성`];
+        const parts = [`보드에 단서 노드 ${created}개 생성`];
         if (edges > 0) parts.push(`시간순 엣지 ${edges}개`);
         if (skipped > 0) parts.push(`중복 skip ${skipped}건`);
         onToast(`${parts.join(' · ')}. V-5 보드로 이동해 조합해보세요.`, 4500);
@@ -72,7 +72,7 @@ const BridgeToBoardCard = ({
 
   return (
     <Card
-      title="🗺 단서들을 수사 보드로"
+      title="단서들을 수사 보드로"
       subtitle={`현재 path 의 ${acceptedClueCount}개 단서를 V-5 보드 노드로 이관합니다`}
       borderColor="#2DD4BF"
     >
@@ -108,7 +108,7 @@ const BridgeToBoardCard = ({
         >
           {submitting
             ? '이관 중…'
-            : `🗺 ${acceptedClueCount}개 단서 → 수사 보드로 보내기`}
+            : `${acceptedClueCount}개 단서 → 수사 보드로 보내기`}
         </button>
       </div>
     </Card>

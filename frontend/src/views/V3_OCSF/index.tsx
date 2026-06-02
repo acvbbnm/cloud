@@ -10,7 +10,42 @@ import KpiCard from '@/components/KpiCard';
 import Pagination from '@/components/Pagination';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
+import { useEvidenceLogStore } from '@/stores/useEvidenceLogStore';
 import { getOcsf, runNormalize } from '@/api/analysis';
+
+import type { Observable, OCSFEventItem } from '@/types';
+
+/** 빈값 ("-"/"" / "null") 가드 — backend OCSF 정규화에서 actor·ip 가
+ *  플레이스홀더로 채워지면 칩이 의미없으므로 push 차단. P.38 (LogAnalysisFab) 과 동일. */
+const isMeaningfulValue = (v: string | null | undefined): v is string =>
+  !!v && v !== '-' && v.trim() !== '' && v.toLowerCase() !== 'null';
+
+/** P.36 — OCSFEventItem → 적재함 LoadedLog. actor_user_name → ACCOUNT,
+ *   src_endpoint_ip → IP_ADDRESS observable 추출. P.38 — 빈값 가드. */
+const buildOcsfLoadedLog = (e: OCSFEventItem) => {
+  const obs: Observable[] = [];
+  if (isMeaningfulValue(e.actor_user_name)) {
+    obs.push({ type: 'ACCOUNT', value: e.actor_user_name!, note: e.activity_name });
+  }
+  if (isMeaningfulValue(e.src_endpoint_ip)) {
+    obs.push({ type: 'IP_ADDRESS', value: e.src_endpoint_ip!, note: e.activity_name });
+  }
+  return {
+    loaded_id: `ocsf-${e.ocsf_id}`,
+    source: 'ocsf' as const,
+    source_id: e.ocsf_id,
+    time: e.time,
+    label: e.activity_name || e.ocsf_id.slice(0, 12),
+    observables: obs,
+    fields: {
+      activity_name: e.activity_name,
+      actor_user: e.actor_user_name,
+      src_ip: e.src_endpoint_ip,
+      status_code: e.status_code,
+      time: e.time,
+    },
+  };
+};
 
 import RawJsonPanel from './RawJsonPanel';
 import FieldMappingTable from './FieldMappingTable';
@@ -42,6 +77,10 @@ const V3OCSF = () => {
     queryFn: () => getOcsf(caseId!, page, PAGE_SIZE),
     enabled: !!caseId,
   });
+
+  // P.36 — V-1 적재함 push
+  const loadEvidence = useEvidenceLogStore((s) => s.load);
+  const evidenceHas = useEvidenceLogStore((s) => s.has);
 
   const normalizeMutation = useMutation({
     mutationFn: () => runNormalize(caseId!),
@@ -109,6 +148,31 @@ const V3OCSF = () => {
             >
               {normalizeMutation.isPending ? '정규화 중…' : ' 정규화 실행'}
             </button>
+            {/* P.36 — 선택된 이벤트를 V-1 적재함에 push */}
+            {selected && (() => {
+              const log = buildOcsfLoadedLog(selected);
+              const already = evidenceHas(log.loaded_id);
+              return (
+                <button
+                  onClick={() => {
+                    if (loadEvidence(log)) {
+                      showToast('➜ V-1 적재함에 추가됨 (단서 채택은 V-1 Step3 에서)');
+                    } else {
+                      showToast('이미 적재됨');
+                    }
+                  }}
+                  disabled={already}
+                  className="btn-ghost disabled:opacity-40"
+                  title={
+                    already
+                      ? '이미 V-1 적재함에 있음'
+                      : '현재 선택된 이벤트를 V-1 Step3 적재함에 추가'
+                  }
+                >
+                  {already ? '✓ 적재됨' : '➜ V-1 적재함'}
+                </button>
+              );
+            })()}
             <button onClick={() => navigate('/gap')} className="btn-primary">
               갭 감지 →
             </button>

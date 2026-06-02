@@ -332,13 +332,7 @@ const CluesInput = ({
             );
           })}
         </div>
-      ) : (
-        <p className="mt-3 text-[10.5px] text-ink-500 leading-5">
-          단서를 추가하면 우측 가설 점수에 즉시 반영됩니다.
-          <br />
-          단서가 없다면 결정 트리만으로 진행해도 됩니다.
-        </p>
-      )}
+      ) : null /* V1.fix.21 — 부연 문구 제거 (사용자 피드백) */}
     </div>
   );
 };

@@ -147,7 +147,7 @@ const V5Board = () => {
         is_ai_suggested: false,
       }),
     onSuccess: (node) => {
-      showToast(`🔍 단서 노드 추가 — ${node.label}`);
+      showToast(`단서 노드 추가 — ${node.label}`);
       queryClient.invalidateQueries({ queryKey: ['board', caseId] });
     },
     onError: (err: unknown) => {
@@ -221,7 +221,7 @@ const V5Board = () => {
   const autoLayoutMutation = useMutation({
     mutationFn: () => autoLayout(caseId!),
     onSuccess: (data) => {
-      showToast(`✨ 자동 정렬 ${data.updated_nodes}개 노드 재배치`);
+      showToast(`자동 정렬 ${data.updated_nodes}개 노드 재배치`);
       queryClient.invalidateQueries({ queryKey: ['board', caseId] });
     },
     onError: (err: unknown) => {
@@ -330,10 +330,10 @@ const V5Board = () => {
 
             {/* 메인 보드 — ATT&CK + 단서 + 엣지 통합 그래프 (SVG, UF-04) */}
             <Card
-              title={<>🗺 수사 보드 (단서 · ATT&CK · 엣지)</>}
+              title={<>수사 보드 (단서 · ATT&CK · 엣지)</>}
               subtitle={
                 <span className="text-[10.5px] text-ink-400">
-                  좌측 LogPanel 의 🔍 단서를 드래그해서 떨어뜨리기 · 노드 클릭 = 상세 ·
+                  좌측 LogPanel 의 단서를 드래그해서 떨어뜨리기 · 노드 클릭 = 상세 ·
                   엣지 모드에서 두 노드 연속 클릭 = 화살표
                 </span>
               }
@@ -345,7 +345,7 @@ const V5Board = () => {
                     className="text-[11px] px-2.5 py-1 rounded-lg border border-brand-teal/50 bg-brand-teal/10 text-brand-teal hover:bg-brand-teal/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="networkx spring_layout 으로 노드 좌표 일괄 재배치 (POST /api/board/auto-layout)"
                   >
-                    {autoLayoutMutation.isPending ? '정렬 중…' : '✨ 자동 정렬'}
+                    {autoLayoutMutation.isPending ? '정렬 중…' : '자동 정렬'}
                   </button>
                   <button
                     onClick={toggleEdgeMode}
@@ -408,7 +408,7 @@ const V5Board = () => {
                         });
                         if (exists) {
                           showToast(
-                            `📋 이미 보드에 있는 단서: ${payload.label}`,
+                            `이미 보드에 있는 단서: ${payload.label}`,
                             3000,
                           );
                           return;
@@ -784,7 +784,7 @@ const ClueDetailPanel = ({
   return (
     <div className="text-[12.5px]">
       <div className="flex items-start gap-1.5 mb-2">
-        <span className="text-[14px]">🔍</span>
+        <span className="text-[14px]"></span>
         <div className="font-bold text-[14px] flex-1 leading-tight">{node.label}</div>
       </div>
       <div className="text-[10.5px] text-ink-400 font-mono mb-2 truncate">

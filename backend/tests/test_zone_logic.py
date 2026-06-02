@@ -83,12 +83,17 @@ def test_zone2_locked_when_depth_below_min() -> None:
     assert is_zone2_unlocked(tree, tree.posterior_current) is False
 
 
-def test_zone2_locked_when_likelihood_below_min() -> None:
-    """depth ≥ 3 + 약한 단서만 → Zone 1."""
+def test_zone2_unlocked_at_relaxed_depth_even_weak() -> None:
+    """V1.fix.22 (2026-06-01) — RELAXED_DEPTH=3 이라 depth=3 + 약한 단서만으로도 Zone 2.
+
+    이전에는 depth=3 일 때 강한 단서 (lk ≥ 0.25) 필요. 사용자: "Zone 1 외곽 도달
+    더 빠르게" → RELAXED 4→3 으로 완화. 깊이만으로 Zone 2 진입.
+    """
     tree = _build_tree([WEAK_CLUE, WEAK_CLUE, WEAK_CLUE])  # depth = 3
     assert max((n.depth for n in tree.nodes.values()), default=0) >= TRIGGER_MIN_DEPTH
     assert core_clue_likelihood(tree) < TRIGGER_MIN_LIKELIHOOD
-    assert is_zone2_unlocked(tree, tree.posterior_current) is False
+    # V1.fix.22 — depth = RELAXED_DEPTH (=3) 만으로 Zone 2 진입
+    assert is_zone2_unlocked(tree, tree.posterior_current) is True
 
 
 def test_zone2_unlocked_when_both_satisfied() -> None:
@@ -110,9 +115,9 @@ def test_zone2_unlocked_deep_even_with_weak_clues() -> None:
     assert is_zone2_unlocked(tree, tree.posterior_current) is True
 
 
-def test_zone2_locked_below_relaxed_depth_and_weak() -> None:
-    """V1.fix.12 — depth < RELAXED (=4) 이고 강한 단서도 없으면 Zone 1 유지."""
-    tree = _build_tree([WEAK_CLUE] * 3)  # depth = 3, 약한 단서만
+def test_zone2_locked_below_min_depth() -> None:
+    """V1.fix.22 — depth < TRIGGER_MIN_DEPTH (=3) 면 Zone 1 유지."""
+    tree = _build_tree([WEAK_CLUE] * 2)  # depth = 2
     assert is_zone2_unlocked(tree, tree.posterior_current) is False
 
 
@@ -147,9 +152,30 @@ def test_should_regress_when_high_entropy() -> None:
     assert should_regress(posterior) is True
 
 
-def test_should_regress_when_narrow_gap() -> None:
-    """Top1·Top2 gap < 0.10 → 회귀 권고 (entropy 낮아도)."""
-    # 두 가설 0.48·0.45 → entropy 약 1.0 < 2.0, gap 0.03 < 0.10
+def test_should_regress_when_narrow_gap_and_high_entropy() -> None:
+    """V1.fix.20 — AND 조건. gap 만 좁아도 entropy 가 낮으면 회귀 X (강화).
+
+    이전 OR 조건에서는 gap < 0.10 만으로 권고. V1.fix.20 부터는 entropy 와
+    gap 둘 다 모호일 때만 권고.
+    """
+    # entropy ≈ 2.92 (거의 uniform) + gap 0.03 — 둘 다 충족 → True
+    posterior = {
+        "CREDENTIAL_THEFT": 0.135,
+        "PHISH_INITIAL_ACCESS": 0.115,
+        "RANSOMWARE": 0.12,
+        "DATA_EXFILTRATION": 0.12,
+        "PRIVILEGE_ESCALATION": 0.13,
+        "AUDIT_LOG_TAMPERING": 0.12,
+        "MISCONFIG_EXPOSURE": 0.13,
+        "INSIDER_THREAT": 0.13,
+        "UNCLASSIFIED": 0.0,
+    }
+    assert should_regress(posterior) is True
+
+
+def test_should_not_regress_when_narrow_gap_only() -> None:
+    """V1.fix.20 — gap 좁아도 entropy 낮으면 (clear 양강) 회귀 X."""
+    # 두 가설 0.48·0.45 만 살아있고 나머지 0 → entropy 1.0 < 2.7 → False
     posterior = {
         "CREDENTIAL_THEFT": 0.48,
         "PHISH_INITIAL_ACCESS": 0.45,
@@ -161,7 +187,7 @@ def test_should_regress_when_narrow_gap() -> None:
         "INSIDER_THREAT": 0.0,
         "UNCLASSIFIED": 0.0,
     }
-    assert should_regress(posterior) is True
+    assert should_regress(posterior) is False
 
 
 def test_should_not_regress_when_clear_winner() -> None:
@@ -187,19 +213,19 @@ def test_should_not_regress_when_stage_ge_2() -> None:
     높음. 이건 "다시 모호" 가 아니라 "새 광범위 탐색" 정상 상태. 사용자 인지
     부조화 ("막 확정했는데 왜 회귀?!") 차단.
     """
-    # 일부러 entropy 매우 높은 posterior 구성 — stage=1 이면 True 가 나옴
+    # V1.fix.20 — entropy + gap 둘 다 모호 (거의 uniform) — stage=1 이면 True
     posterior = {
-        "CREDENTIAL_THEFT": 0.0,           # anchor freeze
-        "PRIVILEGE_ESCALATION": 0.30,
-        "DATA_EXFILTRATION": 0.20,
-        "INSIDER_THREAT": 0.15,
-        "RANSOMWARE": 0.12,
-        "AUDIT_LOG_TAMPERING": 0.10,
-        "MISCONFIG_EXPOSURE": 0.08,
-        "PHISH_INITIAL_ACCESS": 0.05,
+        "CREDENTIAL_THEFT": 0.13,
+        "PRIVILEGE_ESCALATION": 0.13,
+        "DATA_EXFILTRATION": 0.13,
+        "INSIDER_THREAT": 0.12,
+        "RANSOMWARE": 0.125,
+        "AUDIT_LOG_TAMPERING": 0.125,
+        "MISCONFIG_EXPOSURE": 0.12,
+        "PHISH_INITIAL_ACCESS": 0.12,
         "UNCLASSIFIED": 0.0,
     }
-    # stage 1 — 회귀 권고 발동해야 정상 (entropy 높음)
+    # stage 1 — 회귀 권고 발동해야 정상 (entropy 높음 + gap 좁음)
     assert should_regress(posterior, stage=1) is True
     # stage 2 — 회귀 권고 차단 (Multi-Stage 새 baseline)
     assert should_regress(posterior, stage=2) is False

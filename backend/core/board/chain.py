@@ -31,6 +31,40 @@ from db.models import (
 #     보조). V-5 수사 보드는 단서 의미를 풀어쓴 한 줄 설명이 필요.
 
 _CLUE_DESC_PATH = Path(__file__).parent.parent.parent / "data" / "triage" / "clue_descriptions.json"
+_ATTACK_RULES_PATH = Path(__file__).parent.parent.parent / "data" / "attack_rules" / "rules.json"
+
+
+@lru_cache(maxsize=1)
+def _load_attack_rules() -> dict:
+    """attack_rules.json → technique_id → 사람친화 라벨 매핑.
+
+    우선순위: technique_name > description > activity_name_pattern (정규식 → 평문).
+    """
+    try:
+        data = json.loads(_ATTACK_RULES_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    out: dict[str, str] = {}
+    for rule in data.get("rules", []):
+        tid = rule.get("technique_id")
+        if not tid or tid in out:
+            continue
+        name = (
+            rule.get("technique_name")
+            or rule.get("description")
+            or rule.get("activity_name_pattern", "").strip("^$")
+            or ""
+        )
+        if name:
+            out[tid] = name
+    return out
+
+
+def _lookup_technique_name(technique_id: Optional[str]) -> Optional[str]:
+    """technique_id → 사람 친화 기법명. 없으면 None."""
+    if not technique_id:
+        return None
+    return _load_attack_rules().get(technique_id)
 
 
 @lru_cache(maxsize=1)
@@ -202,10 +236,11 @@ class ChainNode:
         att = db.get(AttackEventModel, attack_id)
         if att is None:
             return None
-        tech_name = (att.technique_name or "").strip()
+        # fix (2026-06-02) — AttackEventModel 에 technique_name 컬럼 없음.
+        # attack_rules.json 에서 technique_id → name 조회 (있으면), 없으면 tactic.
+        tech_name = _lookup_technique_name(att.technique_id)
         if tech_name:
             return f"{att.technique_id} · {tech_name}"
-        # technique_name 없으면 기존 동작 (tactic) 으로 fallback
         return f"{att.technique_id} · {att.tactic}"
 
     @staticmethod

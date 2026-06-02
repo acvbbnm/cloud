@@ -729,8 +729,13 @@ const ChainGraphCanvas = ({
         //   색상으로 이미 직관 식별 가능 (중복 메타 제거).
         // P.31 — 글씨 + 노드 크기 확대에 맞춰 truncate 26→32 글자.
         const rawLabel = n.label;
+        // 한글 1자 ≈ 13px, 영문 1자 ≈ 7px. NODE_W=168, padding 16 → 라벨 영역 ~152px.
+        // 한글 비율 추정 → 최대 글자수 동적 결정 (한국어 12자 / 영문 22자 정도).
+        const koreanRatio =
+          (rawLabel.match(/[가-힣]/g) || []).length / Math.max(1, rawLabel.length);
+        const maxLen = Math.round(22 - koreanRatio * 10); // 한글 100%면 12, 영문 100%면 22
         const labelText =
-          rawLabel.length > 32 ? `${rawLabel.slice(0, 32)}…` : rawLabel;
+          rawLabel.length > maxLen ? `${rawLabel.slice(0, maxLen)}…` : rawLabel;
 
         // P.30 — statusColor 변수 제거 (status 텍스트 라인 제거로 미사용).
         //   status 시각은 stroke·fill (CONFIRMED 초록 / REJECTED 빨강) 으로만.
@@ -812,6 +817,9 @@ const ChainGraphCanvas = ({
               fill="#E6E9F0"
               fontSize={13.5}
               fontWeight={600}
+              // 안전망 — 라벨 길이 추정 잘못해도 SVG 가 NODE_W-16 폭으로 강제 fit
+              textLength={NODE_W - 16}
+              lengthAdjust="spacingAndGlyphs"
               // P.28 — line-through 제거 (사용자: "내용 삭제 대신 색깔 바꿔")
             >
               {labelText}

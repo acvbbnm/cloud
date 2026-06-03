@@ -51,6 +51,7 @@ export interface UpdateCaseReq {
   observables?: Observable[];
   secondary_incident_types?: IncidentType[];
   triage_state?: TriageState | null;
+  investigator_memo?: string;
 }
 
 export const updateCase = async (

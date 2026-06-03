@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
 import { explainClue } from '@/api/clueTree';
+import { getCase, updateCase } from '@/api/intake';
 import type {
   AttackEventItem,
   BoardNode,
@@ -53,6 +54,10 @@ const V5Board = () => {
   const [activeAttack, setActiveAttack] = useState<AttackEventItem | null>(null);
   const [activeBoardNode, setActiveBoardNode] = useState<BoardNode | null>(null);
   const [memo, setMemo] = useState('');
+  // 메모 저장 상태: idle | saving | saved (UI 표시용)
+  const [memoStatus, setMemoStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const memoLoadedCaseRef = useRef<string | null>(null);
+  const memoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // UF-04 — 엣지 생성 모드 (chain_nodes 간 화살표 연결)
   const [edgeMode, setEdgeMode] = useState(false);
@@ -67,6 +72,45 @@ const V5Board = () => {
     queryFn: () => getBoard(caseId!),
     enabled: !!caseId,
   });
+
+  // 수사관 메모 — 케이스 로드 시 서버값으로 초기화 (케이스 전환 시 1회).
+  const caseQuery = useQuery({
+    queryKey: ['case', caseId],
+    queryFn: () => getCase(caseId!),
+    enabled: !!caseId,
+  });
+  useEffect(() => {
+    if (caseQuery.data && memoLoadedCaseRef.current !== caseId) {
+      setMemo(caseQuery.data.investigator_memo ?? '');
+      memoLoadedCaseRef.current = caseId ?? null;
+      setMemoStatus('idle');
+    }
+  }, [caseQuery.data, caseId]);
+
+  // 메모 저장 — 입력 후 1초 디바운스 자동 저장 (PATCH /api/cases).
+  const saveMemoMutation = useMutation({
+    mutationFn: (text: string) => updateCase(caseId!, { investigator_memo: text }),
+    onSuccess: () => {
+      setMemoStatus('saved');
+      // 'saved' 2초 후 idle 로
+      setTimeout(() => setMemoStatus('idle'), 2000);
+    },
+    onError: (err: unknown) => {
+      setMemoStatus('idle');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`메모 저장 실패: ${msg}`);
+    },
+  });
+
+  const handleMemoChange = (text: string) => {
+    setMemo(text);
+    if (!caseId) return;
+    setMemoStatus('saving');
+    if (memoDebounceRef.current) clearTimeout(memoDebounceRef.current);
+    memoDebounceRef.current = setTimeout(() => {
+      saveMemoMutation.mutate(text);
+    }, 1000);
+  };
 
   const attackQuery = useQuery({
     queryKey: ['attack', caseId, 1],
@@ -697,14 +741,36 @@ const V5Board = () => {
               </Card>
             )}
 
-            <Card title={<> 수사관 메모</>}>
+            <Card
+              title={
+                <div className="flex items-center justify-between w-full gap-2">
+                  <span>수사관 메모</span>
+                  <span className="text-[10px] font-normal">
+                    {memoStatus === 'saving' && (
+                      <span className="text-amber-400">저장 중…</span>
+                    )}
+                    {memoStatus === 'saved' && (
+                      <span className="text-brand-teal">✓ 저장됨</span>
+                    )}
+                  </span>
+                </div>
+              }
+            >
               <textarea
                 value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="메모 입력... (현재는 클라이언트 상태)"
-                rows={3}
-                className="input resize-y min-h-[72px]"
+                onChange={(e) => handleMemoChange(e.target.value)}
+                placeholder={
+                  caseId
+                    ? '분석 메모 입력… (자동 저장)'
+                    : '케이스를 먼저 선택하세요'
+                }
+                disabled={!caseId}
+                rows={4}
+                className="input resize-y min-h-[88px] disabled:opacity-50"
               />
+              <div className="text-[9.5px] text-ink-500 mt-1">
+                입력 1초 후 자동 저장 · 케이스 단위 보존
+              </div>
             </Card>
 
             <LogPanel onDragStart={setPendingLog} boardNodes={boardNodes} />

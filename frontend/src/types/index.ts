@@ -101,6 +101,7 @@ export interface CaseResponse {
   observables?: Observable[];
   secondary_incident_types?: IncidentType[]; // V-8 사후 검증으로 추가된 부 사고유형
   triage_state?: TriageState | null;          // 결정 트리 진행 상태 영속화
+  investigator_memo?: string | null;          // V-5 수사관 메모
 }
 
 // v1 CollectionTargetItem · GuideResponse 는 2026-05-18 회의 결정으로 제거.

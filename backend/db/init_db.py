@@ -20,6 +20,8 @@ _DEV3_COLUMNS = {
     "observables": "JSON",
     "secondary_incident_types": "JSON",
     "triage_state": "JSON",
+    # 2026-06-03: V-5 수사관 메모 (케이스 단위 자유 텍스트).
+    "investigator_memo": "TEXT",
 }
 
 

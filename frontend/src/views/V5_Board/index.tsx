@@ -56,6 +56,8 @@ const V5Board = () => {
   const [memo, setMemo] = useState('');
   // 메모 저장 상태: idle(저장됨) | dirty(미저장) | saved(방금 저장)
   const [memoStatus, setMemoStatus] = useState<'idle' | 'dirty' | 'saved'>('idle');
+  // 메모 모드: view(조회) | edit(편집). 저장된 메모가 있으면 기본 조회.
+  const [memoMode, setMemoMode] = useState<'view' | 'edit'>('edit');
   const memoLoadedCaseRef = useRef<string | null>(null);
   // 마지막으로 서버에 저장된 메모 값 (dirty 판정 기준)
   const savedMemoRef = useRef<string>('');
@@ -87,6 +89,8 @@ const V5Board = () => {
       savedMemoRef.current = loaded;
       memoLoadedCaseRef.current = caseId ?? null;
       setMemoStatus('idle');
+      // 저장된 메모가 있으면 조회 모드로 시작, 없으면 편집 모드
+      setMemoMode(loaded.trim() ? 'view' : 'edit');
     }
   }, [caseQuery.data, caseId]);
 
@@ -99,6 +103,8 @@ const V5Board = () => {
       showToast(text.trim() ? '메모 저장됨' : '메모 삭제됨');
       queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       setTimeout(() => setMemoStatus('idle'), 2000);
+      // 저장 후 — 내용 있으면 조회 모드, 비었으면 편집 모드 유지
+      setMemoMode(text.trim() ? 'view' : 'edit');
     },
     onError: (err: unknown) => {
       setMemoStatus('idle');
@@ -124,6 +130,13 @@ const V5Board = () => {
       setMemo('');
       saveMemoMutation.mutate('');
     }
+  };
+
+  // 편집 취소 — 서버 저장값으로 되돌리고 조회 모드로.
+  const handleMemoCancelEdit = () => {
+    setMemo(savedMemoRef.current);
+    setMemoStatus('idle');
+    if (savedMemoRef.current.trim()) setMemoMode('view');
   };
 
   const attackQuery = useQuery({
@@ -760,7 +773,10 @@ const V5Board = () => {
                 <div className="flex items-center justify-between w-full gap-2">
                   <span>수사관 메모</span>
                   <span className="text-[10px] font-normal">
-                    {memoStatus === 'dirty' && (
+                    {memoMode === 'view' && (
+                      <span className="text-ink-500">조회</span>
+                    )}
+                    {memoMode === 'edit' && memoStatus === 'dirty' && (
                       <span className="text-amber-400">● 미저장</span>
                     )}
                     {memoStatus === 'saved' && (
@@ -770,34 +786,65 @@ const V5Board = () => {
                 </div>
               }
             >
-              <textarea
-                value={memo}
-                onChange={(e) => handleMemoChange(e.target.value)}
-                placeholder={
-                  caseId ? '분석 메모 입력…' : '케이스를 먼저 선택하세요'
-                }
-                disabled={!caseId}
-                rows={4}
-                className="input resize-y min-h-[88px] disabled:opacity-50"
-              />
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  onClick={handleMemoSave}
-                  disabled={
-                    !caseId || saveMemoMutation.isPending || memoStatus !== 'dirty'
-                  }
-                  className="btn-primary btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {saveMemoMutation.isPending ? '저장 중…' : '저장'}
-                </button>
-                <button
-                  onClick={handleMemoDelete}
-                  disabled={!caseId || saveMemoMutation.isPending || !memo}
-                  className="btn-danger btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  삭제
-                </button>
-              </div>
+              {memoMode === 'view' ? (
+                /* ── 조회 모드 — 저장된 메모 읽기 표시 ── */
+                <>
+                  <div className="bg-ink-950/60 border border-ink-700/50 rounded-lg px-3 py-2.5 min-h-[88px] max-h-[280px] overflow-y-auto whitespace-pre-wrap text-[12.5px] text-ink-100 leading-6">
+                    {savedMemoRef.current.trim() || (
+                      <span className="text-ink-500">저장된 메모가 없습니다</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => setMemoMode('edit')}
+                      disabled={!caseId}
+                      className="btn-primary btn-sm flex-1 disabled:opacity-40"
+                    >
+                      ✎ 편집
+                    </button>
+                    <button
+                      onClick={handleMemoDelete}
+                      disabled={!caseId || saveMemoMutation.isPending || !memo}
+                      className="btn-danger btn-sm flex-1 disabled:opacity-40"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* ── 편집 모드 — textarea + 저장/취소 ── */
+                <>
+                  <textarea
+                    value={memo}
+                    onChange={(e) => handleMemoChange(e.target.value)}
+                    placeholder={
+                      caseId ? '분석 메모 입력…' : '케이스를 먼저 선택하세요'
+                    }
+                    disabled={!caseId}
+                    rows={4}
+                    autoFocus
+                    className="input resize-y min-h-[88px] disabled:opacity-50"
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={handleMemoSave}
+                      disabled={
+                        !caseId || saveMemoMutation.isPending || memoStatus !== 'dirty'
+                      }
+                      className="btn-primary btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {saveMemoMutation.isPending ? '저장 중…' : '저장'}
+                    </button>
+                    <button
+                      onClick={handleMemoCancelEdit}
+                      disabled={saveMemoMutation.isPending}
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-ink-700 text-ink-400 hover:text-white disabled:opacity-40"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </>
+              )}
               <div className="text-[9.5px] text-ink-500 mt-1.5">
                 케이스 단위 보존 · [저장] 클릭 시 영속화
               </div>

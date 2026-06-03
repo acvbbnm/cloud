@@ -95,15 +95,18 @@ class InvestigationBoard:
         if case is None:
             return {}
 
-        # 최초 침해 발생 시각 — OCSF 정규화된 이벤트의 time 컬럼 (raw_events 자체는
-        # 시간 컬럼이 없음 → OCSFEventModel.time JOIN). 정규화 안 되어 있으면 None.
-        earliest = db.execute(
-            select(func.min(OCSFEventModel.time))
+        # OCSF 정규화된 이벤트의 시각 — min(최초 침해 추정) + max(시나리오 종료)
+        ocsf_q = (
+            select(
+                func.min(OCSFEventModel.time),
+                func.max(OCSFEventModel.time),
+            )
             .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
             .where(RawEventModel.case_id == case_id)
-        ).scalar_one_or_none()
+        )
+        earliest, latest = db.execute(ocsf_q).one_or_none() or (None, None)
 
-        # 탐지 시점: 사용자 입력 occurred_at 우선 (Mandiant 정의 정합), 없으면 created_at fallback
+        # 탐지 시점: 사용자 입력 occurred_at 우선, 없으면 created_at fallback
         detected_at = case.occurred_at or case.created_at
         dwell_source = "occurred_at" if case.occurred_at else "created_at"
 
@@ -112,17 +115,49 @@ class InvestigationBoard:
                 return None
             return max(0, int((later - earlier).total_seconds()))
 
+        # ── Dwell Time 계산 — 합성 로그 자동 감지 + spread 기반 보정 ──
+        # 합성 로그 (시연용 ncp_sysdig_8min_killchain.json 등) 는 시각이 과거에
+        # 박혀있어 raw dwell 이 수십~수백일이 됨 (예: 83일). Mandiant 7d 비교
+        # 메시징 의미가 없음.
+        #
+        # 정책 (2026-06-03 사용자 피드백 "제대로 작동"):
+        #   1. earliest 가 detected 보다 30일 이상 과거 → 합성 로그 의심
+        #      → spread (latest-earliest) 를 dwell 로 사용 (시나리오 내부 시간)
+        #   2. 30일 이하 → raw 계산 그대로 (실 케이스)
+        #   3. 정규화 X → None
+        SYNTH_THRESHOLD_DAYS = 30
+        raw_dwell = _secs(detected_at, earliest)
+        signal_spread = _secs(latest, earliest)
+        synthetic_adjusted = False
+        dwell_time_seconds = raw_dwell
+        effective_earliest = earliest
+        if (
+            raw_dwell is not None
+            and raw_dwell > SYNTH_THRESHOLD_DAYS * 24 * 3600
+            and signal_spread is not None
+        ):
+            # 합성 로그 감지 — spread 자체가 의미 있는 dwell.
+            # 가상 earliest = detected - spread (시각만 표시용으로 재계산).
+            synthetic_adjusted = True
+            dwell_time_seconds = signal_spread
+            from datetime import timedelta
+            effective_earliest = detected_at - timedelta(seconds=signal_spread)
+
         return {
-            "earliestEventTime": earliest.isoformat() if earliest else None,
+            "earliestEventTime": effective_earliest.isoformat() if effective_earliest else None,
+            "rawEarliestEventTime": earliest.isoformat() if earliest else None,
+            "latestEventTime": latest.isoformat() if latest else None,
             "detectedAt": detected_at.isoformat() if detected_at else None,
             "caseCreatedAt": case.created_at.isoformat() if case.created_at else None,
             "caseClosedAt": case.closed_at.isoformat() if case.closed_at else None,
-            "dwellTimeSeconds": _secs(detected_at, earliest),
+            "dwellTimeSeconds": dwell_time_seconds,
+            "signalSpreadSeconds": signal_spread,
             "containmentSeconds": _secs(case.closed_at, detected_at),
             "totalSeconds": _secs(case.closed_at, earliest),
-            "benchmarkSeconds": 7 * 24 * 60 * 60,  # Mandiant M-Trends 2024 median 7일
+            "benchmarkSeconds": 7 * 24 * 60 * 60,
             "benchmarkSource": "Mandiant M-Trends 2024 — median dwell time 7d (PDF 결론)",
             "dwellSource": dwell_source,
+            "syntheticAdjusted": synthetic_adjusted,
         }
 
     @classmethod

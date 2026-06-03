@@ -290,13 +290,21 @@ export interface BoardEdge {
  */
 export interface BoardKpi {
   earliestEventTime: string | null;
+  rawEarliestEventTime?: string | null;
+  latestEventTime?: string | null;
+  detectedAt?: string | null;
   caseCreatedAt: string | null;
   caseClosedAt: string | null;
   dwellTimeSeconds: number | null;
+  /** OCSF 이벤트 spread (latest - earliest). 합성 로그 보정 시 dwellTimeSeconds 와 같음. */
+  signalSpreadSeconds?: number | null;
   containmentSeconds: number | null;
   totalSeconds: number | null;
   benchmarkSeconds: number;
   benchmarkSource: string;
+  dwellSource?: string;
+  /** 합성 로그 자동 감지 → dwellTime 을 spread 로 보정함. */
+  syntheticAdjusted?: boolean;
 }
 
 export interface BoardResponse {

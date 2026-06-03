@@ -903,9 +903,9 @@ const ChainGraphCanvas = ({
         );
       })}
       </g>
-      {/* zoom 컨트롤 — 우상단 모서리에 살짝 이격 (3px) */}
+      {/* zoom 컨트롤 — 우상단 모서리에 거의 붙임 (1px 이격) */}
       <g
-        transform={`translate(${Math.max(3, width - 179)}, 3)`}
+        transform={`translate(${Math.max(1, width - 177)}, 1)`}
         style={{ cursor: 'pointer' }}
       >
         <rect x={0} y={0} width={176} height={22} rx={4}

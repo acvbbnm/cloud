@@ -142,7 +142,7 @@ const ChainGraphCanvas = ({
 
   // Phase P.7 (사용자 피드백: "확대 기능이 없어서 식별 어렵다") — zoom + pan 추가.
   //   - viewport state: tx/ty (translate) + scale
-  //   - wheel: 마우스 위치 기준 zoom in/out (0.4 ~ 3.0)
+  //   - wheel: 마우스 위치 기준 zoom in/out (0.5 ~ 2.0 — 최소 50% / 최대 200%)
   //   - 빈 영역 pointerdown + drag: pan
   //   - 노드 pointerdown 은 stopPropagation 으로 pan 차단됨 (handleNodePointerDown)
   const [viewport, setViewport] = useState({ tx: 0, ty: 0, scale: 1 });
@@ -379,7 +379,7 @@ const ChainGraphCanvas = ({
       e.preventDefault();
       const { tx, ty, scale } = viewportRef.current;
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.min(3.0, Math.max(0.4, scale * delta));
+      const newScale = Math.min(2.0, Math.max(0.5, scale * delta));
       if (newScale === scale) return;
       const rect = svg.getBoundingClientRect();
       const { width: w, height: h } = sizeRef.current;
@@ -483,7 +483,7 @@ const ChainGraphCanvas = ({
       (vh - margin * 2) / bh,
       1.0, // 확대 금지 (자연 크기 이하만)
     );
-    const safeScale = Math.max(0.3, scale);
+    const safeScale = Math.min(2.0, Math.max(0.5, scale));
     const tx = vw / 2 - cxBox * safeScale;
     const ty = vh / 2 - cyBox * safeScale;
     setViewport({ tx, ty, scale: safeScale });
@@ -491,7 +491,7 @@ const ChainGraphCanvas = ({
   // Phase P.11 — 휠 외 클릭으로도 zoom 가능 (사용자 피드백: "확대 기능 작동 안 함")
   const zoomBy = (factor: number) => {
     const { tx, ty, scale } = viewportRef.current;
-    const newScale = Math.min(3.0, Math.max(0.4, scale * factor));
+    const newScale = Math.min(2.0, Math.max(0.5, scale * factor));
     if (newScale === scale) return;
     // 중앙 기준 zoom — 마우스 위치 정보 없으므로 SVG 중앙 기준
     const cx = sizeRef.current.width / 2;
@@ -504,15 +504,15 @@ const ChainGraphCanvas = ({
     });
   };
 
-  // 줌 % 직접 입력 (40~300) — HTML 오버레이 % 버튼에서 호출.
+  // 줌 % 직접 입력 (50~200 — Task 1 줌 범위 정책과 통일) — HTML 오버레이 % 버튼에서 호출.
   const promptZoom = () => {
     const input = window.prompt(
-      '화면 비율 (%)을 입력하세요 (40 ~ 300)',
+      '화면 비율 (%)을 입력하세요 (50 ~ 200)',
       String(Math.round(viewportRef.current.scale * 100)),
     );
     if (!input) return;
     const pct = parseInt(input, 10);
-    if (!isFinite(pct) || pct < 40 || pct > 300) return;
+    if (!isFinite(pct) || pct < 50 || pct > 200) return;
     const newScale = pct / 100;
     const { tx, ty, scale } = viewportRef.current;
     const cx = sizeRef.current.width / 2;
@@ -947,7 +947,7 @@ const ChainGraphCanvas = ({
             'w-[58px] h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-[10px] font-mono leading-none transition-colors hover:border-brand-blue/50 ' +
             (viewport.scale === 1 ? 'text-[#9aa3b2]' : 'text-brand-teal')
           }
-          title="클릭 시 % 직접 입력 (40~300)"
+          title="클릭 시 % 직접 입력 (50~200)"
         >
           {`${Math.round(viewport.scale * 100)}%`}
         </button>

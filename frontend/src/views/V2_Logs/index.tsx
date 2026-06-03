@@ -26,10 +26,12 @@ const cspLabel = (csp: string) =>
 
 const toPreview = (item: RawEventItem): PreviewEvent => ({
   id: item.eventId,
-  ts: item.ingestedAt,
-  ev: item.matchedTargetId ?? '(unmatched)',
-  ip: '—', // list 응답엔 IP 없음. 단건 조회 시 raw.content.sourceIp 에서 가져올 수 있음
-  user: '—',
+  // 백엔드 _serialize_event 가 raw_json 에서 CSP 포맷별로 추출한 값 우선,
+  // 없으면 적재 시각·매칭 타겟으로 fallback.
+  ts: item.eventTime || item.ingestedAt,
+  ev: item.eventName || item.matchedTargetId || '(unmatched)',
+  ip: item.sourceIp || '—',
+  user: item.user || '—',
   csp: cspLabel(item.csp),
   matched: item.matchedTargetId,
   highlighted: !!item.matchedTargetId,

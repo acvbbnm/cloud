@@ -38,6 +38,7 @@ from core.intake.clue_tree_service import (
     expand_tree,
     get_tree,
     reset_tree,
+    retract_clue,
     start_tree,
     suggest_candidates,
 )
@@ -96,6 +97,13 @@ class CueTreeSuggestRequest(BaseModel):
 
 class CueTreeResetRequest(BaseModel):
     caseId: str
+
+
+class CueTreeRetractRequest(BaseModel):
+    """채택된 단서 1개 철회 요청 (2026-06-03)."""
+
+    caseId: str
+    node_id: str
 
 
 class CueTreeAdvanceStageRequest(BaseModel):
@@ -192,6 +200,32 @@ async def reset(req: CueTreeResetRequest, db: Session = Depends(get_db)) -> dict
         data = reset_tree(db, req.caseId)
     except CaseNotFound:
         raise _case_not_found(req.caseId)
+    return {"status": "ok", "data": data}
+
+
+@router.post("/retract")
+async def retract(req: CueTreeRetractRequest, db: Session = Depends(get_db)) -> dict:
+    """채택된 단서 1개 철회 → 나머지 단서 replay 로 트리·컴퍼스 재계산.
+
+    선형 트리에서 중간 단서를 제거하면 결정성(같은 시퀀스→같은 사후확률)을
+    이용해 cold-start 후 남은 단서를 순서대로 재적용한다. 응답은 삭제가 반영된
+    최신 트리 상태 — 프론트는 이를 그대로 트리·컴퍼스에 반영.
+    """
+    try:
+        data = retract_clue(db, req.caseId, req.node_id)
+    except CaseNotFound:
+        raise _case_not_found(req.caseId)
+    except ClueTreeNotFound:
+        raise _tree_not_started(req.caseId)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "message": str(e),
+                "code": "CLUE_TREE_INVALID_RETRACT",
+            },
+        )
     return {"status": "ok", "data": data}
 
 

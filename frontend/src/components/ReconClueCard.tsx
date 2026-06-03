@@ -34,8 +34,6 @@ import type { ReconClueGroup, ReconClueOption } from '@/types/clueTree';
 import type { IncidentType } from '@/types';
 
 interface ReconClueCardProps {
-  /** 현재 트리 depth (root 제외 — 채택 단서 수). */
-  treeDepth: number;
   /** 옵션 클릭 → 단서 채택 콜백. Step3 가 expand_tree 호출. */
   onAdopt: (clueKey: string, label: string) => Promise<void> | void;
   /** 트리에 이미 채택된 clue_key set — 중복 옵션 비활성. */
@@ -56,31 +54,6 @@ const INCIDENT_KO: Record<IncidentType, string> = {
   PHISH_INITIAL_ACCESS: '피싱 초기 침투',
   INSIDER_THREAT: '내부자 위협',
   UNCLASSIFIED: '미분류',
-};
-
-const INCIDENT_COLORS: Record<IncidentType, string> = {
-  CREDENTIAL_THEFT: '#5BA3F0',
-  PRIVILEGE_ESCALATION: '#A56BE6',
-  DATA_EXFILTRATION: '#E66BC2',
-  AUDIT_LOG_TAMPERING: '#E68A6B',
-  RANSOMWARE: '#E63B3B',
-  MISCONFIG_EXPOSURE: '#E6A03B',
-  PHISH_INITIAL_ACCESS: '#6BE69E',
-  INSIDER_THREAT: '#3BC2E6',
-  UNCLASSIFIED: '#7A8294',
-};
-
-/** 옵션의 top 사고유형 + 해당 weight (변별 방향 시각화용). */
-const topHypothesis = (weights: Record<string, number>): [IncidentType, number] | null => {
-  let bestH: IncidentType | null = null;
-  let bestW = -1;
-  for (const [h, w] of Object.entries(weights)) {
-    if (w > bestW) {
-      bestW = w;
-      bestH = h as IncidentType;
-    }
-  }
-  return bestH && bestW > 0 ? [bestH, bestW] : null;
 };
 
 /** V1.fix.7 — 옵션별 popup body 텍스트 생성. */
@@ -123,7 +96,6 @@ export const hasDismissedRecon = (): boolean => {
 };
 
 const ReconClueCard = ({
-  treeDepth,
   onAdopt,
   acceptedClueKeys,
   disabled = false,
@@ -193,19 +165,14 @@ const ReconClueCard = ({
             }
           />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[9.5px] text-amber-300/80 font-mono">
-            누적 {treeDepth}개{treeDepth >= 2 ? ' ✓ 자체 단서 입력 가능' : ' / 권장 2-4개'}
-          </span>
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="text-[10px] text-amber-300/60 hover:text-amber-100 px-1.5 py-0.5 transition-colors"
-            title="이 정찰 가이드 닫기"
-          >
-            ✕
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="text-[10px] text-amber-300/60 hover:text-amber-100 px-1.5 py-0.5 transition-colors"
+          title="이 정찰 가이드 닫기"
+        >
+          ✕
+        </button>
       </div>
 
       {loading && (
@@ -217,11 +184,6 @@ const ReconClueCard = ({
 
       {!loading && !error && (
         <div className="px-3 py-2 space-y-3">
-          <p className="text-[10.5px] text-amber-100/85 leading-5">
-            사고유형 무관 <span className="text-amber-300 font-semibold">약한 정찰 단서</span>
-            를 2-4개 먼저 누적해 한 사고유형 쏠림을 차단합니다. 옵션 클릭 → 즉시 트리에 채택.
-          </p>
-
           {groups.map((g) => {
             // V1.fix.8 (2026-05-31) — Q1_inception 그룹은 백엔드에서 배제 (recon-options).
             // 만약 어떤 이유로 도착해도 메타 라벨 표시 (defensive UI).
@@ -239,7 +201,6 @@ const ReconClueCard = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {g.options.map((opt) => {
                     const accepted = acceptedClueKeys.has(opt.clue_key);
-                    const top = isMetaGroup ? null : topHypothesis(opt.weights);
                     return (
                       <div
                         key={opt.clue_key}
@@ -261,7 +222,8 @@ const ReconClueCard = ({
                         >
                           <div className="flex items-start gap-1.5">
                             {/* V1.fix.18 — 라벨 두 줄 wrap (이전: 한 줄로 옆 카드 영역 침범).
-                                line-clamp-2 + break-words + 충분한 leading 으로 2줄 표시. */}
+                                line-clamp-2 + break-words + 충분한 leading 으로 2줄 표시.
+                                2026-06-03 — 사고유형 색상 배지 제거 (사용자 요청). */}
                             <span
                               className="text-[10.5px] text-ink-100 font-medium flex-1 min-w-0 leading-[1.3]"
                               style={{
@@ -275,19 +237,6 @@ const ReconClueCard = ({
                               {accepted ? '✓ ' : '◯ '}
                               {opt.short_label}
                             </span>
-                            {top && (
-                              // V1.fix.19 — 가중치 숫자 (+10) 제거. 사고유형만 깔끔 표시.
-                              // 가중치 상세는 ⓘ popup 에서 확인 가능.
-                              <span
-                                className="text-[8.5px] font-mono shrink-0 px-1 py-px rounded whitespace-nowrap"
-                                style={{
-                                  color: INCIDENT_COLORS[top[0]],
-                                  backgroundColor: `${INCIDENT_COLORS[top[0]]}1A`,
-                                }}
-                              >
-                                {INCIDENT_KO[top[0]]}
-                              </span>
-                            )}
                           </div>
                         </button>
                         {/* V1.fix.7 — 옵션 출처·신뢰도 영향 popup (채택과 무관) */}

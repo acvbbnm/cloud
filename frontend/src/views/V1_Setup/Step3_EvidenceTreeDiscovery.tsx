@@ -33,12 +33,8 @@ import AttackChainCard from '@/components/AttackChainCard';
 import BridgeToBoardCard from '@/components/BridgeToBoardCard';
 import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
-import CluesInput from '@/components/CluesInput';
 import ConfidenceGauge from '@/components/ConfidenceGauge';
 import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuideBanner';
-import DiscoveryIntroModal, {
-  hasDismissedDiscoveryIntro,
-} from '@/components/DiscoveryIntroModal';
 import EvidenceLogPanel from '@/components/EvidenceLogPanel';
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
@@ -87,9 +83,7 @@ const Step3_EvidenceTreeDiscovery = ({
   isSubmitting,
 }: Step3EvidenceTreeDiscoveryProps) => {
   const caseId = useCaseStore((s) => s.caseId);
-  const observables = useCaseStore((s) => s.observables);
   const addObservable = useCaseStore((s) => s.addObservable);
-  const removeObservable = useCaseStore((s) => s.removeObservable);
   const showToast = useToastStore((s) => s.show);
 
   const treeState = useClueTreeStore((s) => s.response);
@@ -97,10 +91,11 @@ const Step3_EvidenceTreeDiscovery = ({
   const startTree = useClueTreeStore((s) => s.start);
 
   // Phase I — 메인 시각화 탭 (tree / compass). sessionStorage 영속화.
+  // 단서루프 입장 시 컴퍼스가 먼저 보이도록 기본값 = 'compass' (2026-06-03).
   const [mainView, setMainView] = useState<'tree' | 'compass'>(() => {
-    if (typeof window === 'undefined') return 'tree';
+    if (typeof window === 'undefined') return 'compass';
     const stored = window.sessionStorage.getItem('aisherpa.evidenceTree.mainView');
-    return stored === 'compass' ? 'compass' : 'tree';
+    return stored === 'tree' ? 'tree' : 'compass';
   });
   const switchMainView = (v: 'tree' | 'compass') => {
     setMainView(v);
@@ -115,14 +110,7 @@ const Step3_EvidenceTreeDiscovery = ({
   const hydrate = useClueTreeStore((s) => s.hydrate);
   const resetServer = useClueTreeStore((s) => s.resetServer);
   const advanceStage = useClueTreeStore((s) => s.advanceStage);
-
-  // Phase G — 첫 진입 시 evidence_tree 패러다임 안내 모달
-  const [introOpen, setIntroOpen] = useState(false);
-  useEffect(() => {
-    if (!hasDismissedDiscoveryIntro('evidence_tree')) {
-      setIntroOpen(true);
-    }
-  }, []);
+  const retract = useClueTreeStore((s) => s.retract);
 
   // ── Phase N.1 (2026-05-26) — 1차 정찰 단서 카드 dismiss 상태 ──
   // NIST SP 800-86 §4.1 Initial Triage. cold-start ~ depth 1 구간에 노출,
@@ -509,13 +497,6 @@ const Step3_EvidenceTreeDiscovery = ({
 
   return (
     <div className="grid grid-cols-12 gap-3">
-      {/* Phase G — 첫 진입 사전 안내 (evidence_tree 패러다임) */}
-      <DiscoveryIntroModal
-        open={introOpen}
-        onClose={() => setIntroOpen(false)}
-        mode="evidence_tree"
-      />
-
       {/* Phase K.3 — 풀 가이드 모달 (HypothesisScoreBar 의 [전체 가이드 보기] 클릭) */}
       <GuidePreviewModal
         open={!!fullGuideModalType}
@@ -549,7 +530,6 @@ const Step3_EvidenceTreeDiscovery = ({
         {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시 */}
         {!reconDismissed && (treeState.path.length - 1) < 2 && (
           <ReconClueCard
-            treeDepth={Math.max(0, treeState.path.length - 1)}
             acceptedClueKeys={acceptedClueKeys}
             disabled={loading || isSubmitting}
             onDismiss={() => setReconDismissed(true)}
@@ -582,24 +562,12 @@ const Step3_EvidenceTreeDiscovery = ({
           }
           action={
             <div className="flex items-center gap-1">
-              {/* Phase I — 탭 토글 (tree ↔ compass) */}
+              {/* Phase I — 탭 토글 (compass ↔ tree). 2026-06-03 컴퍼스를 앞으로 배치. */}
               <div className="flex border border-ink-700 rounded overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => switchMainView('tree')}
-                  className={`text-[10.5px] px-2 py-0.5 transition-colors ${
-                    mainView === 'tree'
-                      ? 'bg-brand-teal text-ink-950 font-semibold'
-                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
-                  }`}
-                  title="트리 시각화"
-                >
-                  🌳 트리
-                </button>
-                <button
-                  type="button"
                   onClick={() => switchMainView('compass')}
-                  className={`text-[10.5px] px-2 py-0.5 transition-colors border-l border-ink-700 ${
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors ${
                     mainView === 'compass'
                       ? 'bg-brand-teal text-ink-950 font-semibold'
                       : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
@@ -607,6 +575,18 @@ const Step3_EvidenceTreeDiscovery = ({
                   title="사고유형 360° 컴퍼스"
                 >
                   컴퍼스
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMainView('tree')}
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors border-l border-ink-700 ${
+                    mainView === 'tree'
+                      ? 'bg-brand-teal text-ink-950 font-semibold'
+                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
+                  }`}
+                  title="트리 시각화"
+                >
+                  🌳 트리
                 </button>
               </div>
               <button
@@ -642,17 +622,6 @@ const Step3_EvidenceTreeDiscovery = ({
               currentLeafId={treeState.current_leaf_id}
               entropyBits={treeState.confidence.entropy_bits}
               onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
-              onDirectInputClick={() => {
-                // ✏ 트리 슬롯 클릭 — 하단 단서 직접 입력 카드로 스크롤 + 강조
-                const el = document.getElementById('direct-input-card');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  el.classList.add('ring-2', 'ring-amber-500/70');
-                  window.setTimeout(() => {
-                    el.classList.remove('ring-2', 'ring-amber-500/70');
-                  }, 2000);
-                }
-              }}
               disabled={loading || isSubmitting}
               height={460}
             />
@@ -697,10 +666,7 @@ const Step3_EvidenceTreeDiscovery = ({
 
         {/* P.35.2 — 분석 로그 적재 카드 (full width row) */}
         {caseId && (
-          <Card
-            title="🔬 분석 로그 적재함"
-            subtitle="V-2 분석 결과 → 적재 → 단서로 채택. 다음 단서 후보를 실제 로그로 검증"
-          >
+          <Card title="분석 로그 적재함">
             <EvidenceLogPanel
               onAdoptFromLog={handleAdoptFromLog}
               onLogSelect={(l) => {
@@ -717,27 +683,13 @@ const Step3_EvidenceTreeDiscovery = ({
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div id="direct-input-card" className="rounded transition-all">
-          <Card title="단서 직접 입력" subtitle="✏ 트리 슬롯 클릭 → 자동 스크롤 + 강조">
-            <CluesInput
-              observables={observables}
-              onAdd={handleDirectClueAdd}
-              onRemove={removeObservable}
-              preferredType={null}
-              preferredVariant={null}
-            />
-          </Card>
-          </div>
-          {/* V1.fix.20 (2026-06-01) — 부분 로그 분석 카드 제거.
-              사용자 피드백: "옆에 로그 토글 있으니 삭제, 그 자리에 단서들을 수사 보드로 보내는 거 넣자".
-              BridgeToBoardCard 를 좌측 메인 영역으로 이동. */}
-          <BridgeToBoardCard
-            caseId={caseId}
-            acceptedClueCount={Math.max(0, treeState.path.length - 1)}
-            onToast={showToast}
-          />
-        </div>
+        {/* 단서 직접 입력 카드 제거 (2026-06-03 사용자 요청) — 단서는 1차 정찰 옵션·
+            분석 로그 적재함·트리/IG 후보 채택으로만 추가. 단서는 수사 보드로 이관. */}
+        <BridgeToBoardCard
+          caseId={caseId}
+          acceptedClueCount={Math.max(0, treeState.path.length - 1)}
+          onToast={showToast}
+        />
       </div>
 
       {/* 우측 sticky — 신뢰도 + 가설 + IG 후보 */}
@@ -804,6 +756,79 @@ const Step3_EvidenceTreeDiscovery = ({
             mode={treeState.zone === 2 ? 'chain' : 'standard'}
             chainFilterHypothesis={chainFilterHypothesis}
           />
+        </Card>
+
+        {/* 채택된 단서 — 정보 + 삭제 (삭제 시 트리·컴퍼스 replay 재계산) */}
+        <Card title="채택된 단서" subtitle="삭제하면 트리·컴퍼스가 재계산됩니다">
+          {(() => {
+            const adopted = (treeState.path ?? []).filter(
+              (n) => n.depth > 0 && n.clue_key !== '__ROOT__',
+            );
+            if (adopted.length === 0) {
+              return (
+                <p className="text-[11px] text-ink-500 italic py-3 text-center">
+                  아직 채택된 단서가 없습니다 — 후보 클릭·직접 입력·로그 분석으로 추가
+                </p>
+              );
+            }
+            const SOURCE_KO: Record<string, string> = {
+              system: '시스템',
+              tree_candidate: '후보 선택',
+              direct_input: '직접 입력',
+              log_analysis: '로그 분석',
+              heal: '자동 복구',
+            };
+            return (
+              <ul className="space-y-1.5">
+                {adopted.map((n) => (
+                  <li
+                    key={n.node_id}
+                    className="flex items-start gap-2 bg-ink-900/50 border border-ink-700/60 rounded-lg px-2.5 py-2"
+                  >
+                    <span className="text-[10px] font-mono text-ink-500 shrink-0 mt-0.5">
+                      {n.depth}.
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11.5px] text-ink-100 font-medium truncate">
+                        {n.label}
+                      </div>
+                      <div className="text-[9.5px] text-ink-500 font-mono mt-0.5">
+                        {n.category}
+                        {n.value ? `:${n.value}` : ''}
+                        {' · '}
+                        {SOURCE_KO[n.source] ?? n.source}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!caseId) return;
+                        if (
+                          !window.confirm(
+                            `단서 "${n.label}" 을(를) 삭제합니다.\n남은 단서로 트리·컴퍼스가 재계산됩니다.`,
+                          )
+                        )
+                          return;
+                        try {
+                          await retract(caseId, n.node_id);
+                          setChainFilterHypothesis(null);
+                          showToast(`단서 삭제 — ${n.label}`, 2500);
+                        } catch (e) {
+                          const msg = e instanceof Error ? e.message : String(e);
+                          showToast(`단서 삭제 실패: ${msg}`, 4500);
+                        }
+                      }}
+                      disabled={loading || isSubmitting}
+                      className="text-[10px] text-ink-500 hover:text-brand-red font-mono shrink-0 self-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="이 단서를 삭제하고 트리·컴퍼스 재계산"
+                    >
+                      × 삭제
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
         </Card>
 
         {treeState.confidence.confidence_reached && treeState.confidence.primary && (

@@ -457,15 +457,24 @@ const ChainGraphCanvas = ({
     const margin = 40;
     const vw = sizeRef.current.width || 900;
     const vh = sizeRef.current.height || 520;
+    // fix (2026-06-03): 단일 노드일 때 확대 X (scale 1.0 유지) — 너무 커보이는 문제.
+    // 노드 1개면 캔버스 중앙으로 이동만 + 자연 크기.
+    // 2개 이상이면 fit 하되 상한 1.0 (확대 금지, 축소만).
+    const cxBox = (minX + maxX) / 2;
+    const cyBox = (minY + maxY) / 2;
+    if (nodes.length === 1) {
+      // 노드 1개 — 중앙으로 이동만, scale 1.0
+      const tx = vw / 2 - cxBox;
+      const ty = vh / 2 - cyBox;
+      setViewport({ tx, ty, scale: 1 });
+      return;
+    }
     const scale = Math.min(
       (vw - margin * 2) / bw,
       (vh - margin * 2) / bh,
-      1.2,
+      1.0, // 확대 금지 (자연 크기 이하만)
     );
     const safeScale = Math.max(0.3, scale);
-    // bounding box 중심이 viewport 중심에 오도록
-    const cxBox = (minX + maxX) / 2;
-    const cyBox = (minY + maxY) / 2;
     const tx = vw / 2 - cxBox * safeScale;
     const ty = vh / 2 - cyBox * safeScale;
     setViewport({ tx, ty, scale: safeScale });

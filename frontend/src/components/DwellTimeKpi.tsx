@@ -86,14 +86,6 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
         >
           <span>{expanded ? '▼' : '▶'}</span>
           탐지 지연 시간 (Dwell Time)
-          {kpi.syntheticAdjusted && (
-            <span
-              className="ml-1.5 px-1.5 py-0.5 rounded text-[9.5px] bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono"
-              title="합성 로그 자동 감지 — OCSF 이벤트 spread 를 dwell 로 보정 (실제 적재 시점이 아닌 시나리오 내부 시간)"
-            >
-              📦 합성 보정
-            </span>
-          )}
         </button>
         {/* V1.fix.11 (2026-05-31) — "왜 수사보드에 있는지" 의문 → 클릭 popup 으로 의미·계산식·왜 보는지 설명 */}
         <SourceTag
@@ -265,7 +257,6 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
 
       <div className="mt-1 text-[9.5px] text-ink-500 font-mono leading-4">
         최초 침해: {kpi.earliestEventTime?.slice(0, 19) ?? '—'}
-        {kpi.syntheticAdjusted && <span className="text-amber-400/70"> (보정)</span>}
         <br />
         탐지/접수: {kpi.detectedAt?.slice(0, 19) ?? kpi.caseCreatedAt?.slice(0, 19) ?? '—'}
       </div>

@@ -273,20 +273,19 @@ def auto_layout_positions(
     if not node_ids:
         return {}
 
-    # V1.fix.10 (2026-05-31) — UI ChainGraphCanvas 의 NODE_W/H 와 동기화.
-    #   기존 168/64 는 UI 의 P.31 확대 (200/78) 와 불일치 → _resolve_collisions
-    #   계산 시 충돌 회피 거리가 작아 자동정렬 후 노드 겹침 발생.
-    NODE_W = 200
-    NODE_H = 78
-    GAP_X = 32
-    GAP_Y = 30
-    CELL_W = NODE_W + GAP_X      # 232
-    CELL_H = NODE_H + GAP_Y      # 108
+    # 2026-06-03 — UI ChainGraphCanvas 의 NODE_W/H (168/64) 와 동기화.
+    #   (이전 200/78 은 UI 가 168/64 로 되돌려져 불일치 → 노드 과도하게 벌어짐.)
+    NODE_W = 168
+    NODE_H = 64
+    GAP_X = 28
+    GAP_Y = 26
+    CELL_W = NODE_W + GAP_X      # 196
+    CELL_H = NODE_H + GAP_Y      # 90
+    cols_all = max(1, (canvas_w - 2 * pad) // CELL_W)
 
-    # networkx 없거나 1 노드 → 전체 격자
+    # networkx 없거나 1 노드 → 전체 격자 (상단부터)
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:
-        cols = max(1, (canvas_w - 2 * pad) // CELL_W)
-        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols, cell_w=CELL_W, cell_h=CELL_H)
+        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols_all, cell_w=CELL_W, cell_h=CELL_H)
 
     # 엣지에 등장하는 노드 = connected, 그 외 = isolated
     connected_set = set()
@@ -296,36 +295,81 @@ def auto_layout_positions(
     connected = [n for n in node_ids if n in connected_set]
     isolated = [n for n in node_ids if n not in connected_set]
 
-    cols_isolated = max(1, (canvas_w - 2 * pad) // CELL_W)
-    isolated_rows = (len(isolated) + cols_isolated - 1) // cols_isolated if isolated else 0
-    isolated_height = isolated_rows * CELL_H + (GAP_Y if isolated_rows > 0 else 0)
+    # 엣지가 전혀 없으면 (전부 isolated) → 그냥 상단부터 격자 (하단 쏠림 방지)
+    if not connected:
+        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols_all, cell_w=CELL_W, cell_h=CELL_H)
 
     out: dict[str, tuple[int, int]] = {}
+    n_conn = len(connected)
 
-    # connected: 캔버스 상단 영역에 spring_layout
-    if connected:
-        spring_h = max(200, canvas_h - 2 * pad - isolated_height)
+    if n_conn <= 4:
+        # 노드 2~4개 — spring 은 박스를 꽉 채워 과하게 벌어짐.
+        # 대신 가로 한 줄 (단서 시퀀스 흐름) 결정적 배치 — 엣지가 짧고 깔끔.
+        #   엣지 순서가 있으면 그 순서대로, 없으면 입력 순서.
+        seq = _order_by_edges(connected, edges)
+        y0 = pad + CELL_H  # 상단에서 한 칸 내려 시작 (여유)
+        for i, nid in enumerate(seq):
+            out[nid] = (pad + i * CELL_W, y0)
+    else:
+        # 5+ 노드 — spring_layout 사용 (k 작게 → 응집).
+        spring_w = canvas_w - 2 * pad
+        spring_h = canvas_h - 2 * pad
         g = nx.Graph()
         g.add_nodes_from(connected)
         g.add_edges_from([(a, b) for a, b in edges if a in connected_set and b in connected_set])
-        spring_pos = nx.spring_layout(g, seed=42, k=1.5, iterations=120)
+        spring_pos = nx.spring_layout(g, seed=42, k=0.9, iterations=120)
+        xs = [p[0] for p in spring_pos.values()]
+        ys = [p[1] for p in spring_pos.values()]
+        minx, maxx = min(xs), max(xs)
+        miny, maxy = min(ys), max(ys)
+        rangex = (maxx - minx) or 1.0
+        rangey = (maxy - miny) or 1.0
         for nid in connected:
             x, y = spring_pos.get(nid, (0, 0))
-            cx = int(pad + (x + 1) / 2 * (canvas_w - 2 * pad))
-            cy = int(pad + (y + 1) / 2 * spring_h)
+            cx = int(pad + (x - minx) / rangex * spring_w)
+            cy = int(pad + (y - miny) / rangey * spring_h)
             out[nid] = (cx, cy)
-        # spring 결과 충돌 회피
-        spring_only = {nid: out[nid] for nid in connected}
-        spring_only = _resolve_collisions(spring_only)
-        out.update(spring_only)
+        out = _resolve_collisions(out)
 
-    # isolated: 캔버스 하단에 격자 배치
+    # isolated: connected 영역 아래쪽에 격자 (있을 때만)
     if isolated:
-        iso_y0 = canvas_h - pad - isolated_height + GAP_Y
+        max_y = max((p[1] for p in out.values()), default=pad)
+        iso_y0 = max_y + CELL_H
         iso_pos = _grid_pack(
-            isolated, x0=pad, y0=iso_y0, cols=cols_isolated,
+            isolated, x0=pad, y0=iso_y0, cols=cols_all,
             cell_w=CELL_W, cell_h=CELL_H,
         )
         out.update(iso_pos)
 
     return out
+
+
+def _order_by_edges(nodes: list[str], edges: list[tuple[str, str]]) -> list[str]:
+    """엣지 방향을 따라 노드를 시퀀스로 정렬 (chain 흐름). 사이클·분기 시 best-effort.
+
+    in-degree 0 인 노드(시작점)부터 따라가며 정렬. 못 따라간 노드는 뒤에 append.
+    """
+    node_set = set(nodes)
+    succ: dict[str, list[str]] = {n: [] for n in nodes}
+    indeg: dict[str, int] = {n: 0 for n in nodes}
+    for a, b in edges:
+        if a in node_set and b in node_set:
+            succ[a].append(b)
+            indeg[b] += 1
+    # 시작점 = indeg 0 (없으면 입력 첫 노드)
+    starts = [n for n in nodes if indeg[n] == 0] or [nodes[0]]
+    ordered: list[str] = []
+    seen: set[str] = set()
+    stack = list(starts)
+    while stack:
+        n = stack.pop(0)
+        if n in seen:
+            continue
+        seen.add(n)
+        ordered.append(n)
+        stack = succ[n] + stack
+    # 누락 노드 (사이클 등) append
+    for n in nodes:
+        if n not in seen:
+            ordered.append(n)
+    return ordered

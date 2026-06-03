@@ -175,44 +175,17 @@ class InvestigationBoard:
                 return None
             return max(0, int((later - earlier).total_seconds()))
 
-        # ── Dwell Time 계산 — 합성 로그 자동 감지 + spread 기반 보정 ──
-        # 합성 로그 (시연용 ncp_sysdig_8min_killchain.json 등) 는 시각이 과거에
-        # 박혀있어 raw dwell 이 수십~수백일이 됨 (예: 83일). Mandiant 7d 비교
-        # 메시징 의미가 없음.
-        #
-        # 정책 (2026-06-03 사용자 피드백 "제대로 작동"):
-        #   1. earliest 가 detected 보다 30일 이상 과거 → 합성 로그 의심
-        #      → spread (latest-earliest) 를 dwell 로 사용 (시나리오 내부 시간)
-        #   2. 30일 이하 → raw 계산 그대로 (실 케이스)
-        #   3. 정규화 X → None
-        SYNTH_THRESHOLD_DAYS = 30
-        raw_dwell = _secs(detected_at, earliest)
+        # ── Dwell Time 계산 ──
+        # dwell = 탐지(detected) - 최초 침해(earliest, OCSF 이벤트 원본 시각).
+        # 2026-06-03: 보정 정책 제거 (사용자: "보정을 하면 안되지").
+        # 로그에 박힌 실제 이벤트 시각을 그대로 사용 — 합성 로그가 과거에 박혀
+        # dwell 이 크게 나오면 그 자체가 데이터 특성. 인위적 spread 치환 안 함.
+        dwell_time_seconds = _secs(detected_at, earliest)
         signal_spread = _secs(latest, earliest)
-        synthetic_adjusted = False
-        dwell_time_seconds = raw_dwell
-        effective_earliest = earliest
-        effective_latest = latest
-        if (
-            raw_dwell is not None
-            and raw_dwell > SYNTH_THRESHOLD_DAYS * 24 * 3600
-            and signal_spread is not None
-        ):
-            # 합성 로그 감지 — 로그에 박힌 시각이 과거(예: 3개월 전)라 raw dwell 이
-            # 비현실적. 시나리오 내부 spread (latest-earliest) 를 진짜 dwell 로 쓰고,
-            # 표시 타임라인을 [detected-spread → detected] 로 재정렬한다.
-            #   · effective_earliest = detected - spread  (최초 침해 추정, 표시용)
-            #   · effective_latest   = detected           (탐지 시점에 종료로 정렬)
-            # → UI 타임라인이 earliest ≤ latest ≤ detected 로 일관 (역순 방지).
-            synthetic_adjusted = True
-            dwell_time_seconds = signal_spread
-            effective_earliest = detected_at - timedelta(seconds=signal_spread)
-            effective_latest = detected_at
 
         return {
-            "earliestEventTime": effective_earliest.isoformat() if effective_earliest else None,
-            "rawEarliestEventTime": earliest.isoformat() if earliest else None,
-            "latestEventTime": effective_latest.isoformat() if effective_latest else None,
-            "rawLatestEventTime": latest.isoformat() if latest else None,
+            "earliestEventTime": earliest.isoformat() if earliest else None,
+            "latestEventTime": latest.isoformat() if latest else None,
             "detectedAt": detected_at.isoformat() if detected_at else None,
             "caseCreatedAt": case.created_at.isoformat() if case.created_at else None,
             "caseClosedAt": case.closed_at.isoformat() if case.closed_at else None,
@@ -224,7 +197,6 @@ class InvestigationBoard:
             "benchmarkSeconds": DWELL_BENCHMARK_MEDIAN_DAYS * 24 * 60 * 60,
             "benchmarkSource": DWELL_BENCHMARK_SOURCE,
             "dwellSource": dwell_source,
-            "syntheticAdjusted": synthetic_adjusted,
             # 4등급 판정 (excellent/good/warning/critical) — 근거 수치는 grade.source 에만.
             "grade": _dwell_grade(dwell_time_seconds),
         }

@@ -54,10 +54,11 @@ const V5Board = () => {
   const [activeAttack, setActiveAttack] = useState<AttackEventItem | null>(null);
   const [activeBoardNode, setActiveBoardNode] = useState<BoardNode | null>(null);
   const [memo, setMemo] = useState('');
-  // 메모 저장 상태: idle | saving | saved (UI 표시용)
-  const [memoStatus, setMemoStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  // 메모 저장 상태: idle(저장됨) | dirty(미저장) | saved(방금 저장)
+  const [memoStatus, setMemoStatus] = useState<'idle' | 'dirty' | 'saved'>('idle');
   const memoLoadedCaseRef = useRef<string | null>(null);
-  const memoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 마지막으로 서버에 저장된 메모 값 (dirty 판정 기준)
+  const savedMemoRef = useRef<string>('');
 
   // UF-04 — 엣지 생성 모드 (chain_nodes 간 화살표 연결)
   const [edgeMode, setEdgeMode] = useState(false);
@@ -81,18 +82,22 @@ const V5Board = () => {
   });
   useEffect(() => {
     if (caseQuery.data && memoLoadedCaseRef.current !== caseId) {
-      setMemo(caseQuery.data.investigator_memo ?? '');
+      const loaded = caseQuery.data.investigator_memo ?? '';
+      setMemo(loaded);
+      savedMemoRef.current = loaded;
       memoLoadedCaseRef.current = caseId ?? null;
       setMemoStatus('idle');
     }
   }, [caseQuery.data, caseId]);
 
-  // 메모 저장 — 입력 후 1초 디바운스 자동 저장 (PATCH /api/cases).
+  // 메모 저장 — [저장] 버튼으로 명시적 PATCH (PATCH /api/cases).
   const saveMemoMutation = useMutation({
     mutationFn: (text: string) => updateCase(caseId!, { investigator_memo: text }),
-    onSuccess: () => {
+    onSuccess: (_data, text) => {
       setMemoStatus('saved');
-      // 'saved' 2초 후 idle 로
+      savedMemoRef.current = text;
+      showToast(text.trim() ? '메모 저장됨' : '메모 삭제됨');
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] });
       setTimeout(() => setMemoStatus('idle'), 2000);
     },
     onError: (err: unknown) => {
@@ -102,14 +107,23 @@ const V5Board = () => {
     },
   });
 
+  // 입력 중 — 저장된 값과 다르면 'dirty' (미저장) 표시.
   const handleMemoChange = (text: string) => {
     setMemo(text);
+    setMemoStatus(text !== savedMemoRef.current ? 'dirty' : 'idle');
+  };
+
+  const handleMemoSave = () => {
     if (!caseId) return;
-    setMemoStatus('saving');
-    if (memoDebounceRef.current) clearTimeout(memoDebounceRef.current);
-    memoDebounceRef.current = setTimeout(() => {
-      saveMemoMutation.mutate(text);
-    }, 1000);
+    saveMemoMutation.mutate(memo);
+  };
+
+  const handleMemoDelete = () => {
+    if (!caseId) return;
+    if (!memo.trim() || window.confirm('메모를 삭제하시겠습니까?')) {
+      setMemo('');
+      saveMemoMutation.mutate('');
+    }
   };
 
   const attackQuery = useQuery({
@@ -746,8 +760,8 @@ const V5Board = () => {
                 <div className="flex items-center justify-between w-full gap-2">
                   <span>수사관 메모</span>
                   <span className="text-[10px] font-normal">
-                    {memoStatus === 'saving' && (
-                      <span className="text-amber-400">저장 중…</span>
+                    {memoStatus === 'dirty' && (
+                      <span className="text-amber-400">● 미저장</span>
                     )}
                     {memoStatus === 'saved' && (
                       <span className="text-brand-teal">✓ 저장됨</span>
@@ -760,16 +774,32 @@ const V5Board = () => {
                 value={memo}
                 onChange={(e) => handleMemoChange(e.target.value)}
                 placeholder={
-                  caseId
-                    ? '분석 메모 입력… (자동 저장)'
-                    : '케이스를 먼저 선택하세요'
+                  caseId ? '분석 메모 입력…' : '케이스를 먼저 선택하세요'
                 }
                 disabled={!caseId}
                 rows={4}
                 className="input resize-y min-h-[88px] disabled:opacity-50"
               />
-              <div className="text-[9.5px] text-ink-500 mt-1">
-                입력 1초 후 자동 저장 · 케이스 단위 보존
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={handleMemoSave}
+                  disabled={
+                    !caseId || saveMemoMutation.isPending || memoStatus !== 'dirty'
+                  }
+                  className="btn-primary btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {saveMemoMutation.isPending ? '저장 중…' : '저장'}
+                </button>
+                <button
+                  onClick={handleMemoDelete}
+                  disabled={!caseId || saveMemoMutation.isPending || !memo}
+                  className="btn-danger btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  삭제
+                </button>
+              </div>
+              <div className="text-[9.5px] text-ink-500 mt-1.5">
+                케이스 단위 보존 · [저장] 클릭 시 영속화
               </div>
             </Card>
 

@@ -292,6 +292,7 @@ export interface BoardKpi {
   earliestEventTime: string | null;
   rawEarliestEventTime?: string | null;
   latestEventTime?: string | null;
+  rawLatestEventTime?: string | null;
   detectedAt?: string | null;
   caseCreatedAt: string | null;
   caseClosedAt: string | null;

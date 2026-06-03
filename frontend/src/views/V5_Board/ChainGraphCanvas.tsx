@@ -504,6 +504,27 @@ const ChainGraphCanvas = ({
     });
   };
 
+  // 줌 % 직접 입력 (40~300) — HTML 오버레이 % 버튼에서 호출.
+  const promptZoom = () => {
+    const input = window.prompt(
+      '화면 비율 (%)을 입력하세요 (40 ~ 300)',
+      String(Math.round(viewportRef.current.scale * 100)),
+    );
+    if (!input) return;
+    const pct = parseInt(input, 10);
+    if (!isFinite(pct) || pct < 40 || pct > 300) return;
+    const newScale = pct / 100;
+    const { tx, ty, scale } = viewportRef.current;
+    const cx = sizeRef.current.width / 2;
+    const cy = sizeRef.current.height / 2;
+    const ratio = newScale / scale;
+    setViewport({
+      tx: cx - (cx - tx) * ratio,
+      ty: cy - (cy - ty) * ratio,
+      scale: newScale,
+    });
+  };
+
   // Phase P.6 — drop zone 핸들러 (LogPanel 단서 탭 → ChainGraph)
   const handleClueDragOver = (e: React.DragEvent<SVGSVGElement>) => {
     if (!onDropClue) return;
@@ -544,6 +565,7 @@ const ChainGraphCanvas = ({
   };
 
   return (
+    <div className="relative w-full">
     <svg
       ref={svgRef}
       viewBox={`0 0 ${width} ${height}`}
@@ -583,12 +605,14 @@ const ChainGraphCanvas = ({
       {/* Phase P.7 — zoom/pan transform 적용 (모든 콘텐츠 감싸기) */}
       <g transform={`translate(${viewport.tx},${viewport.ty}) scale(${viewport.scale})`}>
 
-      {/* Phase P.14 — 빈 보드 안내 overlay (SVG 안에 그려 drop zone 유지) */}
+      {/* Phase P.14 — 빈 보드 안내 overlay (SVG 안에 그려 drop zone 유지).
+          fix (2026-06-03): viewBox 전체 (width/height) 중앙 기준으로 정렬 —
+          baseWidth/baseHeight 는 격자 일부라 위쪽으로 쏠림. */}
       {isEmpty && (
         <g pointerEvents="none">
           <text
-            x={baseWidth / 2}
-            y={baseHeight / 2 - 24}
+            x={width / 2}
+            y={height / 2 - 24}
             textAnchor="middle"
             fill="#5EEAD4"
             fontSize={14}
@@ -597,8 +621,8 @@ const ChainGraphCanvas = ({
             단서를 여기로 드래그하거나
           </text>
           <text
-            x={baseWidth / 2}
-            y={baseHeight / 2 + 2}
+            x={width / 2}
+            y={height / 2 + 2}
             textAnchor="middle"
             fill="#9aa3b2"
             fontSize={11.5}
@@ -606,8 +630,8 @@ const ChainGraphCanvas = ({
             아래 ATT&CK 후보의 [보드 추가] 로 노드를 생성하세요
           </text>
           <text
-            x={baseWidth / 2}
-            y={baseHeight / 2 + 22}
+            x={width / 2}
+            y={height / 2 + 22}
             textAnchor="middle"
             fill="#7A8294"
             fontSize={10}
@@ -903,90 +927,56 @@ const ChainGraphCanvas = ({
         );
       })}
       </g>
-      {/* zoom 컨트롤 — 우상단 모서리에 거의 붙임 (1px 이격) */}
-      <g
-        transform={`translate(${Math.max(1, width - 177)}, 1)`}
-        style={{ cursor: 'pointer' }}
-      >
-        <rect x={0} y={0} width={176} height={22} rx={4}
-              fill="#0f1117" stroke="#2a3441" strokeWidth={0.8} />
-        {/* [-] 축소 */}
-        <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(0.85); }}>
-          <rect x={3} y={3} width={20} height={16} rx={3}
-                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
-          <text x={13} y={15} textAnchor="middle" fill="#9aa3b2"
-                fontSize={13} fontWeight={700}>−</text>
-        </g>
-        {/* 현재 zoom % — 클릭 시 수동 입력 (40~300%) */}
-        <g
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            const input = window.prompt(
-              '화면 비율 (%)을 입력하세요 (40 ~ 300)',
-              String(Math.round(viewportRef.current.scale * 100)),
-            );
-            if (!input) return;
-            const pct = parseInt(input, 10);
-            if (!isFinite(pct) || pct < 40 || pct > 300) return;
-            const newScale = pct / 100;
-            const { tx, ty, scale } = viewportRef.current;
-            const cx = sizeRef.current.width / 2;
-            const cy = sizeRef.current.height / 2;
-            const ratio = newScale / scale;
-            setViewport({
-              tx: cx - (cx - tx) * ratio,
-              ty: cy - (cy - ty) * ratio,
-              scale: newScale,
-            });
-          }}
-          style={{ cursor: 'pointer' }}
-        >
-          <title>클릭 시 % 직접 입력 (40~300)</title>
-          <rect x={26} y={3} width={60} height={16} rx={3}
-                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
-          <text x={56} y={15} textAnchor="middle"
-                fill={viewport.scale === 1 ? '#9aa3b2' : '#5EEAD4'}
-                fontSize={10} fontFamily="monospace">
-            {`${Math.round(viewport.scale * 100)}%`}
-          </text>
-        </g>
-        {/* [+] 확대 */}
-        <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(1.18); }}>
-          <rect x={88} y={3} width={20} height={16} rx={3}
-                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
-          <text x={98} y={15} textAnchor="middle" fill="#5EEAD4"
-                fontSize={12} fontWeight={700}>+</text>
-        </g>
-        {/* [1:1] reset */}
-        <g
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            resetView();
-          }}
-        >
-          <rect x={113} y={3} width={28} height={16} rx={3}
-                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
-          <text x={127} y={14} textAnchor="middle"
-                fill="#5EEAD4" fontSize={9} fontWeight={700}>
-            1:1
-          </text>
-        </g>
-        {/* [] fit-to-view — 모든 노드가 보이게 자동 조정 (화면 밖 노드 복구) */}
-        <g
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            fitView();
-          }}
-        >
-          <title>모든 노드가 보이도록 화면 맞춤 (화면 밖 노드 복구)</title>
-          <rect x={146} y={3} width={26} height={16} rx={3}
-                fill="#1a1f29" stroke="#10b981" strokeWidth={0.8} />
-          <text x={159} y={14} textAnchor="middle"
-                fill="#34d399" fontSize={11} fontWeight={700}>
-                      </text>
-        </g>
-      </g>
     </svg>
+
+      {/* zoom 컨트롤 — HTML 오버레이로 우상단 모서리에 고정 (viewBox letterbox
+          여백 영향 없이 항상 캔버스 우상단에 붙음). 2026-06-03 SVG → HTML 전환. */}
+      <div className="absolute top-1 right-1 flex items-center gap-0.5 rounded bg-[#0f1117]/95 border border-[#2a3441] px-0.5 py-0.5 select-none">
+        <button
+          type="button"
+          onClick={() => zoomBy(0.85)}
+          className="w-5 h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-[#9aa3b2] text-[13px] font-bold leading-none hover:text-white transition-colors"
+          title="축소"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={promptZoom}
+          className={
+            'w-[58px] h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-[10px] font-mono leading-none transition-colors hover:border-brand-blue/50 ' +
+            (viewport.scale === 1 ? 'text-[#9aa3b2]' : 'text-brand-teal')
+          }
+          title="클릭 시 % 직접 입력 (40~300)"
+        >
+          {`${Math.round(viewport.scale * 100)}%`}
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomBy(1.18)}
+          className="w-5 h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-brand-teal text-[12px] font-bold leading-none hover:text-white transition-colors"
+          title="확대"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={resetView}
+          className="w-7 h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-brand-teal text-[9px] font-bold leading-none hover:text-white transition-colors"
+          title="100% 로 초기화"
+        >
+          1:1
+        </button>
+        <button
+          type="button"
+          onClick={fitView}
+          className="w-7 h-4 rounded-sm bg-[#1a1f29] border border-[#10b981] text-[#34d399] text-[10px] font-bold leading-none hover:text-white transition-colors"
+          title="모든 노드가 보이도록 화면 맞춤"
+        >
+          ⤢
+        </button>
+      </div>
+    </div>
   );
 };
 

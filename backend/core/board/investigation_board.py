@@ -5,7 +5,7 @@
 API 응답 형식(frontend types/index.ts `BoardResponse`):
   { caseId, nodes: BoardNode[], edges: BoardEdge[], kpi: { dwellTime, ... } }
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy import func, select
@@ -131,22 +131,28 @@ class InvestigationBoard:
         synthetic_adjusted = False
         dwell_time_seconds = raw_dwell
         effective_earliest = earliest
+        effective_latest = latest
         if (
             raw_dwell is not None
             and raw_dwell > SYNTH_THRESHOLD_DAYS * 24 * 3600
             and signal_spread is not None
         ):
-            # 합성 로그 감지 — spread 자체가 의미 있는 dwell.
-            # 가상 earliest = detected - spread (시각만 표시용으로 재계산).
+            # 합성 로그 감지 — 로그에 박힌 시각이 과거(예: 3개월 전)라 raw dwell 이
+            # 비현실적. 시나리오 내부 spread (latest-earliest) 를 진짜 dwell 로 쓰고,
+            # 표시 타임라인을 [detected-spread → detected] 로 재정렬한다.
+            #   · effective_earliest = detected - spread  (최초 침해 추정, 표시용)
+            #   · effective_latest   = detected           (탐지 시점에 종료로 정렬)
+            # → UI 타임라인이 earliest ≤ latest ≤ detected 로 일관 (역순 방지).
             synthetic_adjusted = True
             dwell_time_seconds = signal_spread
-            from datetime import timedelta
             effective_earliest = detected_at - timedelta(seconds=signal_spread)
+            effective_latest = detected_at
 
         return {
             "earliestEventTime": effective_earliest.isoformat() if effective_earliest else None,
             "rawEarliestEventTime": earliest.isoformat() if earliest else None,
-            "latestEventTime": latest.isoformat() if latest else None,
+            "latestEventTime": effective_latest.isoformat() if effective_latest else None,
+            "rawLatestEventTime": latest.isoformat() if latest else None,
             "detectedAt": detected_at.isoformat() if detected_at else None,
             "caseCreatedAt": case.created_at.isoformat() if case.created_at else None,
             "caseClosedAt": case.closed_at.isoformat() if case.closed_at else None,

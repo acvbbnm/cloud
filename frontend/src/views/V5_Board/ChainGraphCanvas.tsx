@@ -323,9 +323,11 @@ const ChainGraphCanvas = ({
     }
 
     if (majorReposition) {
-      // 한 프레임 후 fitView — layout/sizeRef 갱신 후 안전하게
+      // 한 프레임 후 fitView — 모든 노드가 화면 안에 보이도록 자동 조정
+      // (이전: 단순 viewport reset → 화면 끝 노드가 잘림. fitView 는 bounding
+      //  box 가 화면에 들어오게 scale + 중심 이동.)
       requestAnimationFrame(() => {
-        setViewport({ tx: 0, ty: 0, scale: 1 });
+        fitView();
       });
     }
 
@@ -881,12 +883,39 @@ const ChainGraphCanvas = ({
           <text x={13} y={15} textAnchor="middle" fill="#9aa3b2"
                 fontSize={13} fontWeight={700}>−</text>
         </g>
-        {/* 현재 zoom % */}
-        <text x={56} y={15} textAnchor="middle"
-              fill={viewport.scale === 1 ? '#9aa3b2' : '#5EEAD4'}
-              fontSize={10} fontFamily="monospace">
-          {`${Math.round(viewport.scale * 100)}%`}
-        </text>
+        {/* 현재 zoom % — 클릭 시 수동 입력 (40~300%) */}
+        <g
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            const input = window.prompt(
+              '화면 비율 (%)을 입력하세요 (40 ~ 300)',
+              String(Math.round(viewportRef.current.scale * 100)),
+            );
+            if (!input) return;
+            const pct = parseInt(input, 10);
+            if (!isFinite(pct) || pct < 40 || pct > 300) return;
+            const newScale = pct / 100;
+            const { tx, ty, scale } = viewportRef.current;
+            const cx = sizeRef.current.width / 2;
+            const cy = sizeRef.current.height / 2;
+            const ratio = newScale / scale;
+            setViewport({
+              tx: cx - (cx - tx) * ratio,
+              ty: cy - (cy - ty) * ratio,
+              scale: newScale,
+            });
+          }}
+          style={{ cursor: 'pointer' }}
+        >
+          <title>클릭 시 % 직접 입력 (40~300)</title>
+          <rect x={26} y={3} width={60} height={16} rx={3}
+                fill="#1a1f29" stroke="#2a3441" strokeWidth={0.6} />
+          <text x={56} y={15} textAnchor="middle"
+                fill={viewport.scale === 1 ? '#9aa3b2' : '#5EEAD4'}
+                fontSize={10} fontFamily="monospace">
+            {`${Math.round(viewport.scale * 100)}%`}
+          </text>
+        </g>
         {/* [+] 확대 */}
         <g onPointerDown={(e) => { e.stopPropagation(); zoomBy(1.18); }}>
           <rect x={88} y={3} width={20} height={16} rx={3}

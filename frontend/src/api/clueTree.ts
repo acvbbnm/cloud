@@ -70,6 +70,23 @@ export const resetClueTree = async (
 };
 
 /**
+ * POST /api/clue-tree/retract — 채택된 단서 1개 철회.
+ *
+ * 선형 트리에서 단서 제거 → 결정성을 이용해 cold-start 후 남은 단서 replay.
+ * 응답은 삭제 반영된 최신 트리 — 트리·컴퍼스 모두 갱신됨 (2026-06-03).
+ */
+export const retractClue = async (
+  caseId: string,
+  nodeId: string,
+): Promise<ClueTreeResponse> => {
+  const res = await client.post('/api/clue-tree/retract', {
+    caseId,
+    node_id: nodeId,
+  });
+  return res.data.data;
+};
+
+/**
  * GET /api/clue-tree/explain/{clue_key} — Phase H.4.
  *
  * BN 추론 trace 조회. 후보 hover/click 시 ATT&CK 매핑·per-technique likelihood·

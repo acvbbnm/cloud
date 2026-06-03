@@ -396,6 +396,78 @@ def reset_tree(db: Session, case_id: str) -> dict:
     return start_tree(db, case_id)
 
 
+def retract_clue(db: Session, case_id: str, node_id: str) -> dict:
+    """채택된 단서 1개 철회 → 트리 재구성 (2026-06-03, 채택 단서 삭제 기능).
+
+    선형 트리(root → c1 → c2 → …)에서 중간 노드를 제거하면 그 아래 자식들의
+    parent 가 끊기므로, **replay 방식**으로 재구성한다:
+
+      1. 현재 path(root→leaf)에서 제거 대상(node_id)과 root 를 제외한
+         나머지 단서들의 (clue_key, source, label) 스펙을 순서대로 수집
+      2. reset_tree → cold-start (uniform prior)
+      3. 남은 단서들을 순서대로 expand_tree 재적용 (label_override 로 표시값 보존)
+
+    결정성 보장 (paradigm §17): 같은 단서 시퀀스 → 같은 사후확률.
+    따라서 replay 후 트리·컴퍼스가 삭제 반영된 정확한 상태로 재계산된다.
+
+    한계: multi-stage(confirmed_hypotheses/stage)는 cold-start 로 초기화됨.
+    단일 stage Discovery Loop 의 일반 사용에 적합.
+    """
+    case = _load_case(db, case_id)
+    tree = _load_tree_from_case(case)
+    if tree is None:
+        raise ClueTreeNotFound(case_id)
+
+    if node_id not in tree.nodes:
+        raise ValueError(f"node_id {node_id} 가 트리에 없음")
+    if node_id == tree.root_id:
+        raise ValueError("root 노드는 철회할 수 없음")
+
+    # root·제거 대상 제외한 나머지 단서 스펙 수집 (시간순 = path 순서)
+    full_path = path_from_root(tree)
+    remaining: list[dict] = [
+        {
+            "clue_key": n.clue_key,
+            "source": n.source or "tree_candidate",
+            "label": n.label,
+        }
+        for n in full_path
+        if n.node_id != tree.root_id and n.node_id != node_id
+    ]
+
+    # cold-start 후 남은 단서 순서대로 재적용
+    reset_tree(db, case_id)
+    case = _load_case(db, case_id)
+    tree = _load_tree_from_case(case)
+    if tree is None:
+        raise ClueTreeNotFound(case_id)
+
+    parent_id = tree.root_id
+    for spec in remaining:
+        expand_tree(
+            db,
+            case_id,
+            parent_id,
+            spec["clue_key"],
+            source=spec["source"],
+            label_override=spec["label"],
+        )
+        # 선형 트리 — 방금 추가된 leaf 가 다음 부모
+        case = _load_case(db, case_id)
+        tree = _load_tree_from_case(case)
+        if tree is None:
+            raise ClueTreeNotFound(case_id)
+        parent_id = tree.current_leaf_id
+
+    logger.info(
+        "clue-tree retract %s — removed node=%s, replayed %d remaining clue(s)",
+        case_id,
+        node_id,
+        len(remaining),
+    )
+    return get_tree(db, case_id)
+
+
 # ─────────────────────────────────────────────────────────────
 # Phase N.4 — Multi-Stage Attack Chain (paradigm §23, 2026-05-26)
 # ─────────────────────────────────────────────────────────────

@@ -98,9 +98,9 @@ const Step3_EvidenceTreeDiscovery = ({
 
   // Phase I — 메인 시각화 탭 (tree / compass). sessionStorage 영속화.
   const [mainView, setMainView] = useState<'tree' | 'compass'>(() => {
-    if (typeof window === 'undefined') return 'tree';
+    if (typeof window === 'undefined') return 'compass';
     const stored = window.sessionStorage.getItem('aisherpa.evidenceTree.mainView');
-    return stored === 'compass' ? 'compass' : 'tree';
+    return stored === 'tree' ? 'tree' : 'compass';
   });
   const switchMainView = (v: 'tree' | 'compass') => {
     setMainView(v);
@@ -115,6 +115,7 @@ const Step3_EvidenceTreeDiscovery = ({
   const hydrate = useClueTreeStore((s) => s.hydrate);
   const resetServer = useClueTreeStore((s) => s.resetServer);
   const advanceStage = useClueTreeStore((s) => s.advanceStage);
+  const retract = useClueTreeStore((s) => s.retract);
 
   // Phase G — 첫 진입 시 evidence_tree 패러다임 안내 모달
   const [introOpen, setIntroOpen] = useState(false);
@@ -586,20 +587,8 @@ const Step3_EvidenceTreeDiscovery = ({
               <div className="flex border border-ink-700 rounded overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => switchMainView('tree')}
-                  className={`text-[10.5px] px-2 py-0.5 transition-colors ${
-                    mainView === 'tree'
-                      ? 'bg-brand-teal text-ink-950 font-semibold'
-                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
-                  }`}
-                  title="트리 시각화"
-                >
-                  🌳 트리
-                </button>
-                <button
-                  type="button"
                   onClick={() => switchMainView('compass')}
-                  className={`text-[10.5px] px-2 py-0.5 transition-colors border-l border-ink-700 ${
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors ${
                     mainView === 'compass'
                       ? 'bg-brand-teal text-ink-950 font-semibold'
                       : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
@@ -607,6 +596,18 @@ const Step3_EvidenceTreeDiscovery = ({
                   title="사고유형 360° 컴퍼스"
                 >
                   컴퍼스
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMainView('tree')}
+                  className={`text-[10.5px] px-2 py-0.5 transition-colors border-l border-ink-700 ${
+                    mainView === 'tree'
+                      ? 'bg-brand-teal text-ink-950 font-semibold'
+                      : 'text-ink-300 hover:text-ink-100 hover:bg-ink-800'
+                  }`}
+                  title="트리 시각화"
+                >
+                  🌳 트리
                 </button>
               </div>
               <button
@@ -804,6 +805,79 @@ const Step3_EvidenceTreeDiscovery = ({
             mode={treeState.zone === 2 ? 'chain' : 'standard'}
             chainFilterHypothesis={chainFilterHypothesis}
           />
+        </Card>
+
+        {/* 채택된 단서 — 정보 + 삭제 (삭제 시 트리·컴퍼스 replay 재계산) */}
+        <Card title="채택된 단서" subtitle="삭제하면 트리·컴퍼스가 재계산됩니다">
+          {(() => {
+            const adopted = (treeState.path ?? []).filter(
+              (n) => n.depth > 0 && n.clue_key !== '__ROOT__',
+            );
+            if (adopted.length === 0) {
+              return (
+                <p className="text-[11px] text-ink-500 italic py-3 text-center">
+                  아직 채택된 단서가 없습니다 — 후보 클릭·직접 입력·로그 분석으로 추가
+                </p>
+              );
+            }
+            const SOURCE_KO: Record<string, string> = {
+              system: '시스템',
+              tree_candidate: '후보 선택',
+              direct_input: '직접 입력',
+              log_analysis: '로그 분석',
+              heal: '자동 복구',
+            };
+            return (
+              <ul className="space-y-1.5">
+                {adopted.map((n) => (
+                  <li
+                    key={n.node_id}
+                    className="flex items-start gap-2 bg-ink-900/50 border border-ink-700/60 rounded-lg px-2.5 py-2"
+                  >
+                    <span className="text-[10px] font-mono text-ink-500 shrink-0 mt-0.5">
+                      {n.depth}.
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11.5px] text-ink-100 font-medium truncate">
+                        {n.label}
+                      </div>
+                      <div className="text-[9.5px] text-ink-500 font-mono mt-0.5">
+                        {n.category}
+                        {n.value ? `:${n.value}` : ''}
+                        {' · '}
+                        {SOURCE_KO[n.source] ?? n.source}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!caseId) return;
+                        if (
+                          !window.confirm(
+                            `단서 "${n.label}" 을(를) 삭제합니다.\n남은 단서로 트리·컴퍼스가 재계산됩니다.`,
+                          )
+                        )
+                          return;
+                        try {
+                          await retract(caseId, n.node_id);
+                          setChainFilterHypothesis(null);
+                          showToast(`단서 삭제 — ${n.label}`, 2500);
+                        } catch (e) {
+                          const msg = e instanceof Error ? e.message : String(e);
+                          showToast(`단서 삭제 실패: ${msg}`, 4500);
+                        }
+                      }}
+                      disabled={loading || isSubmitting}
+                      className="text-[10px] text-ink-500 hover:text-brand-red font-mono shrink-0 self-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="이 단서를 삭제하고 트리·컴퍼스 재계산"
+                    >
+                      × 삭제
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
         </Card>
 
         {treeState.confidence.confidence_reached && treeState.confidence.primary && (

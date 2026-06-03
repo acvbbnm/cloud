@@ -16,6 +16,7 @@ import {
   expandClueTree,
   getClueTree,
   resetClueTree,
+  retractClue,
   startClueTree,
   suggestClueCandidates,
 } from '@/api/clueTree';
@@ -43,6 +44,8 @@ interface ClueTreeStoreState {
   hydrate: (caseId: string) => Promise<ClueTreeResponse | null>;
   /** 백엔드 트리 폐기 + cold-start 로 재시작 (Phase A→D 호환성 reset 용). */
   resetServer: (caseId: string) => Promise<ClueTreeResponse>;
+  /** 채택된 단서 1개 철회 → 남은 단서 replay 로 트리·컴퍼스 재계산. */
+  retract: (caseId: string, nodeId: string) => Promise<ClueTreeResponse>;
   /**
    * Phase N.4 — 확정된 사고유형 anchor 다음 stage 진입.
    * STAGE_TRANSITION_MATRIX 의 연관 가중치로 새 baseline 시작.
@@ -123,6 +126,19 @@ export const useClueTreeStore = create<ClueTreeStoreState>()(
         set({ loading: true, error: null });
         try {
           const res = await resetClueTree(caseId);
+          set({ caseId, response: res, loading: false });
+          return res;
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          set({ loading: false, error: message });
+          throw e;
+        }
+      },
+
+      retract: async (caseId: string, nodeId: string) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await retractClue(caseId, nodeId);
           set({ caseId, response: res, loading: false });
           return res;
         } catch (e) {

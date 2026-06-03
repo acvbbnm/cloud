@@ -103,16 +103,26 @@ const EvidenceLogPanel = ({
             </div>
           </li>
         )}
-        {logs.map((l) => (
+        {logs.map((l) => {
+          // observable 이 정확히 1개면 본문 클릭만으로 즉시 채택 (칩 클릭 불필요).
+          const singleObs = l.observables.length === 1 ? l.observables[0] : null;
+          return (
           <li
             key={l.loaded_id}
             className="bg-ink-900/60 border border-ink-700/60 rounded-lg px-2.5 py-2"
           >
             <button
               type="button"
-              onClick={() => onLogSelect?.(l)}
-              className="w-full text-left"
-              title="컴파스/디테일 영역에서 매칭 단서 강조"
+              onClick={() =>
+                singleObs ? onAdoptFromLog(singleObs, l) : onLogSelect?.(l)
+              }
+              disabled={singleObs ? disabled : false}
+              className="w-full text-left disabled:opacity-40 disabled:cursor-not-allowed"
+              title={
+                singleObs
+                  ? `클릭하면 ${singleObs.type}:${singleObs.value} 을 단서로 즉시 채택`
+                  : '이 로그를 미리보기 (단서 채택 아님 — 채택은 아래 주황색 항목 클릭)'
+              }
             >
               <div className="flex items-start gap-1.5">
                 <span
@@ -129,12 +139,29 @@ const EvidenceLogPanel = ({
                     {l.technique_id ? ` · ${l.technique_id}` : ''}
                   </div>
                 </div>
+                {singleObs ? (
+                  <span className="text-[9px] text-brand-amber shrink-0 self-center whitespace-nowrap">
+                    ➜ 클릭하여 채택
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-ink-500 shrink-0 self-center whitespace-nowrap">
+                    🔍 미리보기
+                  </span>
+                )}
               </div>
             </button>
 
-            {/* observable → 단서 채택 버튼들 */}
-            {l.observables.length > 0 ? (
-              <div className="mt-1.5 pt-1.5 border-t border-ink-800/80 flex flex-wrap gap-1">
+            {/* observable → 단서 채택 버튼들 (단일 observable 은 본문 클릭으로 대체) */}
+            {singleObs ? (
+              <div className="mt-1 text-[9.5px] text-brand-amber/70 italic">
+                ➜ 단서 1개 — 위 본문을 클릭하면 바로 채택됩니다
+              </div>
+            ) : l.observables.length > 0 ? (
+              <div className="mt-1.5 pt-1.5 border-t border-ink-800/80">
+                <div className="text-[9px] text-brand-amber/80 font-mono mb-1">
+                  ➜ 단서 채택 — 아래 항목 클릭
+                </div>
+                <div className="flex flex-wrap gap-1">
                 {l.observables.map((o, oi) => (
                   <button
                     key={`${l.loaded_id}-obs-${oi}`}
@@ -148,6 +175,7 @@ const EvidenceLogPanel = ({
                     {o.value.length > 18 ? `${o.value.slice(0, 17)}…` : o.value}
                   </button>
                 ))}
+                </div>
               </div>
             ) : (
               <div className="mt-1 text-[9.5px] text-ink-600 italic">
@@ -167,7 +195,8 @@ const EvidenceLogPanel = ({
               </button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

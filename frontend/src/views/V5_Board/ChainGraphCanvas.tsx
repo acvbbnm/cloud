@@ -78,13 +78,13 @@ interface ChainGraphCanvasProps {
   onDeleteEdge?: (edgeId: string) => void;
 }
 
-// P.31 (사용자 피드백: "글씨도 조금 작아") — 노드 + 글씨 키우기.
-//   NODE_W 168→200 (라벨 잘림 ↓), NODE_H 64→78 (배지·라벨 충분 공간).
-//   라벨 fontSize 11.5→13.5 / 배지 fontSize 9→10.5 (아래 렌더에서).
-const NODE_W = 200;
-const NODE_H = 78;
+// 2026-06-03 fix — 사용자 피드백 "노드 너무 커, 기본 크기로".
+// P.31 (200×78) 이전 dev3 기본값 168×64 로 되돌림.
+// 라벨 fontSize 도 그에 맞춰 13.5→11.5 (아래 렌더에서 자동 처리).
+const NODE_W = 168;
+const NODE_H = 64;
 const GAP_X = 32;
-const GAP_Y = 30;
+const GAP_Y = 28;
 const PAD = 18;
 const NODES_PER_ROW = 4;
 
@@ -819,12 +819,12 @@ const ChainGraphCanvas = ({
               </>
             )}
             <text
-              // P.31 — 라벨 fontSize 11.5→13.5, 노드 확대에 맞춰 y 22→34
+              // 2026-06-03 — NODE_H 78→64 되돌림에 맞춰 y 34→22, fontSize 13.5→11.5
               x={NODE_W / 2}
-              y={isClue && incident ? 42 : 34}
+              y={isClue && incident ? 36 : 22}
               textAnchor="middle"
               fill="#E6E9F0"
-              fontSize={13.5}
+              fontSize={11.5}
               fontWeight={600}
               // 안전망 — truncate 된 경우만 SVG 가 NODE_W-16 폭으로 압축 fit
               // (짧은 라벨은 자연 크기 유지 → 글자 사이 인위적 늘림 방지)

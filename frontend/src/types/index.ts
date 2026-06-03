@@ -306,6 +306,14 @@ export interface BoardKpi {
   dwellSource?: string;
   /** 합성 로그 자동 감지 → dwellTime 을 spread 로 보정함. */
   syntheticAdjusted?: boolean;
+  /** Mandiant M-Trends 2024 median(10d) 기반 4등급 판정. 근거는 grade.source 에만. */
+  grade?: {
+    grade: 'excellent' | 'good' | 'warning' | 'critical' | 'unknown';
+    label: string;
+    tone: 'teal' | 'amber' | 'red' | 'gray';
+    message: string;
+    source: string;
+  };
 }
 
 export interface BoardResponse {

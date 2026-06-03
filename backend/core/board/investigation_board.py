@@ -22,6 +22,66 @@ from db.models import (
 )
 
 
+# ── Dwell Time 벤치마크 (근거 자료 기반) ──────────────────────────
+#
+# Mandiant M-Trends 2024 (FY2023 침해 데이터, 글로벌) — 출처값:
+#   · global median dwell time = 10일
+#   · ransomware            = 6일   (median)
+#   · non-ransomware        = 13일  (median)
+#   · 외부 통보(notified)    = 9일   / 내부 탐지(internal) = 13일
+# 보조 근거:
+#   · IBM Cost of a Data Breach 2024 — mean time to identify ≈ 194일 (mean, 참고)
+#   · Verizon DBIR 2024 — 탐지까지 수일~수주 분포
+#
+# 판단 정책 (median 10일 + 분포 기반 4등급):
+#   median(10d) 를 중심으로 사분위 개념을 적용한 임계 — 사용자에게 학술 수치를
+#   노출하지 않고 '우수/평균/주의/심각' 등급 라벨만 보여준다 (출처는 작게 tooltip).
+DWELL_BENCHMARK_MEDIAN_DAYS = 10           # Mandiant M-Trends 2024 글로벌 median
+DWELL_GRADE_THRESHOLDS_DAYS = {
+    "excellent": 1,    #  ≤ 1일  — 우수 (즉시 탐지, 상위 ~10%)
+    "good": 10,        #  ≤ 10일 — 평균 이내 (글로벌 median 이하)
+    "warning": 30,     #  ≤ 30일 — 주의 (median 초과, IBM/Verizon 분포 상위권)
+    # > 30일           —  심각 (장기 잠복, 즉시 대응 체계 보강 필요)
+}
+DWELL_BENCHMARK_SOURCE = "Mandiant M-Trends 2024 (global median dwell 10d)"
+
+
+def _dwell_grade(dwell_seconds: Optional[int]) -> dict:
+    """dwell 초 → 등급 라벨 + 색 + 한 줄 평가. 근거 수치는 source 에만 노출.
+
+    반환: {grade, label, tone, message, source}
+    """
+    if dwell_seconds is None:
+        return {
+            "grade": "unknown",
+            "label": "측정 불가",
+            "tone": "gray",
+            "message": "정규화된 OCSF 이벤트가 필요합니다",
+            "source": DWELL_BENCHMARK_SOURCE,
+        }
+    days = dwell_seconds / 86400.0
+    th = DWELL_GRADE_THRESHOLDS_DAYS
+    if days <= th["excellent"]:
+        grade, label, tone = "excellent", "매우 빠름", "teal"
+        msg = "글로벌 상위권 — 즉시 탐지 수준"
+    elif days <= th["good"]:
+        grade, label, tone = "good", "평균 이내", "teal"
+        msg = "글로벌 중앙값 이하 — 양호한 탐지 역량"
+    elif days <= th["warning"]:
+        grade, label, tone = "warning", "평균 초과", "amber"
+        msg = "글로벌 중앙값 초과 — 탐지 지연 주의"
+    else:
+        grade, label, tone = "critical", "장기 잠복", "red"
+        msg = "장기 미탐지 — 탐지 체계 보강 권고"
+    return {
+        "grade": grade,
+        "label": label,
+        "tone": tone,
+        "message": msg,
+        "source": DWELL_BENCHMARK_SOURCE,
+    }
+
+
 class InvestigationBoard:
     """수사 보드 — case 단위 노드·엣지 상태 조회."""
 
@@ -78,7 +138,8 @@ class InvestigationBoard:
         → 수사관이 V-1 Step 1 에서 입력한 occurred_at 이 진짜 인지 시각.
         case.created_at (DB INSERT 시각) 은 인지 후 시스템 등록 시각 = proxy.
 
-        PDF 결론 (Mandiant Median Dwell Time 10일 → 7일 단축) 정합 지표:
+        벤치마크: Mandiant M-Trends 2024 글로벌 median dwell time = 10일.
+        판단: _dwell_grade() 가 median(10d) + 분포 기반 4등급 (우수/평균/주의/심각).
           · earliestEventTime  : min(ocsf_events.time) — 최초 침해 발생 추정
           · detectedAt         : case.occurred_at (사용자 입력) 우선 / fallback created_at
           · caseCreatedAt      : case.created_at — DB INSERT (proxy 보존)
@@ -87,8 +148,7 @@ class InvestigationBoard:
           · containmentSeconds : 격리완료 - 탐지(detectedAt)
           · totalSeconds       : 격리완료 - 최초침해 (전체 incident span)
           · dwellSource        : 'occurred_at' | 'created_at' (어느 값 썼는지 표시)
-
-        시연 메시징: Mandiant 7일 기준 비교 → 본 시스템이 즉시 탐지·격리 가이드 제공.
+          · grade              : {grade, label, tone, message, source} — UI 등급 표시
         """
         if case is None:
             case = db.get(IncidentCaseModel, case_id)
@@ -160,10 +220,13 @@ class InvestigationBoard:
             "signalSpreadSeconds": signal_spread,
             "containmentSeconds": _secs(case.closed_at, detected_at),
             "totalSeconds": _secs(case.closed_at, earliest),
-            "benchmarkSeconds": 7 * 24 * 60 * 60,
-            "benchmarkSource": "Mandiant M-Trends 2024 — median dwell time 7d (PDF 결론)",
+            # 벤치마크 — Mandiant M-Trends 2024 글로벌 median 10일 (기존 7일 → 정정).
+            "benchmarkSeconds": DWELL_BENCHMARK_MEDIAN_DAYS * 24 * 60 * 60,
+            "benchmarkSource": DWELL_BENCHMARK_SOURCE,
             "dwellSource": dwell_source,
             "syntheticAdjusted": synthetic_adjusted,
+            # 4등급 판정 (excellent/good/warning/critical) — 근거 수치는 grade.source 에만.
+            "grade": _dwell_grade(dwell_time_seconds),
         }
 
     @classmethod

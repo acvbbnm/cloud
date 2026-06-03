@@ -193,14 +193,18 @@ class GapDetector:
         mapped_n: int,
     ) -> dict:
         """단일 사고유형에 대한 갭 판정 (DB 적재는 하지 않음)."""
-        required_targets = list(
+        # 표시 전체 항목 (REQUIRED + CORROBORATING) — A안 완료율 분모용.
+        all_targets = list(
             db.execute(
                 select(CollectionTargetModel)
                 .where(CollectionTargetModel.incident_type == incident_type)
                 .where(CollectionTargetModel.csp.in_([case.csp, "all"]))
-                .where(CollectionTargetModel.evidence_role == "REQUIRED")
             ).scalars()
         )
+        all_ids = {t.target_id for t in all_targets}
+
+        # gap_type / 미수집 목록은 의미상 REQUIRED 기준 유지 (필수 증거 누락 = COLLECTION 갭).
+        required_targets = [t for t in all_targets if t.evidence_role == "REQUIRED"]
         required_ids = {t.target_id for t in required_targets}
         missing_ids = required_ids - collected_ids
         missing_targets = [t for t in required_targets if t.target_id in missing_ids]
@@ -214,10 +218,11 @@ class GapDetector:
             for t in missing_targets
         ]
 
-        # 필수 증거가 정의된 경우만 비율 계산 — 미정의(UNCLASSIFIED 등) 면 None.
+        # A안 (2026-06-04 사용자 요청) — 완료율 = 표시 전체 항목 중 수집 비율
+        # (REQUIRED + CORROBORATING). 항목이 하나도 정의 안 된 경우(UNCLASSIFIED 등) None.
         completion_rate = (
-            round((len(required_ids) - len(missing_ids)) / len(required_ids) * 100, 2)
-            if required_ids
+            round(len(all_ids & collected_ids) / len(all_ids) * 100, 2)
+            if all_ids
             else None
         )
 
@@ -348,27 +353,21 @@ class GapDetector:
             summary = worst["summary"]
             recommendation = worst["recommendation"]
 
-        # 전체 완수율 — 모든 유형 REQUIRED 의 union 기준 (정의된 유형이 하나도 없으면 None).
-        all_required_ids: set[str] = set()
+        # A안 (2026-06-04) — 전체 완수율 = 모든 유형 표시 항목(REQUIRED+CORROBORATING)
+        # union 중 수집 비율. (정의된 항목이 하나도 없으면 None.)
+        all_scope_ids: set[str] = set()
         for t in types:
             ids = set(
                 db.execute(
                     select(CollectionTargetModel.target_id)
                     .where(CollectionTargetModel.incident_type == t)
                     .where(CollectionTargetModel.csp.in_([case.csp, "all"]))
-                    .where(CollectionTargetModel.evidence_role == "REQUIRED")
                 ).scalars()
             )
-            all_required_ids |= ids
-        missing_union_ids = {m["target_id"] for m in missing_info}
+            all_scope_ids |= ids
         completion_rate = (
-            round(
-                (len(all_required_ids) - len(missing_union_ids))
-                / len(all_required_ids)
-                * 100,
-                2,
-            )
-            if all_required_ids
+            round(len(all_scope_ids & collected_ids) / len(all_scope_ids) * 100, 2)
+            if all_scope_ids
             else None
         )
 

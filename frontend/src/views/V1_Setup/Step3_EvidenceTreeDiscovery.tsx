@@ -831,14 +831,22 @@ const Step3_EvidenceTreeDiscovery = ({
           })()}
         </Card>
 
-        {treeState.confidence.confidence_reached && treeState.confidence.primary && (
-          <Card title="사고유형 확정 가능" subtitle="사용자 결정 — 자동 종료 X">
+        {treeState.confidence.primary && (
+          <Card
+            title="사고유형 확정 가능"
+            subtitle="사용자 결정 — 확률 무관 언제든 확정 가능 (자동 종료 X)"
+          >
             <div className="space-y-2">
               <div className="text-[12.5px] text-ink-100">
                 <span className="font-bold text-brand-teal">
                   {INCIDENT_TYPE_KO[treeState.confidence.primary]}
                 </span>{' '}
                 {(treeState.confidence.primary_prob * 100).toFixed(1)}%
+                {!treeState.confidence.confidence_reached && (
+                  <span className="ml-2 text-[10px] text-amber-400">
+                    · 신뢰도 미도달 (잠정 확정)
+                  </span>
+                )}
               </div>
               {treeState.confidence.secondary && (
                 <div className="text-[10.5px] text-ink-400">
@@ -907,17 +915,8 @@ const Step3_EvidenceTreeDiscovery = ({
           >
             ← 이전 단계
           </button>
-          {!treeState.confidence.confidence_reached && treeState.confidence.primary && (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="text-[11px] text-ink-400 hover:text-ink-100 border border-ink-700 hover:border-ink-500 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
-              title="confidence 미도달 — 현재 1위로 잠정 진행"
-            >
-              미확정 진행 →
-            </button>
-          )}
+          {/* 미확정 진행 버튼 제거 (2026-06-04) — 상단 '사고유형 확정 가능' 카드가
+              확률 무관 항상 노출되어 잠정 확정을 커버. */}
         </div>
       </div>
     </div>

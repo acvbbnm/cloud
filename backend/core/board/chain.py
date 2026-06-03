@@ -163,6 +163,21 @@ class ChainNode:
         return db.get(ChainNodeModel, node_id)
 
     @classmethod
+    def delete(cls, db: Session, node_id: str) -> bool:
+        """노드 1개 삭제 + 그에 연결된 모든 엣지도 함께 삭제 (CASCADE)."""
+        node = cls.get_by_id(db, node_id)
+        if node is None:
+            return False
+        # 연결된 엣지 삭제 — 양 방향 모두
+        db.query(ChainEdgeModel).filter(
+            (ChainEdgeModel.from_node_id == node_id)
+            | (ChainEdgeModel.to_node_id == node_id)
+        ).delete(synchronize_session=False)
+        db.delete(node)
+        db.commit()
+        return True
+
+    @classmethod
     def update(
         cls,
         db: Session,

@@ -76,6 +76,8 @@ interface ChainGraphCanvasProps {
   onDropClue?: (payload: CluePayload, posX: number, posY: number) => void;
   /** 엣지 삭제 — 엣지 클릭 시 confirm 후 부모가 DELETE /api/board/edges/{id} 호출. */
   onDeleteEdge?: (edgeId: string) => void;
+  /** 노드 삭제 — 노드 hover ✕ 버튼 클릭 시 부모가 DELETE /api/board/nodes/{id} 호출. */
+  onDeleteNode?: (nodeId: string) => void;
 }
 
 // 2026-06-03 fix — 사용자 피드백 "노드 너무 커, 기본 크기로".
@@ -99,6 +101,7 @@ const ChainGraphCanvas = ({
   onMoveNode,
   onDropClue,
   onDeleteEdge,
+  onDeleteNode,
 }: ChainGraphCanvasProps) => {
   // 영속 위치 우선 + 미설정 시 격자 배치
   const baseLayout = useMemo(() => {
@@ -344,6 +347,10 @@ const ChainGraphCanvas = ({
   const isEmpty = nodes.length === 0;
 
   // 캔버스 크기 — 빈 보드도 안전한 default. 격자 + 드래그 영역.
+  // fix (2026-06-03): 최소 폭·높이 보장 — SVG viewBox 가 작으면 부모 div 에 맞춰
+  // 노드가 확대돼 보이는 문제 차단. NODES_PER_ROW=4 칸 + 격자 padding 기준.
+  const MIN_CANVAS_W = PAD * 2 + NODES_PER_ROW * NODE_W + (NODES_PER_ROW - 1) * GAP_X;
+  const MIN_CANVAS_H = PAD * 2 + 4 * NODE_H + 3 * GAP_Y; // 최소 4행 영역
   const rows = Math.max(1, Math.ceil(nodes.length / NODES_PER_ROW));
   const cols = isEmpty ? NODES_PER_ROW : Math.min(nodes.length, NODES_PER_ROW);
   const baseWidth = PAD * 2 + cols * NODE_W + (cols - 1) * GAP_X;
@@ -354,8 +361,8 @@ const ChainGraphCanvas = ({
     maxRight = Math.max(maxRight, p.x + NODE_W + PAD);
     maxBottom = Math.max(maxBottom, p.y + NODE_H + PAD);
   });
-  const width = maxRight;
-  const height = maxBottom;
+  const width = Math.max(maxRight, MIN_CANVAS_W);
+  const height = Math.max(maxBottom, MIN_CANVAS_H);
 
   // Phase P.11 (사용자 피드백: "확대 작동 안 함") — React onWheel 은 passive listener
   // 라 preventDefault 무시됨. native addEventListener 로 {passive:false} 등록.
@@ -865,13 +872,40 @@ const ChainGraphCanvas = ({
                 + 연결 대상
               </text>
             )}
+            {/* hover 시 우상단 ✕ 버튼 — 노드 삭제 */}
+            {onDeleteNode && !edgeMode && (
+              <g
+                className="board-node-delete-btn"
+                style={{ cursor: 'pointer', opacity: 0 }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`'${n.label}' 노드를 삭제할까요? (연결 엣지도 함께 삭제됩니다)`)) {
+                    onDeleteNode(n.node_id);
+                  }
+                }}
+              >
+                <title>노드 삭제</title>
+                <circle cx={NODE_W - 8} cy={8} r={8} fill="#1f2937" stroke="#ef4444" strokeWidth={1.4} />
+                <text
+                  x={NODE_W - 8}
+                  y={11.5}
+                  textAnchor="middle"
+                  fill="#ef4444"
+                  fontSize={11}
+                  fontWeight={700}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  ×
+                </text>
+              </g>
+            )}
           </g>
         );
       })}
       </g>
-      {/* zoom 컨트롤 — [-] [percent] [+] [1:1] [] */}
+      {/* zoom 컨트롤 — 우상단 모서리에 살짝 이격 (3px) */}
       <g
-        transform={`translate(${Math.max(8, width - 184)}, 8)`}
+        transform={`translate(${Math.max(3, width - 179)}, 3)`}
         style={{ cursor: 'pointer' }}
       >
         <rect x={0} y={0} width={176} height={22} rx={4}

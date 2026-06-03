@@ -312,6 +312,28 @@ async def create_edge(req: CreateEdgeRequest, db: Session = Depends(get_db)) -> 
     return {"status": "ok", "data": ChainEdge.serialize(edge)}
 
 
+@router.delete("/nodes/{node_id}", status_code=status.HTTP_200_OK)
+async def delete_node(node_id: str, db: Session = Depends(get_db)) -> dict:
+    """노드 1개 삭제 + 연결된 엣지 함께 삭제. action_logs 에 REJECT 기록."""
+    node = ChainNode.get_by_id(db, node_id)
+    if node is None:
+        raise _node_not_found()
+    case_id = node.case_id
+    label = node.label
+    ChainNode.delete(db, node_id)
+    log = ActionLogModel(
+        case_id=case_id,
+        actor="investigator",
+        action="REJECT",
+        target_type="chain_node",
+        target_id=node_id,
+        detail={"label": label, "reason": "delete"},
+    )
+    db.add(log)
+    db.commit()
+    return {"status": "ok", "data": {"node_id": node_id, "deleted": True}}
+
+
 @router.delete("/edges/{edge_id}", status_code=status.HTTP_200_OK)
 async def delete_edge(edge_id: str, db: Session = Depends(get_db)) -> dict:
     """엣지 1개 삭제. action_logs 에 REJECT 기록 (감사 추적)."""

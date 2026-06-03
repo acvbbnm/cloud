@@ -16,6 +16,11 @@ html, body, #root {
   opacity: 1;
 }
 
+/* V-5 Board 노드 hover 시 ✕ 삭제 버튼 노출 (노드 그룹 = svg <g>) */
+svg g:hover > .board-node-delete-btn {
+  opacity: 1 !important;
+}
+
 /* 블룸버그 단말기 스타일 — 순흑 배경, 고밀도, 플랫 (2026-05-22 리디자인) */
 body {
   margin: 0;

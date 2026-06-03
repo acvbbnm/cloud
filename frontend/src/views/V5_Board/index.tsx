@@ -12,7 +12,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode, createEdge, deleteEdge, autoLayout, isClueNode } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge, deleteEdge, deleteNode, autoLayout, isClueNode } from '@/api/board';
 import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
@@ -217,6 +217,20 @@ const V5Board = () => {
     },
   });
 
+  // 노드 삭제 — hover ✕ 버튼 (연결 엣지도 함께 삭제됨)
+  const deleteNodeMutation = useMutation({
+    mutationFn: (nodeId: string) => deleteNode(nodeId),
+    onSuccess: () => {
+      showToast('노드 삭제 — 보드에서 제거');
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+      setActiveBoardNode(null);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`노드 삭제 실패: ${msg}`);
+    },
+  });
+
   // 자동 정렬 — networkx spring_layout 결과로 노드 좌표 일괄 재배치
   const autoLayoutMutation = useMutation({
     mutationFn: () => autoLayout(caseId!),
@@ -394,6 +408,7 @@ const V5Board = () => {
                   movePositionMutation.mutate({ nodeId, x, y })
                 }
                 onDeleteEdge={(edgeId) => deleteEdgeMutation.mutate(edgeId)}
+                onDeleteNode={(nodeId) => deleteNodeMutation.mutate(nodeId)}
                 // Phase P.6 — LogPanel 단서 탭 drop 처리
                 onDropClue={
                   caseId

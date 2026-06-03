@@ -431,7 +431,7 @@ const ClueTreeView = ({
       <div style={{ height }}>
         {!hasContent ? (
           <div className="h-full flex items-center justify-center text-ink-500 text-[10.5px] italic font-mono">
-            아직 채택된 단서 없음 — 직접 입력 또는 로그 분석으로 시작하세요
+            아직 채택된 단서 없음 — 1차 정찰 옵션 또는 분석 로그 적재로 시작하세요
           </div>
         ) : depth === 0 && leafCands === 0 ? (
           /* Cold-start — root 만 있고 후보 0개 */
@@ -443,8 +443,8 @@ const ClueTreeView = ({
             <div className="text-[10.5px] text-ink-400 text-center leading-5 max-w-md">
               결정 트리는 단서로부터 자라납니다.
               <br />
-              아래 <span className="text-brand-teal">단서 직접 입력</span> 또는{' '}
-              <span className="text-brand-teal">부분 로그 분석</span> 으로 첫 단서를 채택하면
+              상단 <span className="text-brand-teal">1차 정찰 옵션</span> 또는{' '}
+              <span className="text-brand-teal">분석 로그 적재함</span> 으로 첫 단서를 채택하면
               <br />
               그때부터 가능성의 트리와 다음 단서 후보가 등장합니다.
             </div>

@@ -33,12 +33,8 @@ import AttackChainCard from '@/components/AttackChainCard';
 import BridgeToBoardCard from '@/components/BridgeToBoardCard';
 import Card from '@/components/Card';
 import ClueTreeView from '@/components/ClueTreeView';
-import CluesInput from '@/components/CluesInput';
 import ConfidenceGauge from '@/components/ConfidenceGauge';
 import EntryGuideBanner, { hasDismissedEntryGuide } from '@/components/EntryGuideBanner';
-import DiscoveryIntroModal, {
-  hasDismissedDiscoveryIntro,
-} from '@/components/DiscoveryIntroModal';
 import EvidenceLogPanel from '@/components/EvidenceLogPanel';
 import GuidePreviewModal from '@/components/GuidePreviewModal';
 import HypothesisScoreBar from '@/components/HypothesisScoreBar';
@@ -87,9 +83,7 @@ const Step3_EvidenceTreeDiscovery = ({
   isSubmitting,
 }: Step3EvidenceTreeDiscoveryProps) => {
   const caseId = useCaseStore((s) => s.caseId);
-  const observables = useCaseStore((s) => s.observables);
   const addObservable = useCaseStore((s) => s.addObservable);
-  const removeObservable = useCaseStore((s) => s.removeObservable);
   const showToast = useToastStore((s) => s.show);
 
   const treeState = useClueTreeStore((s) => s.response);
@@ -97,6 +91,7 @@ const Step3_EvidenceTreeDiscovery = ({
   const startTree = useClueTreeStore((s) => s.start);
 
   // Phase I — 메인 시각화 탭 (tree / compass). sessionStorage 영속화.
+  // 단서루프 입장 시 컴퍼스가 먼저 보이도록 기본값 = 'compass' (2026-06-03).
   const [mainView, setMainView] = useState<'tree' | 'compass'>(() => {
     if (typeof window === 'undefined') return 'compass';
     const stored = window.sessionStorage.getItem('aisherpa.evidenceTree.mainView');
@@ -116,14 +111,6 @@ const Step3_EvidenceTreeDiscovery = ({
   const resetServer = useClueTreeStore((s) => s.resetServer);
   const advanceStage = useClueTreeStore((s) => s.advanceStage);
   const retract = useClueTreeStore((s) => s.retract);
-
-  // Phase G — 첫 진입 시 evidence_tree 패러다임 안내 모달
-  const [introOpen, setIntroOpen] = useState(false);
-  useEffect(() => {
-    if (!hasDismissedDiscoveryIntro('evidence_tree')) {
-      setIntroOpen(true);
-    }
-  }, []);
 
   // ── Phase N.1 (2026-05-26) — 1차 정찰 단서 카드 dismiss 상태 ──
   // NIST SP 800-86 §4.1 Initial Triage. cold-start ~ depth 1 구간에 노출,
@@ -510,13 +497,6 @@ const Step3_EvidenceTreeDiscovery = ({
 
   return (
     <div className="grid grid-cols-12 gap-3">
-      {/* Phase G — 첫 진입 사전 안내 (evidence_tree 패러다임) */}
-      <DiscoveryIntroModal
-        open={introOpen}
-        onClose={() => setIntroOpen(false)}
-        mode="evidence_tree"
-      />
-
       {/* Phase K.3 — 풀 가이드 모달 (HypothesisScoreBar 의 [전체 가이드 보기] 클릭) */}
       <GuidePreviewModal
         open={!!fullGuideModalType}
@@ -550,7 +530,6 @@ const Step3_EvidenceTreeDiscovery = ({
         {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시 */}
         {!reconDismissed && (treeState.path.length - 1) < 2 && (
           <ReconClueCard
-            treeDepth={Math.max(0, treeState.path.length - 1)}
             acceptedClueKeys={acceptedClueKeys}
             disabled={loading || isSubmitting}
             onDismiss={() => setReconDismissed(true)}
@@ -583,7 +562,7 @@ const Step3_EvidenceTreeDiscovery = ({
           }
           action={
             <div className="flex items-center gap-1">
-              {/* Phase I — 탭 토글 (tree ↔ compass) */}
+              {/* Phase I — 탭 토글 (compass ↔ tree). 2026-06-03 컴퍼스를 앞으로 배치. */}
               <div className="flex border border-ink-700 rounded overflow-hidden">
                 <button
                   type="button"
@@ -643,17 +622,6 @@ const Step3_EvidenceTreeDiscovery = ({
               currentLeafId={treeState.current_leaf_id}
               entropyBits={treeState.confidence.entropy_bits}
               onAdoptCandidate={(c) => handleAdoptCandidate(c, 'tree_candidate')}
-              onDirectInputClick={() => {
-                // ✏ 트리 슬롯 클릭 — 하단 단서 직접 입력 카드로 스크롤 + 강조
-                const el = document.getElementById('direct-input-card');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  el.classList.add('ring-2', 'ring-amber-500/70');
-                  window.setTimeout(() => {
-                    el.classList.remove('ring-2', 'ring-amber-500/70');
-                  }, 2000);
-                }
-              }}
               disabled={loading || isSubmitting}
               height={460}
             />
@@ -698,10 +666,7 @@ const Step3_EvidenceTreeDiscovery = ({
 
         {/* P.35.2 — 분석 로그 적재 카드 (full width row) */}
         {caseId && (
-          <Card
-            title="🔬 분석 로그 적재함"
-            subtitle="V-2 분석 결과 → 적재 → 단서로 채택. 다음 단서 후보를 실제 로그로 검증"
-          >
+          <Card title="분석 로그 적재함">
             <EvidenceLogPanel
               onAdoptFromLog={handleAdoptFromLog}
               onLogSelect={(l) => {
@@ -718,27 +683,13 @@ const Step3_EvidenceTreeDiscovery = ({
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div id="direct-input-card" className="rounded transition-all">
-          <Card title="단서 직접 입력" subtitle="✏ 트리 슬롯 클릭 → 자동 스크롤 + 강조">
-            <CluesInput
-              observables={observables}
-              onAdd={handleDirectClueAdd}
-              onRemove={removeObservable}
-              preferredType={null}
-              preferredVariant={null}
-            />
-          </Card>
-          </div>
-          {/* V1.fix.20 (2026-06-01) — 부분 로그 분석 카드 제거.
-              사용자 피드백: "옆에 로그 토글 있으니 삭제, 그 자리에 단서들을 수사 보드로 보내는 거 넣자".
-              BridgeToBoardCard 를 좌측 메인 영역으로 이동. */}
-          <BridgeToBoardCard
-            caseId={caseId}
-            acceptedClueCount={Math.max(0, treeState.path.length - 1)}
-            onToast={showToast}
-          />
-        </div>
+        {/* 단서 직접 입력 카드 제거 (2026-06-03 사용자 요청) — 단서는 1차 정찰 옵션·
+            분석 로그 적재함·트리/IG 후보 채택으로만 추가. 단서는 수사 보드로 이관. */}
+        <BridgeToBoardCard
+          caseId={caseId}
+          acceptedClueCount={Math.max(0, treeState.path.length - 1)}
+          onToast={showToast}
+        />
       </div>
 
       {/* 우측 sticky — 신뢰도 + 가설 + IG 후보 */}

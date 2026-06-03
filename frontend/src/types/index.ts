@@ -115,6 +115,11 @@ export interface RawEventItem {
   matchedTargetId: string | null;
   ingestedAt: string;
   sourceFile: string;
+  // V-2 COLLECT 테이블 표시용 — raw_json 에서 CSP 포맷별 추출 (백엔드 _serialize_event)
+  eventTime?: string | null;
+  eventName?: string | null;
+  sourceIp?: string | null;
+  user?: string | null;
   raw?: Record<string, unknown>; // 단건 조회 시만 포함
 }
 

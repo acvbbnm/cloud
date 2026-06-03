@@ -51,15 +51,8 @@ const EvidenceLogPanel = ({
 
   return (
     <div className="space-y-2.5">
-      {/* 안내 + 적재 카운트 */}
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10.5px] text-ink-400 leading-4">
-          V-2 (로그) · V-3 (OCSF) · V-6 (ATT&CK) 페이지의 row 에서 [➜ 적재함] 으로 추가.
-          <br />
-          <span className="text-ink-500">
-            적재된 로그의 observable 칩을 클릭하면 단서 트리에 채택됩니다.
-          </span>
-        </p>
+      {/* 적재 카운트 (안내 문구 제거 — 2026-06-03 사용자 요청) */}
+      <div className="flex items-center justify-end gap-2">
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[10px] font-mono text-ink-400">
             {logs.length}건

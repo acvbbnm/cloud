@@ -23,7 +23,22 @@ router = APIRouter(prefix="/api/logs", tags=["ingestion"])
 
 
 def _serialize_event(ev: RawEventModel, include_raw: bool = False) -> dict:
-    """RawEventModel → API 응답 dict."""
+    """RawEventModel → API 응답 dict.
+
+    V-2 COLLECT 테이블 표시용으로 raw_json 에서 eventTime/eventName/sourceIp/user 를
+    CSP 포맷별로 추출해 함께 반환한다 (목록·단건 공통).
+    """
+    raw_obj: Optional[dict] = None
+    if ev.raw_json:
+        try:
+            parsed = json.loads(ev.raw_json)
+            if isinstance(parsed, dict):
+                raw_obj = parsed
+        except json.JSONDecodeError:
+            raw_obj = None
+
+    display = LogIngestor.extract_display_fields(ev.csp, raw_obj)
+
     data = {
         "eventId": ev.event_id,
         "caseId": ev.case_id,
@@ -32,11 +47,16 @@ def _serialize_event(ev: RawEventModel, include_raw: bool = False) -> dict:
         "matchedTargetId": ev.matched_target_id,
         "ingestedAt": ev.ingested_at.isoformat() if ev.ingested_at else None,
         "sourceFile": ev.source_file,
+        # 표시용 추출 필드 (Timestamp / Event Name / Source IP / User)
+        "eventTime": display["time"],
+        "eventName": display["event_name"],
+        "sourceIp": display["source_ip"],
+        "user": display["user"],
     }
     if include_raw:
-        try:
-            data["raw"] = json.loads(ev.raw_json) if ev.raw_json else None
-        except json.JSONDecodeError:
+        if raw_obj is not None:
+            data["raw"] = raw_obj
+        else:
             data["raw"] = ev.raw_json
     return data
 

@@ -260,12 +260,13 @@ def auto_layout_positions(
     canvas_h: int = 620,
     pad: int = 60,
 ) -> dict[str, tuple[int, int]]:
-    """V-5 자동 정렬 — networkx spring_layout 결과를 canvas 좌표로 매핑.
+    """V-5 자동 정렬 — 계층형(layered) 배치로 엣지 교차 최소화.
 
-    개선 (2026-05-31):
-      - **connected vs isolated 분리**: 엣지 없는 노드는 spring 에서 한 점에 뭉치는
-        문제가 있어 별도 격자 영역(하단)에 배치
-      - **충돌 회피**: spring 결과 후 노드 거리가 NODE_W+gap 미만이면 분리
+    정책 (2026-06-03 — spring_layout → 계층형 전환):
+      · connected: depth(열) × row 계층 배치 (_layered_layout).
+        부모→자식 엣지가 좌→우로만 흘러 노드를 가로지르지 않음.
+        단일 chain → 한 줄 / 분기 → 자식 세로 분산.
+      · isolated: connected 아래 격자 (엣지 0 이면 전체 상단 격자).
 
     Returns:
         {node_id: (x, y)} — V-5 캔버스 픽셀 좌표 (좌상단 0,0 기준).
@@ -273,20 +274,19 @@ def auto_layout_positions(
     if not node_ids:
         return {}
 
-    # V1.fix.10 (2026-05-31) — UI ChainGraphCanvas 의 NODE_W/H 와 동기화.
-    #   기존 168/64 는 UI 의 P.31 확대 (200/78) 와 불일치 → _resolve_collisions
-    #   계산 시 충돌 회피 거리가 작아 자동정렬 후 노드 겹침 발생.
-    NODE_W = 200
-    NODE_H = 78
-    GAP_X = 32
-    GAP_Y = 30
-    CELL_W = NODE_W + GAP_X      # 232
-    CELL_H = NODE_H + GAP_Y      # 108
+    # 2026-06-03 — UI ChainGraphCanvas 의 NODE_W/H (168/64) 와 동기화.
+    #   (이전 200/78 은 UI 가 168/64 로 되돌려져 불일치 → 노드 과도하게 벌어짐.)
+    NODE_W = 168
+    NODE_H = 64
+    GAP_X = 28
+    GAP_Y = 26
+    CELL_W = NODE_W + GAP_X      # 196
+    CELL_H = NODE_H + GAP_Y      # 90
+    cols_all = max(1, (canvas_w - 2 * pad) // CELL_W)
 
-    # networkx 없거나 1 노드 → 전체 격자
+    # networkx 없거나 1 노드 → 전체 격자 (상단부터)
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:
-        cols = max(1, (canvas_w - 2 * pad) // CELL_W)
-        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols, cell_w=CELL_W, cell_h=CELL_H)
+        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols_all, cell_w=CELL_W, cell_h=CELL_H)
 
     # 엣지에 등장하는 노드 = connected, 그 외 = isolated
     connected_set = set()
@@ -296,36 +296,110 @@ def auto_layout_positions(
     connected = [n for n in node_ids if n in connected_set]
     isolated = [n for n in node_ids if n not in connected_set]
 
-    cols_isolated = max(1, (canvas_w - 2 * pad) // CELL_W)
-    isolated_rows = (len(isolated) + cols_isolated - 1) // cols_isolated if isolated else 0
-    isolated_height = isolated_rows * CELL_H + (GAP_Y if isolated_rows > 0 else 0)
+    # 엣지가 전혀 없으면 (전부 isolated) → 그냥 상단부터 격자 (하단 쏠림 방지)
+    if not connected:
+        return _grid_pack(node_ids, x0=pad, y0=pad, cols=cols_all, cell_w=CELL_W, cell_h=CELL_H)
 
     out: dict[str, tuple[int, int]] = {}
 
-    # connected: 캔버스 상단 영역에 spring_layout
-    if connected:
-        spring_h = max(200, canvas_h - 2 * pad - isolated_height)
-        g = nx.Graph()
-        g.add_nodes_from(connected)
-        g.add_edges_from([(a, b) for a, b in edges if a in connected_set and b in connected_set])
-        spring_pos = nx.spring_layout(g, seed=42, k=1.5, iterations=120)
-        for nid in connected:
-            x, y = spring_pos.get(nid, (0, 0))
-            cx = int(pad + (x + 1) / 2 * (canvas_w - 2 * pad))
-            cy = int(pad + (y + 1) / 2 * spring_h)
-            out[nid] = (cx, cy)
-        # spring 결과 충돌 회피
-        spring_only = {nid: out[nid] for nid in connected}
-        spring_only = _resolve_collisions(spring_only)
-        out.update(spring_only)
+    # connected — 계층형(layered) 배치: depth 를 열(column), 같은 depth 노드를
+    # 행(row)으로 펼침. 부모→자식 엣지가 항상 좌→우로 흘러 노드를 가로지르지
+    # 않음 (분기는 세로로 분산). chain·tree·DAG 모두 깔끔.
+    layer_pos = _layered_layout(
+        connected, edges, x0=pad, y0=pad, cell_w=CELL_W, cell_h=CELL_H,
+    )
+    out.update(layer_pos)
 
-    # isolated: 캔버스 하단에 격자 배치
+    # isolated: connected 영역 아래쪽에 격자 (있을 때만)
     if isolated:
-        iso_y0 = canvas_h - pad - isolated_height + GAP_Y
+        max_y = max((p[1] for p in out.values()), default=pad)
+        iso_y0 = max_y + CELL_H
         iso_pos = _grid_pack(
-            isolated, x0=pad, y0=iso_y0, cols=cols_isolated,
+            isolated, x0=pad, y0=iso_y0, cols=cols_all,
             cell_w=CELL_W, cell_h=CELL_H,
         )
         out.update(iso_pos)
 
+    return out
+
+
+def _layered_layout(
+    nodes: list[str],
+    edges: list[tuple[str, str]],
+    *,
+    x0: int,
+    y0: int,
+    cell_w: int,
+    cell_h: int,
+) -> dict[str, tuple[int, int]]:
+    """계층형 배치 — depth(BFS 레벨)를 열, 같은 depth 를 행으로 배치.
+
+    엣지 교차 최소화 정책:
+      · depth = 루트(in-degree 0)로부터의 최장 경로 거리 (longest-path layering)
+      · 같은 depth 노드는 부모의 평균 행 위치 근처로 정렬 (barycenter) 후 행 부여
+      · 단일 chain (분기 없음) → 한 줄 (모두 row 0)
+      · 분기 → 자식들이 세로로 펼쳐짐
+
+    좌표: x = x0 + depth*cell_w, y = y0 + row*cell_h
+    """
+    if not nodes:
+        return {}
+    node_set = set(nodes)
+    succ: dict[str, list[str]] = {n: [] for n in nodes}
+    pred: dict[str, list[str]] = {n: [] for n in nodes}
+    indeg: dict[str, int] = {n: 0 for n in nodes}
+    for a, b in edges:
+        if a in node_set and b in node_set and b not in succ[a]:
+            succ[a].append(b)
+            pred[b].append(a)
+            indeg[b] += 1
+
+    # ── depth 계산 (longest path; 사이클이면 방문 제한으로 안전) ──
+    depth: dict[str, int] = {n: 0 for n in nodes}
+    roots = [n for n in nodes if indeg[n] == 0] or [nodes[0]]
+    # Kahn 위상정렬 기반 longest-path. 사이클 노드는 위상순서에서 빠지므로
+    # 마지막에 depth 0 (또는 최대) 로 fallback.
+    from collections import deque
+    indeg_work = dict(indeg)
+    queue = deque(roots)
+    visited_order: list[str] = []
+    while queue:
+        n = queue.popleft()
+        visited_order.append(n)
+        for c in succ[n]:
+            if depth[c] < depth[n] + 1:
+                depth[c] = depth[n] + 1
+            indeg_work[c] -= 1
+            if indeg_work[c] == 0:
+                queue.append(c)
+    # 위상정렬 미방문(사이클) 노드 — 직전 노드 depth+1 best-effort
+    for n in nodes:
+        if n not in visited_order:
+            ds = [depth[p] + 1 for p in pred[n] if p in depth]
+            depth[n] = max(ds) if ds else 0
+
+    # ── 같은 depth 내 행(row) 부여 — barycenter (부모 평균 행) 순 정렬 ──
+    from collections import defaultdict
+    by_depth: dict[int, list[str]] = defaultdict(list)
+    for n in nodes:
+        by_depth[depth[n]].append(n)
+
+    row_of: dict[str, int] = {}
+    out: dict[str, tuple[int, int]] = {}
+    for d in sorted(by_depth):
+        layer = by_depth[d]
+        if d == 0:
+            # 루트 레이어 — 입력 순서 유지
+            ordered = layer
+        else:
+            # 부모들의 평균 row 로 정렬 (교차 최소화)
+            def bary(n: str) -> float:
+                ps = [row_of[p] for p in pred[n] if p in row_of]
+                return sum(ps) / len(ps) if ps else 0.0
+            ordered = sorted(layer, key=bary)
+        for r, n in enumerate(ordered):
+            row_of[n] = r
+            out[n] = (x0 + d * cell_w, y0 + r * cell_h)
+
+    # 단일 chain (각 depth 노드 1개) 이면 자연히 한 줄 (row 0) 이 됨.
     return out

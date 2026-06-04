@@ -66,6 +66,12 @@ export const updateNode = async (nodeId: string, req: UpdateNodeReq): Promise<Bo
   return res.data.data;
 };
 
+/** DELETE /api/board/nodes/{nodeId} — 노드 1개 삭제 + 연결 엣지 자동 삭제. */
+export const deleteNode = async (nodeId: string): Promise<{ node_id: string; deleted: boolean }> => {
+  const res = await client.delete(`/api/board/nodes/${nodeId}`);
+  return res.data.data;
+};
+
 /** POST /api/board/edges — 엣지 추가. self-loop / 다른 case 노드 연결은 400. */
 export const createEdge = async (req: CreateEdgeReq) => {
   const res = await client.post('/api/board/edges', req);

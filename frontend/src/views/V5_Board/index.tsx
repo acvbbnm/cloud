@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,11 +12,12 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode, createEdge, deleteEdge, autoLayout, isClueNode } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge, deleteEdge, deleteNode, autoLayout, isClueNode } from '@/api/board';
 import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
 import { explainClue } from '@/api/clueTree';
+import { getCase, updateCase } from '@/api/intake';
 import type {
   AttackEventItem,
   BoardNode,
@@ -53,6 +54,13 @@ const V5Board = () => {
   const [activeAttack, setActiveAttack] = useState<AttackEventItem | null>(null);
   const [activeBoardNode, setActiveBoardNode] = useState<BoardNode | null>(null);
   const [memo, setMemo] = useState('');
+  // 메모 저장 상태: idle(저장됨) | dirty(미저장) | saved(방금 저장)
+  const [memoStatus, setMemoStatus] = useState<'idle' | 'dirty' | 'saved'>('idle');
+  // 메모 모드: view(조회) | edit(편집). 저장된 메모가 있으면 기본 조회.
+  const [memoMode, setMemoMode] = useState<'view' | 'edit'>('edit');
+  const memoLoadedCaseRef = useRef<string | null>(null);
+  // 마지막으로 서버에 저장된 메모 값 (dirty 판정 기준)
+  const savedMemoRef = useRef<string>('');
 
   // UF-04 — 엣지 생성 모드 (chain_nodes 간 화살표 연결)
   const [edgeMode, setEdgeMode] = useState(false);
@@ -67,6 +75,69 @@ const V5Board = () => {
     queryFn: () => getBoard(caseId!),
     enabled: !!caseId,
   });
+
+  // 수사관 메모 — 케이스 로드 시 서버값으로 초기화 (케이스 전환 시 1회).
+  const caseQuery = useQuery({
+    queryKey: ['case', caseId],
+    queryFn: () => getCase(caseId!),
+    enabled: !!caseId,
+  });
+  useEffect(() => {
+    if (caseQuery.data && memoLoadedCaseRef.current !== caseId) {
+      const loaded = caseQuery.data.investigator_memo ?? '';
+      setMemo(loaded);
+      savedMemoRef.current = loaded;
+      memoLoadedCaseRef.current = caseId ?? null;
+      setMemoStatus('idle');
+      // 저장된 메모가 있으면 조회 모드로 시작, 없으면 편집 모드
+      setMemoMode(loaded.trim() ? 'view' : 'edit');
+    }
+  }, [caseQuery.data, caseId]);
+
+  // 메모 저장 — [저장] 버튼으로 명시적 PATCH (PATCH /api/cases).
+  const saveMemoMutation = useMutation({
+    mutationFn: (text: string) => updateCase(caseId!, { investigator_memo: text }),
+    onSuccess: (_data, text) => {
+      setMemoStatus('saved');
+      savedMemoRef.current = text;
+      showToast(text.trim() ? '메모 저장됨' : '메모 삭제됨');
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] });
+      setTimeout(() => setMemoStatus('idle'), 2000);
+      // 저장 후 — 내용 있으면 조회 모드, 비었으면 편집 모드 유지
+      setMemoMode(text.trim() ? 'view' : 'edit');
+    },
+    onError: (err: unknown) => {
+      setMemoStatus('idle');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`메모 저장 실패: ${msg}`);
+    },
+  });
+
+  // 입력 중 — 저장된 값과 다르면 'dirty' (미저장) 표시.
+  const handleMemoChange = (text: string) => {
+    setMemo(text);
+    setMemoStatus(text !== savedMemoRef.current ? 'dirty' : 'idle');
+  };
+
+  const handleMemoSave = () => {
+    if (!caseId) return;
+    saveMemoMutation.mutate(memo);
+  };
+
+  const handleMemoDelete = () => {
+    if (!caseId) return;
+    if (!memo.trim() || window.confirm('메모를 삭제하시겠습니까?')) {
+      setMemo('');
+      saveMemoMutation.mutate('');
+    }
+  };
+
+  // 편집 취소 — 서버 저장값으로 되돌리고 조회 모드로.
+  const handleMemoCancelEdit = () => {
+    setMemo(savedMemoRef.current);
+    setMemoStatus('idle');
+    if (savedMemoRef.current.trim()) setMemoMode('view');
+  };
 
   const attackQuery = useQuery({
     queryKey: ['attack', caseId, 1],
@@ -214,6 +285,20 @@ const V5Board = () => {
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`엣지 삭제 실패: ${msg}`);
+    },
+  });
+
+  // 노드 삭제 — hover ✕ 버튼 (연결 엣지도 함께 삭제됨)
+  const deleteNodeMutation = useMutation({
+    mutationFn: (nodeId: string) => deleteNode(nodeId),
+    onSuccess: () => {
+      showToast('노드 삭제 — 보드에서 제거');
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+      setActiveBoardNode(null);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`노드 삭제 실패: ${msg}`);
     },
   });
 
@@ -394,6 +479,7 @@ const V5Board = () => {
                   movePositionMutation.mutate({ nodeId, x, y })
                 }
                 onDeleteEdge={(edgeId) => deleteEdgeMutation.mutate(edgeId)}
+                onDeleteNode={(nodeId) => deleteNodeMutation.mutate(nodeId)}
                 // Phase P.6 — LogPanel 단서 탭 drop 처리
                 onDropClue={
                   caseId
@@ -682,14 +768,86 @@ const V5Board = () => {
               </Card>
             )}
 
-            <Card title={<> 수사관 메모</>}>
-              <textarea
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="메모 입력... (현재는 클라이언트 상태)"
-                rows={3}
-                className="input resize-y min-h-[72px]"
-              />
+            <Card
+              title={
+                <div className="flex items-center justify-between w-full gap-2">
+                  <span>수사관 메모</span>
+                  <span className="text-[10px] font-normal">
+                    {memoMode === 'view' && (
+                      <span className="text-ink-500">조회</span>
+                    )}
+                    {memoMode === 'edit' && memoStatus === 'dirty' && (
+                      <span className="text-amber-400">● 미저장</span>
+                    )}
+                    {memoStatus === 'saved' && (
+                      <span className="text-brand-teal">✓ 저장됨</span>
+                    )}
+                  </span>
+                </div>
+              }
+            >
+              {memoMode === 'view' ? (
+                /* ── 조회 모드 — 저장된 메모 읽기 표시 ── */
+                <>
+                  <div className="bg-ink-950/60 border border-ink-700/50 rounded-lg px-3 py-2.5 min-h-[88px] max-h-[280px] overflow-y-auto whitespace-pre-wrap text-[12.5px] text-ink-100 leading-6">
+                    {savedMemoRef.current.trim() || (
+                      <span className="text-ink-500">저장된 메모가 없습니다</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={() => setMemoMode('edit')}
+                      disabled={!caseId}
+                      className="btn-primary btn-sm flex-1 disabled:opacity-40"
+                    >
+                      ✎ 편집
+                    </button>
+                    <button
+                      onClick={handleMemoDelete}
+                      disabled={!caseId || saveMemoMutation.isPending || !memo}
+                      className="btn-danger btn-sm flex-1 disabled:opacity-40"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* ── 편집 모드 — textarea + 저장/취소 ── */
+                <>
+                  <textarea
+                    value={memo}
+                    onChange={(e) => handleMemoChange(e.target.value)}
+                    placeholder={
+                      caseId ? '분석 메모 입력…' : '케이스를 먼저 선택하세요'
+                    }
+                    disabled={!caseId}
+                    rows={4}
+                    autoFocus
+                    className="input resize-y min-h-[88px] disabled:opacity-50"
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      onClick={handleMemoSave}
+                      disabled={
+                        !caseId || saveMemoMutation.isPending || memoStatus !== 'dirty'
+                      }
+                      className="btn-primary btn-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {saveMemoMutation.isPending ? '저장 중…' : '저장'}
+                    </button>
+                    <button
+                      onClick={handleMemoCancelEdit}
+                      disabled={saveMemoMutation.isPending}
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-ink-700 text-ink-400 hover:text-white disabled:opacity-40"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </>
+              )}
+              <div className="text-[9.5px] text-ink-500 mt-1.5">
+                케이스 단위 보존 · [저장] 클릭 시 영속화
+              </div>
             </Card>
 
             <LogPanel onDragStart={setPendingLog} boardNodes={boardNodes} />

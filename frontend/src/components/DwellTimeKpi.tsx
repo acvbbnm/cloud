@@ -15,8 +15,15 @@ import SourceTag from '@/components/SourceTag';
 
 import type { BoardKpi } from '@/types';
 
-const BENCHMARK_DAYS = 7;
 const SEC_PER_DAY = 86400;
+
+// 등급 tone → Tailwind 클래스 (text / bg / border-l)
+const TONE_CLASS: Record<string, { text: string; bg: string; borderL: string }> = {
+  teal: { text: 'text-brand-teal', bg: 'bg-brand-teal', borderL: 'border-l-brand-teal' },
+  amber: { text: 'text-amber-300', bg: 'bg-amber-400', borderL: 'border-l-amber-400' },
+  red: { text: 'text-brand-red', bg: 'bg-brand-red', borderL: 'border-l-brand-red' },
+  gray: { text: 'text-ink-400', bg: 'bg-ink-600', borderL: 'border-l-ink-600' },
+};
 
 interface DwellTimeKpiProps {
   kpi?: BoardKpi;
@@ -49,10 +56,16 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
   const dwell = kpi.dwellTimeSeconds;
   const benchmark = kpi.benchmarkSeconds;
   const containment = kpi.containmentSeconds;
-  const isFaster = dwell != null && dwell < benchmark;
+  const benchmarkDays = Math.round(benchmark / SEC_PER_DAY);
+
+  // 등급 — 백엔드 _dwell_grade (Mandiant median 10d + 분포 4등급). fallback 은 단순 비교.
+  const grade = kpi.grade;
+  const tone = grade?.tone ?? (dwell != null && dwell < benchmark ? 'teal' : 'red');
+  const toneCls = TONE_CLASS[tone] ?? TONE_CLASS.gray;
+  const barColor = toneCls.bg;
+  const borderColor = toneCls.borderL;
+
   const ratio = dwell != null ? Math.min((dwell / benchmark) * 100, 200) : 0;
-  const barColor = isFaster ? 'bg-brand-teal' : 'bg-brand-red';
-  const borderColor = isFaster ? 'border-l-brand-teal' : 'border-l-brand-red';
 
   // 평균 대비 초과 시간 (양수 = 늦음)
   const gapSeconds = dwell != null ? dwell - benchmark : null;
@@ -82,15 +95,18 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
           body={
             'Dwell Time 은 침해 발생 시점부터 탐지까지 걸린 시간을 측정하는\n' +
             '보안 사고 핵심 KPI 입니다. Mandiant M-Trends 2024 의 글로벌 중앙값\n' +
-            '(7일) 과 비교해 본 조직의 탐지 역량을 평가합니다.\n\n' +
+            '(10일) 을 기준으로 4 등급 (매우 빠름·평균 이내·평균 초과·장기 잠복)\n' +
+            '으로 본 조직의 탐지 역량을 평가합니다.\n\n' +
             '계산:\n' +
-            '  Dwell Time = 사고 케이스 생성시각 − 최초 침해 이벤트시각\n' +
-            '  (= 탐지 시각 − 최초 침해 시각)\n\n' +
-            '왜 수사보드에 있는가:\n' +
-            '  · 본 케이스의 탐지 역량을 글로벌 평균과 즉시 비교\n' +
-            '  · 보고서·발표에 인용 가능한 학술 정합 KPI\n' +
-            '  · 벤치마크 초과 시 탐지 체계 보강 권고 (V-7 보고서 §결론)\n\n' +
-            '근거: Mandiant M-Trends 2024 (Global median dwell time 7일)'
+            '  Dwell Time = 탐지 시각 − 최초 침해 이벤트시각\n\n' +
+            '등급 기준 (Mandiant median 10d + 분포):\n' +
+            '  · ≤ 1일   매우 빠름 (상위권)\n' +
+            '  · ≤ 10일  평균 이내 (글로벌 median 이하)\n' +
+            '  · ≤ 30일  평균 초과 (주의)\n' +
+            '  · > 30일  장기 잠복 (체계 보강 권고)\n\n' +
+            (grade?.source
+              ? `근거: ${grade.source}`
+              : '근거: Mandiant M-Trends 2024 (global median dwell 10d)')
           }
         />
       </div>
@@ -99,30 +115,35 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
         <span className="text-[20px] font-mono font-bold text-ink-100">
           {formatDuration(dwell)}
         </span>
-        <span className="text-[10px] text-ink-400">/ 벤치마크 {BENCHMARK_DAYS}d</span>
+        <span className="text-[10px] text-ink-400">/ 벤치마크 {benchmarkDays}d</span>
+        {grade && (
+          <span className={`text-[10.5px] font-bold ml-1 ${toneCls.text}`}>
+            {grade.label}
+          </span>
+        )}
         {gapDays != null && gapDays > 0 && (
-          <span className="text-[10.5px] text-brand-red font-bold ml-1">
-            +{gapDays}d 초과
+          <span className="text-[10px] text-ink-500 ml-1">
+            (+{gapDays}d)
           </span>
         )}
       </div>
 
-      {/* progress bar — 벤치마크 7d 대비 위치 */}
+      {/* progress bar — 벤치마크(median) 대비 위치 */}
       <div className="h-1.5 bg-ink-800 mt-2 mb-1.5 relative overflow-hidden rounded-full">
         <div
           className={`h-full ${barColor} transition-all`}
           style={{ width: `${Math.min(ratio, 100)}%` }}
         />
-        <div className="absolute top-0 right-0 h-full w-px bg-ink-400" title="Mandiant 7d" />
+        <div
+          className="absolute top-0 right-0 h-full w-px bg-ink-400"
+          title={`Mandiant median ${benchmarkDays}d`}
+        />
       </div>
 
       <div className="text-[10.5px] text-ink-400 leading-5">
-        {dwell != null && (
+        {dwell != null && grade && (
           <>
-            본 케이스{' '}
-            <b className={isFaster ? 'text-brand-teal' : 'text-brand-red'}>
-              {isFaster ? '글로벌 평균보다 빠름' : '글로벌 평균보다 느림'}
-            </b>
+            <b className={toneCls.text}>{grade.message}</b>
           </>
         )}
         {containment != null && (
@@ -199,22 +220,24 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
             </div>
           </div>
 
-          {/* 권고 메시지 — 평균 초과 시 */}
-          {!isFaster && gapDays != null && gapDays > 0 && (
-            <div className="bg-brand-red/10 border border-brand-red/30 rounded px-2.5 py-1.5 text-[10.5px] leading-5">
-              <b className="text-brand-red">⚠ 탐지 지연 {gapDays}일</b>
-              <div className="text-ink-300 mt-0.5">
-                Mandiant 평균 대비 {gapDays}일 늦게 탐지. CSP Activity Tracer 보존 기간 90일
-                + 실시간 알람 임계값 점검 권고.
+          {/* 권고 메시지 — 등급 기반 (warning/critical = 경고, excellent/good = 칭찬) */}
+          {(grade?.grade === 'warning' || grade?.grade === 'critical') &&
+            gapDays != null && gapDays > 0 && (
+              <div className="bg-brand-red/10 border border-brand-red/30 rounded px-2.5 py-1.5 text-[10.5px] leading-5">
+                <b className={toneCls.text}>⚠ {grade.label} — 탐지 지연 {gapDays}일</b>
+                <div className="text-ink-300 mt-0.5">
+                  Mandiant median({benchmarkDays}d) 대비 {gapDays}일 초과. CSP Activity Tracer
+                  보존 기간 90일 + 실시간 알람 임계값 점검 권고.
+                </div>
               </div>
-            </div>
-          )}
-          {isFaster && (
+            )}
+          {(grade?.grade === 'excellent' || grade?.grade === 'good') && dwell != null && (
             <div className="bg-brand-teal/10 border border-brand-teal/30 rounded px-2.5 py-1.5 text-[10.5px] leading-5">
-              <b className="text-brand-teal">✓ Mandiant 평균보다 빠른 탐지</b>
+              <b className="text-brand-teal">✓ {grade.label} — Mandiant 평균 이내</b>
               <div className="text-ink-300 mt-0.5">
-                글로벌 평균 7d 대비 {formatDuration(benchmark - (dwell ?? 0))} 빠름.
-                초동 대응 모범 사례.
+                글로벌 median {benchmarkDays}d 대비{' '}
+                {dwell < benchmark ? `${formatDuration(benchmark - dwell)} 빠름` : '동등 수준'}.
+                초동 대응 양호.
               </div>
             </div>
           )}
@@ -225,7 +248,8 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
               <b className="text-ink-400">정의:</b> Dwell Time = 최초 침해 → 탐지 까지 경과 시간
             </div>
             <div>
-              <b className="text-ink-400">출처:</b> Mandiant M-Trends 2024 · median 7d (이전: 16d ↓)
+              <b className="text-ink-400">출처:</b>{' '}
+              {grade?.source ?? 'Mandiant M-Trends 2024 · global median 10d'}
             </div>
           </div>
         </div>
@@ -234,7 +258,7 @@ const DwellTimeKpi = ({ kpi }: DwellTimeKpiProps) => {
       <div className="mt-1 text-[9.5px] text-ink-500 font-mono leading-4">
         최초 침해: {kpi.earliestEventTime?.slice(0, 19) ?? '—'}
         <br />
-        탐지/접수: {kpi.caseCreatedAt?.slice(0, 19) ?? '—'}
+        탐지/접수: {kpi.detectedAt?.slice(0, 19) ?? kpi.caseCreatedAt?.slice(0, 19) ?? '—'}
       </div>
     </div>
   );

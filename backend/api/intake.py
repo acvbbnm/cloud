@@ -75,6 +75,8 @@ class UpdateCaseRequest(BaseModel):
     observables: Optional[list[dict]] = None
     secondary_incident_types: Optional[list[IncidentType]] = None
     triage_state: Optional[dict] = None
+    # 2026-06-03: V-5 수사관 메모 (케이스 단위).
+    investigator_memo: Optional[str] = Field(default=None, max_length=5000)
 
 
 # ── 직렬화 헬퍼 ──
@@ -101,6 +103,8 @@ def _serialize_case(case: IncidentCaseModel) -> dict:
         "observables": case.observables or [],
         "secondary_incident_types": case.secondary_incident_types,
         "triage_state": case.triage_state,
+        # V-5 수사관 메모
+        "investigator_memo": getattr(case, "investigator_memo", None),
     }
 
 
@@ -167,6 +171,7 @@ async def update_case(
         secondary_incident_types=req.secondary_incident_types,
         triage_state=req.triage_state,
         incident_type=req.incident_type,
+        investigator_memo=req.investigator_memo,
     )
     if case is None:
         raise _case_not_found()

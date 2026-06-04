@@ -63,6 +63,8 @@ class IncidentCaseModel(Base):
     # 결정 트리 진행 상태 영속화 (새로고침·복귀 대비)
     # {current_node_id, completed_path, hypothesis_scores, recommendation, is_terminal, mapped_techniques}
     triage_state = Column(JSON, nullable=True)
+    # 2026-06-03: V-5 수사관 메모 — 케이스 단위 자유 텍스트 (수동 분석 노트).
+    investigator_memo = Column(Text, nullable=True)
 
 
 # ── 테이블 2: 수집 대상 카탈로그 (설계서 Table 44, 9컬럼) ──

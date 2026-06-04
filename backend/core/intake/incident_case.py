@@ -67,6 +67,7 @@ class IncidentCase:
         secondary_incident_types: Optional[list] = None,
         triage_state: Optional[dict] = None,
         incident_type: Optional[str] = None,
+        investigator_memo: Optional[str] = None,
     ) -> Optional[IncidentCaseModel]:
         """케이스 필드를 부분 갱신한다.
 
@@ -95,6 +96,8 @@ class IncidentCase:
             case.triage_state = triage_state
         if incident_type is not None:
             case.incident_type = incident_type
+        if investigator_memo is not None:
+            case.investigator_memo = investigator_memo
         db.commit()
         db.refresh(case)
         return case

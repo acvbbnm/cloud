@@ -101,6 +101,7 @@ export interface CaseResponse {
   observables?: Observable[];
   secondary_incident_types?: IncidentType[]; // V-8 사후 검증으로 추가된 부 사고유형
   triage_state?: TriageState | null;          // 결정 트리 진행 상태 영속화
+  investigator_memo?: string | null;          // V-5 수사관 메모
 }
 
 // v1 CollectionTargetItem · GuideResponse 는 2026-05-18 회의 결정으로 제거.
@@ -295,13 +296,30 @@ export interface BoardEdge {
  */
 export interface BoardKpi {
   earliestEventTime: string | null;
+  rawEarliestEventTime?: string | null;
+  latestEventTime?: string | null;
+  rawLatestEventTime?: string | null;
+  detectedAt?: string | null;
   caseCreatedAt: string | null;
   caseClosedAt: string | null;
   dwellTimeSeconds: number | null;
+  /** OCSF 이벤트 spread (latest - earliest). 합성 로그 보정 시 dwellTimeSeconds 와 같음. */
+  signalSpreadSeconds?: number | null;
   containmentSeconds: number | null;
   totalSeconds: number | null;
   benchmarkSeconds: number;
   benchmarkSource: string;
+  dwellSource?: string;
+  /** 합성 로그 자동 감지 → dwellTime 을 spread 로 보정함. */
+  syntheticAdjusted?: boolean;
+  /** Mandiant M-Trends 2024 median(10d) 기반 4등급 판정. 근거는 grade.source 에만. */
+  grade?: {
+    grade: 'excellent' | 'good' | 'warning' | 'critical' | 'unknown';
+    label: string;
+    tone: 'teal' | 'amber' | 'red' | 'gray';
+    message: string;
+    source: string;
+  };
 }
 
 export interface BoardResponse {

@@ -44,9 +44,10 @@ const GuidePreviewModal = ({
 
   const phases = preview?.phases ?? {};
   const phaseKeys = Object.keys(phases);
+  // completionRate 는 백엔드에서 이미 0~100 퍼센트 (collected/total*100). *100 금지.
   const completionPct =
     preview && typeof preview.completionRate === 'number'
-      ? Math.round(preview.completionRate * 100)
+      ? Math.round(preview.completionRate)
       : null;
   const envWarnings = preview?.environment_warnings ?? [];
   const appliedModifiers = preview?.applied_modifiers ?? [];

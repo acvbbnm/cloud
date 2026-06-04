@@ -128,7 +128,7 @@ const EvidenceLogPanel = ({
                     {l.label}
                   </div>
                   <div className="text-[10px] text-ink-500 font-mono mt-0.5">
-                    🕒 {l.time?.slice(0, 19) ?? '시각 없음'}
+                    {l.time?.slice(0, 19) ?? '시각 없음'}
                     {l.technique_id ? ` · ${l.technique_id}` : ''}
                   </div>
                 </div>
@@ -138,7 +138,7 @@ const EvidenceLogPanel = ({
                   </span>
                 ) : (
                   <span className="text-[9px] text-ink-500 shrink-0 self-center whitespace-nowrap">
-                    🔍 미리보기
+                    미리보기
                   </span>
                 )}
               </div>

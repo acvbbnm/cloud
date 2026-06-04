@@ -713,16 +713,11 @@ def _compute_collection_status(
                     break
         collected_map[cat_id] = matched
 
-    required_cats = [c for c in categories if c.get("evidence_role") == "REQUIRED"]
-    if required_cats:
-        total = len(required_cats)
-        collected = sum(
-            1 for c in required_cats if collected_map.get(c.get("category_id"))
-        )
-    else:
-        total = len(categories)
-        collected = sum(1 for v in collected_map.values() if v)
-
+    # A안 (2026-06-04 사용자 요청) — 완료율 분모 = 화면에 표시되는 전체 항목
+    # (REQUIRED + CORROBORATING). "보이는 N개 중 M개 = M/N%" 직관과 1:1 정합.
+    # (이전: REQUIRED-only 분모 → 보조 항목이 빠져 4/5 수집이 100%로 표기되던 문제)
+    total = len(collected_map)
+    collected = sum(1 for v in collected_map.values() if v)
     rate = round(collected / total * 100, 2) if total else 0.0
     return rate, collected_map
 

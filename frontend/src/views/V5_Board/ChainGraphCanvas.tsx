@@ -139,7 +139,7 @@ const ChainGraphCanvas = ({
 
   // Phase P.7 (사용자 피드백: "확대 기능이 없어서 식별 어렵다") — zoom + pan 추가.
   //   - viewport state: tx/ty (translate) + scale
-  //   - wheel: 마우스 위치 기준 zoom in/out (0.4 ~ 3.0)
+  //   - wheel: 마우스 위치 기준 zoom in/out (0.5 ~ 2.0 — 최소 50% / 최대 200%)
   //   - 빈 영역 pointerdown + drag: pan
   //   - 노드 pointerdown 은 stopPropagation 으로 pan 차단됨 (handleNodePointerDown)
   const [viewport, setViewport] = useState({ tx: 0, ty: 0, scale: 1 });
@@ -372,7 +372,7 @@ const ChainGraphCanvas = ({
       e.preventDefault();
       const { tx, ty, scale } = viewportRef.current;
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newScale = Math.min(3.0, Math.max(0.4, scale * delta));
+      const newScale = Math.min(2.0, Math.max(0.5, scale * delta));
       if (newScale === scale) return;
       const rect = svg.getBoundingClientRect();
       const { width: w, height: h } = sizeRef.current;
@@ -476,7 +476,8 @@ const ChainGraphCanvas = ({
       (vh - margin * 2) / bh,
       1.0, // 확대 금지 (자연 크기 이하만)
     );
-    const safeScale = Math.max(0.3, scale);
+    // jingyu Task 1 — 수사보드 줌 범위 50% ~ 200% 제한
+    const safeScale = Math.min(2.0, Math.max(0.5, scale));
     const tx = vw / 2 - cxBox * safeScale;
     const ty = vh / 2 - cyBox * safeScale;
     setViewport({ tx, ty, scale: safeScale });
@@ -484,7 +485,7 @@ const ChainGraphCanvas = ({
   // Phase P.11 — 휠 외 클릭으로도 zoom 가능 (사용자 피드백: "확대 기능 작동 안 함")
   const zoomBy = (factor: number) => {
     const { tx, ty, scale } = viewportRef.current;
-    const newScale = Math.min(3.0, Math.max(0.4, scale * factor));
+    const newScale = Math.min(2.0, Math.max(0.5, scale * factor));
     if (newScale === scale) return;
     // 중앙 기준 zoom — 마우스 위치 정보 없으므로 SVG 중앙 기준
     const cx = sizeRef.current.width / 2;

@@ -184,7 +184,6 @@ const V6Attack = () => {
       <PageHeader
         eyebrow="Layer 2 · M2-3"
         title="MITRE ATT&CK 매핑"
-        description="attack_events 를 ATT&CK Cloud Matrix 의 전술 × 기법 히트맵으로 집계합니다. 결정론적 JSON 룰 기반 — 환각 없음."
         actions={
           <>
             <button

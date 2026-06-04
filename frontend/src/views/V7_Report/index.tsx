@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
-import Badge from '@/components/Badge';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import {
@@ -33,12 +32,6 @@ const SECTIONS: SectionMeta[] = [
   { key: 'evidence', title: '주요 증거', emoji: '', rows: 6 },
   { key: 'comments', title: '수사관 코멘트', emoji: '', rows: 3 },
 ];
-
-const STATUS_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
-  draft: 'blue',
-  edited: 'amber',
-  finalized: 'teal',
-};
 
 const V7Report = () => {
   const navigate = useNavigate();
@@ -147,10 +140,6 @@ const V7Report = () => {
   const status = report?.status ?? 'draft';
   const isFinalized = status === 'finalized';
   const dirtyCount = dirty.size;
-  const totalChars = SECTIONS.reduce(
-    (n, s) => n + (draftSections[s.key]?.length ?? 0),
-    0,
-  );
 
   const handleChange = (k: keyof ReportSections, v: string) => {
     setDraftSections((p) => ({ ...p, [k]: v }));
@@ -169,14 +158,9 @@ const V7Report = () => {
         description="AI 보조 초안과 함께 KISA 양식 8섹션 보고서를 편집합니다. DOCX 내보내기 지원."
         meta={
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge tone={STATUS_TONE[status] ?? 'gray'}>{status}</Badge>
-            <span className="chip">{totalChars.toLocaleString()} chars</span>
             {dirtyCount > 0 && (
               <span className="chip text-amber-400">미저장 {dirtyCount}건</span>
             )}
-            <code className="text-ink-400 font-mono text-[10.5px]">
-              caseId: {caseId}
-            </code>
           </div>
         }
         actions={
@@ -238,14 +222,9 @@ const V7Report = () => {
                     </>
                   }
                   action={
-                    <div className="flex items-center gap-1.5">
-                      {isDirty && (
-                        <span className="text-[10px] text-amber-400"></span>
-                      )}
-                      <span className="chip text-[10px]">
-                        {value.length.toLocaleString()} chars
-                      </span>
-                    </div>
+                    isDirty ? (
+                      <span className="text-[10px] text-amber-400"></span>
+                    ) : undefined
                   }
                 >
                   <textarea

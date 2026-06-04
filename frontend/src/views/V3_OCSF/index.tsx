@@ -138,7 +138,7 @@ const V3OCSF = () => {
       <PageHeader
         eyebrow="Layer 2 · M2-1"
         title="OCSF 정규화"
-        description="원본 CSP 로그를 OCSF 1.3 평탄화 컬럼으로 변환합니다. 좌·우 패널에서 변환 전·후를 비교하세요."
+        description="원본 CSP 로그를 OCSF 컬럼으로 변환합니다. 좌·우 패널에서 변환 전·후를 비교하세요."
         actions={
           <>
             <button
@@ -196,7 +196,7 @@ const V3OCSF = () => {
             color="red"
             hint="failedEvents 확인"
           />
-          <KpiCard label="스키마 버전" value="OCSF 1.3 (평탄화)" color="purple" hint="설계서 5.2절" />
+          <KpiCard label="스키마 버전" value="OCSF 1.3" color="purple" />
         </div>
 
         {/* 샘플 selector */}

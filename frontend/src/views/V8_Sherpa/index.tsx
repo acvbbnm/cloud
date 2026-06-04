@@ -10,8 +10,6 @@ import { useSherpaStore } from '@/stores/useSherpaStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { getKbStats, streamChat } from '@/api/sherpa';
 
-import IncidentTypeReviewCard from './IncidentTypeReviewCard';
-
 import type { SherpaSource } from '@/types';
 
 const KB_TONE: Record<string, 'red' | 'amber' | 'teal' | 'blue' | 'purple' | 'gray'> = {
@@ -154,8 +152,7 @@ const V8Sherpa = () => {
         }
       />
 
-      {/* dev3 V-8 사후 검증 카드 — REVIEW_NEEDED 일 때만 자체 렌더 */}
-      {caseId && <IncidentTypeReviewCard caseId={caseId} />}
+      {/* V-8 사후 검증 '추가 검토 권장' 카드 제거 (2026-06-04 사용자 요청) */}
 
       {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
@@ -268,7 +265,7 @@ const V8Sherpa = () => {
           </div>
         </div>
 
-        {/* 우측: KB 인덱스 + 안내 (V-8 사후 검증 카드는 본 영역 상단에 IncidentTypeReviewCard 로 별도 배치됨) */}
+        {/* 우측: KB 인덱스 + 안내 */}
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
           <Card title={<> KB 인덱스 (RAG 입력)</>}>
             {kbQuery.isLoading ? (

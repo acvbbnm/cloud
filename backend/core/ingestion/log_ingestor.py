@@ -177,3 +177,39 @@ class LogIngestor:
     @classmethod
     def get_event(cls, db: Session, event_id: str) -> Optional[RawEventModel]:
         return db.get(RawEventModel, event_id)
+
+    # ── 6. 표시용 필드 추출 (V-2 COLLECT 로그 테이블) ──────────
+    @staticmethod
+    def extract_display_fields(csp: str, raw: Optional[dict]) -> dict:
+        """raw event dict → 표시용 4필드 (time / event_name / source_ip / user).
+
+        V-2 COLLECT 로그 목록 테이블의 Timestamp·Event Name·Source IP·User 컬럼용.
+        OCSF 전체 정규화 없이 CSP 포맷별 핵심 필드만 추출한다.
+        - time 은 ISO8601 로 정규화 (파싱 실패 시 원본 문자열 fallback).
+        - NHN: eventTime / eventId / userIp / userName(또는 userId)
+        - NCP(naver): eventTime / action / content.sourceIp / content.actionUserName
+        """
+        empty = {"time": None, "event_name": None, "source_ip": None, "user": None}
+        if not isinstance(raw, dict):
+            return empty
+
+        def _as_str(value: object) -> Optional[str]:
+            return value if isinstance(value, str) else None
+
+        if csp == "nhn":
+            dt = nhn_parser.parse_event_time(raw.get("eventTime"))
+            return {
+                "time": dt.isoformat() if dt else _as_str(raw.get("eventTime")),
+                "event_name": raw.get("eventId"),
+                "source_ip": raw.get("userIp"),
+                "user": raw.get("userName") or raw.get("userId"),
+            }
+        # naver (NCP)
+        content = raw.get("content") if isinstance(raw.get("content"), dict) else {}
+        dt = ncp_parser.parse_event_time(raw.get("eventTime"))
+        return {
+            "time": dt.isoformat() if dt else _as_str(raw.get("eventTime")),
+            "event_name": raw.get("action"),
+            "source_ip": content.get("sourceIp") or raw.get("sourceIp"),
+            "user": content.get("actionUserName") or raw.get("actionUserName"),
+        }

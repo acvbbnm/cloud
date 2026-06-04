@@ -586,7 +586,7 @@ const Step3_EvidenceTreeDiscovery = ({
                   }`}
                   title="트리 시각화"
                 >
-                  🌳 트리
+                  트리
                 </button>
               </div>
               <button
@@ -645,7 +645,7 @@ const Step3_EvidenceTreeDiscovery = ({
         {/* P.35.4 — 컴파스 점 클릭 시 trail point detail 카드 */}
         {selectedTrailPoint && mainView === 'compass' && (
           <Card
-            title="🎯 단서 점 정보"
+            title="단서 점 정보"
             subtitle="컴파스에서 클릭한 단서 — 적재 로그와 매칭"
             action={
               <button
@@ -872,7 +872,7 @@ const Step3_EvidenceTreeDiscovery = ({
                       await advanceStage(caseId, treeState.confidence.primary);
                       setChainFilterHypothesis(null);
                       showToast(
-                        `🔗 ${INCIDENT_TYPE_KO[treeState.confidence.primary]} 확정 — 다음 단계 자동 추적 시작`,
+                        `${INCIDENT_TYPE_KO[treeState.confidence.primary]} 확정 — 다음 단계 자동 추적 시작`,
                         3500,
                       );
                     } catch (e) {
@@ -884,7 +884,7 @@ const Step3_EvidenceTreeDiscovery = ({
                   className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-ink-950 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
                   title="paradigm §23 Multi-Stage — 확정 가설 anchor + 연관 가설 새 baseline"
                 >
-                  🔗 다음 단계 추적 (multi-stage) →
+                  다음 단계 추적 (multi-stage) →
                 </button>
                 <div className="flex gap-2">
                   <button
@@ -1028,7 +1028,7 @@ const TrailPointDetail = ({ point, loadedLogs, onSelectLog }: TrailPointDetailPr
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-ink-100 truncate">{l.label}</div>
                     <div className="text-[10px] text-ink-500 font-mono">
-                      🕒 {l.time?.slice(0, 19) ?? '시각 없음'}
+                      {l.time?.slice(0, 19) ?? '시각 없음'}
                       {l.technique_id ? ` · ${l.technique_id}` : ''}
                     </div>
                   </div>

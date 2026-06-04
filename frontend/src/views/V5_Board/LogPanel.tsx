@@ -5,7 +5,7 @@
  *   "수집 로그쪽에 단서들이 같이 추가되어서 드래그앤드롭해서 보드에 올려놓고
  *    노드 연결 기능으로 연결하는쪽이 맞지 않니"
  *
- *   - 탭 [📜 수집 로그 / 단서] 로 분리
+ *   - 탭 [수집 로그 / 단서] 로 분리
  *   - 단서 탭: useClueTreeStore.response.path 의 채택 단서 리스트
  *   - 각 단서 draggable → BoardCanvas / ChainGraphCanvas drop zone 으로 이관
  *
@@ -72,7 +72,7 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
                 : 'text-ink-400 hover:text-ink-200')
             }
           >
-            📜 수집 로그
+            수집 로그
           </button>
           <button
             type="button"

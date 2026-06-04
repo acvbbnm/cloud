@@ -125,7 +125,7 @@ const MultiStageBoard = ({
 
   const headerText =
     confirmedHypotheses.length > 0
-      ? `🔗 다단계 공격 추적 — Stage ${stage}`
+      ? `다단계 공격 추적 — Stage ${stage}`
       : 'MITRE Cloud Kill Chain — 전체 단계';
 
   return (
@@ -240,7 +240,7 @@ const MultiStageBoard = ({
         {/* multi-stage 안내 또는 첫 진입 안내 */}
         {confirmedHypotheses.length >= 2 ? (
           <div className="text-[9.5px] text-emerald-300/70 leading-4 font-mono">
-            🔗 <span className="font-semibold">복합 공격 chain 확정</span> — Mandiant
+            <span className="font-semibold">복합 공격 chain 확정</span> — Mandiant
             2024 평균 dwell time 16일 · 5-7단계 패턴 정합. V-7 보고서 자동 multi-stage.
           </div>
         ) : confirmedHypotheses.length === 0 ? (

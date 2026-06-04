@@ -367,7 +367,7 @@ const V4Gap = () => {
 
               {/* [R3] SentinelOne — anti-forensic 시간 갭 */}
               {result.timeGaps && result.timeGaps.length > 0 && (
-                <Card title={<>⏱ 시간 축 비정상 공백 — {result.timeGaps.length}건</>} borderColor="#FF4D6D">
+                <Card title={<>시간 축 비정상 공백 — {result.timeGaps.length}건</>} borderColor="#FF4D6D">
                   <div className="flex flex-col gap-1.5">
                     {result.timeGaps.slice(0, 5).map((g, i) => (
                       <div

@@ -128,7 +128,7 @@ const DiscoveryIntroModal = ({
               </div>
               <div className="bg-ink-950 border border-ink-700/60 rounded-lg px-3 py-2">
                 <div className="text-[11px] font-semibold text-ink-100 mb-1">
-                  ⚖ Information Gain
+                  Information Gain
                 </div>
                 <div className="text-[10.5px] text-ink-400 leading-4">
                   Shannon entropy + Pearl marginalization<br />
@@ -146,7 +146,7 @@ const DiscoveryIntroModal = ({
               </div>
               <div className="bg-ink-950 border border-ink-700/60 rounded-lg px-3 py-2">
                 <div className="text-[11px] font-semibold text-ink-100 mb-1">
-                  🔁 트리 초기화
+                  트리 초기화
                 </div>
                 <div className="text-[10.5px] text-ink-400 leading-4">
                   잘못된 단서 시퀀스로 시작했다면<br />

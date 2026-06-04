@@ -831,14 +831,29 @@ const Step3_EvidenceTreeDiscovery = ({
           })()}
         </Card>
 
-        {treeState.confidence.confidence_reached && treeState.confidence.primary && (
-          <Card title="사고유형 확정 가능" subtitle="사용자 결정 — 자동 종료 X">
+        {/* 2026-06-04 — 확정 버튼 상시 노출 (사용자 요청).
+            기존: confidence_reached 도달 시에만 카드 노출 → 확률 낮으면 확정 불가.
+            변경: primary 가설만 있으면 확률 무관 항상 노출. 미도달 시 주의 문구. */}
+        {treeState.confidence.primary && (
+          <Card
+            title="사고유형 확정 가능"
+            subtitle={
+              treeState.confidence.confidence_reached
+                ? '신뢰도 도달 — 사용자 결정 (자동 종료 X)'
+                : '신뢰도 미도달 — 확률이 낮아도 확정할 수 있습니다'
+            }
+          >
             <div className="space-y-2">
               <div className="text-[12.5px] text-ink-100">
                 <span className="font-bold text-brand-teal">
                   {INCIDENT_TYPE_KO[treeState.confidence.primary]}
                 </span>{' '}
                 {(treeState.confidence.primary_prob * 100).toFixed(1)}%
+                {!treeState.confidence.confidence_reached && (
+                  <span className="ml-1.5 text-[10px] text-amber-300/80">
+                    (신뢰도 미도달 — 단서 추가 권장)
+                  </span>
+                )}
               </div>
               {treeState.confidence.secondary && (
                 <div className="text-[10.5px] text-ink-400">
@@ -907,17 +922,8 @@ const Step3_EvidenceTreeDiscovery = ({
           >
             ← 이전 단계
           </button>
-          {!treeState.confidence.confidence_reached && treeState.confidence.primary && (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="text-[11px] text-ink-400 hover:text-ink-100 border border-ink-700 hover:border-ink-500 px-3 py-1.5 rounded transition-colors disabled:opacity-40"
-              title="confidence 미도달 — 현재 1위로 잠정 진행"
-            >
-              미확정 진행 →
-            </button>
-          )}
+          {/* 2026-06-04 — 미확정 진행 버튼 제거: 위 "사고유형 확정 가능" 카드가
+              확률 무관 상시 노출되어 확정 경로를 단일화 (사용자 요청). */}
         </div>
       </div>
     </div>

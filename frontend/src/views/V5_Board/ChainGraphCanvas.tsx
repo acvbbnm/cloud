@@ -483,7 +483,6 @@ const ChainGraphCanvas = ({
       (vh - margin * 2) / bh,
       1.0, // 확대 금지 (자연 크기 이하만)
     );
-    // jingyu Task 1 — 수사보드 줌 범위 50% ~ 200% 제한
     const safeScale = Math.min(2.0, Math.max(0.5, scale));
     const tx = vw / 2 - cxBox * safeScale;
     const ty = vh / 2 - cyBox * safeScale;
@@ -505,15 +504,15 @@ const ChainGraphCanvas = ({
     });
   };
 
-  // 줌 % 직접 입력 (40~300) — HTML 오버레이 % 버튼에서 호출.
+  // 줌 % 직접 입력 (50~200 — Task 1 줌 범위 정책과 통일) — HTML 오버레이 % 버튼에서 호출.
   const promptZoom = () => {
     const input = window.prompt(
-      '화면 비율 (%)을 입력하세요 (40 ~ 300)',
+      '화면 비율 (%)을 입력하세요 (50 ~ 200)',
       String(Math.round(viewportRef.current.scale * 100)),
     );
     if (!input) return;
     const pct = parseInt(input, 10);
-    if (!isFinite(pct) || pct < 40 || pct > 300) return;
+    if (!isFinite(pct) || pct < 50 || pct > 200) return;
     const newScale = pct / 100;
     const { tx, ty, scale } = viewportRef.current;
     const cx = sizeRef.current.width / 2;
@@ -948,7 +947,7 @@ const ChainGraphCanvas = ({
             'w-[58px] h-4 rounded-sm bg-[#1a1f29] border border-[#2a3441] text-[10px] font-mono leading-none transition-colors hover:border-brand-blue/50 ' +
             (viewport.scale === 1 ? 'text-[#9aa3b2]' : 'text-brand-teal')
           }
-          title="클릭 시 % 직접 입력 (40~300)"
+          title="클릭 시 % 직접 입력 (50~200)"
         >
           {`${Math.round(viewport.scale * 100)}%`}
         </button>

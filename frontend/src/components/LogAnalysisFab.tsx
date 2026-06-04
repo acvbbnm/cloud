@@ -311,7 +311,6 @@ const LogAnalysisFab = () => {
                     : 'border-ink-600 bg-ink-950/40 hover:border-ink-500'
                 }`}
               >
-                <div className="text-[24px] mb-1">📁</div>
                 <div className="text-[11.5px] text-ink-200 font-semibold">
                   NCP·NHN 로그 파일 드래그
                 </div>
@@ -470,7 +469,7 @@ const LogAnalysisFab = () => {
 
             {/* 하단 안내 */}
             <div className="px-4 py-2 border-t border-ink-700 text-[9.5px] text-ink-500 leading-4 font-mono">
-              🔗 paradigm §4.3 · NCP/NHN 파서 · OCSF 정규화 · ATT&CK Cloud Matrix v14
+              paradigm §4.3 · NCP/NHN 파서 · OCSF 정규화 · ATT&CK Cloud Matrix v14
             </div>
           </div>
         </>

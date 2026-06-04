@@ -274,7 +274,7 @@ const buildLayout = (
 
       const labelNode = (
         <div className="flex flex-col items-center gap-0.5 leading-tight">
-          <div className="text-[14px] leading-none">✏</div>
+          <div className="text-[14px] leading-none">+</div>
           <div className="text-[9px] font-semibold text-amber-300">
             직접 입력
           </div>

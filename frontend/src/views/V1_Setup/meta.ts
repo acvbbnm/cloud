@@ -108,7 +108,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   PRIVILEGE_ESCALATION: {
     id: 'PRIVILEGE_ESCALATION',
     label: '권한 상승',
-    icon: '⬆️',
+    icon: '',
     severity: 'CRITICAL',
     sevColor: '#FF4444',
     desc: '일반 계정 → 관리자 권한 / 정책 부여 / 멤버 역할 변경 — 권한 확대',

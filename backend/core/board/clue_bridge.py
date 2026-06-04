@@ -68,21 +68,29 @@ def _next_free_slot(
     return BRIDGE_BASE_X + c * BRIDGE_CELL_W, BRIDGE_BASE_Y + r * BRIDGE_CELL_H
 
 
-def _collect_existing_clue_keys(db: Session, case_id: str) -> set[str]:
-    """이미 보드에 올라간 단서 clue_key 집합 (멱등 차단용).
+def _collect_existing_tree_node_ids(db: Session, case_id: str) -> set[str]:
+    """이미 보드에 올라간 *트리 노드 ID* 집합 (멱등 차단용).
 
-    type='clue' 또는 meta.clue_key 가 있는 노드만 추출.
+    P.41 (2026-06-04 사용자 피드백: "22개 중 5개만 옮겨졌어")
+      변경: clue_key 멱등 → tree_node_id 멱등.
+      같은 clue_key 가 트리에서 여러 번 채택 (예: TECHNIQUE:T1078.004 × 12)
+      되어도 *각 채택 행위* (다른 tree_node_id) 는 별도 보드 노드로 이관.
+
+      학술 정합: Pearl belief propagation 에서 같은 observable 의 *반복 관측*
+      은 변별력 강화 — 보드 시각화에도 모두 표시되는 게 사건 전모 정합.
+
+    meta.tree_node_id 가 있는 노드만 추출 (단서 노드 = clue_bridge 가 부여).
     """
     nodes = db.execute(
         select(ChainNodeModel).where(ChainNodeModel.case_id == case_id)
     ).scalars()
-    keys: set[str] = set()
+    ids: set[str] = set()
     for n in nodes:
         meta = n.meta or {}
-        ck = meta.get("clue_key")
-        if ck:
-            keys.add(ck)
-    return keys
+        tid = meta.get("tree_node_id")
+        if tid:
+            ids.add(tid)
+    return ids
 
 
 def _next_base_x(db: Session, case_id: str) -> int:
@@ -148,8 +156,9 @@ def bridge_clue_tree_to_board(
         node_id_set = set(node_ids)
         path = [n for n in path if n.node_id in node_id_set]
 
-    # 멱등 — 기존 보드에 있는 clue_key 차단
-    existing_keys = _collect_existing_clue_keys(db, case_id)
+    # P.41 — 멱등 기준 변경 (clue_key → tree_node_id)
+    #   같은 clue_key 가 여러 번 채택돼도 *각 채택 행위* 별 보드 노드 생성.
+    existing_tree_node_ids = _collect_existing_tree_node_ids(db, case_id)
 
     # P.33 (2026-05-31 사용자 피드백: "현재 랜섬인 상태면 랜섬 마킹이 다
     #   붙어버려서 7개는 자격증명 7개는 권한상승 7개는 랜섬이었는데 한번에
@@ -186,9 +195,14 @@ def bridge_clue_tree_to_board(
     skipped: list[dict] = []
 
     for tnode in path:
-        if tnode.clue_key in existing_keys:
+        # P.41 — tree_node_id 멱등 (같은 채택 행위만 차단, 같은 clue_key 는 허용)
+        if tnode.node_id in existing_tree_node_ids:
             skipped.append(
-                {"clue_key": tnode.clue_key, "reason": "already_on_board"}
+                {
+                    "clue_key": tnode.clue_key,
+                    "tree_node_id": tnode.node_id,
+                    "reason": "already_on_board",
+                }
             )
             continue
 
@@ -232,7 +246,8 @@ def bridge_clue_tree_to_board(
             meta=meta,
         )
         created_nodes.append(node)
-        existing_keys.add(tnode.clue_key)  # 같은 호출 내 중복 방지
+        # P.41 — 같은 호출 내 중복 방지 (tree_node_id 기준)
+        existing_tree_node_ids.add(tnode.node_id)
 
     # 엣지 — 새로 만든 노드 인접쌍만 (skip 된 자리 건너뛰지 않음).
     # 기존 노드 ↔ 새 노드 자동 연결은 X (사용자 의도 모호).

@@ -79,21 +79,6 @@ const EvidenceLogPanel = ({
         {logs.length === 0 && (
           <li className="text-center py-6 text-[11px] text-ink-500 italic border border-dashed border-ink-700/40 rounded-lg">
             적재된 로그 없음
-            <div className="text-[10.5px] text-ink-600 mt-1 not-italic">
-              상단 메뉴의{' '}
-              <a href="/logs" className="text-brand-teal hover:underline">
-                V-2 로그
-              </a>
-              {' · '}
-              <a href="/ocsf" className="text-brand-teal hover:underline">
-                V-3 OCSF
-              </a>
-              {' · '}
-              <a href="/attack" className="text-brand-teal hover:underline">
-                V-6 ATT&CK
-              </a>{' '}
-              에서 [➜ 적재함] 버튼으로 추가
-            </div>
           </li>
         )}
         {logs.map((l) => {

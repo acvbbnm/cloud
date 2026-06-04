@@ -125,7 +125,19 @@ def bridge_clue_tree_to_board(
           "created_edges": [serialize(ChainEdgeModel)...]
         }
     """
-    path = path_from_root(tree)
+    # P.40 (2026-06-04 사용자 피드백: "수사보드 넘어가는게 4개밖에 안 넘어가는게 문제")
+    #   원인: path_from_root(tree) 가 root → current_leaf_id 의 *단일 경로* 만 반환.
+    #         트리에 분기 (예: stage 1 중 직접 입력으로 다른 가지 채택 + stage 2 진입 시
+    #         current_leaf 가 한 가지에 머물면) 다른 가지의 채택 단서가 path 에서 누락.
+    #   Fix: tree.nodes 전체를 *채택 순서대로* 순회. 보드는 사건 전모 시각화이지 trail X.
+    #
+    #   include_root 옵션은 보존 — root 가상 노드 (__ROOT__) 표시 여부.
+    #   node_ids 부분 이관 옵션도 보존 — 명시적 ID 리스트 받으면 그 노드만.
+    #
+    # 순서 보장: ClueTreeNode.depth 기준 오름차순 (root 0 → leaf N)
+    #   → 보드 격자 배치 시 채택 순서대로 좌→우→하 흐름.
+    all_nodes = sorted(tree.nodes.values(), key=lambda n: (n.depth, n.node_id))
+    path = list(all_nodes)
 
     # root 제외 (default)
     if not include_root:

@@ -252,6 +252,73 @@ def _resolve_collisions(
     return {nid: (p[0], p[1]) for nid, p in pos.items()}
 
 
+def _avoid_edge_overlap(
+    positions: dict[str, tuple[int, int]],
+    edges: list[tuple[str, str]],
+    *,
+    node_w: int = 168,
+    node_h: int = 64,
+    margin_x: int = 12,
+    margin_y: int = 14,
+    max_iter: int = 16,
+) -> dict[str, tuple[int, int]]:
+    """엣지(선) 위에 올라온 '끝점이 아닌' 노드를 선과 수직 방향으로 밀어 치움.
+
+    사용자 요청(2026-06-05): "선에 노드가 올라가면 옆으로 치워줘".
+    중심→중심 선분에 대한 각 노드의 최근접점을 구해, 그 점이 노드 사각형
+    (margin 포함) 안에 들면 선에 직교하는 방향으로 밀어낸다. 무작위 없이
+    결정론적(노드/엣지 정렬 순회).
+    """
+    if not positions or not edges:
+        return positions
+    hw = node_w / 2.0
+    hh = node_h / 2.0
+    pos: dict[str, list[float]] = {
+        nid: [float(p[0]), float(p[1])] for nid, p in positions.items()
+    }
+
+    def center(nid: str) -> tuple[float, float]:
+        return pos[nid][0] + hw, pos[nid][1] + hh
+
+    for _ in range(max_iter):
+        moved = False
+        for na, nb in edges:
+            if na not in pos or nb not in pos:
+                continue
+            ax, ay = center(na)
+            bx, by = center(nb)
+            abx, aby = bx - ax, by - ay
+            ab2 = abx * abx + aby * aby
+            if ab2 < 1.0:
+                continue
+            plen = ab2 ** 0.5
+            perpx, perpy = -aby / plen, abx / plen  # 선에 직교하는 단위벡터
+            for nc in sorted(pos):  # sorted → 결정성
+                if nc == na or nc == nb:
+                    continue
+                cx, cy = center(nc)
+                t = ((cx - ax) * abx + (cy - ay) * aby) / ab2
+                if t <= 0.08 or t >= 0.92:  # 끝점 근처는 무시
+                    continue
+                px, py = ax + t * abx, ay + t * aby  # 선 위 최근접점
+                offx, offy = cx - px, cy - py
+                if abs(offx) >= hw + margin_x or abs(offy) >= hh + margin_y:
+                    continue  # 선이 노드 사각형 밖 → 안 닿음
+                # 노드가 선 위 → 직교 방향으로 밀어 치움
+                side = offx * perpx + offy * perpy
+                sign = 1.0 if side >= 0 else -1.0
+                # 직교 방향 노드 반경 + 여백 만큼 떨어지도록
+                req = abs(perpx) * hw + abs(perpy) * hh + margin_y
+                push = req - abs(side) + 4.0
+                if push > 0:
+                    pos[nc][0] += perpx * sign * push
+                    pos[nc][1] += perpy * sign * push
+                    moved = True
+        if not moved:
+            break
+    return {nid: (int(round(p[0])), int(round(p[1]))) for nid, p in pos.items()}
+
+
 def auto_layout_positions(
     node_ids: list[str],
     edges: list[tuple[str, str]],
@@ -322,6 +389,9 @@ def auto_layout_positions(
             cell_w=CELL_W, cell_h=CELL_H,
         )
         out.update(iso_pos)
+
+    # 선 위에 올라온 비-끝점 노드를 옆으로 치움 (2026-06-05 사용자 요청)
+    out = _avoid_edge_overlap(out, edges, node_w=NODE_W, node_h=NODE_H)
 
     return out
 

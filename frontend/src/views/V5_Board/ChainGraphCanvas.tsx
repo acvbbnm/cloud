@@ -643,21 +643,53 @@ const ChainGraphCanvas = ({
       )}
 
       {/* 엣지 — 베지어 곡선 (가독성 ↑) + marker + 삭제 핸들러 */}
-      {edges.map((e) => {
+      {/* 2026-06-05 — 같은 (from→to) 중복 엣지는 1개만 렌더 (평행 이중선 방지). */}
+      {Array.from(
+        new Map(
+          edges.map((e) => [`${e.from_node_id}->${e.to_node_id}`, e] as const),
+        ).values(),
+      ).map((e) => {
         const a = layout.get(e.from_node_id);
         const b = layout.get(e.to_node_id);
         if (!a || !b) return null;
-        const x1 = a.x + NODE_W / 2;
-        const y1 = a.y + NODE_H / 2;
-        const x2 = b.x + NODE_W / 2;
-        const y2 = b.y + NODE_H / 2;
+        // 2026-06-05 (사용자: "선에 노드 닿지 않게") — 엣지를 노드 중심이 아니라
+        //   '테두리'에서 시작/도착하도록 클립. 중심→중심 직선이 사각형 경계와
+        //   만나는 점을 계산 → 선이 노드 안쪽으로 파고들지 않음 (도착엔 4px 여백).
+        const acx = a.x + NODE_W / 2;
+        const acy = a.y + NODE_H / 2;
+        const bcx = b.x + NODE_W / 2;
+        const bcy = b.y + NODE_H / 2;
+        const borderPoint = (
+          cx: number,
+          cy: number,
+          towardX: number,
+          towardY: number,
+          gap: number,
+        ): { x: number; y: number } => {
+          const ddx = towardX - cx;
+          const ddy = towardY - cy;
+          if (ddx === 0 && ddy === 0) return { x: cx, y: cy };
+          const s = Math.min(
+            ddx !== 0 ? (NODE_W / 2 + gap) / Math.abs(ddx) : Infinity,
+            ddy !== 0 ? (NODE_H / 2 + gap) / Math.abs(ddy) : Infinity,
+          );
+          return { x: cx + ddx * s, y: cy + ddy * s };
+        };
+        const p1 = borderPoint(acx, acy, bcx, bcy, 0); // 출발 노드 테두리
+        const p2 = borderPoint(bcx, bcy, acx, acy, 4); // 도착 노드 테두리 + 화살표 여백
+        const x1 = p1.x;
+        const y1 = p1.y;
+        const x2 = p2.x;
+        const y2 = p2.y;
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
         // Quadratic Bezier 제어점 — 라인 수직 방향으로 휘게
         const dx = x2 - x1;
         const dy = y2 - y1;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const curve = Math.min(dist * 0.18, 50); // 거리에 비례, 최대 50px 휘어짐
+        // 2026-06-05 — 완만한 arc (이중선의 원인은 중복 엣지였고 dedup 으로 해결).
+        //   체인이 물결치지 않게 가볍게만 휘게. 노드는 _avoid_edge_overlap 가 치움.
+        const curve = Math.min(dist * 0.08, 16); // 거리에 비례, 최대 16px 휘어짐
         // 수직 perpendicular 방향
         const perpX = dist > 0 ? -dy / dist : 0;
         const perpY = dist > 0 ? dx / dist : 0;

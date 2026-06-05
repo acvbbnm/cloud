@@ -210,6 +210,7 @@ class InvestigationBoard:
         - from/to 노드가 모두 존재해야 함
         - 두 노드가 동일 case 에 속해야 함
         - self-loop 금지
+        - 같은 (from, to) 중복 엣지 금지 (2026-06-05 — 평행 이중선 방지)
         """
         if from_node_id == to_node_id:
             return "from_node_id 와 to_node_id 가 동일합니다 (self-loop 금지)"
@@ -219,4 +220,14 @@ class InvestigationBoard:
             return "from_node 또는 to_node 가 존재하지 않습니다"
         if from_node.case_id != case_id or to_node.case_id != case_id:
             return "엣지 양 끝 노드가 요청 case 와 다른 case 에 속합니다"
+        # 중복 엣지 차단 — 같은 방향(from→to)이 이미 있으면 거부
+        existing = db.execute(
+            select(ChainEdgeModel.edge_id).where(
+                ChainEdgeModel.case_id == case_id,
+                ChainEdgeModel.from_node_id == from_node_id,
+                ChainEdgeModel.to_node_id == to_node_id,
+            )
+        ).first()
+        if existing is not None:
+            return "이미 동일한 엣지가 존재합니다 (중복 연결)"
         return None

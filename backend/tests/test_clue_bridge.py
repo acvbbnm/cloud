@@ -22,8 +22,7 @@ from sqlalchemy.orm import sessionmaker
 
 from core.board.chain import ChainNode
 from core.board.clue_bridge import (
-    BRIDGE_FALLBACK_X,
-    BRIDGE_X_STEP,
+    BRIDGE_BASE_X,
     bridge_clue_tree_to_board,
 )
 from core.intake.clue_tree import ClueTree, ClueTreeNode
@@ -316,8 +315,8 @@ def test_bridge_x_starts_right_of_existing(db_session, case) -> None:
 
 
 def test_bridge_x_fallback_when_no_existing(db_session, case) -> None:
-    """기존 노드 0건이면 BRIDGE_FALLBACK_X 부터."""
+    """기존 노드 0건이면 격자 시작점(BRIDGE_BASE_X)부터."""
     tree = _make_tree_with_path(case.case_id)
     result = bridge_clue_tree_to_board(db_session, case.case_id, tree)
     xs = [n["pos_x"] for n in result["created_nodes"]]
-    assert xs[0] == BRIDGE_FALLBACK_X
+    assert xs[0] == BRIDGE_BASE_X

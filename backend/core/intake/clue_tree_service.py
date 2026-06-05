@@ -423,8 +423,23 @@ def retract_clue(db: Session, case_id: str, node_id: str) -> dict:
     if node_id == tree.root_id:
         raise ValueError("root 노드는 철회할 수 없음")
 
+    # 다단계/분기 가드 (2026-06-05) — replay 재구성은 선형·단일 stage 트리에서만
+    # 안전하다. advance_stage 로 stage 가 확정된 트리는 replay 시 cold-start 로
+    # confirmed_hypotheses·stage 구조가 소실되고, 분기 트리는 path_from_root 가
+    # 다른 가지의 채택 단서를 누락시켜 조용한 데이터 유실이 된다 (clue_bridge P.40
+    # 과 동일 취지). 두 경우 모두 개별 철회를 막고 초기화(reset)를 안내한다.
+    if tree.confirmed_hypotheses:
+        raise ValueError(
+            "다단계(여러 사고유형 확정) 상태에서는 단서를 개별 철회할 수 없습니다. "
+            "초기화 후 다시 진행하세요."
+        )
+
     # root·제거 대상 제외한 나머지 단서 스펙 수집 (시간순 = path 순서)
     full_path = path_from_root(tree)
+    if len(full_path) < len(tree.nodes):
+        raise ValueError(
+            "분기된 트리에서는 단서를 개별 철회할 수 없습니다. 초기화 후 다시 진행하세요."
+        )
     remaining: list[dict] = [
         {
             "clue_key": n.clue_key,

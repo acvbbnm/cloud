@@ -120,6 +120,8 @@ const Step3_EvidenceTreeDiscovery = ({
   const [entryGuideDismissed, setEntryGuideDismissed] = useState<boolean>(
     hasDismissedEntryGuide,
   );
+  // 채택된 단서 섹션 접힘 (기본 접힘 — 2026-06-05 사용자 요청)
+  const [cluesCollapsed, setCluesCollapsed] = useState(true);
 
   // ── Phase M.3 (2026-05-26) — Zone 2 chain mode 상태 ──
   // chainFilterHypothesis: AttackChainCard 에서 선택된 가설 (null = 미선택, 통합 풀).
@@ -759,8 +761,29 @@ const Step3_EvidenceTreeDiscovery = ({
         </Card>
 
         {/* 채택된 단서 — 정보 + 삭제 (삭제 시 트리·컴퍼스 replay 재계산) */}
-        <Card title="채택된 단서" subtitle="삭제하면 트리·컴퍼스가 재계산됩니다">
-          {(() => {
+        <Card
+          title="채택된 단서"
+          subtitle="삭제하면 트리·컴퍼스가 재계산됩니다"
+          action={
+            <button
+              type="button"
+              onClick={() => setCluesCollapsed((c) => !c)}
+              className="text-[10px] font-mono text-ink-400 hover:text-ink-100 px-1.5 py-0.5 rounded border border-ink-700 hover:border-ink-500 transition-colors"
+              title={cluesCollapsed ? '채택된 단서 펼치기' : '채택된 단서 접기'}
+            >
+              {(treeState.path ?? []).filter(
+                (n) => n.depth > 0 && n.clue_key !== '__ROOT__',
+              ).length}
+              건 {cluesCollapsed ? '▸ 펼치기' : '▾ 접기'}
+            </button>
+          }
+        >
+          {cluesCollapsed && (
+            <p className="text-[10.5px] text-ink-500 italic py-1.5 text-center">
+              펼치기를 눌러 채택된 단서를 확인·삭제하세요
+            </p>
+          )}
+          {!cluesCollapsed && (() => {
             const adopted = (treeState.path ?? []).filter(
               (n) => n.depth > 0 && n.clue_key !== '__ROOT__',
             );

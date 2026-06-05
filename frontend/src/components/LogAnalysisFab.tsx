@@ -131,11 +131,14 @@ const LogAnalysisFab = () => {
         file,
         clueTree?.posterior_current ?? EMPTY_SCORES,
       );
+      const totalRaw = res.ingestion?.totalEvents;
       setResult({
         caseId: res.caseId,
         mapped_events: res.mapped_events as MappedEvent[],
         analyzed_at: new Date().toISOString(),
         file_name: file.name,
+        total_events:
+          typeof totalRaw === 'number' ? totalRaw : res.mapped_events.length,
       });
       showToast(`✓ ${file.name} 분석 완료 — ${res.mapped_events.length}건 매핑`, 3500);
     } catch (e) {
@@ -355,6 +358,32 @@ const LogAnalysisFab = () => {
                     <div className="text-[10px] text-ink-500 leading-4">
                       {result.mapped_events.length}건 매핑 · {techniqueGroups.length}{' '}
                       기법 식별 · {new Date(result.analyzed_at).toLocaleTimeString('ko-KR')}
+                    </div>
+                    {/* funnel — 수집→공격관련·노이즈 자동제외 (NIST SP 800-86 §3.1 데이터 축소) */}
+                    <div className="mt-2 flex items-center gap-1 text-[10px] font-mono flex-wrap">
+                      <span className="px-1.5 py-0.5 rounded bg-ink-800 text-ink-300 border border-ink-700">
+                        📥 수집 {result.total_events ?? result.mapped_events.length}
+                      </span>
+                      <span className="text-ink-600">→</span>
+                      <span className="px-1.5 py-0.5 rounded bg-brand-teal/15 text-brand-teal border border-brand-teal/40">
+                        🔍 공격 관련 {result.mapped_events.length}
+                      </span>
+                      {(result.total_events ?? result.mapped_events.length) -
+                        result.mapped_events.length >
+                        0 && (
+                        <>
+                          <span className="text-ink-600">·</span>
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-ink-900 text-ink-500 border border-ink-700/60"
+                            title="공격 기법에 매핑되지 않은 로그 — 자동 분류·제외(원본 DB 보존). NIST SP 800-86 §3.1 데이터 축소"
+                          >
+                            🗑 노이즈{' '}
+                            {(result.total_events ?? result.mapped_events.length) -
+                              result.mapped_events.length}{' '}
+                            자동 제외
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 

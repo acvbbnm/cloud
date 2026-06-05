@@ -12,6 +12,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.board.chain import ChainEdge, ChainNode
@@ -20,7 +21,7 @@ from core.board.graph_analytics import auto_layout_positions
 from core.board.investigation_board import InvestigationBoard
 from core.intake.clue_tree_service import _load_tree_from_case  # Phase O.3 — internal helper
 from core.intake.incident_case import IncidentCase
-from db.models import ActionLogModel, AttackEventModel, ChainNodeModel
+from db.models import ActionLogModel, AttackEventModel, ChainNodeModel, OCSFEventModel
 from db.session import get_db
 
 router = APIRouter(prefix="/api/board", tags=["board"])
@@ -394,6 +395,75 @@ async def auto_layout(
         "status": "ok",
         "data": {
             "updated_nodes": updated,
+            "positions": {nid: {"x": x, "y": y} for nid, (x, y) in positions.items()},
+        },
+    }
+
+
+@router.post("/sort-by-time", status_code=status.HTTP_200_OK)
+async def sort_by_time(
+    caseId: str = Query(..., description="시간순 정렬 대상 사고 케이스"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """V-5 시간순 정렬 — 보드 노드를 이벤트 발생 시각 오름차순으로 좌→우 재배치.
+
+    동작:
+      - chain_nodes 조회
+      - attack 노드: attack_id → ocsf_events.time 으로 발생 시각 해석
+      - 시각 있는 노드: 시간 오름차순으로 격자(좌→우, 5열 wrap) 배치
+      - 시각 없는 노드(단서 등): 아래 별도 band 에 배치
+    학술 정합: 침해사고 타임라인 재구성 — 사건의 시간순 정렬 (NIST SP 800-86 §3.1.2).
+    """
+    state = InvestigationBoard.get_state(db, caseId)
+    if state is None:
+        raise _case_not_found()
+    nodes = state.get("nodes", [])
+
+    # attack_id → 발생 시각 (ocsf 원본 시각)
+    attack_ids = [n["attack_id"] for n in nodes if n.get("attack_id")]
+    attack_time: dict = {}
+    if attack_ids:
+        rows = db.execute(
+            select(AttackEventModel.attack_id, OCSFEventModel.time)
+            .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
+            .where(AttackEventModel.attack_id.in_(attack_ids))
+        ).all()
+        attack_time = {aid: t for aid, t in rows if t is not None}
+
+    # 시각 있는/없는 노드 분리
+    timed: list[tuple] = []  # (time, node_id)
+    untimed: list[str] = []
+    for n in nodes:
+        t = attack_time.get(n.get("attack_id")) if n.get("attack_id") else None
+        if t is not None:
+            timed.append((t, n["node_id"]))
+        else:
+            untimed.append(n["node_id"])
+    timed.sort(key=lambda x: x[0])
+
+    # 격자 배치 (clue_bridge 와 동일 셀 크기 — 캔버스 1100×620)
+    BASE_X, BASE_Y, CELL_W, CELL_H, COLS = 80, 80, 200, 95, 5
+    positions: dict = {}
+    for i, (_t, nid) in enumerate(timed):
+        r, c = divmod(i, COLS)
+        positions[nid] = (BASE_X + c * CELL_W, BASE_Y + r * CELL_H)
+    # 시각 없는 노드는 시각 노드 블록 아래 band 에 배치
+    timed_rows = (len(timed) + COLS - 1) // COLS
+    band_y = BASE_Y + timed_rows * CELL_H + 40
+    for j, nid in enumerate(untimed):
+        r, c = divmod(j, COLS)
+        positions[nid] = (BASE_X + c * CELL_W, band_y + r * CELL_H)
+
+    updated = 0
+    for nid, (x, y) in positions.items():
+        if ChainNode.update(db, node_id=nid, pos_x=x, pos_y=y) is not None:
+            updated += 1
+    return {
+        "status": "ok",
+        "data": {
+            "updated_nodes": updated,
+            "timed_nodes": len(timed),
+            "untimed_nodes": len(untimed),
             "positions": {nid: {"x": x, "y": y} for nid, (x, y) in positions.items()},
         },
     }

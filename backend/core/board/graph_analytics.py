@@ -319,40 +319,6 @@ def _avoid_edge_overlap(
     return {nid: (int(round(p[0])), int(round(p[1]))) for nid, p in pos.items()}
 
 
-def _timeline_layout(
-    node_ids: list[str],
-    node_times: dict[str, Optional[str]],
-    *,
-    x0: int,
-    y0: int,
-    cell_w: int,
-    cell_h: int,
-) -> dict[str, tuple[int, int]]:
-    """시간순 타임라인 배치 — x = 발생 시각 순위(좌→우), 동시각은 세로로 쌓음.
-
-    2026-06-05 — '자동 정렬'에 시간순을 녹임. 시각 있는 노드만 처리(시각 없는
-    노드는 호출 측에서 별도 band). 정규화된 시각 문자열을 오름차순 정렬하고,
-    고유 시각마다 컬럼을 하나씩 부여(균등 간격).
-    """
-    timed = sorted(
-        ((node_times[n], n) for n in node_ids if node_times.get(n)),
-        key=lambda x: (str(x[0]), x[1]),  # 시각 → id (안정 정렬, 결정론적)
-    )
-    out: dict[str, tuple[int, int]] = {}
-    col = -1
-    row_in_col = 0
-    last_t: Optional[str] = None
-    for t, n in timed:
-        if t != last_t:
-            col += 1
-            row_in_col = 0
-            last_t = t
-        else:
-            row_in_col += 1
-        out[n] = (x0 + col * cell_w, y0 + row_in_col * cell_h)
-    return out
-
-
 def auto_layout_positions(
     node_ids: list[str],
     edges: list[tuple[str, str]],
@@ -365,9 +331,10 @@ def auto_layout_positions(
     """V-5 자동 정렬.
 
     정책:
-      · node_times 가 주어지면 → 시간순 타임라인 배치 (좌→우 = 발생 시각).
-        시각 있는 노드는 _timeline_layout, 시각 없는 노드는 아래 band.
-        (2026-06-05 — '시간순 정렬'을 자동 정렬에 통합)
+      · node_times 가 주어지면 → 시간순 행렬(그리드) 배치.
+        연결 노드(상단)·미연결 노드(하단)를 위아래로 분리하고, 각 그룹을 시각
+        오름차순으로 정렬해 행렬(좌→우·줄바꿈)로 채움 → 가로 무한 증가 방지.
+        (2026-06-05 — '시간순 정렬'을 자동 정렬에 통합 + 행렬화)
       · node_times 없으면 → 계층형(layered) 배치 (엣지 depth 기준, fallback).
 
     어느 경우든 마지막에 _avoid_edge_overlap 로 선 위 노드를 옆으로 치움.
@@ -391,23 +358,41 @@ def auto_layout_positions(
     CELL_H = NODE_H + GAP_Y      # 104
     cols_all = max(1, (canvas_w - 2 * pad) // CELL_W)
 
-    # ── 시간순 타임라인 배치 (node_times 제공 시 우선) ──
-    # 2026-06-05 — '시간순 정렬'을 자동 정렬에 녹임. 좌→우 = 발생 시각 순서.
+    # ── 시간순 + 행렬(그리드) 배치 (node_times 제공 시 우선) ──
+    # 2026-06-05 — 일렬 타임라인은 노드가 늘수록 가로로 무한정 길어짐 → 행렬로 정리:
+    #   ① 연결 노드(상단) / 미연결 노드(하단) 그룹을 위아래로 분리
+    #   ② 각 그룹을 시각 오름차순 정렬 후 행렬(grid, 좌→우·줄바꿈)로 배치
+    #   ③ 시각 없는 노드는 정렬 맨 뒤(주로 미연결 그룹 하단)
     if node_times:
-        timed = [n for n in node_ids if node_times.get(n)]
-        untimed = [n for n in node_ids if not node_times.get(n)]
-        if timed:  # 시각 있는 노드가 하나라도 있으면 타임라인 적용
-            out = _timeline_layout(
-                timed, node_times, x0=pad, y0=pad, cell_w=CELL_W, cell_h=CELL_H,
+        def _tkey(n: str) -> tuple:
+            t = node_times.get(n)
+            return (t is None, t or "", n)  # 시각 없음 = 맨 뒤, 그다음 시각·id 안정정렬
+
+        conn_set: set[str] = set()
+        for a, b in edges:
+            conn_set.add(a)
+            conn_set.add(b)
+        connected = sorted([n for n in node_ids if n in conn_set], key=_tkey)
+        isolated = sorted([n for n in node_ids if n not in conn_set], key=_tkey)
+
+        gcols = max(5, cols_all)  # 행당 열 수 — 가로 무한 증가 방지
+        out: dict[str, tuple[int, int]] = {}
+        # 연결 노드 — 시간순 행렬 + snake(짝수행 좌→우, 홀수행 우→좌).
+        #   행 끝 다음 노드가 바로 아래 칸에 와서 연속(체인) 엣지가 짧게 유지됨
+        #   (단순 행렬의 wrap-back 긴 엣지 → 회피 로직이 그리드 흐트러뜨리는 문제 해결).
+        for i, nid in enumerate(connected):
+            r, c = divmod(i, gcols)
+            if r % 2 == 1:
+                c = gcols - 1 - c
+            out[nid] = (pad + c * CELL_W, pad + r * CELL_H)
+        if isolated:
+            conn_rows = (len(connected) + gcols - 1) // gcols if connected else 0
+            # 연결 그룹 아래로 빈 한 행 + 셀 높이만큼 띄워 위/아래 시각적 분리
+            iso_y0 = pad + conn_rows * CELL_H + (NODE_H + CELL_H if connected else 0)
+            out.update(
+                _grid_pack(isolated, x0=pad, y0=iso_y0, cols=gcols, cell_w=CELL_W, cell_h=CELL_H)
             )
-            if untimed:  # 시각 없는 노드 → 타임라인 아래 band 격자
-                max_y = max((p[1] for p in out.values()), default=pad)
-                iso_y0 = max_y + NODE_H + CELL_H
-                out.update(
-                    _grid_pack(untimed, x0=pad, y0=iso_y0, cols=cols_all,
-                               cell_w=CELL_W, cell_h=CELL_H)
-                )
-            return _avoid_edge_overlap(out, edges, node_w=NODE_W, node_h=NODE_H)
+        return _avoid_edge_overlap(out, edges, node_w=NODE_W, node_h=NODE_H)
 
     # networkx 없거나 1 노드 → 전체 격자 (상단부터)
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:

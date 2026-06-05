@@ -391,6 +391,29 @@ async def post_analyze_logs(
         technique_ids=technique_ids,
     )
 
+    # 노이즈 — 이 업로드의 ocsf 중 attack 매핑이 전혀 없는 이벤트 (공격 무관 자동 분류).
+    # funnel '노이즈' 필터에서 열람용. 원본은 DB 에 보존됨(삭제 아님).
+    mapped_ocsf_ids = {a.ocsf_id for (a, _o) in rows}
+    all_ocsf = list(
+        db.execute(
+            select(OCSFEventModel)
+            .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
+            .where(RawEventModel.case_id == case.case_id)
+            .where(RawEventModel.sha256 == ingest_stats.sha256)
+        ).scalars()
+    )
+    noise_events = [
+        {
+            "ocsf_id": o.ocsf_id,
+            "time": o.time.isoformat() if o.time else None,
+            "actor_user_name": o.actor_user_name,
+            "src_endpoint_ip": o.src_endpoint_ip,
+            "activity_name": o.activity_name,
+        }
+        for o in all_ocsf
+        if o.ocsf_id not in mapped_ocsf_ids
+    ]
+
     return {
         "status": "ok",
         "data": {
@@ -401,6 +424,7 @@ async def post_analyze_logs(
             "hypothesis_scores": analyze_out["hypothesis_scores"],
             "mapped_techniques": technique_ids,
             "mapped_events": [_serialize_mapped_event(a, o) for (a, o) in in_window],
+            "noise_events": noise_events,
             "events_outside_window": max(0, len(rows) - len(in_window)),
             "ingestion": ingest_stats.to_dict(),
             "normalization": norm_stats,

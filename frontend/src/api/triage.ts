@@ -71,6 +71,14 @@ export interface AnalyzeLogsResponse {
     src_endpoint_ip: string | null;
     activity_name: string | null;
   }>;
+  /** 노이즈(공격 미매핑) 이벤트 — funnel '노이즈' 필터 표시용. */
+  noise_events?: Array<{
+    ocsf_id: string;
+    time: string | null;
+    actor_user_name: string | null;
+    src_endpoint_ip: string | null;
+    activity_name: string | null;
+  }>;
   ingestion?: Record<string, unknown>;
   normalization?: Record<string, unknown>;
   mapping?: Record<string, unknown>;

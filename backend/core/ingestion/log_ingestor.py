@@ -137,16 +137,25 @@ class LogIngestor:
 
         stats = IngestionStats(sha256=sha256, source_file=filename)
         new_rows: list[RawEventModel] = []
+        # CRED 서브계정 catch-all (ncp_credential_theft 의 product=="SubAccount" 규칙).
+        # 다른 유형의 *구체적* 매칭이 있으면 이 generic 매치는 양보한다.
+        generic_targets = {"CT-NCP-IAM-002"}
         for ev in parsed:
             stats.total_events += 1
-            # 주 유형 우선, 안 맞으면 부 유형 순차 시도 — 첫 유효 매치 채택.
+            # 확정 유형별 매칭 후보를 모두 수집 (primary 우선 순서 유지) 후,
+            # CRED 서브계정 catch-all 보다 다른 유형의 구체적 매칭을 우선 채택한다.
+            # 복합 케이스에서 권한상승 행위(Create sub account / Attach policy 등)가
+            # CRED(IAM-002)로 흡수돼 부 유형 수집 완료율이 0% 되던 버그 fix (2026-06-05).
             # (matched_target_id 는 이벤트당 1개 컬럼이므로 단일 target 만 기록)
-            target_id: Optional[str] = None
+            cands: list[str] = []
             for itype in confirmed_types:
                 cand = matchers.match(used_csp, itype, ev)
-                if cand and cand in valid_target_ids:
-                    target_id = cand
-                    break
+                if cand and cand in valid_target_ids and cand not in cands:
+                    cands.append(cand)
+            specific = [c for c in cands if c not in generic_targets]
+            target_id: Optional[str] = (
+                specific[0] if specific else (cands[0] if cands else None)
+            )
             if target_id:
                 stats.matched += 1
                 stats.by_target[target_id] = stats.by_target.get(target_id, 0) + 1

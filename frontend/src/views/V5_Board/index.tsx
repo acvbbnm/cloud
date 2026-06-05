@@ -12,7 +12,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
 import type { BoardLog } from '@/stores/useBoardStore';
-import { getBoard, createNode, updateNode, createEdge, deleteEdge, deleteNode, autoLayout, isClueNode } from '@/api/board';
+import { getBoard, createNode, updateNode, createEdge, deleteEdge, deleteNode, autoLayout, sortByTime, isClueNode } from '@/api/board';
 import { runMap } from '@/api/analysis';
 import { getAttack } from '@/api/analysis';
 import { postBrief } from '@/api/sherpa';
@@ -318,6 +318,22 @@ const V5Board = () => {
     },
   });
 
+  // 시간순 정렬 — 이벤트 발생 시각 오름차순으로 노드 좌→우 재배치 (시각 없는 단서는 하단)
+  const sortByTimeMutation = useMutation({
+    mutationFn: () => sortByTime(caseId!),
+    onSuccess: (data) => {
+      showToast(
+        `⏱ 시간순 정렬 — ${data.timed_nodes}개 시각순 배치` +
+          (data.untimed_nodes ? ` · ${data.untimed_nodes}개 시각없음(하단)` : ''),
+      );
+      queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`시간순 정렬 실패: ${msg}`);
+    },
+  });
+
   // 가독성 정리 — V-5 에서 직접 ATT&CK 매핑 실행 (V-6 안 거치고)
   const mapAttackMutation = useMutation({
     mutationFn: () => runMap(caseId!),
@@ -463,6 +479,14 @@ const V5Board = () => {
                     title="networkx spring_layout 으로 노드 좌표 일괄 재배치 (POST /api/board/auto-layout)"
                   >
                     {autoLayoutMutation.isPending ? '정렬 중…' : '자동 정렬'}
+                  </button>
+                  <button
+                    onClick={() => sortByTimeMutation.mutate()}
+                    disabled={!caseId || boardNodes.length === 0 || sortByTimeMutation.isPending}
+                    className="text-[11px] px-2.5 py-1 rounded-lg border border-brand-blue/50 bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="이벤트 발생 시각 오름차순으로 노드 좌→우 재배치 (시각 없는 단서는 하단). POST /api/board/sort-by-time"
+                  >
+                    {sortByTimeMutation.isPending ? '정렬 중…' : '⏱ 시간순 정렬'}
                   </button>
                   <button
                     onClick={toggleEdgeMode}

@@ -28,6 +28,8 @@ export interface LogAnalysisResult {
   mapped_events: MappedEvent[];
   analyzed_at: string;  // ISO-8601
   file_name: string;
+  /** funnel — 수집 전체 이벤트 수(ingestion.totalEvents). 노이즈 = total - mapped. */
+  total_events?: number;
 }
 
 interface LogAnalysisStoreState {

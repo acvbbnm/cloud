@@ -93,6 +93,18 @@ export const autoLayout = async (caseId: string): Promise<{
   return res.data.data;
 };
 
+/** POST /api/board/sort-by-time?caseId= — 노드를 이벤트 발생 시각 오름차순 재배치.
+ *  attack 노드는 ocsf time 으로 정렬, 시각 없는 단서 노드는 하단 band 에 배치. */
+export const sortByTime = async (caseId: string): Promise<{
+  updated_nodes: number;
+  timed_nodes: number;
+  untimed_nodes: number;
+  positions: Record<string, { x: number; y: number }>;
+}> => {
+  const res = await client.post('/api/board/sort-by-time', null, { params: { caseId } });
+  return res.data.data;
+};
+
 /** Phase O.3 — POST /api/board/nodes/from-clue-tree.
  *  Evidence Tree 의 채택 단서들을 보드 노드로 일괄 이관 (멱등 + 옵션 엣지). */
 export const bridgeFromClueTree = async (

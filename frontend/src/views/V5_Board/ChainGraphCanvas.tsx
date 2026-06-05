@@ -687,9 +687,14 @@ const ChainGraphCanvas = ({
         const dx = x2 - x1;
         const dy = y2 - y1;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        // 2026-06-05 — 완만한 arc (이중선의 원인은 중복 엣지였고 dedup 으로 해결).
-        //   체인이 물결치지 않게 가볍게만 휘게. 노드는 _avoid_edge_overlap 가 치움.
-        const curve = Math.min(dist * 0.08, 16); // 거리에 비례, 최대 16px 휘어짐
+        // 2026-06-05 — 거리 기반 곡률 (사용자 요청):
+        //   · 가까운 노드(≤150px) → 곡률 ≈ 0 (거의 직선)
+        //   · 멀어질수록 휘어짐 ↑ (150px 초과분에 비례)
+        //   · 단, 상한 캡(34px) 이상은 안 넘김 (노드 회피 클리어런스 ~50px 내라 안전)
+        const CURVE_DEADZONE = 150; // 이 거리 이하는 직선
+        const CURVE_SLOPE = 0.13; // 초과 거리당 곡률 증가율
+        const CURVE_MAX = 34; // 곡률 상한
+        const curve = Math.min(Math.max(0, dist - CURVE_DEADZONE) * CURVE_SLOPE, CURVE_MAX);
         // 수직 perpendicular 방향
         const perpX = dist > 0 ? -dy / dist : 0;
         const perpY = dist > 0 ? dx / dist : 0;

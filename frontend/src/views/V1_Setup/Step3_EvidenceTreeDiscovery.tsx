@@ -116,6 +116,12 @@ const Step3_EvidenceTreeDiscovery = ({
   // NIST SP 800-86 §4.1 Initial Triage. cold-start ~ depth 1 구간에 노출,
   // depth ≥ 2 면 자동 숨김. 사용자 X 클릭으로 영구 dismiss (sessionStorage).
   const [reconDismissed, setReconDismissed] = useState<boolean>(hasDismissedRecon);
+  // 2026-06-05 (사용자 요청) — depth>=2 자동 숨김 후에도 "다시 열기" 로 강제 노출.
+  // 1차 정찰 선택을 취소/되돌리기 위해 박스를 되살리는 용도.
+  const [reconForceOpen, setReconForceOpen] = useState<boolean>(false);
+  // 2026-06-05 (사용자 요청) — 채택된 단서 목록 페이지네이션(무한 증가 방지).
+  const [adoptedPage, setAdoptedPage] = useState<number>(0);
+  const ADOPTED_PAGE_SIZE = 8;
   // Phase P.2 (2026-05-26) — 기본 수사 가이드 dismiss (UNCLASSIFIED 필수 로그 점검표)
   const [entryGuideDismissed, setEntryGuideDismissed] = useState<boolean>(
     hasDismissedEntryGuide,
@@ -527,8 +533,9 @@ const Step3_EvidenceTreeDiscovery = ({
           />
         )}
 
-        {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시 */}
-        {!reconDismissed && (treeState.path.length - 1) < 2 && (
+        {/* Phase N.1 (2026-05-26) — 1차 정찰 가이드: cold-start ~ depth 1, 미dismiss 시.
+            2026-06-05 — depth>=2 자동 숨김이어도 reconForceOpen 이면 재노출(선택 취소용). */}
+        {!reconDismissed && ((treeState.path.length - 1) < 2 || reconForceOpen) && (
           <ReconClueCard
             acceptedClueKeys={acceptedClueKeys}
             disabled={loading || isSubmitting}
@@ -550,8 +557,43 @@ const Step3_EvidenceTreeDiscovery = ({
                 showToast(`정찰 단서 채택 실패: ${msg}`, 4500);
               }
             }}
+            onRetract={async (clueKey, label) => {
+              if (!caseId) return;
+              const current = useClueTreeStore.getState().response;
+              if (!current) return;
+              // clue_key → node_id 역매핑 (선형 트리에서 해당 노드 1개).
+              const node = Object.values(current.tree.nodes).find(
+                (n) => n.clue_key === clueKey,
+              );
+              if (!node) {
+                showToast('해제할 단서 노드를 찾을 수 없습니다', 3000);
+                return;
+              }
+              try {
+                await retract(caseId, node.node_id);
+                showToast(`정찰 단서 해제 — ${label}`, 2500);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                showToast(`정찰 단서 해제 실패: ${msg}`, 4500);
+              }
+            }}
           />
         )}
+
+        {/* 2026-06-05 (사용자 요청) — depth>=2 로 1차 정찰이 자동 숨겨졌을 때 되살리기 바.
+            영구 dismiss(X) 가 아니고, 아직 강제 노출 상태가 아닐 때만 표시. */}
+        {!reconDismissed &&
+          (treeState.path.length - 1) >= 2 &&
+          !reconForceOpen && (
+            <button
+              type="button"
+              onClick={() => setReconForceOpen(true)}
+              className="w-full text-[10.5px] text-amber-300/80 hover:text-amber-100 border border-dashed border-amber-700/40 hover:border-amber-500/60 rounded-lg py-1.5 transition-colors"
+              title="1차 정찰 가이드를 다시 열어 선택을 취소/변경합니다"
+            >
+              ↩ 1차 정찰 다시 열기 (선택 취소·변경)
+            </button>
+          )}
 
         <Card
           title={mainView === 'tree' ? 'Evidence Tree' : '사고유형 컴퍼스'}
@@ -778,9 +820,53 @@ const Step3_EvidenceTreeDiscovery = ({
               log_analysis: '로그 분석',
               heal: '자동 복구',
             };
+            // 페이지네이션 — 무한 증가 방지. page 는 렌더 시 유효 범위로 clamp.
+            const totalPages = Math.max(
+              1,
+              Math.ceil(adopted.length / ADOPTED_PAGE_SIZE),
+            );
+            const page = Math.min(Math.max(0, adoptedPage), totalPages - 1);
+            const pageItems = adopted.slice(
+              page * ADOPTED_PAGE_SIZE,
+              (page + 1) * ADOPTED_PAGE_SIZE,
+            );
             return (
-              <ul className="space-y-1.5">
-                {adopted.map((n) => (
+              <div className="space-y-2">
+                {/* 헤더 — 총 개수 + 페이지 네비게이션 */}
+                <div className="flex items-center justify-between text-[10px] text-ink-400">
+                  <span className="font-mono">
+                    총 {adopted.length}개
+                    {totalPages > 1 &&
+                      ` · ${page * ADOPTED_PAGE_SIZE + 1}–${page * ADOPTED_PAGE_SIZE + pageItems.length}`}
+                  </span>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAdoptedPage(page - 1)}
+                        disabled={page <= 0}
+                        className="px-1.5 py-0.5 rounded border border-ink-700/60 hover:border-brand-teal/60 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="이전 페이지"
+                      >
+                        ‹
+                      </button>
+                      <span className="font-mono tabular-nums">
+                        {page + 1} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAdoptedPage(page + 1)}
+                        disabled={page >= totalPages - 1}
+                        className="px-1.5 py-0.5 rounded border border-ink-700/60 hover:border-brand-teal/60 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="다음 페이지"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <ul className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1">
+                {pageItems.map((n) => (
                   <li
                     key={n.node_id}
                     className="flex items-start gap-2 bg-ink-900/50 border border-ink-700/60 rounded-lg px-2.5 py-2"
@@ -826,7 +912,8 @@ const Step3_EvidenceTreeDiscovery = ({
                     </button>
                   </li>
                 ))}
-              </ul>
+                </ul>
+              </div>
             );
           })()}
         </Card>

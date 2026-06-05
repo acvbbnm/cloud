@@ -17,7 +17,10 @@
  * ----
  *   - mount 시 `getReconOptions()` 호출 → Q1·Q2A 그룹 표시
  *   - 옵션 클릭 → `onAdopt(clueKey)` 콜백 → Step3 가 expand_tree 호출
- *   - **`treeDepth >= 2` 이면 자동 dismiss** (사용자가 2개 이상 누적 후 자체 단서로)
+ *   - **선택된 옵션(✓) 재클릭 → `onRetract(clueKey)` 콜백 → Step3 가 retract 호출**
+ *     (2026-06-05 사용자 요청 — 1차 정찰 선택 취소/되돌리기 지원)
+ *   - **`treeDepth >= 2` 이면 자동 dismiss** (사용자가 2개 이상 누적 후 자체 단서로).
+ *     단, Step3 가 "다시 열기" 로 재노출 가능 → 해제로 되돌릴 수 있음.
  *   - 사용자 명시 X 버튼으로 영구 dismiss (sessionStorage)
  *
  * 디자인
@@ -36,7 +39,10 @@ import type { IncidentType } from '@/types';
 interface ReconClueCardProps {
   /** 옵션 클릭 → 단서 채택 콜백. Step3 가 expand_tree 호출. */
   onAdopt: (clueKey: string, label: string) => Promise<void> | void;
-  /** 트리에 이미 채택된 clue_key set — 중복 옵션 비활성. */
+  /** 이미 선택된 옵션 재클릭 → 단서 철회(선택 해제) 콜백. Step3 가 retract 호출.
+   *  미지정 시 선택 옵션은 비활성(기존 동작) 유지. */
+  onRetract?: (clueKey: string, label: string) => Promise<void> | void;
+  /** 트리에 이미 채택된 clue_key set — 선택 표시(✓) + 재클릭 시 해제. */
   acceptedClueKeys: Set<string>;
   /** loading 중. */
   disabled?: boolean;
@@ -97,6 +103,7 @@ export const hasDismissedRecon = (): boolean => {
 
 const ReconClueCard = ({
   onAdopt,
+  onRetract,
   acceptedClueKeys,
   disabled = false,
   onDismiss,
@@ -127,10 +134,16 @@ const ReconClueCard = ({
 
   const handleClick = async (opt: ReconClueOption) => {
     if (disabled || adoptingKey) return;
-    if (acceptedClueKeys.has(opt.clue_key)) return;
+    const accepted = acceptedClueKeys.has(opt.clue_key);
+    // 이미 선택된 옵션 재클릭 → 해제(철회). onRetract 미지정이면 무시(기존 동작).
+    if (accepted && !onRetract) return;
     setAdoptingKey(opt.clue_key);
     try {
-      await onAdopt(opt.clue_key, opt.short_label);
+      if (accepted) {
+        await onRetract?.(opt.clue_key, opt.short_label);
+      } else {
+        await onAdopt(opt.clue_key, opt.short_label);
+      }
     } finally {
       setAdoptingKey(null);
     }
@@ -201,13 +214,17 @@ const ReconClueCard = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {g.options.map((opt) => {
                     const accepted = acceptedClueKeys.has(opt.clue_key);
+                    // 선택 항목은 onRetract 가 있을 때 재클릭으로 해제 가능.
+                    const removable = accepted && !!onRetract;
                     return (
                       <div
                         key={opt.clue_key}
                         className={
-                          'rounded border transition-all flex items-stretch ' +
+                          'group rounded border transition-all flex items-stretch ' +
                           (accepted
-                            ? 'bg-emerald-900/15 border-emerald-700/30 opacity-60'
+                            ? removable
+                              ? 'bg-emerald-900/15 border-emerald-700/40 hover:border-red-500/60 hover:bg-red-900/15'
+                              : 'bg-emerald-900/15 border-emerald-700/30 opacity-60'
                             : adoptingKey === opt.clue_key
                               ? 'bg-amber-900/30 border-amber-500/60'
                               : 'bg-ink-900/40 border-ink-700/60 hover:border-amber-500/60 hover:bg-amber-900/15')
@@ -216,9 +233,13 @@ const ReconClueCard = ({
                         <button
                           type="button"
                           onClick={() => handleClick(opt)}
-                          disabled={disabled || accepted || adoptingKey !== null}
+                          disabled={disabled || (accepted && !removable) || adoptingKey !== null}
                           className="text-left px-2.5 py-1.5 flex-1 min-w-0 cursor-pointer disabled:cursor-not-allowed"
-                          title={opt.short_label}
+                          title={
+                            removable
+                              ? `${opt.short_label} — 클릭하면 선택 해제`
+                              : opt.short_label
+                          }
                         >
                           <div className="flex items-start gap-1.5">
                             {/* V1.fix.18 — 라벨 두 줄 wrap (이전: 한 줄로 옆 카드 영역 침범).
@@ -236,6 +257,11 @@ const ReconClueCard = ({
                             >
                               {accepted ? '✓ ' : '◯ '}
                               {opt.short_label}
+                              {removable && (
+                                <span className="text-[9px] text-red-300/80 ml-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                  · 클릭 해제
+                                </span>
+                              )}
                             </span>
                           </div>
                         </button>

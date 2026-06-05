@@ -53,6 +53,14 @@ interface MappedEvent {
   activity_name: string | null;
 }
 
+interface NoiseEvent {
+  ocsf_id: string;
+  time: string | null;
+  actor_user_name: string | null;
+  src_endpoint_ip: string | null;
+  activity_name: string | null;
+}
+
 interface TechniqueGroup {
   technique_id: string;
   technique_name: string | null;
@@ -218,13 +226,51 @@ const LogAnalysisFab = () => {
     }
   };
 
+  /** 노이즈(공격 미매핑) 이벤트도 raw OCSF 관점으로 적재 가능.
+   *  ATT&CK hint 가 없을 뿐 원본은 보존되므로 수사관이 직접 단서로 채택할 수 있다. */
+  const buildNoiseLog = (ev: NoiseEvent) => {
+    const obs: Observable[] = [];
+    if (isMeaningful(ev.actor_user_name)) {
+      obs.push({ type: 'ACCOUNT', value: ev.actor_user_name!, note: ev.activity_name ?? undefined });
+    }
+    if (isMeaningful(ev.src_endpoint_ip)) {
+      obs.push({ type: 'IP_ADDRESS', value: ev.src_endpoint_ip!, note: ev.activity_name ?? undefined });
+    }
+    return {
+      loaded_id: `noise-${ev.ocsf_id}`,
+      source: 'ocsf' as const,
+      source_id: ev.ocsf_id,
+      time: ev.time,
+      label: ev.activity_name || ev.ocsf_id.slice(0, 12),
+      observables: obs,
+      fields: {
+        time: ev.time,
+        actor_user: ev.actor_user_name,
+        src_ip: ev.src_endpoint_ip,
+        activity_name: ev.activity_name,
+      },
+    };
+  };
+
+  const handleLoadNoise = (ev: NoiseEvent) => {
+    if (!canLoad) return;
+    if (loadEvidence(buildNoiseLog(ev))) {
+      showToast(`➜ V-1 적재함: ${ev.activity_name ?? ev.ocsf_id.slice(0, 8)}`, 2500);
+    } else {
+      showToast('이미 적재됨', 1800);
+    }
+  };
+
   const handleLoadAll = () => {
     if (!canLoad || !result) return;
     let added = 0;
     for (const ev of result.mapped_events as MappedEvent[]) {
       if (loadEvidence(buildEventLog(ev))) added += 1;
     }
-    const total = result.mapped_events.length;
+    for (const ev of (result.noise_events ?? []) as NoiseEvent[]) {
+      if (loadEvidence(buildNoiseLog(ev))) added += 1;
+    }
+    const total = result.mapped_events.length + (result.noise_events?.length ?? 0);
     showToast(
       added > 0
         ? `➜ V-1 적재함에 ${added}건 추가 (${total - added}건 이미 적재됨)`
@@ -515,7 +561,9 @@ const LogAnalysisFab = () => {
                           );
                         })}
                         {showNoise &&
-                          noiseEvents.map((ev) => (
+                          noiseEvents.map((ev) => {
+                            const noiseLoaded = evidenceHas(`noise-${ev.ocsf_id}`);
+                            return (
                             <div
                               key={`noise-${ev.ocsf_id}`}
                               className="bg-ink-950/40 border border-ink-800/70 rounded-lg px-2.5 py-2"
@@ -554,15 +602,39 @@ const LogAnalysisFab = () => {
                                       )}
                                   </div>
                                 </div>
-                                <span
-                                  className="text-[9px] font-mono whitespace-nowrap px-1.5 py-0.5 rounded border border-ink-700 text-ink-500 self-start"
-                                  title="공격 기법에 매핑되지 않은 이벤트 — 자동 노이즈 분류 (원본 보존)"
-                                >
-                                  노이즈
-                                </span>
+                                <div className="flex flex-col items-end gap-1 self-start">
+                                  <span
+                                    className="text-[9px] font-mono whitespace-nowrap px-1.5 py-0.5 rounded border border-ink-700 text-ink-500"
+                                    title="공격 기법에 매핑되지 않은 이벤트 — 자동 노이즈 분류 (원본 보존)"
+                                  >
+                                    노이즈
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleLoadNoise(ev)}
+                                    disabled={!canLoad || noiseLoaded}
+                                    className={`text-[9.5px] font-mono whitespace-nowrap px-2 py-0.5 rounded border transition-colors ${
+                                      noiseLoaded
+                                        ? 'border-emerald-600/70 text-emerald-300 bg-emerald-900/30 cursor-default'
+                                        : canLoad
+                                        ? 'border-brand-teal/50 text-brand-teal hover:bg-brand-teal/10'
+                                        : 'border-ink-700 text-ink-500 cursor-not-allowed opacity-50'
+                                    }`}
+                                    title={
+                                      !canLoad
+                                        ? '활성 케이스 없음 (V-1 사고 접수 후 가능)'
+                                        : noiseLoaded
+                                        ? '이미 V-1 적재함에 있음'
+                                        : '노이즈 event 를 V-1 Step3 적재함에 추가 — 거기서 observable 칩으로 단서 채택'
+                                    }
+                                  >
+                                    {noiseLoaded ? '✓ 적재됨' : '➜ 적재함'}
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                       </div>
 
                       {showMapped &&

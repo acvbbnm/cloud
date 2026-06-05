@@ -397,8 +397,27 @@ const IncidentTypeCompass = ({
       }
     }
     if (cur.length > 0) segs.push(cur);
-    return segs;
-  }, [trail]);
+    // 복합 체인: stage>1 세그먼트는 첫 단서 노드(반지름 ~0.46R)에서 시작해
+    // 중앙과 끊겨 보임. 각 stage>1 세그먼트 앞에 중앙점을 끼워 넣어
+    // 색 polyline 이 중앙(시작 노드)에서 뻗어나오도록 연결한다.
+    return segs.map((seg) => {
+      const head = seg[0];
+      if (head && head.stage > 1 && head.clueKey !== '__ROOT__') {
+        const centerPoint: TrailPoint = {
+          x: center,
+          y: center,
+          clueKey: `__STAGE${head.stage}_CENTER__`,
+          label: '',
+          depth: head.depth,
+          stageDepth: 0,
+          posterior: head.posterior,
+          stage: head.stage,
+        };
+        return [centerPoint, ...seg];
+      }
+      return seg;
+    });
+  }, [trail, center]);
 
   const currentPos = trail.length > 0 ? trail[trail.length - 1] : null;
 

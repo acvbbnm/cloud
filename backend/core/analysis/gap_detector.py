@@ -15,12 +15,14 @@ multi-type (2026-05-31): 단서 루프에서 2개 이상의 사고유형이 확�
 응답 `perType` 배열로 유형별 결과를 내려주고, gap_results 에는 기존과 동일하게
 전체(worst) 1행만 적재해 report_generator 등 기존 소비자 호환을 유지한다.
 """
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import distinct, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.ingestion import matchers
 from db.models import (
     AttackEventModel,
     CollectionTargetModel,
@@ -182,6 +184,64 @@ class GapDetector:
                 types.append(t)
         return types or [case.incident_type]
 
+    # ── 유형별 독립 재매칭 (2026-06-05 복합 케이스 100% 갭 fix) ──────────
+    # 문제: raw_events.matched_target_id 는 이벤트당 1개 컬럼이라 LogIngestor 가
+    #   확정 유형 전체에 대해 '첫 유효 매치'만 기록한다. 매처들이 겹치면(예: Login →
+    #   CT/DE/PRIV 모두 후보) 한 유형이 다른 유형의 증거를 가로채 부 유형이 영원히
+    #   COLLECTION 갭(0~80%)으로 떨어진다. 시연 복합(CRED+PRIV+DE) 3종이 모두
+    #   100%/NONE 이 되지 못하던 근본 원인.
+    # 해결: 갭 판정 시 case 의 raw_events 를 사고유형별 매처로 *각각* 다시 매칭하여
+    #   유형별 수집 집합을 독립 계산한다. 한 이벤트가 여러 유형을 동시에 충족할 수
+    #   있게 된다. matched_target_id 컬럼은 보드/보고서 표시용으로 그대로 둔다.
+    @staticmethod
+    def _flatten_for_match(csp: str, raw: dict) -> dict:
+        """raw_json(원본 event dict) → 매처 입력 평탄 dict 재구성.
+
+        parsers.{ncp,nhn}.parse 의 매칭 관련 필드만 복원한다 (action/product_name
+        또는 event_id). 나머지 필드는 매처가 보지 않으므로 생략."""
+        if csp == "nhn":
+            return {"event_id": raw.get("eventId")}
+        return {
+            "action": raw.get("action"),
+            "product_name": raw.get("productName"),
+        }
+
+    @classmethod
+    def _per_type_collected(
+        cls, db: Session, case: IncidentCaseModel, types: list[str]
+    ) -> dict[str, set[str]]:
+        """사고유형별 수집 target_id 집합 — raw_events 재매칭 결과.
+
+        반환: {incident_type: {target_id, ...}}. 매처가 반환하는 target_id 는
+        해당 유형 카탈로그에 속하므로 별도 교집합 없이 그대로 누적한다."""
+        raw_jsons = list(
+            db.execute(
+                select(RawEventModel.raw_json).where(
+                    RawEventModel.case_id == case.case_id
+                )
+            ).scalars()
+        )
+        evs: list[dict] = []
+        for rj in raw_jsons:
+            if not rj:
+                continue
+            try:
+                raw = json.loads(rj)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(raw, dict):
+                evs.append(cls._flatten_for_match(case.csp, raw))
+
+        result: dict[str, set[str]] = {}
+        for t in types:
+            collected: set[str] = set()
+            for ev in evs:
+                tid = matchers.match(case.csp, t, ev)
+                if tid:
+                    collected.add(tid)
+            result[t] = collected
+        return result
+
     @classmethod
     def _detect_for_type(
         cls,
@@ -288,13 +348,6 @@ class GapDetector:
             return None
 
         # ── 케이스 전역 카운트 (사고유형 무관) ──
-        collected_ids = set(
-            db.execute(
-                select(distinct(RawEventModel.matched_target_id))
-                .where(RawEventModel.case_id == case_id)
-                .where(RawEventModel.matched_target_id.is_not(None))
-            ).scalars()
-        )
         total_ocsf_n = len(
             db.execute(
                 select(OCSFEventModel)
@@ -311,11 +364,17 @@ class GapDetector:
             ).all()
         )
 
-        # ── 유형별 독립 판정 ──
+        # ── 유형별 독립 판정 (유형별 재매칭 수집 집합 사용) ──
         types = cls._incident_types(case)
+        per_type_collected = cls._per_type_collected(db, case, types)
+        # union — 전역 완수율/우선순위/bad-config 지표용 (어느 유형이든 수집되면 포함).
+        union_collected: set[str] = set()
+        for s in per_type_collected.values():
+            union_collected |= s
+
         per_type = [
             cls._detect_for_type(
-                db, case, t, collected_ids, total_ocsf_n, mapped_n
+                db, case, t, per_type_collected.get(t, set()), total_ocsf_n, mapped_n
             )
             for t in types
         ]
@@ -366,7 +425,7 @@ class GapDetector:
             )
             all_scope_ids |= ids
         completion_rate = (
-            round(len(all_scope_ids & collected_ids) / len(all_scope_ids) * 100, 2)
+            round(len(all_scope_ids & union_collected) / len(all_scope_ids) * 100, 2)
             if all_scope_ids
             else None
         )
@@ -404,11 +463,11 @@ class GapDetector:
                     seen_cor_ids.add(tgt.target_id)
                     all_corroborating_targets.append(tgt)
 
-        priority_score = _compute_priority_score(all_required_targets, collected_ids)
+        priority_score = _compute_priority_score(all_required_targets, union_collected)
         tactic_coverage = _compute_tactic_coverage(db, case_id)
         time_gaps = _detect_time_gaps(db, case_id)
         bad_config_signals = _detect_bad_config(
-            all_required_targets, all_corroborating_targets, collected_ids
+            all_required_targets, all_corroborating_targets, union_collected
         )
 
         # ── DB 적재 (전체 1행만 — 기존 소비자 호환) ──

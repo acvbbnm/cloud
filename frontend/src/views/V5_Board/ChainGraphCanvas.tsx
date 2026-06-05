@@ -708,14 +708,15 @@ const ChainGraphCanvas = ({
         };
         return (
           <g key={e.edge_id} className="board-edge-group">
-            {/* 실제 화살표 베지어 곡선 */}
+            {/* 연결선 (방향 화살표 없음) — 2026-06-05: 보드가 시간순(좌→우) 배치라
+                위치가 흐름을 표현. 저장된 엣지 방향의 50%가 시간을 역행해(데이터 확인)
+                화살표가 오히려 모순 → 무방향 선으로 표시. */}
             <path
               d={path}
               fill="none"
               stroke="#3D7BFF"
               strokeWidth={2}
               opacity={0.7}
-              markerEnd="url(#chain-arrow)"
               style={{ pointerEvents: 'none' }}
             />
             {/* 클릭 hit area — 같은 곡선 위에 굵은 투명 선 (Delete 트리거) */}

@@ -8,6 +8,7 @@
 - POST  /api/board/edges              — 엣지 추가 (양 끝 노드 검증)
 - GET   /api/board?caseId=            — case 전체 보드 상태
 """
+import re
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -366,17 +367,59 @@ async def delete_edge(edge_id: str, db: Session = Depends(get_db)) -> dict:
     return {"status": "ok", "data": {"edge_id": edge_id, "deleted": True}}
 
 
+# 단서 노드 라벨의 시각 접두사 — 예: "[2026-04-10T05:53:51] ..."
+_NODE_TS_RE = re.compile(r"\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})")
+
+
+def _norm_time(value: object) -> str:
+    """시각 문자열 정규화 — 'T'/공백 구분자 통일 후 'YYYY-MM-DD HH:MM:SS' 19자."""
+    return str(value).replace("T", " ")[:19]
+
+
+def _resolve_node_times(db: Session, nodes: list[dict]) -> dict[str, Optional[str]]:
+    """보드 노드별 발생 시각 해석 → {node_id: 정규화 시각 문자열 | None}.
+
+    - attack 노드: attack_id → ocsf_events.time
+    - 단서 노드: 라벨의 [YYYY-MM-DDThh:mm:ss] 접두사 파싱
+    시각 미상은 None (호출 측에서 타임라인 아래 band 로 배치).
+    """
+    attack_ids = [n["attack_id"] for n in nodes if n.get("attack_id")]
+    atime: dict = {}
+    if attack_ids:
+        rows = db.execute(
+            select(AttackEventModel.attack_id, OCSFEventModel.time)
+            .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
+            .where(AttackEventModel.attack_id.in_(attack_ids))
+        ).all()
+        atime = {aid: t for aid, t in rows if t is not None}
+
+    out: dict[str, Optional[str]] = {}
+    for n in nodes:
+        t: Optional[str] = None
+        aid = n.get("attack_id")
+        if aid and aid in atime:
+            t = _norm_time(atime[aid])
+        else:
+            m = _NODE_TS_RE.search(n.get("label") or "")
+            if m:
+                t = _norm_time(m.group(1))
+        out[n["node_id"]] = t
+    return out
+
+
 @router.post("/auto-layout", status_code=status.HTTP_200_OK)
 async def auto_layout(
     caseId: str = Query(..., description="자동 정렬 대상 사고 케이스"),
     db: Session = Depends(get_db),
 ) -> dict:
-    """V-5 자동 정렬 — networkx spring_layout 으로 노드 좌표 일괄 재계산.
+    """V-5 자동 정렬 — 시간순 타임라인 배치 (좌→우 = 발생 시각).
 
-    동작:
+    동작 (2026-06-05 — '시간순 정렬'을 자동 정렬에 통합):
       - chain_nodes·chain_edges 조회
-      - graph_analytics.auto_layout_positions 호출 (networkx spring_layout, seed=42)
-      - 결과 좌표를 각 chain_node.pos_x/pos_y 로 일괄 업데이트
+      - 각 노드 발생 시각 해석: attack 노드 → ocsf_events.time,
+        단서 노드 → 라벨의 [YYYY-MM-DDThh:mm:ss] 접두사
+      - auto_layout_positions(node_times=...) → 시간순 타임라인 좌표
+      - 선 위 노드는 자동으로 옆으로 치움(_avoid_edge_overlap)
     """
     state = InvestigationBoard.get_state(db, caseId)
     if state is None:
@@ -385,7 +428,8 @@ async def auto_layout(
     edges = state.get("edges", [])
     node_ids = [n["node_id"] for n in nodes]
     edge_pairs = [(e["from_node_id"], e["to_node_id"]) for e in edges]
-    positions = auto_layout_positions(node_ids, edge_pairs)
+    node_times = _resolve_node_times(db, nodes)
+    positions = auto_layout_positions(node_ids, edge_pairs, node_times=node_times)
     # 일괄 update
     updated = 0
     for nid, (x, y) in positions.items():
@@ -395,75 +439,6 @@ async def auto_layout(
         "status": "ok",
         "data": {
             "updated_nodes": updated,
-            "positions": {nid: {"x": x, "y": y} for nid, (x, y) in positions.items()},
-        },
-    }
-
-
-@router.post("/sort-by-time", status_code=status.HTTP_200_OK)
-async def sort_by_time(
-    caseId: str = Query(..., description="시간순 정렬 대상 사고 케이스"),
-    db: Session = Depends(get_db),
-) -> dict:
-    """V-5 시간순 정렬 — 보드 노드를 이벤트 발생 시각 오름차순으로 좌→우 재배치.
-
-    동작:
-      - chain_nodes 조회
-      - attack 노드: attack_id → ocsf_events.time 으로 발생 시각 해석
-      - 시각 있는 노드: 시간 오름차순으로 격자(좌→우, 5열 wrap) 배치
-      - 시각 없는 노드(단서 등): 아래 별도 band 에 배치
-    학술 정합: 침해사고 타임라인 재구성 — 사건의 시간순 정렬 (NIST SP 800-86 §3.1.2).
-    """
-    state = InvestigationBoard.get_state(db, caseId)
-    if state is None:
-        raise _case_not_found()
-    nodes = state.get("nodes", [])
-
-    # attack_id → 발생 시각 (ocsf 원본 시각)
-    attack_ids = [n["attack_id"] for n in nodes if n.get("attack_id")]
-    attack_time: dict = {}
-    if attack_ids:
-        rows = db.execute(
-            select(AttackEventModel.attack_id, OCSFEventModel.time)
-            .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
-            .where(AttackEventModel.attack_id.in_(attack_ids))
-        ).all()
-        attack_time = {aid: t for aid, t in rows if t is not None}
-
-    # 시각 있는/없는 노드 분리
-    timed: list[tuple] = []  # (time, node_id)
-    untimed: list[str] = []
-    for n in nodes:
-        t = attack_time.get(n.get("attack_id")) if n.get("attack_id") else None
-        if t is not None:
-            timed.append((t, n["node_id"]))
-        else:
-            untimed.append(n["node_id"])
-    timed.sort(key=lambda x: x[0])
-
-    # 격자 배치 (clue_bridge 와 동일 셀 크기 — 캔버스 1100×620)
-    BASE_X, BASE_Y, CELL_W, CELL_H, COLS = 80, 80, 200, 95, 5
-    positions: dict = {}
-    for i, (_t, nid) in enumerate(timed):
-        r, c = divmod(i, COLS)
-        positions[nid] = (BASE_X + c * CELL_W, BASE_Y + r * CELL_H)
-    # 시각 없는 노드는 시각 노드 블록 아래 band 에 배치
-    timed_rows = (len(timed) + COLS - 1) // COLS
-    band_y = BASE_Y + timed_rows * CELL_H + 40
-    for j, nid in enumerate(untimed):
-        r, c = divmod(j, COLS)
-        positions[nid] = (BASE_X + c * CELL_W, band_y + r * CELL_H)
-
-    updated = 0
-    for nid, (x, y) in positions.items():
-        if ChainNode.update(db, node_id=nid, pos_x=x, pos_y=y) is not None:
-            updated += 1
-    return {
-        "status": "ok",
-        "data": {
-            "updated_nodes": updated,
-            "timed_nodes": len(timed),
-            "untimed_nodes": len(untimed),
             "positions": {nid: {"x": x, "y": y} for nid, (x, y) in positions.items()},
         },
     }

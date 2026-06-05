@@ -319,21 +319,58 @@ def _avoid_edge_overlap(
     return {nid: (int(round(p[0])), int(round(p[1]))) for nid, p in pos.items()}
 
 
+def _timeline_layout(
+    node_ids: list[str],
+    node_times: dict[str, Optional[str]],
+    *,
+    x0: int,
+    y0: int,
+    cell_w: int,
+    cell_h: int,
+) -> dict[str, tuple[int, int]]:
+    """시간순 타임라인 배치 — x = 발생 시각 순위(좌→우), 동시각은 세로로 쌓음.
+
+    2026-06-05 — '자동 정렬'에 시간순을 녹임. 시각 있는 노드만 처리(시각 없는
+    노드는 호출 측에서 별도 band). 정규화된 시각 문자열을 오름차순 정렬하고,
+    고유 시각마다 컬럼을 하나씩 부여(균등 간격).
+    """
+    timed = sorted(
+        ((node_times[n], n) for n in node_ids if node_times.get(n)),
+        key=lambda x: (str(x[0]), x[1]),  # 시각 → id (안정 정렬, 결정론적)
+    )
+    out: dict[str, tuple[int, int]] = {}
+    col = -1
+    row_in_col = 0
+    last_t: Optional[str] = None
+    for t, n in timed:
+        if t != last_t:
+            col += 1
+            row_in_col = 0
+            last_t = t
+        else:
+            row_in_col += 1
+        out[n] = (x0 + col * cell_w, y0 + row_in_col * cell_h)
+    return out
+
+
 def auto_layout_positions(
     node_ids: list[str],
     edges: list[tuple[str, str]],
     *,
+    node_times: Optional[dict[str, Optional[str]]] = None,
     canvas_w: int = 1100,
     canvas_h: int = 620,
     pad: int = 60,
 ) -> dict[str, tuple[int, int]]:
-    """V-5 자동 정렬 — 계층형(layered) 배치로 엣지 교차 최소화.
+    """V-5 자동 정렬.
 
-    정책 (2026-06-03 — spring_layout → 계층형 전환):
-      · connected: depth(열) × row 계층 배치 (_layered_layout).
-        부모→자식 엣지가 좌→우로만 흘러 노드를 가로지르지 않음.
-        단일 chain → 한 줄 / 분기 → 자식 세로 분산.
-      · isolated: connected 아래 격자 (엣지 0 이면 전체 상단 격자).
+    정책:
+      · node_times 가 주어지면 → 시간순 타임라인 배치 (좌→우 = 발생 시각).
+        시각 있는 노드는 _timeline_layout, 시각 없는 노드는 아래 band.
+        (2026-06-05 — '시간순 정렬'을 자동 정렬에 통합)
+      · node_times 없으면 → 계층형(layered) 배치 (엣지 depth 기준, fallback).
+
+    어느 경우든 마지막에 _avoid_edge_overlap 로 선 위 노드를 옆으로 치움.
 
     Returns:
         {node_id: (x, y)} — V-5 캔버스 픽셀 좌표 (좌상단 0,0 기준).
@@ -353,6 +390,24 @@ def auto_layout_positions(
     CELL_W = NODE_W + GAP_X      # 228
     CELL_H = NODE_H + GAP_Y      # 104
     cols_all = max(1, (canvas_w - 2 * pad) // CELL_W)
+
+    # ── 시간순 타임라인 배치 (node_times 제공 시 우선) ──
+    # 2026-06-05 — '시간순 정렬'을 자동 정렬에 녹임. 좌→우 = 발생 시각 순서.
+    if node_times:
+        timed = [n for n in node_ids if node_times.get(n)]
+        untimed = [n for n in node_ids if not node_times.get(n)]
+        if timed:  # 시각 있는 노드가 하나라도 있으면 타임라인 적용
+            out = _timeline_layout(
+                timed, node_times, x0=pad, y0=pad, cell_w=CELL_W, cell_h=CELL_H,
+            )
+            if untimed:  # 시각 없는 노드 → 타임라인 아래 band 격자
+                max_y = max((p[1] for p in out.values()), default=pad)
+                iso_y0 = max_y + NODE_H + CELL_H
+                out.update(
+                    _grid_pack(untimed, x0=pad, y0=iso_y0, cols=cols_all,
+                               cell_w=CELL_W, cell_h=CELL_H)
+                )
+            return _avoid_edge_overlap(out, edges, node_w=NODE_W, node_h=NODE_H)
 
     # networkx 없거나 1 노드 → 전체 격자 (상단부터)
     if not _NETWORKX_AVAILABLE or len(node_ids) == 1:

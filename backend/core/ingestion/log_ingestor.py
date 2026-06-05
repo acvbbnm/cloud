@@ -11,8 +11,10 @@
   6) IngestionStats 반환 (totalEvents / matched / unmatched / byTarget)
 
 매칭 규칙:
-  - case.incident_type + case.csp 조합으로 후보 collection_targets 추림
-  - 현재는 CREDENTIAL_THEFT × {naver, nhn} 만 매칭 룰 구현 (MVP 분량)
+  - 확정 사고유형 전체(주 case.incident_type + 부 secondary_incident_types) × case.csp
+    조합으로 후보 collection_targets 추림 (GapDetector 와 동일 범위)
+  - 8종 사고유형 × {naver, nhn} 매처 구현 (core/ingestion/matchers.py)
+  - 매칭은 주 유형 우선, 미매치 시 부 유형 순차 시도 — 첫 유효 매치 채택
   - 향후 확장 시 data/collection_targets/target_match_rules.json 으로 분리 권장
 """
 import hashlib
@@ -114,12 +116,20 @@ class LogIngestor:
                 f"파일 파싱 실패 — 지원되는 형식이 아닙니다 ({last_error})"
             )
 
-        # 매칭 후보 target_id 캐시 — case 의 incident_type+csp 카탈로그만 미리 로드
+        # 확정된 모든 사고유형(주 + 부) — GapDetector._incident_types 와 동일 범위.
+        # 복합 케이스에서 부 유형 타깃이 영원히 미매칭되어 갭 감지가 항상 0%/COLLECTION
+        # 으로 떨어지던 버그 fix (2026-06-05). primary 를 첫 항목으로 유지(매칭 우선순위).
+        confirmed_types: list[str] = [case.incident_type]
+        for t in case.secondary_incident_types or []:
+            if t and t not in confirmed_types:
+                confirmed_types.append(t)
+
+        # 매칭 후보 target_id 캐시 — 확정 유형 전체 × csp 카탈로그 미리 로드
         valid_target_ids = {
             t.target_id
             for t in db.query(CollectionTargetModel)
             .filter(
-                CollectionTargetModel.incident_type == case.incident_type,
+                CollectionTargetModel.incident_type.in_(confirmed_types),
                 CollectionTargetModel.csp == used_csp,
             )
             .all()
@@ -129,10 +139,14 @@ class LogIngestor:
         new_rows: list[RawEventModel] = []
         for ev in parsed:
             stats.total_events += 1
-            target_id = matchers.match(used_csp, case.incident_type, ev)
-            # 매칭은 했지만 시드에 없는 target_id 라면 unmatched 로 강등
-            if target_id and target_id not in valid_target_ids:
-                target_id = None
+            # 주 유형 우선, 안 맞으면 부 유형 순차 시도 — 첫 유효 매치 채택.
+            # (matched_target_id 는 이벤트당 1개 컬럼이므로 단일 target 만 기록)
+            target_id: Optional[str] = None
+            for itype in confirmed_types:
+                cand = matchers.match(used_csp, itype, ev)
+                if cand and cand in valid_target_ids:
+                    target_id = cand
+                    break
             if target_id:
                 stats.matched += 1
                 stats.by_target[target_id] = stats.by_target.get(target_id, 0) + 1

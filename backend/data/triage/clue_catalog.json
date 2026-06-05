@@ -2705,16 +2705,16 @@
       "source": "log_analysis",
       "has_weights": true,
       "weights": {
-        "CREDENTIAL_THEFT": 15,
+        "CREDENTIAL_THEFT": 35,
         "PRIVILEGE_ESCALATION": 5,
         "DATA_EXFILTRATION": 0,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 5,
-        "PHISH_INITIAL_ACCESS": 15,
-        "INSIDER_THREAT": 15
+        "RANSOMWARE": 0,
+        "MISCONFIG_EXPOSURE": 0,
+        "PHISH_INITIAL_ACCESS": 8,
+        "INSIDER_THREAT": 5
       },
-      "weight_source": "MITRE Valid Accounts: Cloud Accounts [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE Valid Accounts: Cloud Accounts [ISO 27035-1:2023 Assess & Decide] (시연 06 가중 2026-06-05)",
       "outcome_flags": {
         "outcomeAttackTechniqueId": "T1078.004",
         "outcomeAttackTactic": "Initial Access"
@@ -2826,15 +2826,15 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 15,
+        "PRIVILEGE_ESCALATION": 35,
         "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 10,
-        "MISCONFIG_EXPOSURE": 5,
-        "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 15
+        "AUDIT_LOG_TAMPERING": 0,
+        "RANSOMWARE": 5,
+        "MISCONFIG_EXPOSURE": 0,
+        "PHISH_INITIAL_ACCESS": 0,
+        "INSIDER_THREAT": 5
       },
-      "weight_source": "MITRE Account Manipulation [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE Account Manipulation [ISO 27035-1:2023 Assess & Decide] (시연 06 가중 2026-06-05)",
       "outcome_flags": {
         "outcomeAttackTechniqueId": "T1098",
         "outcomeAttackTactic": "Persistence"
@@ -2923,14 +2923,14 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 15,
+        "DATA_EXFILTRATION": 35,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 15,
-        "MISCONFIG_EXPOSURE": 15,
+        "RANSOMWARE": 8,
+        "MISCONFIG_EXPOSURE": 8,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 15
+        "INSIDER_THREAT": 5
       },
-      "weight_source": "MITRE Cloud Storage Object Access [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE Cloud Storage Object Access [ISO 27035-1:2023 Assess & Decide] (시연 06 가중 2026-06-05)",
       "outcome_flags": {
         "outcomeAttackTechniqueId": "T1530",
         "outcomeAttackTactic": "Collection"
@@ -2947,14 +2947,14 @@
       "weights": {
         "CREDENTIAL_THEFT": 0,
         "PRIVILEGE_ESCALATION": 0,
-        "DATA_EXFILTRATION": 15,
+        "DATA_EXFILTRATION": 35,
         "AUDIT_LOG_TAMPERING": 0,
-        "RANSOMWARE": 15,
-        "MISCONFIG_EXPOSURE": 10,
+        "RANSOMWARE": 8,
+        "MISCONFIG_EXPOSURE": 5,
         "PHISH_INITIAL_ACCESS": 0,
-        "INSIDER_THREAT": 15
+        "INSIDER_THREAT": 5
       },
-      "weight_source": "MITRE Transfer Data to Cloud Account [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE Transfer Data to Cloud Account [ISO 27035-1:2023 Assess & Decide] (시연 06 가중 2026-06-05)",
       "outcome_flags": {
         "outcomeAttackTechniqueId": "T1537",
         "outcomeAttackTactic": "Exfiltration"
@@ -3162,15 +3162,15 @@
       "has_weights": true,
       "weights": {
         "CREDENTIAL_THEFT": 5,
-        "PRIVILEGE_ESCALATION": 15,
+        "PRIVILEGE_ESCALATION": 35,
         "DATA_EXFILTRATION": 0,
-        "AUDIT_LOG_TAMPERING": 5,
-        "RANSOMWARE": 5,
+        "AUDIT_LOG_TAMPERING": 0,
+        "RANSOMWARE": 0,
         "MISCONFIG_EXPOSURE": 0,
-        "PHISH_INITIAL_ACCESS": 5,
-        "INSIDER_THREAT": 15
+        "PHISH_INITIAL_ACCESS": 0,
+        "INSIDER_THREAT": 5
       },
-      "weight_source": "MITRE Create Cloud Account [ISO 27035-1:2023 Assess & Decide]",
+      "weight_source": "MITRE Create Cloud Account [ISO 27035-1:2023 Assess & Decide] (시연 06 가중 2026-06-05)",
       "outcome_flags": {
         "outcomeAttackTechniqueId": "T1136.003",
         "outcomeAttackTactic": "Persistence"

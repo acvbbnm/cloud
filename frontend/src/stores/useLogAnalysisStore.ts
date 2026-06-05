@@ -23,6 +23,14 @@ interface MappedEvent {
   activity_name: string | null;
 }
 
+export interface NoiseEvent {
+  ocsf_id: string;
+  time: string | null;
+  actor_user_name: string | null;
+  src_endpoint_ip: string | null;
+  activity_name: string | null;
+}
+
 export interface LogAnalysisResult {
   caseId: string;
   mapped_events: MappedEvent[];
@@ -30,6 +38,8 @@ export interface LogAnalysisResult {
   file_name: string;
   /** funnel — 수집 전체 이벤트 수(ingestion.totalEvents). 노이즈 = total - mapped. */
   total_events?: number;
+  /** 노이즈(공격 미매핑) 이벤트 — funnel '노이즈' 필터용. */
+  noise_events?: NoiseEvent[];
 }
 
 interface LogAnalysisStoreState {

@@ -102,6 +102,8 @@ const LogAnalysisFab = () => {
 
   const [analyzing, setAnalyzing] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // funnel 필터 — 'attack'(기본, 공격 관련) | 'noise'(노이즈) | 'all'(수집 전체)
+  const [funnelFilter, setFunnelFilter] = useState<'all' | 'attack' | 'noise'>('attack');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 적재 가능 — 케이스만 있으면 가능 (V-1 Step3 진행 무관).
@@ -118,6 +120,16 @@ const LogAnalysisFab = () => {
       })
     : [];
   const techniqueGroups = result ? groupByTechnique(result.mapped_events) : [];
+  // funnel 필터 대상 — 노이즈 이벤트(시각순) + 표시 게이트
+  const noiseEvents = result
+    ? [...(result.noise_events ?? [])].sort((a, b) =>
+        (a.time ?? '').localeCompare(b.time ?? ''),
+      )
+    : [];
+  const showMapped = funnelFilter === 'attack' || funnelFilter === 'all';
+  const showNoise = funnelFilter === 'noise' || funnelFilter === 'all';
+  const visibleCount =
+    (showMapped ? mappedEvents.length : 0) + (showNoise ? noiseEvents.length : 0);
 
   const handleFile = async (file: File) => {
     if (!caseId) {
@@ -139,6 +151,7 @@ const LogAnalysisFab = () => {
         file_name: file.name,
         total_events:
           typeof totalRaw === 'number' ? totalRaw : res.mapped_events.length,
+        noise_events: res.noise_events ?? [],
       });
       showToast(`✓ ${file.name} 분석 완료 — ${res.mapped_events.length}건 매핑`, 3500);
     } catch (e) {
@@ -360,42 +373,67 @@ const LogAnalysisFab = () => {
                       기법 식별 · {new Date(result.analyzed_at).toLocaleTimeString('ko-KR')}
                     </div>
                     {/* funnel — 수집→공격관련·노이즈 자동제외 (NIST SP 800-86 §3.1 데이터 축소) */}
+                    {/* funnel — 클릭하면 아래 목록이 해당 분류로 필터됨 (NIST SP 800-86 §3.1 데이터 축소) */}
                     <div className="mt-2 flex items-center gap-1 text-[10px] font-mono flex-wrap">
-                      <span className="px-1.5 py-0.5 rounded bg-ink-800 text-ink-300 border border-ink-700">
-                        📥 수집 {result.total_events ?? result.mapped_events.length}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFunnelFilter('all')}
+                        className={`px-1.5 py-0.5 rounded border transition-colors ${
+                          funnelFilter === 'all'
+                            ? 'bg-ink-700 text-ink-100 border-ink-500'
+                            : 'bg-ink-900 text-ink-400 border-ink-700/60 hover:text-ink-200'
+                        }`}
+                        title="수집된 전체 이벤트 보기"
+                      >
+                        📥 수집 {result.total_events ?? mappedEvents.length + noiseEvents.length}
+                      </button>
                       <span className="text-ink-600">→</span>
-                      <span className="px-1.5 py-0.5 rounded bg-brand-teal/15 text-brand-teal border border-brand-teal/40">
-                        🔍 공격 관련 {result.mapped_events.length}
-                      </span>
-                      {(result.total_events ?? result.mapped_events.length) -
-                        result.mapped_events.length >
-                        0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFunnelFilter('attack')}
+                        className={`px-1.5 py-0.5 rounded border transition-colors ${
+                          funnelFilter === 'attack'
+                            ? 'bg-brand-teal/15 text-brand-teal border-brand-teal/40'
+                            : 'bg-ink-900 text-ink-400 border-ink-700/60 hover:text-ink-200'
+                        }`}
+                        title="ATT&CK 기법에 매핑된 공격 관련 이벤트만 보기"
+                      >
+                        🔍 공격 관련 {mappedEvents.length}
+                      </button>
+                      {noiseEvents.length > 0 && (
                         <>
                           <span className="text-ink-600">·</span>
-                          <span
-                            className="px-1.5 py-0.5 rounded bg-ink-900 text-ink-500 border border-ink-700/60"
-                            title="공격 기법에 매핑되지 않은 로그 — 자동 분류·제외(원본 DB 보존). NIST SP 800-86 §3.1 데이터 축소"
+                          <button
+                            type="button"
+                            onClick={() => setFunnelFilter('noise')}
+                            className={`px-1.5 py-0.5 rounded border transition-colors ${
+                              funnelFilter === 'noise'
+                                ? 'bg-ink-700 text-ink-200 border-ink-500'
+                                : 'bg-ink-900 text-ink-500 border-ink-700/60 hover:text-ink-300'
+                            }`}
+                            title="공격 기법에 매핑되지 않은 노이즈 이벤트 보기 (원본 보존, 삭제 아님)"
                           >
-                            🗑 노이즈{' '}
-                            {(result.total_events ?? result.mapped_events.length) -
-                              result.mapped_events.length}{' '}
-                            자동 제외
-                          </span>
+                            🗑 노이즈 {noiseEvents.length}
+                          </button>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {mappedEvents.length === 0 ? (
+                  {visibleCount === 0 ? (
                     <div className="text-[11px] text-ink-500 italic text-center py-4">
-                      매핑된 이벤트 없음 — 로그 형식 또는 룰 갭 확인 필요
+                      {funnelFilter === 'noise'
+                        ? '노이즈 이벤트 없음'
+                        : funnelFilter === 'attack'
+                        ? '매핑된 이벤트 없음 — 로그 형식 또는 룰 갭 확인 필요'
+                        : '표시할 이벤트 없음'}
                     </div>
                   ) : (
                     <>
                       {/* P.38 — raw event row (시각·user·ip·activity 주, ATT&CK hint 부) */}
                       <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
-                        {mappedEvents.map((ev) => {
+                        {showMapped &&
+                          mappedEvents.map((ev) => {
                           const loadedId = `ev-${ev.attack_id}`;
                           const loaded = evidenceHas(loadedId);
                           const hasActor = isMeaningful(ev.actor_user_name);
@@ -476,9 +514,59 @@ const LogAnalysisFab = () => {
                             </div>
                           );
                         })}
+                        {showNoise &&
+                          noiseEvents.map((ev) => (
+                            <div
+                              key={`noise-${ev.ocsf_id}`}
+                              className="bg-ink-950/40 border border-ink-800/70 rounded-lg px-2.5 py-2"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[10.5px] text-ink-300 leading-4">
+                                    <span className="font-mono text-ink-500">
+                                      {ev.time?.slice(0, 19) ?? '시각 없음'}
+                                    </span>
+                                    <span className="mx-1 text-ink-700">·</span>
+                                    <span>{ev.activity_name ?? '—'}</span>
+                                  </div>
+                                  <div className="text-[10px] text-ink-500 font-mono mt-0.5 leading-4 truncate">
+                                    {isMeaningful(ev.actor_user_name) && (
+                                      <span>
+                                        <span className="text-ink-600">user</span>{' '}
+                                        {ev.actor_user_name}
+                                      </span>
+                                    )}
+                                    {isMeaningful(ev.actor_user_name) &&
+                                      isMeaningful(ev.src_endpoint_ip) && (
+                                        <span className="text-ink-700 mx-1.5">·</span>
+                                      )}
+                                    {isMeaningful(ev.src_endpoint_ip) && (
+                                      <span>
+                                        <span className="text-ink-600">ip</span>{' '}
+                                        {ev.src_endpoint_ip}
+                                      </span>
+                                    )}
+                                    {!isMeaningful(ev.actor_user_name) &&
+                                      !isMeaningful(ev.src_endpoint_ip) && (
+                                        <span className="text-ink-700 italic">
+                                          관찰 가능값 없음
+                                        </span>
+                                      )}
+                                  </div>
+                                </div>
+                                <span
+                                  className="text-[9px] font-mono whitespace-nowrap px-1.5 py-0.5 rounded border border-ink-700 text-ink-500 self-start"
+                                  title="공격 기법에 매핑되지 않은 이벤트 — 자동 노이즈 분류 (원본 보존)"
+                                >
+                                  노이즈
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                       </div>
 
-                      {canLoad &&
+                      {showMapped &&
+                        canLoad &&
                         mappedEvents.some(
                           (ev) => !evidenceHas(`ev-${ev.attack_id}`),
                         ) && (

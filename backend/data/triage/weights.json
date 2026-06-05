@@ -1389,6 +1389,42 @@
       "PHISH_INITIAL_ACCESS": 25,
       "INSIDER_THREAT": 30
     },
+    "T1098.001": {
+      "CREDENTIAL_THEFT": 35,
+      "PRIVILEGE_ESCALATION": 8,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "tactic": "Persistence",
+      "source": "MITRE Additional Cloud Credentials [시연 06 가중 2026-06-05]",
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5
+    },
+    "T1087.004": {
+      "CREDENTIAL_THEFT": 6,
+      "PRIVILEGE_ESCALATION": 32,
+      "DATA_EXFILTRATION": 0,
+      "AUDIT_LOG_TAMPERING": 0,
+      "tactic": "Discovery",
+      "source": "MITRE Cloud Account Discovery [시연 06 가중 2026-06-05]",
+      "RANSOMWARE": 0,
+      "MISCONFIG_EXPOSURE": 0,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5
+    },
+    "T1619": {
+      "CREDENTIAL_THEFT": 0,
+      "PRIVILEGE_ESCALATION": 0,
+      "DATA_EXFILTRATION": 32,
+      "AUDIT_LOG_TAMPERING": 0,
+      "tactic": "Discovery",
+      "source": "MITRE Cloud Storage Object Discovery [시연 06 가중 2026-06-05]",
+      "RANSOMWARE": 5,
+      "MISCONFIG_EXPOSURE": 5,
+      "PHISH_INITIAL_ACCESS": 0,
+      "INSIDER_THREAT": 5
+    },
     "T1110": {
       "CREDENTIAL_THEFT": 35,
       "PRIVILEGE_ESCALATION": 0,

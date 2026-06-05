@@ -263,18 +263,19 @@ const LogAnalysisFab = () => {
 
   const handleLoadAll = () => {
     if (!canLoad || !result) return;
+    // 노이즈 분류 이벤트는 일괄 적재에서 제외 (공격 관련 mapped_events 만).
+    // 노이즈는 funnel 🗑 탭에서 개별 [➜ 적재함] 으로만 수동 적재.
     let added = 0;
     for (const ev of result.mapped_events as MappedEvent[]) {
       if (loadEvidence(buildEventLog(ev))) added += 1;
     }
-    for (const ev of (result.noise_events ?? []) as NoiseEvent[]) {
-      if (loadEvidence(buildNoiseLog(ev))) added += 1;
-    }
-    const total = result.mapped_events.length + (result.noise_events?.length ?? 0);
+    const total = result.mapped_events.length;
+    const noiseCount = result.noise_events?.length ?? 0;
+    const noiseNote = noiseCount > 0 ? ` · 노이즈 ${noiseCount}건 제외` : '';
     showToast(
       added > 0
-        ? `➜ V-1 적재함에 ${added}건 추가 (${total - added}건 이미 적재됨)`
-        : `모든 이벤트 이미 적재됨 (${total}건)`,
+        ? `➜ V-1 적재함에 ${added}건 추가 (${total - added}건 이미 적재됨)${noiseNote}`
+        : `공격 관련 이벤트 모두 이미 적재됨 (${total}건)${noiseNote}`,
       3000,
     );
   };
@@ -647,7 +648,7 @@ const LogAnalysisFab = () => {
                             onClick={handleLoadAll}
                             className="w-full text-[11px] font-semibold bg-brand-teal hover:bg-brand-tealDark text-ink-950 px-3 py-1.5 rounded transition-colors"
                           >
-                            미적재 이벤트 모두 V-1 적재함에 추가 →
+                            공격 관련 미적재 이벤트 모두 적재 (노이즈 제외) →
                           </button>
                         )}
                     </>

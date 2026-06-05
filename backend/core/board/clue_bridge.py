@@ -37,8 +37,6 @@ BRIDGE_BASE_Y = 80
 BRIDGE_CELL_W = 200
 BRIDGE_CELL_H = 95
 BRIDGE_COLS = 5         # 5열 (가로 = 80 + 5*200 = 1080 < 1100 OK)
-BRIDGE_X_STEP = 240     # legacy — _next_base_x 가 max(pos_x)+step 으로 사용
-BRIDGE_FALLBACK_X = 80  # 기존 노드 없을 때 시작 x
 
 
 def _is_overlap(
@@ -91,19 +89,6 @@ def _collect_existing_tree_node_ids(db: Session, case_id: str) -> set[str]:
         if tid:
             ids.add(tid)
     return ids
-
-
-def _next_base_x(db: Session, case_id: str) -> int:
-    """기존 보드 노드들의 max(pos_x) 다음 위치를 신규 노드 시작점으로."""
-    nodes = list(
-        db.execute(
-            select(ChainNodeModel.pos_x).where(ChainNodeModel.case_id == case_id)
-        ).scalars()
-    )
-    xs = [x for x in nodes if x is not None]
-    if not xs:
-        return BRIDGE_FALLBACK_X
-    return max(xs) + BRIDGE_X_STEP
 
 
 def bridge_clue_tree_to_board(

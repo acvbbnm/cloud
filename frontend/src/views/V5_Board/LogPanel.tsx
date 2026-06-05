@@ -34,11 +34,13 @@ interface LogPanelProps {
   onDragStart: (log: BoardLog) => void;
   /** 보드에 이미 올라간 단서 노드 — meta.clue_key 추출. 중복 차단 표시용. */
   boardNodes?: BoardNode[];
+  /** 더블클릭 시 드래그 없이 보드에 바로 추가 (2026-06-05 사용자 요청). */
+  onQuickAdd?: (payload: CluePayload) => void;
 }
 
 type Tab = 'logs' | 'clues';
 
-const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
+const LogPanel = ({ onDragStart, boardNodes = [], onQuickAdd }: LogPanelProps) => {
   const logs = useBoardStore((s) => s.logs);
   const removeLog = useBoardStore((s) => s.removeLog);
   const treeResponse = useClueTreeStore((s) => s.response);
@@ -59,7 +61,7 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
   }
 
   return (
-    <div className="panel min-h-[540px] max-h-[920px] flex flex-col">
+    <div className="panel min-h-[300px] max-h-[560px] flex flex-col">
       <div className="flex items-center justify-between p-4 pb-2.5">
         <div className="flex items-center gap-1">
           <button
@@ -101,22 +103,31 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
               로그 수집 탭에서 행을 체크 후 “수사 보드에 추가”로 가져오세요.
             </div>
           ) : (
-            logs.map((l) => (
+            <>
+              {onQuickAdd && (
+                <p className="text-[10px] text-brand-blue/80 mb-2 leading-4">
+                  💡 항목을 <b>더블클릭</b>하면 보드에 바로 추가됩니다. (드래그도 가능)
+                </p>
+              )}
+              {logs.map((l) => {
+                const payload: CluePayload = {
+                  clue_key: `log:${l.id}`,
+                  label: `[${l.ts}] ${l.ev} · ${l.ip}`,
+                };
+                return (
               <div
                 key={l.id}
                 draggable
                 onDragStart={(e) => {
                   // 로그도 단서와 동일 MIME 으로 → ChainGraphCanvas 가 보드 노드로 변환
-                  const payload: CluePayload = {
-                    clue_key: `log:${l.id}`,
-                    label: `[${l.ts}] ${l.ev} · ${l.ip}`,
-                  };
                   e.dataTransfer.effectAllowed = 'copy';
                   e.dataTransfer.setData(CLUE_DRAG_MIME, JSON.stringify(payload));
                   e.dataTransfer.setData('text/plain', String(l.id));
                   onDragStart(l);
                 }}
-                className="bg-ink-950 border border-ink-700/70 rounded-xl px-3 py-2 mb-1.5 text-[11.5px] cursor-grab hover:border-brand-blue active:cursor-grabbing transition-colors"
+                onDoubleClick={() => onQuickAdd?.(payload)}
+                title={onQuickAdd ? '더블클릭 = 보드에 추가 · 드래그도 가능' : undefined}
+                className="select-none bg-ink-950 border border-ink-700/70 rounded-xl px-3 py-2 mb-1.5 text-[11.5px] cursor-grab hover:border-brand-blue active:cursor-grabbing transition-colors"
               >
                 <div className="flex justify-between items-center mb-0.5">
                   <span className="font-mono text-ink-400 text-[10px]">{l.ts}</span>
@@ -132,7 +143,9 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
                   {l.ip} · {l.user}
                 </div>
               </div>
-            ))
+                );
+              })}
+            </>
           )}
         </div>
       )}
@@ -149,7 +162,7 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
           ) : (
             <>
               <p className="text-[10.5px] text-brand-teal/80 mb-2 leading-4">
-                단서를 우측 ChainGraph 로 끌어 놓으면 보드 노드로 추가됩니다.
+                단서를 <b>더블클릭</b>하면 보드에 바로 추가됩니다. (드래그도 가능)
                 노드 연결은 [엣지 모드] 로.
               </p>
               {acceptedClues.map((c) => {
@@ -172,8 +185,12 @@ const LogPanel = ({ onDragStart, boardNodes = [] }: LogPanelProps) => {
                       // 일부 브라우저는 text/plain 도 요구
                       e.dataTransfer.setData('text/plain', c.clue_key);
                     }}
+                    onDoubleClick={() => {
+                      if (isOnBoard) return;
+                      onQuickAdd?.({ clue_key: c.clue_key, label: c.label || c.clue_key });
+                    }}
                     className={
-                      'border rounded-xl px-3 py-2 mb-1.5 text-[11.5px] transition-colors ' +
+                      'select-none border rounded-xl px-3 py-2 mb-1.5 text-[11.5px] transition-colors ' +
                       (isOnBoard
                         ? 'bg-ink-950/40 border-ink-700/40 opacity-50 cursor-not-allowed'
                         : 'bg-brand-teal/5 border-brand-teal/40 cursor-grab hover:border-brand-teal active:cursor-grabbing')

@@ -795,6 +795,18 @@ const ChainGraphCanvas = ({
             key={n.node_id}
             transform={`translate(${pos.x},${pos.y})`}
             onPointerDown={(e) => handleNodePointerDown(e, n)}
+            // 2026-06-05 (사용자 요청) — 노드 더블클릭 = 삭제 (엣지 모드 제외).
+            onDoubleClick={(e) => {
+              if (!onDeleteNode || edgeMode) return;
+              e.stopPropagation();
+              if (
+                window.confirm(
+                  `'${n.label}' 노드를 삭제할까요? (연결 엣지도 함께 삭제됩니다)`,
+                )
+              ) {
+                onDeleteNode(n.node_id);
+              }
+            }}
             style={{ cursor: edgeMode ? 'pointer' : 'grab', touchAction: 'none' }}
           >
             {/* hover 툴팁 — 라벨 잘림 시 전체 텍스트 + 메타 표시 */}

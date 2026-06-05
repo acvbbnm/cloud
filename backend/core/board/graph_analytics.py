@@ -276,12 +276,15 @@ def auto_layout_positions(
 
     # 2026-06-03 — UI ChainGraphCanvas 의 NODE_W/H (168/64) 와 동기화.
     #   (이전 200/78 은 UI 가 168/64 로 되돌려져 불일치 → 노드 과도하게 벌어짐.)
+    # 2026-06-03 — UI ChainGraphCanvas 의 NODE_W/H (168/64) 와 동기화.
+    # 2026-06-05 — 연결 구조(엣지)가 잘 보이도록 간격만 소폭 확대 (28/26 → 60/40).
+    #   중앙정렬·직각라우팅은 도입하지 않음(이전 피드백) — 상단정렬·베지어 유지.
     NODE_W = 168
     NODE_H = 64
-    GAP_X = 28
-    GAP_Y = 26
-    CELL_W = NODE_W + GAP_X      # 196
-    CELL_H = NODE_H + GAP_Y      # 90
+    GAP_X = 60
+    GAP_Y = 40
+    CELL_W = NODE_W + GAP_X      # 228
+    CELL_H = NODE_H + GAP_Y      # 104
     cols_all = max(1, (canvas_w - 2 * pad) // CELL_W)
 
     # networkx 없거나 1 노드 → 전체 격자 (상단부터)

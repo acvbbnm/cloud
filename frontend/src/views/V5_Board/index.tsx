@@ -67,6 +67,8 @@ const V5Board = () => {
   const [edgeStartId, setEdgeStartId] = useState<string | null>(null);
   // 가독성 정리 #2 — ATT&CK 후보 그리드 접기/펼치기 토글 (기본 접힘)
   const [attackOpen, setAttackOpen] = useState(false);
+  // 2026-06-05 (사용자 요청) — ATT&CK 후보 페이지네이션 (48개 전체 열람).
+  const [attackPage, setAttackPage] = useState(1);
   // 가독성 정리 #3 — 셰르파 브리핑 카드 접기 (기본 접힘, 사이드바 길이 단축)
   const [sherpaOpen, setSherpaOpen] = useState(false);
 
@@ -140,9 +142,10 @@ const V5Board = () => {
   };
 
   const attackQuery = useQuery({
-    queryKey: ['attack', caseId, 1],
-    queryFn: () => getAttack(caseId!, 1, ATTACK_PAGE_SIZE),
+    queryKey: ['attack', caseId, attackPage],
+    queryFn: () => getAttack(caseId!, attackPage, ATTACK_PAGE_SIZE),
     enabled: !!caseId,
+    placeholderData: (prev) => prev, // 페이지 전환 시 깜빡임 방지
   });
 
   // AI 셰르파 brief — 선택된 board 노드(attack_id 가 있는 경우) 또는
@@ -324,6 +327,7 @@ const V5Board = () => {
       );
       queryClient.invalidateQueries({ queryKey: ['attack', caseId] });
       queryClient.invalidateQueries({ queryKey: ['board', caseId] });
+      setAttackPage(1); // 재매핑 후 1페이지로
       setAttackOpen(true); // 결과 자동 펼침
     },
     onError: (err: unknown) => {
@@ -376,6 +380,34 @@ const V5Board = () => {
   const attackItems = attackQuery.data?.items ?? [];
   // 이미 보드에 추가된 attack_id 집합 (중복 추가 방지 UI)
   const addedAttackIds = new Set(boardNodes.map((n) => n.attack_id).filter(Boolean));
+
+  // ATT&CK 후보 페이지네이션 계산 (2026-06-05)
+  const attackTotal = attackQuery.data?.total ?? 0;
+  const attackTotalPages = Math.max(1, Math.ceil(attackTotal / ATTACK_PAGE_SIZE));
+  const attackRangeStart = attackTotal === 0 ? 0 : (attackPage - 1) * ATTACK_PAGE_SIZE + 1;
+  const attackRangeEnd = (attackPage - 1) * ATTACK_PAGE_SIZE + attackItems.length;
+
+  // 2026-06-05 (사용자 요청) — LogPanel 항목 더블클릭 → 드래그 없이 보드에 즉시 추가.
+  // 격자 다음 칸에 배치(노드 168×64, 행당 4개). 겹치면 [자동 정렬] 로 재배치 가능.
+  const handleQuickAddToBoard = (payload: { clue_key: string; label: string }) => {
+    if (!caseId) return;
+    const exists = boardNodes.some((n) => {
+      const m = n.meta;
+      if (!m || typeof m !== 'object') return false;
+      return (m as Record<string, unknown>).clue_key === payload.clue_key;
+    });
+    if (exists) {
+      showToast(`이미 보드에 있는 단서: ${payload.label}`, 3000);
+      return;
+    }
+    const i = boardNodes.length;
+    addClueNodeMutation.mutate({
+      clue_key: payload.clue_key,
+      label: payload.label,
+      pos_x: 40 + (i % 4) * 200,
+      pos_y: 40 + Math.floor(i / 4) * 92,
+    });
+  };
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -533,13 +565,13 @@ const V5Board = () => {
                 >
                   <span className="text-[11px] text-ink-400">{attackOpen ? '▼' : '▶'}</span>
                   <span>
-                     ATT&CK 매핑 후보 ({attackItems.length}/{attackQuery.data?.total ?? 0})
+                     ATT&CK 매핑 후보 (총 {attackTotal}개)
                   </span>
                 </button>
               }
               subtitle={
                 attackOpen
-                  ? '최신 매핑 순. 카드 클릭 시 우측 상세 표시 + "보드 추가"'
+                  ? `최신 매핑 순 · 한 페이지 ${ATTACK_PAGE_SIZE}개씩 · 카드 클릭 → 우측 상세 + "보드 추가"`
                   : undefined
               }
               action={
@@ -556,7 +588,7 @@ const V5Board = () => {
             >
               {!attackOpen ? (
                 <div className="text-[11.5px] text-ink-400 py-1">
-                  카드를 펼쳐 ATT&CK 후보를 보드에 추가 (top {ATTACK_PAGE_SIZE})
+                  카드를 펼쳐 ATT&CK 후보 {attackTotal}개를 페이지로 열람 · 보드에 추가
                 </div>
               ) : attackItems.length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-2">
@@ -592,11 +624,48 @@ const V5Board = () => {
                   })}
                 </div>
               )}
+
+              {/* 페이지네이션 — 48개 전체 열람 (2026-06-05 사용자 요청) */}
+              {attackOpen && attackTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-ink-700/40 text-[11px] text-ink-400">
+                  <span className="font-mono">
+                    {attackRangeStart}–{attackRangeEnd} / {attackTotal}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setAttackPage((p) => Math.max(1, p - 1))}
+                      disabled={attackPage <= 1 || attackQuery.isFetching}
+                      className="px-2 py-1 rounded-lg border border-ink-700/60 hover:border-brand-purple/50 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="이전 페이지"
+                    >
+                      ‹ 이전
+                    </button>
+                    <span className="font-mono tabular-nums px-1">
+                      {attackPage} / {attackTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setAttackPage((p) => Math.min(attackTotalPages, p + 1))}
+                      disabled={attackPage >= attackTotalPages || attackQuery.isFetching}
+                      className="px-2 py-1 rounded-lg border border-ink-700/60 hover:border-brand-purple/50 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="다음 페이지"
+                    >
+                      다음 ›
+                    </button>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
 
-          {/* 우측 컬럼 */}
+          {/* 우측 컬럼 — 2026-06-05: 수집 로그를 최상단으로 이동(보드와 한눈에 보이도록). */}
           <div className="w-[340px] shrink-0 flex flex-col gap-3">
+            {/* 수집 로그 / 단서 — 보드와 나란히 보이도록 우측 컬럼 맨 위 배치.
+                항목 더블클릭 = 드래그 없이 보드에 바로 추가. */}
+            <LogPanel
+              onDragStart={setPendingLog}
+              boardNodes={boardNodes}
+              onQuickAdd={handleQuickAddToBoard}
+            />
             {/* V1.fix.13 (2026-05-31) — 상세 패널 제목·서브타이틀 보강. 사용자 피드백: "상세쪽 설명 약간 수정 필요". */}
             <Card
               title={<>선택 노드 상세</>}
@@ -849,8 +918,6 @@ const V5Board = () => {
                 케이스 단위 보존 · [저장] 클릭 시 영속화
               </div>
             </Card>
-
-            <LogPanel onDragStart={setPendingLog} boardNodes={boardNodes} />
           </div>
         </div>
       </div>

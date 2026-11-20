@@ -44,7 +44,7 @@ const sections: Section[] = [
     emoji: '🎯',
     rows: 4,
     initial:
-      'T1078 → T1098 → T1078.004 → T1530 → T1537\n총 7개 기법, 4개 전술 탐지\n규칙 기반 JSON 매핑 (환각 없음)',
+      'T1078 → T1098 → T1078.004 → T1530 → T1537\n총 7개 기법, 4개 전술 탐지\n규칙과 일치한 이벤트를 원본 로그에서 확인',
   },
   {
     key: 'response',
@@ -71,11 +71,11 @@ const V7Report = () => {
   );
 
   const handleAiDraft = () => {
-    showToast('AI 초안 생성 중...');
+    showToast('초안 생성은 최종 제출본에서 사용할 수 있습니다.');
   };
 
   const handleExport = (fmt: string) => {
-    showToast(`${fmt.toUpperCase()} 내보내기 완료`);
+    showToast(`${fmt.toUpperCase()} 내보내기는 최종 제출본에서 사용할 수 있습니다.`);
   };
 
   return (
@@ -87,17 +87,17 @@ const V7Report = () => {
             보고서 <span className="grad-text">생성</span>
           </>
         }
-        description="KISA 양식 6 섹션을 편집하고 AI 초안을 활용해 사고 보고서를 완성합니다. PDF · DOCX 내보내기 지원."
+        description="샘플 사고 보고서를 편집할 수 있습니다."
         actions={
           <>
             <button onClick={handleAiDraft} className="btn-ghost">
-              🧠 AI 초안
+              AI 초안
             </button>
             <button onClick={() => handleExport('docx')} className="btn-ghost">
-              📝 DOCX
+              DOCX
             </button>
             <button onClick={() => handleExport('pdf')} className="btn-primary">
-              📄 PDF 내보내기
+              PDF 내보내기
             </button>
           </>
         }

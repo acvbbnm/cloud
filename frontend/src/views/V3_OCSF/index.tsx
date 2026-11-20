@@ -102,7 +102,7 @@ const V3OCSF = () => {
             OCSF <span className="grad-text">정규화</span>
           </>
         }
-        description="원본 CSP 로그를 OCSF 1.3 평탄화 컬럼으로 변환합니다. 좌·우 패널에서 변환 전후를 비교하세요."
+        description="원본 로그와 OCSF 정규화 결과를 비교하세요."
         actions={
           <>
             <button
@@ -113,7 +113,7 @@ const V3OCSF = () => {
               {normalizeMutation.isPending ? '정규화 중…' : '🔁 정규화 실행'}
             </button>
             <button onClick={() => navigate('/gap')} className="btn-primary">
-              갭 감지 →
+              빠진 증거 →
             </button>
           </>
         }
@@ -219,9 +219,9 @@ const V3OCSF = () => {
         {/* 양면 비교 */}
         {selected ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RawJsonPanel title="원본 CSP 로그 (unmapped_raw)" titleColor="#FF4D6D" badge="RAW" data={rawDisplay} />
+            <RawJsonPanel title="별도로 보관한 원본 필드" titleColor="#FF4D6D" badge="RAW" data={rawDisplay} />
             <RawJsonPanel
-              title="OCSF 정규화 평탄화 컬럼"
+              title="OCSF 필드"
               titleColor="#14D9B0"
               badge="OCSF 1.3"
               data={ocsfDisplay}

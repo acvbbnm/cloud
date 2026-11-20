@@ -52,7 +52,7 @@ const V1Setup = () => {
             사고 접수 <span className="grad-text">워크플로</span>
           </>
         }
-        description="CSP·사고 유형·시스템 구성을 입력하면 우선순위 기반 초동 수집 가이드를 자동 생성합니다."
+        description="클라우드와 사고 유형을 선택하면 먼저 확보할 로그를 볼 수 있습니다."
         meta={
           <div className="flex items-center gap-3 flex-wrap">
             {stepLabels.map((s, i) => {

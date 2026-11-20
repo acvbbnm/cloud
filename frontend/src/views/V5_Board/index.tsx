@@ -80,13 +80,13 @@ const V5Board = () => {
       <div>
         <PageHeader
           eyebrow="Layer 4 · M4-1"
-          title="수사 보드"
-          description="진행 중인 사고 케이스가 없습니다."
+          title="조사 보드"
+          description="먼저 사고를 등록하세요."
         />
         <PageBody>
           <Card title={<>⚠️ 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
-              V-1 사고 접수 위저드를 먼저 완료해야 수사 보드를 사용할 수 있습니다.
+              V-1 사고 접수 위저드를 먼저 완료해야 조사 보드를 사용할 수 있습니다.
             </p>
             <button onClick={() => navigate('/setup')} className="btn-primary">
               ← V-1 사고 접수로 돌아가기
@@ -107,12 +107,12 @@ const V5Board = () => {
     <div className="flex flex-col h-full">
       <PageHeader
         eyebrow="Layer 4 · M4-1"
-        title="수사 보드"
-        description="ATT&CK 매핑 결과를 후보로 보고, 보드 노드로 추가하여 공격 체인을 재구성합니다."
+        title="조사 보드"
+        description="ATT&CK 매핑 후보와 수집 로그를 검토해 사건 흐름을 정리합니다."
         actions={
           <>
             <button onClick={() => navigate('/gap')} className="btn-ghost">
-              ← 갭 감지
+              ← 빠진 증거
             </button>
             <button
               onClick={() => {
@@ -163,7 +163,7 @@ const V5Board = () => {
             <BoardCanvas pendingLog={pendingLog} clearPendingLog={() => setPendingLog(null)} />
 
             {/* 보드 노드 (실 백엔드 데이터) */}
-            <Card title={<>🎯 공격 체인 노드 (chain_nodes)</>} className="flex-shrink-0">
+            <Card title={<>보드에 추가한 기록</>} className="flex-shrink-0">
               {boardNodes.length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-2">
                   보드에 추가된 노드가 없습니다. 아래 ATT&CK 후보에서 "보드 추가" 를 눌러 노드를 생성하세요.
@@ -209,8 +209,8 @@ const V5Board = () => {
 
             {/* ATT&CK 매핑 결과 후보 */}
             <Card
-              title={<>🤖 ATT&CK 매핑 후보 (top {ATTACK_PAGE_SIZE})</>}
-              subtitle="risk_score 내림차순. 카드 클릭 시 우측 상세 표시 + '보드 추가'"
+              title={<>ATT&CK 매핑 후보 ({ATTACK_PAGE_SIZE}개씩)</>}
+              subtitle="후보를 선택해 근거를 확인하고 보드에 추가하세요."
               className="flex-shrink-0"
             >
               {attackItems.length === 0 ? (
@@ -255,7 +255,7 @@ const V5Board = () => {
 
           {/* 우측 컬럼 */}
           <div className="w-[300px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1">
-            <Card title={<>ℹ️ 상세</>}>
+            <Card title={<>선택한 기록</>}>
               {activeBoardNode ? (
                 <div className="text-[12.5px]">
                   <div className="font-bold text-[14px] mb-2 truncate">{activeBoardNode.label}</div>
@@ -342,24 +342,19 @@ const V5Board = () => {
               )}
             </Card>
 
-            <Card title={<span className="text-brand-purple">🧠 AI 셰르파 브리핑</span>}>
+            <Card title={<span className="text-brand-purple">조사 브리핑 예시</span>}>
               <div className="bg-ink-950 border border-ink-700/70 rounded-xl p-3 text-[12px] leading-7 text-ink-200">
-                <b className="text-ink-400">[Layer 3 미구현 — mock 표시 중]</b>
                 <p className="mt-1">
-                  AI 셰르파 백엔드(Ollama + RAG) 통합 시 attack_events 컨텍스트 기반 브리핑이
-                  여기 표시됩니다.
-                </p>
-                <p className="mt-2 text-[10.5px] text-ink-500">
-                  POST /api/sherpa/brief (예정)
+                  사건 기록으로 브리핑을 생성하려면 최종 제출본을 실행하세요.
                 </p>
               </div>
             </Card>
 
-            <Card title={<>📝 수사관 메모</>}>
+            <Card title={<>조사 메모</>}>
               <textarea
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                placeholder="메모 입력... (현재는 클라이언트 상태)"
+                placeholder="임시 메모 입력"
                 rows={3}
                 className="input resize-y min-h-[72px]"
               />

@@ -20,13 +20,13 @@ const sections: { layer: string; items: NavItem[] }[] = [
     layer: 'Layer 2 — 분석',
     items: [
       { path: '/ocsf', label: 'OCSF 정규화', icon: '🔄', num: 'V3' },
-      { path: '/gap', label: '갭 감지', icon: '🔍', num: 'V4' },
+      { path: '/gap', label: '빠진 증거', icon: '🔍', num: 'V4' },
     ],
   },
   {
-    layer: 'Layer 3 — AI 분석',
+    layer: '조사',
     items: [
-      { path: '/board', label: '수사 보드', icon: '🕸', num: 'V5' },
+      { path: '/board', label: '조사 보드', icon: '🕸', num: 'V5' },
       { path: '/attack', label: 'ATT&CK 매핑', icon: '🎯', num: 'V6' },
     ],
   },
@@ -44,12 +44,7 @@ const Sidebar = () => {
   return (
     <aside className="w-[244px] shrink-0 bg-ink-900/60 backdrop-blur border-r border-ink-700/70 flex flex-col overflow-y-auto">
       <div className="px-5 py-4 border-b border-ink-700/60">
-        <div className="eyebrow text-[10px]">Investigation</div>
-        <div className="mt-1 text-[13px] font-bold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-brand-red animate-pulse" />
-          진행 중
-        </div>
-        <div className="mt-1 text-[11px] text-ink-400">5계층 파이프라인 워크플로</div>
+        <div className="text-[13px] font-bold">사건 조사</div>
       </div>
       <nav className="flex-1 py-3">
         {sections.map((sec) => (
@@ -88,8 +83,8 @@ const Sidebar = () => {
         <div className="bg-ink-850 border border-ink-700/70 rounded-xl px-3 py-2.5 flex items-center gap-2.5">
           <span className="w-2 h-2 rounded-full bg-brand-teal" />
           <div className="leading-tight">
-            <div className="text-[12px] font-semibold">오프라인 모드</div>
-            <div className="text-[10px] text-ink-400">sLLM Llama 3.1 활성</div>
+            <div className="text-[12px] font-semibold">채팅</div>
+            <div className="text-[10px] text-ink-400">채팅 예시 제공</div>
           </div>
         </div>
       </div>

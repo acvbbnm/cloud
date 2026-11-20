@@ -96,7 +96,7 @@ const V2Logs = () => {
     }
     const picked = events.filter((e) => selected.has(e.id));
     addLogs(picked.map((p) => ({ ts: p.ts, ev: p.ev, ip: p.ip, user: p.user, csp: p.csp })));
-    showToast(`${picked.length}개 로그 수사 보드에 추가됨`);
+    showToast(`${picked.length}개 로그 조사 보드에 추가됨`);
     setSelected(new Set());
     navigate('/board');
   };
@@ -131,11 +131,11 @@ const V2Logs = () => {
       <PageHeader
         eyebrow="Layer 1 · M1-1"
         title="로그 수집"
-        description="CSP 로그 파일을 업로드하면 무결성(SHA-256) 검증 후 시드 카탈로그와 자동 매칭됩니다."
+        description="로그 파일의 SHA-256을 기록하고 수집 목록과 대조합니다."
         actions={
           <>
             <button onClick={handleAddToBoard} className="btn-ghost">
-              📌 수사 보드에 추가
+              📌 조사 보드에 추가
             </button>
             <button onClick={() => navigate('/ocsf')} className="btn-primary">
               OCSF 정규화 →
@@ -211,7 +211,7 @@ const V2Logs = () => {
           <div className="lg:col-span-3">
             <DropZone onUpload={handleUpload} />
           </div>
-          <Card title={<>✅ 매칭 분포 (마지막 업로드)</>} className="lg:col-span-2">
+          <Card title={<>최근 업로드 대조 결과</>} className="lg:col-span-2">
             {lastStats ? (
               Object.keys(lastStats.byTarget).length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-4">매칭된 항목 없음</div>
@@ -242,7 +242,7 @@ const V2Logs = () => {
               📋 적재된 raw_events (page {page} / {totalPages})
             </>
           }
-          subtitle="체크 후 '수사 보드에 추가' 버튼으로 보드로 보낼 수 있습니다"
+          subtitle="이벤트를 선택하고 ‘조사 보드에 추가’를 누르세요."
           action={
             <span className="chip text-[11px]">
               <span className="text-brand-teal">{selected.size}</span>

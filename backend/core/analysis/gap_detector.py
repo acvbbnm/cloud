@@ -99,32 +99,31 @@ class GapDetector:
                 f"필수 증거 {len(required_ids)}건 중 {len(missing_ids)}건 미수집. "
                 f"우선 미수집 항목: {', '.join(sorted(missing_ids))[:200]}"
             )
-            recommendation = "Layer 0(사고 접수)으로 복귀하여 누락된 로그를 추가 수집하세요."
+            recommendation = "수집 가이드에서 빠진 로그를 확인한 뒤 추가하세요."
         elif total_ocsf_n == 0:
             gap_type = "EVIDENCE"
-            summary = "수집은 완료됐으나 정규화된 OCSF 이벤트가 없습니다."
-            recommendation = "POST /api/analysis/normalize 를 호출하여 정규화를 먼저 수행하세요."
+            summary = "정규화된 OCSF 이벤트가 없습니다."
+            recommendation = "OCSF 정규화 화면에서 변환을 실행하세요."
         elif mapped_n == 0:
             gap_type = "INTERPRETATION"
             summary = (
-                f"OCSF 이벤트 {total_ocsf_n}건이 정규화됐으나 ATT&CK 매핑이 0건. "
-                f"수집된 로그가 공격 시그니처와 일치하지 않습니다."
+                f"OCSF 이벤트 {total_ocsf_n}건 중 ATT&CK 규칙과 일치한 이벤트가 없습니다."
             )
-            recommendation = "AI 셰르파에 브리핑을 요청하거나 사고유형 분류를 재검토하세요."
+            recommendation = "원본 로그와 선택한 사고 유형을 검토하세요."
         elif mapped_n / total_ocsf_n < _INTERPRETATION_THRESHOLD:
             gap_type = "INTERPRETATION"
             summary = (
                 f"매핑률 {round(mapped_n / total_ocsf_n * 100, 2)}% — "
                 f"OCSF {total_ocsf_n}건 중 {mapped_n}건만 매핑."
             )
-            recommendation = "매핑 안 된 이벤트는 AI 셰르파 브리핑 또는 수사관 직접 판단이 필요합니다."
+            recommendation = "매핑되지 않은 이벤트는 원본 로그와 대조하세요."
         else:
             gap_type = "NONE"
             summary = (
-                f"갭 없음. 필수 증거 {len(required_ids)}건 모두 수집, "
+                f"현재 수집 목록의 필수 증거 {len(required_ids)}건을 확보했습니다. "
                 f"OCSF {total_ocsf_n}건 중 {mapped_n}건 매핑 (매핑률 {round(mapped_n / total_ocsf_n * 100, 2)}%)."
             )
-            recommendation = "Layer 4 수사 보드로 진행하세요."
+            recommendation = "조사 보드에서 확보한 근거를 검토하세요."
 
         # 5) DB 적재
         gap = GapResultModel(

@@ -33,7 +33,7 @@ const Step1_TypeCards = ({ selected, csp, onSelect, onPrev, onNext }: Step1Props
       <div>
         <h2 className="h-section">사고 유형 선택</h2>
         <p className="text-[13px] text-ink-400 mt-1.5 max-w-2xl">
-          침해사고 시나리오를 선택하세요. 선택 즉시 핵심 확인 서비스와 MITRE 전술이 표시됩니다.
+          사고 유형을 선택하면 확인할 서비스와 ATT&CK 전술이 표시됩니다.
         </p>
       </div>
 

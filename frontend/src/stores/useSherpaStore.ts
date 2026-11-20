@@ -21,7 +21,7 @@ const initialMessages: SherpaMessage[] = [
   {
     id: ++seq,
     role: 'sherpa',
-    text: '수사관님, 케이스 분석 중입니다. 무엇을 도와드릴까요?',
+    text: '조사 질문과 답변 예시를 볼 수 있습니다.',
   },
 ];
 

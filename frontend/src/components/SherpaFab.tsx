@@ -4,22 +4,22 @@ import { useSherpaStore } from '@/stores/useSherpaStore';
 
 const quickReplies: { label: string; reply: string; source: string }[] = [
   {
-    label: '수집 갭 설명',
+    label: '수집 목록 확인',
     reply:
-      'VPC Flow Log 미수집 — T1071 탐지에 REQUIRED 등급 증거입니다. NCP Console → VPC → Flow Log 추출을 권장합니다.',
-    source: '갭 감지 모듈',
+      '수집 목록에서 VPC Flow Log가 빠졌는지 확인하세요. 수집 가능 기간은 해당 환경의 설정을 확인하세요.',
+    source: '수집 확인 예시',
   },
   {
-    label: 'T1078 사례',
+    label: '계정 활동 확인',
     reply:
-      'T1078 Valid Accounts: 해외 IP에서 consoleSignIn 후 권한 상승하는 패턴이 전형적입니다. NCP Activity Tracer에서 동일 시간대의 changeSubAccountLoginId 이벤트를 함께 확인하세요.',
-    source: 'ATT&CK Cloud v14',
+      '낯선 위치에서 로그인했다면 해당 계정의 권한 변경 기록과 로그인 원본을 함께 보세요.',
+    source: '계정 조사 예시',
   },
   {
-    label: '빠진 고리',
+    label: '누락 기록 확인',
     reply:
-      'T1078 → T1098 사이에 deleteAccessKey(T1070.008), createAccessKey(T1098.001) 이벤트가 누락되었을 가능성이 높습니다. 14:32~14:35 구간을 재검토해 주세요.',
-    source: 'ATT&CK 교차 검색',
+      '로그인과 권한 변경 사이에 기록 공백이 있으면 같은 계정의 활동과 수집 범위를 확인하세요.',
+    source: '기록 대조 예시',
   },
 ];
 
@@ -51,8 +51,8 @@ const SherpaFab = () => {
       () =>
         push({
           role: 'sherpa',
-          text: `RAG 검색 결과: "${q}" 관련 ATT&CK 문서와 NCP/NHN 매핑 결과를 종합하면, 해당 이벤트는 권한 탈취 패턴과 연관됩니다. 90일 보존 윈도우를 우선 확보하세요.`,
-          source: 'ChromaDB RAG / ATT&CK v14',
+          text: '이 화면에서는 예시 답변을 볼 수 있습니다. 실제 채팅은 최종 제출본에서 실행하세요.',
+          source: '예시 답변',
         }),
       350,
     );
@@ -65,7 +65,7 @@ const SherpaFab = () => {
         className="fixed bottom-7 right-7 w-[56px] h-[56px] rounded-full bg-sherpa-gradient shadow-glow z-[999] flex items-center justify-center text-[24px] text-white transition-all hover:scale-110 hover:rotate-3"
         title="AI 셰르파"
       >
-        🤖
+        도움
       </button>
 
       <div
@@ -76,11 +76,11 @@ const SherpaFab = () => {
         <div className="px-4 py-3 border-b border-ink-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="w-9 h-9 rounded-xl bg-sherpa-gradient flex items-center justify-center text-[15px]">
-              🤖
+              AI
             </span>
             <div>
               <b className="text-[13px]">AI 셰르파</b>
-              <div className="text-[10px] text-ink-400">sLLM Llama 3.1 8B · 오프라인</div>
+              <div className="text-[10px] text-ink-400">예시 답변</div>
             </div>
           </div>
           <button onClick={toggle} className="text-ink-400 hover:text-ink-100 text-base">
@@ -126,7 +126,7 @@ const SherpaFab = () => {
         <div className="p-2.5 border-t border-ink-700/60 flex gap-2">
           <input
             className="input"
-            placeholder="질문 입력..."
+            placeholder="질문 입력"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}

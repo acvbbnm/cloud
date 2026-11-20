@@ -9,7 +9,7 @@ const playbooks = [
   {
     title: 'IAM 권한 탈취 대응',
     techniques: ['T1078', 'T1098'],
-    summary: '해외 IP 로그인 직후 권한 상승 패턴 — 즉시 계정 잠금 및 Access Key 회전을 권고합니다.',
+    summary: '낯선 위치에서 접속한 계정의 권한 변경을 확인하세요.',
   },
   {
     title: '데이터 유출 대응',
@@ -21,7 +21,7 @@ const playbooks = [
     title: '수집 갭 보강',
     techniques: ['T1071'],
     summary:
-      'VPC Flow Log 미수집 시 네트워크 공격 경로 추적이 어렵습니다. NCP 콘솔에서 Flow Log를 활성화하고 30일 보존 윈도우 내 추출하세요.',
+      '연결 기록이 빠졌다면 VPC Flow Log의 사용 여부와 수집 가능 기간을 확인하세요.',
   },
 ];
 
@@ -44,8 +44,8 @@ const V8Sherpa = () => {
       () =>
         push({
           role: 'sherpa',
-          text: `RAG 검색 결과: "${q}" 관련 ATT&CK 문서·NCP/NHN 매핑·과거 사고 사례를 종합하면, 해당 질의는 클라우드 권한 탈취 패턴과 연관됩니다. 90일 보존 윈도우 내 Activity Tracer / CloudTrail 이벤트를 우선 추출하시기 바랍니다.`,
-          source: 'ChromaDB RAG · ATT&CK v14',
+          text: '이 화면에서는 예시 답변을 볼 수 있습니다. 실제 채팅은 최종 제출본에서 실행하세요.',
+          source: '예시 답변',
         }),
       400,
     );
@@ -54,21 +54,21 @@ const V8Sherpa = () => {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        eyebrow="Helper · sLLM"
+        eyebrow="조사 도우미"
         title={
           <>
             AI <span className="grad-text">셰르파</span>
           </>
         }
-        description="오프라인 sLLM(Llama 3.1 8B) + ChromaDB RAG. AI는 판단·결정하지 않고 검색·요약·제안만 수행합니다."
+        description="조사 질문과 응답 예시를 볼 수 있습니다."
         meta={
           <div className="flex items-center gap-2">
             <span className="chip">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-              모델 연결됨
+              예시 화면
             </span>
-            <span className="chip">v14 ATT&CK</span>
-            <span className="chip">{messages.length} 메시지</span>
+
+            <span className="chip">메시지 {messages.length}개</span>
           </div>
         }
       />
@@ -77,15 +77,15 @@ const V8Sherpa = () => {
         <div className="lg:col-span-2 panel flex flex-col p-0 min-h-0">
           <div className="px-5 py-4 border-b border-ink-700/60 flex items-center gap-3">
             <span className="w-10 h-10 rounded-2xl bg-sherpa-gradient flex items-center justify-center text-[18px]">
-              🤖
+              AI
             </span>
             <div>
               <b className="text-[14px]">AI 셰르파</b>
-              <div className="text-[11px] text-ink-400">sLLM Llama 3.1 8B · 오프라인</div>
+              <div className="text-[11px] text-ink-400">채팅 예시</div>
             </div>
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-brand-teal">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-              연결됨
+              예시
             </span>
           </div>
 
@@ -118,7 +118,7 @@ const V8Sherpa = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="질문 입력 (예: T1078 사례, VPC Flow Log 수집 방법 등)"
+              placeholder="질문 입력"
               className="input"
             />
             <button onClick={handleSend} className="btn-primary">
@@ -128,7 +128,7 @@ const V8Sherpa = () => {
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-          <Card title={<>🎯 추천 플레이북</>}>
+          <Card title={<>플레이북 예시</>}>
             <div className="space-y-2.5">
               {playbooks.map((p) => (
                 <div key={p.title} className="bg-ink-950 border border-ink-700/70 rounded-xl p-3.5 hover:border-brand-blue/40 transition-colors">
@@ -146,7 +146,7 @@ const V8Sherpa = () => {
             </div>
           </Card>
 
-          <Card title={<>📚 KB 인덱스</>}>
+          <Card title={<>지식베이스 구성 예시</>}>
             <div className="text-[12px] text-ink-300 leading-7 space-y-1">
               <KbRow label="ATT&CK Cloud v14" count={623} tone="purple" />
               <KbRow label="NCP Activity Tracer 매핑" count={412} tone="blue" />

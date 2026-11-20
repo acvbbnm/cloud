@@ -56,21 +56,21 @@ const V4Gap = () => {
   const gapMutation = useMutation({
     mutationFn: () => runGap(caseId!),
     onSuccess: (data) => {
-      showToast(`갭 감지: ${data.gap_type} (완료율 ${data.completionRate}%)`);
+      showToast(`빠진 증거: ${data.gap_type} (완료율 ${data.completionRate}%)`);
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(`갭 감지 실패: ${msg}`);
+      showToast(`빠진 증거 실패: ${msg}`);
     },
   });
 
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-2" title="갭 감지" description="진행 중인 사고 케이스가 없습니다." />
+        <PageHeader eyebrow="Layer 2 · M2-2" title="빠진 증거" description="진행 중인 사고 케이스가 없습니다." />
         <PageBody>
           <Card title={<>⚠️ 케이스 없음</>}>
-            <p className="text-[13px] text-ink-300 mb-3">V-1 사고 접수 위저드를 먼저 완료하세요.</p>
+            <p className="text-[13px] text-ink-300 mb-3">먼저 사고를 등록하세요.</p>
             <button onClick={() => navigate('/setup')} className="btn-primary">
               ← V-1 사고 접수
             </button>
@@ -87,8 +87,8 @@ const V4Gap = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-2"
-        title="갭 감지"
-        description="필수 증거 수집 + OCSF 정규화 + ATT&CK 매핑 결과를 종합하여 갭 유형을 자동 판정합니다."
+        title="빠진 증거"
+        description="수집 목록과 분석 결과를 대조해 빠진 증거를 찾습니다."
         actions={
           <>
             <button
@@ -96,7 +96,7 @@ const V4Gap = () => {
               disabled={gapMutation.isPending}
               className="btn-ghost disabled:opacity-50"
             >
-              {gapMutation.isPending ? '판정 중…' : '🔁 갭 감지 실행'}
+              {gapMutation.isPending ? '판정 중…' : '🔁 빠진 증거 실행'}
             </button>
             {result?.gap_type === 'COLLECTION' && (
               <button
@@ -112,12 +112,12 @@ const V4Gap = () => {
             {result?.gap_type === 'NONE' && (
               <button
                 onClick={() => {
-                  showToast('수사 보드 진행');
+                  showToast('조사 보드 열기');
                   navigate('/board');
                 }}
                 className="btn-primary"
               >
-                수사 보드 →
+                조사 보드 →
               </button>
             )}
             {result?.gap_type === 'INTERPRETATION' && (
@@ -157,7 +157,7 @@ const V4Gap = () => {
           )}
           {!gapMutation.data && !gapMutation.isPending && (
             <div className="text-ink-300 leading-6">
-              우상단 「갭 감지 실행」 버튼을 누르면 POST <code>/api/analysis/gap</code> 으로 판정합니다.
+              우상단 「빠진 증거 실행」 버튼을 누르면 POST <code>/api/analysis/gap</code> 으로 판정합니다.
               실행 전에 V-3 에서 정규화 + ATT&CK 매핑이 끝나있어야 정확한 결과가 나옵니다.
             </div>
           )}
@@ -171,9 +171,9 @@ const V4Gap = () => {
 
         {/* 결과 없음 — 초기 상태 */}
         {!result && !gapMutation.isPending && (
-          <Card title={<>갭 감지 미실행</>}>
+          <Card title={<>증거 확인 전</>}>
             <p className="text-[13px] text-ink-400">
-              상단의 「갭 감지 실행」을 눌러 케이스의 증거 완결성을 분석해주세요.
+              상단의 「빠진 증거 실행」을 눌러 케이스의 증거 완결성을 분석해주세요.
             </p>
           </Card>
         )}
@@ -205,7 +205,7 @@ const V4Gap = () => {
                   result.completionRate === 100
                     ? '완전 수집'
                     : result.completionRate >= 60
-                    ? '수집 갭 감지'
+                    ? '수집 빠진 증거'
                     : '필수 증거 부족'
                 }
               />

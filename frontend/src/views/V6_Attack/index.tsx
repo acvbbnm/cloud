@@ -79,7 +79,7 @@ const V6Attack = () => {
             MITRE ATT&CK <span className="grad-text">매핑</span>
           </>
         }
-        description="Cloud Matrix 6 전술 × 7 기법으로 사고 흐름을 가시화합니다. 모든 매핑은 규칙 기반 JSON으로 환각이 없습니다."
+        description="샘플 사건의 ATT&CK 매핑을 전술과 기법별로 보여줍니다."
         actions={
           <button
             onClick={() => {
@@ -95,12 +95,12 @@ const V6Attack = () => {
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
         <div className="grid grid-cols-3 gap-3">
-          <KpiCard label="탐지된 기법" value={techniques.length} color="purple" hint="Sub-technique 포함" />
-          <KpiCard label="전술 커버리지" value={matrix.length} color="red" hint="6 / 14 전술" />
-          <KpiCard label="매핑 이벤트" value={342} color="blue" hint="OCSF → ATT&CK" />
+          <KpiCard label="기법" value={techniques.length} color="purple" hint="샘플의 하위 기법 포함" />
+          <KpiCard label="전술" value={matrix.length} color="red" hint="샘플에서 사용한 전술" />
+          <KpiCard label="매핑 이벤트" value={342} color="blue" hint="샘플 이벤트 수" />
         </div>
 
-        <Card title={<>ATT&CK Cloud Matrix 히트맵</>} subtitle="● = 탐지됨 · 매핑 강도에 따라 색상이 진해집니다">
+        <Card title={<>ATT&CK 전술과 기법</>} subtitle="점은 샘플에서 관련도가 높게 표시된 기법입니다.">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {matrix.map((col) => (
               <div key={col.tactic}>
@@ -126,7 +126,7 @@ const V6Attack = () => {
           </div>
         </Card>
 
-        <Card title={<>탐지 기법 상세</>}>
+        <Card title={<>매핑된 기법</>}>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[12.5px]">
               <thead>

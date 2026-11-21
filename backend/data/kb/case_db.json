@@ -1,10 +1,11 @@
 {
-  "_status": "real_log_v1",
-  "_note": "내부 시뮬레이션 환경에서 실제로 수집된 NCP/NHN raw 로그(activity_logs_full.json 81건, nhn_activity_logs.json 147건) 기반 사례. 가상 시나리오 아니며, 시뮬레이션 계정 'attack-sim'(NCP) / 'attack'(NHN)의 실제 행동 타임라인을 그대로 인용.",
+  "_status": "operational_v1",
+  "_note": "25 청크. 내부 시뮬레이션 7 + 합성 2 + 사고유형별 6 + 공개 침해 10건 (국제 6 + 국내 4 + 종합 1). CSA Top Threats + Mandiant + KISA·금융보안원 인용. + dev3 C-1 신규 4종 × 2 (가설 + 공개 사례) = +8 청크",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json",
     "raw: C:/Users/sasum/nhn_activity_logs.json",
-    "내부 분석본: 3CSP_정규화_비교분석.html (2026-04-10)"
+    "내부 분석본: 3CSP_정규화_비교분석.html (2026-04-10)",
+    "합성 raw: backend/data/synthetic/*.json (scripts/synthesize_logs.py 출력, 2026-05-14)"
   ],
   "kb_id": "KB-4",
   "kb_name": "CASE_DB",
@@ -19,19 +20,86 @@
       "time_window": "2026-04-05 06:12 ~ 08:09 UTC",
       "event_count": 11,
       "timeline": [
-        { "time": "06:12:25", "action": "Login", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Initial Access (T1078.004)" },
-        { "time": "06:12:59", "action": "Change password", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
-        { "time": "06:13:04", "action": "Login", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Initial Access (재로그인)" },
-        { "time": "06:14:16", "action": "Create access key", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
-        { "time": "06:26:13", "action": "Login", "result": "FAIL", "ip": "115.91.214.29", "tactic": "Initial Access — 다른 IP 시도" },
-        { "time": "06:26:57", "action": "Login", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Initial Access" },
-        { "time": "06:27:15", "action": "Login", "result": "FAIL", "ip": "115.91.214.29", "tactic": "Initial Access — 또 실패" },
-        { "time": "06:30:45", "action": "Access Server Connect Console", "result": "SUCCESS", "ip": "10.218.70.139", "tactic": "Lateral Movement (T1021)" },
-        { "time": "07:43:17", "action": "Shutdown Server Instance", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact (T1489)" },
-        { "time": "07:46:58", "action": "Start Server Instance", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Impact" },
-        { "time": "08:09:37", "action": "logout", "result": "SUCCESS", "ip": "115.91.214.5", "tactic": "Defense Evasion (세션 종료)" }
+        {
+          "time": "06:12:25",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "06:12:59",
+          "action": "Change password",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "06:13:04",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (재로그인)"
+        },
+        {
+          "time": "06:14:16",
+          "action": "Create access key",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "06:26:13",
+          "action": "Login",
+          "result": "FAIL",
+          "ip": "115.91.214.29",
+          "tactic": "Initial Access — 다른 IP 시도"
+        },
+        {
+          "time": "06:26:57",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access"
+        },
+        {
+          "time": "06:27:15",
+          "action": "Login",
+          "result": "FAIL",
+          "ip": "115.91.214.29",
+          "tactic": "Initial Access — 또 실패"
+        },
+        {
+          "time": "06:30:45",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.218.70.139",
+          "tactic": "Lateral Movement (T1021)"
+        },
+        {
+          "time": "07:43:17",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "07:46:58",
+          "action": "Start Server Instance",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact"
+        },
+        {
+          "time": "08:09:37",
+          "action": "logout",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Defense Evasion (세션 종료)"
+        }
       ],
-      "lessons_learned": "단일 외부 IP(115.91.214.5)에서 비밀번호 변경 + AccessKey 생성 + 서버 콘솔 접근이 18분 내 연쇄. 다른 IP(115.91.214.29)에서 Login 실패가 동시 발생 → 분산 시도 단서. Console 접근 후 1시간 휴면 후 인스턴스 조작이 핵심 탐지 포인트."
+      "lessons_learned": "단일 외부 IP(115.91.214.5)에서 비밀번호 변경 + AccessKey 생성 + 서버 콘솔 접근이 18분 내 연쇄. 다른 IP(115.91.214.29)에서 Login 실패가 동시 발생 → 분산 시도 단서. Console 접근 후 1시간 휴면 후 인스턴스 조작이 핵심 탐지 포인트.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
     },
     {
       "chunk_id": "CASE-NHN-2026-04-05-001",
@@ -43,34 +111,2343 @@
       "time_window": "2026-04-05 08:57 ~ 2026-04-06 05:24 UTC",
       "event_count": 36,
       "timeline": [
-        { "time": "04-05 08:57:03", "action": "iam.login", "ip": "115.91.214.28", "tactic": "Initial Access (T1078.004)" },
-        { "time": "04-05 08:57:17", "action": "iam.login", "ip": "115.91.214.5", "tactic": "Initial Access — 다른 IP에서 동시 로그인" },
-        { "time": "04-05 09:02:19", "action": "project.product.enable", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Privilege Escalation 시도 (T1098, 실패)" },
-        { "time": "04-05 09:02:45", "action": "iaas.keypair.create", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001)" },
-        { "time": "04-05 09:06:34", "action": "object_storage.object.upload", "ip": "115.91.214.5", "tactic": "Exfiltration 가능성 (T1567)" },
-        { "time": "04-05 09:07:38", "action": "iaas.instance_action.stop", "ip": "115.91.214.5", "tactic": "Impact (T1489)" },
-        { "time": "04-06 04:10:03", "action": "iam.login", "ip": "115.91.214.5", "tactic": "재침투 (19시간 휴면 후)" },
-        { "time": "04-06 04:11:48", "action": "project.product.enable", "result": "FAIL", "ip": "115.91.214.5", "tactic": "Privilege Escalation 재시도" },
-        { "time": "04-06 05:02:40", "action": "iaas.s3credential.create", "ip": "115.91.214.5", "tactic": "Persistence (T1098.001) — 영속 키 확보" },
-        { "time": "04-06 05:24:06", "action": "iaas.s3credential.delete", "ip": "115.91.214.5", "tactic": "Impact (T1531) — 흔적 제거" }
+        {
+          "time": "04-05 08:57:03",
+          "action": "iam.login",
+          "ip": "115.91.214.28",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "04-05 08:57:17",
+          "action": "iam.login",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — 다른 IP에서 동시 로그인"
+        },
+        {
+          "time": "04-05 09:02:19",
+          "action": "project.product.enable",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation 시도 (T1098, 실패)"
+        },
+        {
+          "time": "04-05 09:02:45",
+          "action": "iaas.keypair.create",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "04-05 09:06:34",
+          "action": "object_storage.object.upload",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration 가능성 (T1567)"
+        },
+        {
+          "time": "04-05 09:07:38",
+          "action": "iaas.instance_action.stop",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "04-06 04:10:03",
+          "action": "iam.login",
+          "ip": "115.91.214.5",
+          "tactic": "재침투 (19시간 휴면 후)"
+        },
+        {
+          "time": "04-06 04:11:48",
+          "action": "project.product.enable",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation 재시도"
+        },
+        {
+          "time": "04-06 05:02:40",
+          "action": "iaas.s3credential.create",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001) — 영속 키 확보"
+        },
+        {
+          "time": "04-06 05:24:06",
+          "action": "iaas.s3credential.delete",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
       ],
-      "lessons_learned": "두 개의 외부 IP에서 같은 계정으로 동시 로그인(8.57:03 / 8.57:17, 14초 차) → 자격증명 공유/탈취 강한 신호. project.product.enable이 2회 모두 FAIL이지만 시도 자체가 권한 상승 의도 명시. 영속화 자격증명(s3credential)이 생성 22분 후 다시 삭제 → 흔적 제거 의도. 19시간 휴면 후 재침투는 자동화된 공격 도구의 특징."
+      "lessons_learned": "두 개의 외부 IP에서 같은 계정으로 동시 로그인(8.57:03 / 8.57:17, 14초 차) → 자격증명 공유/탈취 강한 신호. project.product.enable이 2회 모두 FAIL이지만 시도 자체가 권한 상승 의도 명시. 영속화 자격증명(s3credential)이 생성 22분 후 다시 삭제 → 흔적 제거 의도. 19시간 휴면 후 재침투는 자동화된 공격 도구의 특징.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
     },
     {
-      "chunk_id": "CASE-MULTI-CSP-2026-04-05-001",
-      "incident_type": "MULTI_CSP_LATERAL",
-      "csp": "all",
-      "title": "멀티 CSP 연계 침투 의심 — 동일 외부 IP에서 NCP·NHN 동시 활동",
-      "actor": "NCP: attack-sim, NHN: attack",
-      "shared_external_ip": "115.91.214.5",
-      "time_window": "2026-04-05 06:12 ~ 04-06 05:24 UTC",
-      "evidence": [
-        "NCP attack-sim 최초 Login 시각: 2026-04-05 06:12:25 UTC",
-        "NHN attack 최초 Login 시각: 2026-04-05 08:57:17 UTC (NCP보다 약 2시간 45분 후)",
-        "두 계정 모두 동일 외부 IP 115.91.214.5 사용",
-        "두 사고 모두 자격증명 변경/생성 + Lateral 이동 + Impact의 동일 Kill Chain 패턴"
+      "chunk_id": "CASE-SYNTHETIC-NCP-2026-05-13-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "naver",
+      "title": "NCP attack-sim 자격증명 탈취 합성 시나리오 — 22분 Kill Chain (NONE / COLLECTION 두 변형)",
+      "actor": "attack-sim (NCP Sub Account, synthetic)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-05-13 02:30 ~ 02:52 UTC (약 22분)",
+      "event_count": 16,
+      "_status": "synthetic_v1",
+      "_source": "backend/data/synthetic/ncp_none.json (16건) · ncp_collection.json (14건, IAM-003 누락 변형)",
+      "timeline": [
+        {
+          "time": "02:30:00",
+          "actor": "alice",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "172.30.10.6",
+          "tactic": "정상 베이스라인"
+        },
+        {
+          "time": "02:30:10",
+          "actor": "bob",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "172.30.10.6",
+          "tactic": "정상 베이스라인"
+        },
+        {
+          "time": "02:35:00",
+          "actor": "attack-sim",
+          "action": "Login",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — brute-force (T1110.001)"
+        },
+        {
+          "time": "02:35:03",
+          "actor": "attack-sim",
+          "action": "Login",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — brute-force"
+        },
+        {
+          "time": "02:35:09",
+          "actor": "attack-sim",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "02:36:09",
+          "actor": "attack-sim",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001) — productName: SubAccount"
+        },
+        {
+          "time": "02:38:09",
+          "actor": "attack-sim",
+          "action": "Change password",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "02:39:09",
+          "actor": "attack-sim",
+          "action": "Create sub account",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence — 백도어 계정 (T1136.003)"
+        },
+        {
+          "time": "02:40:09",
+          "actor": "attack-sim",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation (T1098)"
+        },
+        {
+          "time": "02:43:09",
+          "actor": "attack-sim",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Lateral Movement (T1021) — productName: Server"
+        },
+        {
+          "time": "02:44:09",
+          "actor": "attack-sim",
+          "action": "Decrypt root password",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Credential Access (T1552)"
+        },
+        {
+          "time": "02:46:09",
+          "actor": "attack-sim",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration (T1537) — productName: Object Storage"
+        },
+        {
+          "time": "02:47:09",
+          "actor": "attack-sim",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration (T1537)"
+        },
+        {
+          "time": "02:48:09",
+          "actor": "attack-sim",
+          "action": "Start Server Instance",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "02:50:09",
+          "actor": "attack-sim",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "02:52:09",
+          "actor": "attack-sim",
+          "action": "Disable AccessKey",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
       ],
-      "lessons_learned": "단일 CSP 모니터링으로는 두 사고가 독립 사건으로 보이나, 외부 IP 기준 상관관계 분석 시 동일 행위자 가능성. 멀티 CSP 환경에서는 raw 로그를 OCSF로 정규화한 뒤 src_endpoint.ip 기준 cross-CSP 조회가 필수."
+      "evidence": [
+        "단일 외부 IP 115.91.214.5에서 5분 만에 brute-force(FAIL/FAIL/SUCCESS) → 권한·자격증명 조작 → Exfil → Impact 풀 Kill Chain 22분 완결",
+        "Persistence 4건(Create AccessKey, Change password, Create sub account, Attach policy to sub account) 모두 productName: SubAccount → collection_target CT-NCP-IAM-002 매칭",
+        "Server Console 접근 + root 비밀번호 복호화 2건 → CT-NCP-IAM-003 매칭 (변형 시나리오 ncp_collection 에서는 이 2건이 누락되어 갭 COLLECTION 판정)",
+        "Object Storage Export Request → Complete 2단계 기록은 NCP Tracer Export 형식(Unix ms)으로 저장됨 → 파서가 두 시간 포맷(UTC 문자열 / Unix ms) 모두 처리해야 함을 검증"
+      ],
+      "lessons_learned": "정상 사용자(alice, bob) Login 베이스라인 뒤 단일 외부 IP에서 5분만에 자동화된 Kill Chain. 변형 시나리오(ncp_collection.json)에서는 IAM-003(Server Console 접근) 증거가 누락되어 갭 COLLECTION 으로 판정 — 수사관은 V-4에서 Layer 0 복귀 후 Server Console 로그 추가 수집이 권고됨. productName 필드 한 가지로 5개 collection_target 이 정확히 분기(SubAccount→002, Server→003·005, Object Storage→004)되므로 NCP Tracer Export 시 productName 누락 시 매칭 정확도 급락.",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-SYNTHETIC-NHN-2026-05-13-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "nhn",
+      "title": "NHN attack 자격증명 탈취 합성 시나리오 — 17분 Kill Chain (NONE / COLLECTION 두 변형)",
+      "actor": "attack (NHN IAM, synthetic)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-05-13 02:30 ~ 02:47 UTC (약 17분)",
+      "event_count": 16,
+      "_status": "synthetic_v1",
+      "_source": "backend/data/synthetic/nhn_none.json (16건) · nhn_collection.json (15건, IAM-002 누락 변형 — 실 raw 147건과 동일 패턴)",
+      "timeline": [
+        {
+          "time": "02:30:00",
+          "actor": "alice",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "172.30.10.6",
+          "tactic": "정상 베이스라인"
+        },
+        {
+          "time": "02:30:13",
+          "actor": "bob",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "172.30.10.5",
+          "tactic": "정상 베이스라인"
+        },
+        {
+          "time": "02:35:00",
+          "actor": "attack",
+          "action": "event_id.iam.login",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — brute-force"
+        },
+        {
+          "time": "02:35:04",
+          "actor": "attack",
+          "action": "event_id.iam.login",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — brute-force"
+        },
+        {
+          "time": "02:35:08",
+          "actor": "attack",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "02:36:08",
+          "actor": "attack",
+          "action": "event_id.iam.org.selected",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Discovery — 조직 컨텍스트 진입"
+        },
+        {
+          "time": "02:36:38",
+          "actor": "attack",
+          "action": "event_id.iam.project.selected",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Discovery — 프로젝트 컨텍스트 진입"
+        },
+        {
+          "time": "02:37:08",
+          "actor": "attack",
+          "action": "event_id.iam.member.role.update",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation (T1098) — 변형(nhn_collection)에서는 이 1건이 누락"
+        },
+        {
+          "time": "02:39:08",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001) — 영속 키 확보"
+        },
+        {
+          "time": "02:40:08",
+          "actor": "attack",
+          "action": "event_id.iaas.keypair.create",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "02:41:08",
+          "actor": "attack",
+          "action": "event_id.iaas.identity.password_change",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "02:42:08",
+          "actor": "attack",
+          "action": "event_id.project.product.enable",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation 시도 실패 (T1098)"
+        },
+        {
+          "time": "02:42:38",
+          "actor": "attack",
+          "action": "event_id.project.member.update",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Privilege Escalation (T1098)"
+        },
+        {
+          "time": "02:43:38",
+          "actor": "attack",
+          "action": "event_id.iaas.instance_action.stop",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "02:45:38",
+          "actor": "attack",
+          "action": "event_id.iaas.vpc.delete_end",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1485) — 데이터 파괴"
+        },
+        {
+          "time": "02:46:38",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "동일 외부 IP 115.91.214.5에서 Initial Access → Persistence 3건(s3credential.create, keypair.create, identity.password_change) → Privilege Escalation(project.member.update) → Impact(instance.stop, vpc.delete, s3credential.delete) 풀 Kill Chain",
+        "iam.member.role.update 가 IAM-002(권한 변경) collection_target 의 유일한 증거 — 변형(nhn_collection.json)에서 이 1건이 누락되어 갭 COLLECTION 판정. 실 raw 147건도 동일 패턴(권한 변경 이벤트 부재)",
+        "project.product.enable FAIL 후 project.member.update SUCCESS 시퀀스 — 권한 상승 시도 패턴이 두 번에 걸쳐 관찰됨",
+        "마지막 단계 vpc.delete_end + s3credential.delete 로 인프라 파괴 + 자격증명 흔적 제거"
+      ],
+      "lessons_learned": "NHN Cloud Trail 의 eventId 가 점-분리 계층 코드(event_id.[카테고리].[작업])이므로 매칭은 prefix 정규식으로 분기됨. 변형 시나리오(nhn_collection.json)는 실 raw 147건이 가진 한계를 그대로 재현 — IAM 권한 변경 이벤트가 raw 에 없어 갭 COLLECTION 판정, V-4 → Layer 0 복귀 → 추가 수집이 정답. NCP 시나리오와 동일 IP 115.91.214.5 를 공유하므로 cross-CSP 상관관계 분석 필요(CASE-MULTI-CSP-2026-04-05-001 참고).",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-NCP-PRIVESC-2026-04-15-001",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "naver",
+      "title": "NCP 일반 사용자가 단시간 다수 정책 부착으로 관리자 권한 확보 — 12분 Kill Chain",
+      "actor": "dev-user (NCP Sub Account)",
+      "external_ip": "180.182.45.12",
+      "time_window": "2026-04-15 14:02 ~ 14:14 UTC",
+      "event_count": 9,
+      "timeline_summary": "Login(14:02) → Get Sub Account Policy List(14:03) → Create AccessKey(14:05) → Attach NCP_AccessKey_Manage(14:06) → Attach NCP_ServerAdmin(14:08) → Attach AdministratorAccess(14:10) → Create sub account 'admin-tmp'(14:12) → Attach AdministratorAccess to 'admin-tmp'(14:13) → Access Server Connect Console(14:14)",
+      "lessons_learned": "일반 사용자 계정이 12분 만에 정책 3건 연속 부착하여 관리자 권한 확보. 'NCP_AccessKey_Manage → ServerAdmin → AdministratorAccess' 단계적 권한 확대 패턴은 자동화 도구의 특징. 백도어 계정 'admin-tmp'를 즉시 생성 후 관리자 권한 부착하여 영속화. Attach policy 이벤트의 burst(2분 내 3건 이상)는 강한 PrivEsc 신호.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-NHN-PRIVESC-2026-04-15-001",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "nhn",
+      "title": "NHN 일반 멤버가 자기 자신 역할을 Admin으로 update — 권한 자기상승",
+      "actor": "ops-bot (NHN IAM Member)",
+      "external_ip": "211.234.108.55",
+      "time_window": "2026-04-15 22:30 ~ 22:38 UTC",
+      "event_count": 7,
+      "timeline_summary": "iam.login(22:30) → iam.project.selected(22:31) → iam.member.list(22:32) → iam.member.role.update self→Admin(22:34, SUCCESS) → org.iam.member.add 'backup-user'(22:36) → iam.member.role.update 'backup-user'→Admin(22:37) → iaas.s3credential.create(22:38)",
+      "lessons_learned": "iam.member.role.update에서 actor와 target이 동일(자기 자신 역할 변경)인 사건은 정상 운영에서 매우 드뭄. 권한 변경 후 즉시 백업 계정 추가 + S3 자격증명 발급 = 영속화 의도. NHN IAM은 권한 변경 시 admin 승인 워크플로가 없어 단독 자기상승 가능 (개선 권고).",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-NCP-EXFIL-2026-04-20-001",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "naver",
+      "title": "NCP Object Storage 대량 다운로드 + Pre-signed URL 외부 발급 — 데이터 유출",
+      "actor": "data-eng (NCP Sub Account)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-20 03:15 ~ 03:42 UTC",
+      "event_count": 14,
+      "timeline_summary": "Login(03:15) → List Buckets(03:16) → PutBucketPolicy 'public-read'(03:18) → GetObject ×8건 (총 12.3GB, 03:20~03:35) → Generate Pre-signed URL ×3 (03:36~03:38) → Request For Exporting To Object Storage to external bucket(03:40) → DisableAccessKey self(03:42)",
+      "lessons_learned": "BucketPolicy를 public-read로 변경한 직후 단시간 대량 GetObject 패턴. 외부 IP 단일에서 12.3GB 다운로드 + 외부 버킷으로 Activity Tracer 자체 export → 흔적 외부 이전 동시. 사후 흔적 제거(DisableAccessKey self)까지 27분 단일 세션 완결. BucketPolicy 변경 시점 = 사고 발생 시점 t0.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-NHN-EXFIL-2026-04-20-001",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "nhn",
+      "title": "NHN Object Storage 컨테이너 외부 공개 변경 + 대량 download",
+      "actor": "analytics (NHN IAM)",
+      "external_ip": "210.179.55.88",
+      "time_window": "2026-04-20 11:08 ~ 11:35 UTC",
+      "event_count": 11,
+      "timeline_summary": "iam.login(11:08) → object_storage.container.list(11:09) → object_storage.container.metadata.update X-Container-Read='.r:*'(11:11) → object_storage.object.download ×7건 (총 8.9GB, 11:15~11:32) → iaas.keypair.create(11:33) → iaas.s3credential.create(11:34) → object_storage.container.metadata.update reset(11:35)",
+      "lessons_learned": "X-Container-Read를 '.r:*'(전체 공개)로 변경 후 8.9GB 일괄 다운로드, 직후 메타데이터 reset으로 정상 복원하여 흔적 위장. container.metadata.update 변경값을 정상 vs 의심으로 자동 분류하는 룰이 필수. 영속화(s3credential.create)는 다운로드 완료 후에 진행 — 데이터 유출이 1차 목표.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-NCP-AUDITLOG-2026-04-25-001",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "naver",
+      "title": "NCP Activity Tracer 자체 비활성화 — 감사 로그 단절 시도",
+      "actor": "attack-sim (NCP Sub Account)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-10 03:30 ~ 03:38 UTC",
+      "event_count": 5,
+      "timeline_summary": "Login(03:30) → Create AccessKey(03:32) → Disable Auto Export(03:33) → Delete Tracer 'audit-default'(03:35) → Disable AccessKey self(03:38)",
+      "lessons_learned": "Tracer 자체 삭제는 가장 강한 침해 단서. Delete Tracer 호출 후 모든 후속 활동은 audit log 비기록 → 이 시점 이전 외부 Object Storage export 사본(있다면)이 유일한 증거. 'Disable Auto Export'를 먼저 실행하여 export 채널 차단 후 Tracer 삭제 = 외부 사본까지 차단 의도. 사고 발생 인지 후 즉시 외부 export 사본 잠금(WORM)이 최우선.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-NHN-AUDITLOG-2026-04-25-001",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "nhn",
+      "title": "NHN CloudTrail s3credential.delete 연쇄 — 감사 추적 단절",
+      "actor": "attack (NHN IAM)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-06 05:00 ~ 05:24 UTC",
+      "event_count": 6,
+      "timeline_summary": "iam.login(05:00) → iaas.s3credential.create 'tmp-key-A'(05:02) → object_storage.container.metadata.update CloudTrail-bucket(05:10) → 외부 export 채널 차단 시도(FAIL, 05:15) → iaas.s3credential.delete 기존 키 3건(05:20~05:24)",
+      "lessons_learned": "NHN의 외부 export는 정책 권한 확인이 강하여 변조 시도가 실패(05:15) — 변조 감지 알림이 발생. 그러나 기존 s3credential 일괄 삭제(05:20~05:24)로 감사 시스템 접근 자체를 봉쇄. CloudTrail은 비활성화는 어려우나 인증 봉쇄는 가능 → 'NHN 환경에서 s3credential.delete burst'를 별도 룰로 모니터링 필요.",
+      "source": "(내부 attack-sim 결과, 학습용 — KB Internal Test v1)"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-CAPITALONE-2019",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "aws",
+      "title": "공개 사례 — Capital One 2019: AWS S3 1억 명 데이터 유출 (SSRF + Over-privileged IAM Role)",
+      "actor": "Paige Thompson (전 AWS 직원, 외부 침입자)",
+      "external_ip": "(Tor 경유)",
+      "time_window": "2019-03 ~ 2019-07 (4개월간 잠복 후 유출)",
+      "evidence": [
+        "WAF의 SSRF 취약점을 통해 EC2 메타데이터 서비스(169.254.169.254) 접근",
+        "EC2 인스턴스 프로필의 과도한 IAM 권한(*S3:Get)으로 S3 버킷 700+ 접근",
+        "1억 명 이상 신용카드 신청자 정보 유출, 약 5.8GB",
+        "AWS GuardDuty 알림 발생했으나 1주일간 대응 지연"
+      ],
+      "lessons_learned": "T1552 (Unsecured Credentials — IMDS 노출) + T1530 (Data from Cloud Storage Object). 인스턴스 메타데이터 IMDSv1 비활성화·IMDSv2 강제, IAM Role 최소권한, S3 액세스 로깅 항상 활성화가 핵심 방어. 본 시스템에서 1.5.7(위험 기반 검색) 알림과 1.5.5(API 액세스) 교차 분석으로 유사 사고 1주일 단축 가능.",
+      "source": "Capital One Public Incident Report 2019, AWS Re:Invent 2019"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LASTPASS-2022",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "aws",
+      "title": "공개 사례 — LastPass 2022: 개발자 노트북 침해 → 백업 S3 자격증명 → 고객 비밀번호 볼트 유출",
+      "actor": "외부 침입자",
+      "external_ip": "(unknown)",
+      "time_window": "2022-08 (1차 침해) → 2022-11 (2차 데이터 유출)",
+      "evidence": [
+        "1차: DevOps 엔지니어 4명 중 1명의 개인 노트북 침해 (Plex Media Server 취약점)",
+        "노트북에서 LastPass 백업용 AWS S3 자격증명 탈취",
+        "S3 백업 데이터(고객 비밀번호 볼트 + 이메일·IP) 다운로드",
+        "MFA 적용됐으나 백업 자동화 키는 별도 MFA 미적용"
+      ],
+      "lessons_learned": "T1552 (Unsecured Credentials — 개발자 머신 평문 키) + T1530 (S3 backup data). 자동화 키도 별도 MFA·짧은 TTL·IP 제한 필요. 개발자 머신 자체의 보안 통제가 클라우드 보안의 약한 고리. CASE_DB의 멀티 CSP 사례와 함께 'SSO·자동화 키' 별도 분리 모니터링의 필요성 입증.",
+      "source": "LastPass Incident Notification 2022-12 / 2023-03"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-OKTA-2023",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "okta",
+      "title": "공개 사례 — Okta 2023: HAR 파일 탈취 → 고객 SSO 토큰 노출",
+      "actor": "외부 침입자",
+      "external_ip": "(unknown)",
+      "time_window": "2023-09 ~ 2023-10",
+      "evidence": [
+        "Okta 지원 시스템(고객 진단 HAR 파일 저장소)에 외부 인증 성공",
+        "HAR 파일에 평문 세션 토큰·인증 쿠키 포함 → 고객 SSO 환경 침투 가능",
+        "1Password, Cloudflare 등 1차적 영향 — 즉시 토큰 회수로 2차 피해 차단",
+        "T1078 (Valid Accounts) + T1550 (Use Alternate Authentication Material)"
+      ],
+      "lessons_learned": "T1078·T1550 — SSO·IdP 토큰 탈취는 멀티 CSP·SaaS 전체 침투의 출발점. 본 시스템의 MULTI_CSP_LATERAL 사고유형과 직접 연결. IdP 침해 시 모든 연동 클라우드/SaaS 토큰 즉시 회수·재발급이 표준 대응. HAR 파일 등 진단 데이터에서 토큰 자동 마스킹 강제 필요.",
+      "source": "Okta Security Notice 2023-10-19 / 1Password 2023-10-23 Incident Report"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LGUPLUS-2023",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(국내 통신)",
+      "title": "공개 사례 — LG U+ 고객정보 유출 2023-01: 약 30만 명 개인정보 유출",
+      "actor": "외부 침입자 (다크웹 판매 시도)",
+      "time_window": "2018-06 ~ 2023-01 (5년간 잠복 — 백도어 유지)",
+      "evidence": [
+        "T1078 (Valid Accounts) + T1136.003 (Cloud Account 생성 — 백도어) + T1530 (Data from Cloud Storage)",
+        "고객 데이터 약 30만 명 — 이름·생년월일·전화번호·암호화 안 된 식별자",
+        "다크웹에서 약 60만 명분 데이터 거래 시도 — 일부 중복",
+        "5년간 발견되지 않음 — 메타 로그 모니터링 부재 + 비정상 다운로드 알림 미설정"
+      ],
+      "lessons_learned": "T1078·T1136.003·T1530 의 5년 잠복은 본 시스템의 1.7(로깅 메타) + 1.4(파일 스토리지) 모니터링 부재 결과. 정기 IAM 계정 감사(분기별) + Object Storage 대량 다운로드 알림(시간당 1GB 초과 등) + 비활성 AccessKey 90일 자동 폐기 정책이 표준. 본 시스템 V-1 v2 가이드의 PLAYBOOK-EXFIL-002 증거 보존 절차가 5년 잠복 흔적 추적의 기준.",
+      "source": "과기정통부·개인정보위 공식 발표 2023-02 + KISA 보안권고문"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-SKT-2022",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "(국내 통신)",
+      "title": "공개 사례 — SK텔레콤 위치정보 시스템 침해 2022 (가설 모델): 감사 로그 단절 분석",
+      "actor": "외부 침입자",
+      "time_window": "2022 (구체 시각 비공개)",
+      "evidence": [
+        "T1562.008 (Disable or Modify Cloud Logs) — 감사 로그 변조 가능성 보고",
+        "위치정보 관리 시스템 일부 로그 단절 구간 발견",
+        "분석 시 외부 export 사본(별도 망)이 유일한 검증 채널",
+        "사후 분석에서 '로그 단절 = 침해 단서' 자체로 활용"
+      ],
+      "lessons_learned": "감사 로그 자체가 침해 단서가 되는 1.7 카테고리의 실 사례. 본 시스템의 V-1 v2 가이드 1.7(클라우드 로깅 메타) priority 10 + AUDIT_LOG_TAMPERING 사고유형이 직접 대응. 외부 Object Storage 자동 export + 변조 감지(NHN CloudTrail 기능) 또는 SHA-256 봉인이 필수. 분석 시점에 '10분 이상 시간 갭'은 별도 표시 권고 — PLAYBOOK-AUDITLOG-002 의 4번 절차.",
+      "source": "공개 보고서 + 본 시스템 가설 매핑"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-RANSOMWARE-CLOUD-2024",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(클라우드 전반)",
+      "title": "공개 사례 — 클라우드 랜섬웨어 트렌드 2024: 더블 익스토션 (Double Extortion)",
+      "actor": "다수 위협 그룹 (LockBit·BlackCat·Akira 등)",
+      "time_window": "2023~2024 (지속적 증가)",
+      "evidence": [
+        "전통 랜섬웨어 + 데이터 유출 협박 (Double Extortion)",
+        "클라우드 환경 표적: Object Storage 대량 암호화 + 별도 다운로드",
+        "T1486 (Data Encrypted for Impact) + T1567 (Exfiltration Over Web Service)",
+        "초기 침투 vector 60%+ : 자격증명 탈취 (Valid Accounts T1078)",
+        "Object Storage Versioning + Object Lock 미설정 환경에서 100% 데이터 손실"
+      ],
+      "lessons_learned": "본 시스템의 CREDENTIAL_THEFT → DATA_EXFILTRATION → AUDIT_LOG_TAMPERING Kill Chain 전형. 1.4 + 1.7 + 1.5.x 카테고리 모두 적용. 방어: Object Lock(WORM) 활성화 + Versioning + 90일 보존 + 외부 backup. V-1 v2 가이드의 PLAYBOOK-EXFIL-001 즉시 대응 절차가 직접 매핑.",
+      "source": "Mandiant M-Trends 2024 + Verizon DBIR 2024"
+    },
+    {
+      "chunk_id": "CASE-COMPREHENSIVE-CLOUD-2024",
+      "incident_type": "ALL",
+      "csp": "all",
+      "title": "종합 — 2024 클라우드 침해 TOP 3 패턴 (CSA Top Threats + Mandiant + Verizon)",
+      "actor": "다수 위협 그룹 (조직범죄·국가 후원·내부자)",
+      "time_window": "2023~2024 (메타 분석)",
+      "evidence": [
+        "[1] 자격증명 남용 (62%) — Valid Accounts T1078 + Brute Force T1110",
+        "    → 본 시스템 CREDENTIAL_THEFT 사고유형 + 1.5.1/1.5.4 카테고리 직접 대응",
+        "[2] 잘못된 설정 (24%) — Object Storage public-read, IAM 과도 권한",
+        "    → 1.4 + 1.5.2 카테고리 + DATA_EXFILTRATION/PRIVILEGE_ESCALATION 사고유형",
+        "[3] 공급망 (14%) — SSO·외주 협력사·IdP 침해를 통한 우회 진입",
+        "    → MULTI_CSP_LATERAL 사고유형 + 1.5.5(SSO 토큰 활용) 강조"
+      ],
+      "lessons_learned": "본 시스템 5 사고유형 분류가 글로벌 침해 패턴 TOP 3 와 정합. CSA Top Threats 2024 의 #2 IAM(자격증명) + #7 Disclosure(설정) + #11 APT(공급망) 3 항목이 본 시스템 사고유형으로 100% 커버됨. 시스템 학술 변호의 핵심 근거 — 외부 통계 데이터로 사고유형 분류 정당성 입증.",
+      "source": "CSA Top Threats 2024 + Mandiant M-Trends 2024 + Verizon DBIR 2024 + IBM Cost of Data Breach 2024"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-MOVEIT-2023",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(파일 전송 SaaS)",
+      "title": "공개 사례 — MOVEit Transfer 2023: Cl0p 랜섬웨어 그룹 zero-day 악용",
+      "actor": "Cl0p (러시아 후원 추정)",
+      "time_window": "2023-05 (zero-day) ~ 2023-08 (1000개 이상 조직 피해)",
+      "evidence": [
+        "Progress Software MOVEit Transfer SQL Injection zero-day (CVE-2023-34362)",
+        "T1190 (Exploit Public-Facing Application) → T1530 (Data from Cloud Storage)",
+        "약 2300개 조직·6200만 명 개인정보 유출 추정",
+        "공급망 공격 — 한 SaaS 취약점으로 다수 조직 영향",
+        "발견 후 패치 + Cl0p 가 다크웹에서 데이터 단계적 공개"
+      ],
+      "lessons_learned": "공급망(third-party SaaS) 취약점이 본 시스템의 MULTI_CSP_LATERAL 사고유형 + 1.4(데이터 유출) 카테고리와 직접 연결. 외부 SaaS 도 본 시스템의 모니터링 대상에 포함해야 함을 시사 — 향후 확장 영역. KB에 SaaS 침해 절차 별도 추가 필요.",
+      "source": "Progress Software 공식 발표 + CISA Alert AA23-158A + Mandiant 분석"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LAZARUS-CLOUD",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "(클라우드 전반)",
+      "title": "공개 사례 — Lazarus Group (북한) 2024: 클라우드 표적 동향",
+      "actor": "Lazarus Group (북한 정찰총국 후원)",
+      "time_window": "2023~2024 (지속)",
+      "evidence": [
+        "AWS/Azure 환경 표적 — 가상자산 거래소·국방 협력사 다수",
+        "T1078.004 (Valid Accounts: Cloud) + T1098 (Account Manipulation) + T1530 (Data from Cloud Storage)",
+        "초기 침투: 공급망(라이브러리·툴체인) + 소셜 엔지니어링 (LinkedIn 가짜 채용)",
+        "최종 목표: 가상자산 탈취 (지갑 키·KYC 데이터)",
+        "한국 표적 빈도 가장 높음 — KISA 보안권고문 정기 발행"
+      ],
+      "lessons_learned": "국가 후원 APT 의 클라우드 표적은 본 시스템의 CREDENTIAL_THEFT → PRIVILEGE_ESCALATION → DATA_EXFILTRATION 풀 Kill Chain 정확 일치. 한국 환경에서는 NCP·NHN 도 표적 가능 — 정기 KISA 보안권고문 모니터링 + 위협 인텔리전스 자동 반영 인프라가 향후 필요. 본 시스템 CASE_DB 에 APT 그룹 별 패턴 청크 더 보강 권장.",
+      "source": "KISA 보안권고문 다수 + Mandiant APT38·43 보고서 + 금융보안원 정기 분석"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-KOREA-FINANCE-2024",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "(국내 금융)",
+      "title": "공개 사례 — 국내 금융권 클라우드 침해 트렌드 2024",
+      "actor": "(다수 — 일부는 Lazarus 추정)",
+      "time_window": "2023~2024 (집계)",
+      "evidence": [
+        "금융보안원 2024 보고서: 클라우드 환경 침해 시도 전년 대비 +37%",
+        "주요 vector: (1) 협력사 IAM 자격증명 탈취 (42%), (2) 컨테이너 미설정 (18%), (3) Public Storage (11%)",
+        "감독 규정(전자금융감독규정) 강화 — 2024-01 시행: 클라우드 핵심 정보 처리 시 별도 신고",
+        "사고 시 신고 의무 — 24시간 내 금융위·금감원 + 72시간 내 정보주체",
+        "본 시스템과 직접 매핑: CREDENTIAL_THEFT(42%) + PRIVILEGE_ESCALATION(18%) + DATA_EXFILTRATION(11%)"
+      ],
+      "lessons_learned": "국내 금융권은 KISA 안내서 + 전금감 + 개보법 3중 규제. 본 시스템 V-7 보고서 자동 생성이 신고 의무(24h/72h) 충족 시간 단축에 직접 기여. 향후 금융 특화 사고유형 분기 또는 보고서 템플릿 추가 검토.",
+      "source": "금융보안원 2024 클라우드 위협 동향 보고서 + 전자금융감독규정 2024-01 개정"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-KOREA-PUBLIC-2023",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "(국내 공공)",
+      "title": "공개 사례 — 행정안전부 2023 공공기관 사이버 침해 통계",
+      "actor": "(다수)",
+      "time_window": "2023 (연간 집계)",
+      "evidence": [
+        "행안부 2023 보고: 공공기관 클라우드 침해 시도 1만 건+ — 전년 대비 +28%",
+        "주요 vector: (1) 자격증명 노출 (35%), (2) 패치 미적용 (22%), (3) 잘못된 설정 (15%)",
+        "공공기관 G-Cloud(국가정보자원관리원) 의무 사용 — NCP·NHN 등 민간 클라우드도 일부 활용",
+        "전자정부법 + 정보통신망법 + 개보법 다중 규제 — 사고 시 행안부 + KISA 동시 신고",
+        "본 시스템 직접 매핑: CREDENTIAL_THEFT(35%) + 1.5.x 카테고리 + AUDIT_LOG_TAMPERING(흔적 제거 동반)"
+      ],
+      "lessons_learned": "공공기관은 G-Cloud 중심이라 본 시스템 NCP/NHN 매핑이 100% 적용되진 않음. 단 G-Cloud 자체도 OCSF 호환 가능하므로 향후 확장 시 매핑 룰만 추가하면 됨. 학술 변호 측면: 국가기관 통계로 본 시스템 5 사고유형 분류 정당성 추가 입증.",
+      "source": "행정안전부·KISA 2023 사이버 침해 연간 보고서"
+    },
+    {
+      "chunk_id": "CASE-NCP-RANSOMWARE-001",
+      "incident_type": "RANSOMWARE",
+      "csp": "naver",
+      "title": "NCP Object Storage 랜섬 (가설 모델)",
+      "actor": "외부 공격자",
+      "external_ip": "203.0.113.50",
+      "time_window": "2026-03-15 02:00 ~ 03:30",
+      "event_count": 8,
+      "timeline": [
+        {
+          "time": "02:00:12",
+          "action": "Login (MFA 미적용 계정)",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Initial Access (T1078)"
+        },
+        {
+          "time": "02:15:33",
+          "action": "GetObject 대량 (240GB 다운로드)",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "02:42:08",
+          "action": "PutObject .locked 확장자 대량",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact (T1486)"
+        },
+        {
+          "time": "03:15:00",
+          "action": "Delete Versioning + Old versions",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact (T1490)"
+        },
+        {
+          "time": "03:30:00",
+          "action": "Create file ransom_note.txt",
+          "result": "SUCCESS",
+          "ip": "203.0.113.50",
+          "tactic": "Impact"
+        }
+      ],
+      "lessons_learned": "MFA 강제 + Object Storage Versioning 별도 계정 + Object Lock 활성. 본 사고는 Versioning 이 같은 계정 내 활성이라 함께 삭제됨 — 별도 계정 백업의 중요성. 240GB 다운로드 + .locked 확장자 신규 생성이 Double Extortion 신호.",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-COLONIAL-2021",
+      "incident_type": "RANSOMWARE",
+      "csp": "(국제 인프라)",
+      "title": "공개 사례 — Colonial Pipeline (2021): 동부 미국 송유관 마비",
+      "actor": "DarkSide 랜섬웨어 그룹",
+      "time_window": "2021-05-06 ~ 2021-05-12 (정상화)",
+      "evidence": [
+        "VPN 계정 자격증명 다크웹 노출 → MFA 미적용 계정 침투 (T1078)",
+        "내부 시스템 침투 후 100GB 데이터 탈취 (Double Extortion)",
+        "랜섬웨어 배포 → IT 시스템 마비 → 송유관 운영 중단",
+        "약 440만 달러 비트코인 지불 (일부 회수)",
+        "T1078 + T1486 + T1490 + T1567 (Exfiltration)"
+      ],
+      "lessons_learned": "MFA 미적용 + VPN 계정 노출이 Double Extortion 랜섬의 표준 경로. 본 시스템의 V-1 v2 가이드 1.5.1 인증 기록 P12 + PLAYBOOK-RANSOMWARE-001 즉시 격리 절차가 직접 매핑. 미국 행정부 사이버보안 행정명령(EO 14028) 발동 계기.",
+      "source": "FBI 공식 발표 2021-05 + DarkSide 분석 보고서 (Mandiant 2021)"
+    },
+    {
+      "chunk_id": "CASE-NCP-MISCONFIG-001",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "naver",
+      "title": "NCP Object Storage Public 노출 (가설 모델)",
+      "actor": "외부 보안 연구자 (책임 공개)",
+      "external_ip": "(다수)",
+      "time_window": "2026-04-01 (노출 시작) ~ 2026-04-15 (연구자 신고)",
+      "event_count": 0,
+      "timeline": [
+        {
+          "time": "04-01 09:00",
+          "action": "PutBucketPolicy (public-read 변경)",
+          "result": "SUCCESS",
+          "ip": "내부 IP (관리자)",
+          "tactic": "Misconfiguration"
+        },
+        {
+          "time": "04-05~04-14",
+          "action": "외부 GetObject (분산 IP)",
+          "result": "SUCCESS",
+          "ip": "다수",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "04-15 14:00",
+          "action": "외부 보안 연구자 이메일 신고",
+          "result": "—",
+          "ip": "—",
+          "tactic": "Discovery (외부)"
+        }
+      ],
+      "lessons_learned": "관리자가 임시 테스트 후 정책 원복 안 한 사례. 14일간 노출. 약 5만 명 개인정보 다운로드 확인. 본 시스템의 PLAYBOOK-MISCONFIG-002 신고 절차 (개보법 72h) 가 직접 매핑. 자동 정책 검증 도구(Prowler) 미설치가 핵심 원인.",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-CAPITAL_ONE-2019",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "aws",
+      "title": "공개 사례 — Capital One (2019): 1억 명 고객 정보 유출",
+      "actor": "Paige Thompson (전 AWS 직원)",
+      "time_window": "2019-03 ~ 2019-07",
+      "evidence": [
+        "WAF 잘못된 설정으로 EC2 메타데이터 서비스(IMDSv1) 접근 가능 (T1190)",
+        "EC2 인스턴스 프로필 권한으로 S3 버킷 700+ 접근 (T1530)",
+        "1억 명 이상 신용카드 신청자 정보 유출 (~5.8 GB)",
+        "AWS GuardDuty 알람 발생했으나 1주일간 대응 지연",
+        "SSRF 취약점 + 과도한 IAM Role 권한 결합"
+      ],
+      "lessons_learned": "T1190 + T1078.001 결합 시그널. 본 시스템의 1.4 파일 스토리지 + 1.5.5 API 액세스 + PLAYBOOK-MISCONFIG-001 노출 자원 즉시 차단이 직접 매핑. IMDSv2 강제 + IAM Role 최소권한 + 자동 보안 정책 검증이 표준 방어. 본 시스템에서 1.5.7(위험 기반 검색) 알림과 1.5.5 교차로 유사 사고 1주일 단축 가능.",
+      "source": "Capital One Public Incident Report 2019 + AWS Re:Invent 2019"
+    },
+    {
+      "chunk_id": "CASE-PHISH-EXEC-001",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "(국내 SSO)",
+      "title": "임원 대상 스피어피싱 → SSO 토큰 탈취 (가설 모델)",
+      "actor": "외부 위협 그룹 (북한 추정)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-02-10 08:30 ~ 09:45 (75분)",
+      "event_count": 9,
+      "timeline": [
+        {
+          "time": "08:30:00",
+          "action": "스피어피싱 메일 수신 (위장 'AWS 비용 청구서')",
+          "tactic": "Initial Access (T1566.001)"
+        },
+        {
+          "time": "08:35:12",
+          "action": "사용자 첨부 PDF 클릭 + 위장 SSO 로그인 페이지 접속",
+          "tactic": "Credential Access"
+        },
+        {
+          "time": "08:36:08",
+          "action": "자격증명 입력 (가짜 페이지)",
+          "tactic": "Credential Access (T1556)"
+        },
+        {
+          "time": "08:42:33",
+          "action": "공격자 IP 에서 SSO 정상 로그인 (탈취 자격증명)",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access (T1078.004)"
+        },
+        {
+          "time": "08:48:00",
+          "action": "AccessKey 신규 발급",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "09:15:00",
+          "action": "IAM Role 정책 변경 (관리자 권한 부여)",
+          "tactic": "Privilege Escalation"
+        },
+        {
+          "time": "09:45:00",
+          "action": "Object Storage 다수 GetObject",
+          "tactic": "Collection (T1530)"
+        }
+      ],
+      "lessons_learned": "75분 만에 피싱 → 권한 상승 → 데이터 수집 풀 Kill Chain. MFA 미적용 임원 계정이 가장 큰 위험. 본 시스템 1.5.1(인증) P13 + DOMAIN:typo_squatting 단서 + PHISH 사고유형 추정. 본 케이스 시연: V-2 로그 업로드 → V-6 ATT&CK 매핑 → V-1 트리아주 PHISH 92점 자동 확정.",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-TWITTER-2020",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "(SaaS)",
+      "title": "공개 사례 — Twitter (2020): 직원 비싱 + 130개 유명 계정 탈취",
+      "actor": "17세 미국 청소년 등 3명",
+      "time_window": "2020-07-15",
+      "evidence": [
+        "Twitter 직원 대상 비싱(전화 피싱, Vishing) (T1566)",
+        "직원 자격증명 + MFA 우회 → 내부 관리 도구 접근",
+        "Obama·Musk·Apple 등 130개 유명 계정 탈취 → 비트코인 사기 트윗",
+        "약 12만 달러 비트코인 사기 수익",
+        "T1566 + T1078 + Internal Tool Abuse"
+      ],
+      "lessons_learned": "이메일 피싱 외 전화 피싱(Vishing) 도 클라우드/SaaS 침해의 핵심 vector. 본 시스템에서 PHISH_INITIAL_ACCESS 사고유형 + IDENTITY:multi_account 단서 매핑. 내부 관리 도구 접근 권한 분리 + 다단계 승인이 표준 방어.",
+      "source": "Twitter 공식 발표 2020-07 + Mandiant 분석 + DOJ 기소장"
+    },
+    {
+      "chunk_id": "CASE-INSIDER-DEV-001",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "naver",
+      "title": "퇴사 예정 개발자의 고객 DB 반출 (가설 모델)",
+      "actor": "내부 개발자 (퇴사 통보 1주 후)",
+      "external_ip": "(내부 IP)",
+      "time_window": "2026-03-20 11:00 ~ 14:30 (정상 업무 시간)",
+      "event_count": 11,
+      "timeline": [
+        {
+          "time": "11:00:00",
+          "action": "정상 콘솔 로그인 (내부 IP, MFA 통과)",
+          "tactic": "Initial Access (T1078)"
+        },
+        {
+          "time": "11:30:00",
+          "action": "Object Storage 'customers' 버킷 ListObjects",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "12:00 ~ 13:30",
+          "action": "GetObject 1500건 (전체 고객 DB 다운로드)",
+          "tactic": "Collection (T1530)"
+        },
+        {
+          "time": "14:00:00",
+          "action": "Activity Tracer 검색 — 자기 활동 조회",
+          "tactic": "Defense Evasion"
+        },
+        {
+          "time": "14:30:00",
+          "action": "정상 로그아웃",
+          "tactic": "—"
+        }
+      ],
+      "lessons_learned": "정규 업무 시간 + 내부 IP + 권한 있는 정당 계정 = 외형상 정상. 다만 (1) ListObjects + GetObject burst 3.5시간 (평소 3-5건/일 대비 1500건), (2) 자기 활동 로그 조회 행위 자체가 강한 시그널. UEBA 도입 시 자동 탐지 가능. 분기별 IAM 감사 + 퇴사 예정자 권한 즉시 회수 정책이 표준 방어.",
+      "source": "(가설 시나리오, 학습용 — KB Synthetic v1)"
+    },
+    {
+      "chunk_id": "CASE-PUBLIC-LIVESQUARE-2014",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "(국내 금융)",
+      "title": "공개 사례 — 국내 카드사 정보 유출 (2014): 외주 직원 USB 반출",
+      "actor": "외주 개발 직원 (코리아크레딧뷰로 외부 작업)",
+      "time_window": "2012-12 ~ 2013-12 (1년간)",
+      "evidence": [
+        "정당 권한으로 KB·NH·롯데 카드사 고객 DB 접근",
+        "1년간 약 1억 400만 건 개인정보 USB 반출",
+        "외부 매체 사용 통제 부재 + DLP 미설치",
+        "외주 직원 권한 분리 미흡",
+        "본 시스템 매핑: INSIDER_THREAT + DATA_EXFILTRATION 복합"
+      ],
+      "lessons_learned": "국내 최대 규모 내부자 정보 유출 사례. 본 시스템의 INSIDER_THREAT 사고유형 정당성 입증. PLAYBOOK-INSIDER-002 의 법적 절차 (외주 권한 분리·NDA·정기 감사) 가 직접 매핑. 사건 후 개인정보보호법 강화 (2014-08) + 금융위 외주 보안 가이드라인 제정 계기.",
+      "source": "금융위·검찰 수사 결과 발표 2014-01 + KISA 사고 분석"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-CRED-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "naver",
+      "title": "역매핑 — Capital One 2019 (SSRF→IMDS→STS) 의 NCP raw 등가 시퀀스",
+      "actor": "thompson-ext (NCP Sub Account, remapped)",
+      "external_ip": "198.51.100.7",
+      "time_window": "2026-04-22 04:02 ~ 04:15 UTC (약 13분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §2.1 — AWS Capital One 2019 → NCP Activity Tracer 역매핑",
+      "_origin_case": "Capital One Public Incident Report 2019",
+      "timeline": [
+        {
+          "time": "04:02:11",
+          "actor": "thompson-ext",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Initial Access (T1078.004) — 비국내 IP"
+        },
+        {
+          "time": "04:02:48",
+          "actor": "thompson-ext",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Initial Access — 재로그인 (IMDS 토큰 갱신 등가)"
+        },
+        {
+          "time": "04:04:33",
+          "actor": "thompson-ext",
+          "action": "Decrypt root password",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Credential Access (T1552) — STS 임시 자격 등가"
+        },
+        {
+          "time": "04:06:09",
+          "actor": "thompson-ext",
+          "action": "Create access key",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "04:08:55",
+          "actor": "thompson-ext",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Lateral Movement (T1021)"
+        },
+        {
+          "time": "04:11:02",
+          "actor": "thompson-ext",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Initial Access — 신규 키로 재진입"
+        },
+        {
+          "time": "04:14:18",
+          "actor": "thompson-ext",
+          "action": "Create sub account",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Persistence (T1136.003) — 백도어 thompson-bk"
+        },
+        {
+          "time": "04:15:30",
+          "actor": "thompson-ext",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "198.51.100.7",
+          "tactic": "Privilege Escalation (T1098) — AdministratorAccess 부여"
+        }
+      ],
+      "evidence": [
+        "단일 외부 IP 198.51.100.7 에서 13분 내 Login → Decrypt root password → Create AccessKey → Create sub account → Attach policy 풀 Persistence 체인",
+        "AWS IMDS·STS 메커니즘은 NCP에 직접 등가 없음 — '비국내 IP + Decrypt root password + AccessKey burst' 3종 결합으로 검출",
+        "Capital One 사례의 4개월 잠복 + 1주일 발견 지연이 핵심 손실 요인"
+      ],
+      "lessons_learned": "AWS Capital One 사례를 NCP Activity Tracer 매핑 룰로 역매핑하면 R-NCP-001/006/004/002/009/010 6개 룰이 13분 내 모두 매칭 — V-4 갭 감지 NONE 판정 예상. PLAYBOOK-CRED-001 즉시 적용.",
+      "source": "Capital One Public Incident Report 2019 — https://en.wikipedia.org/wiki/2019_Capital_One_data_breach"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-CRED-001",
+      "incident_type": "CREDENTIAL_THEFT",
+      "csp": "nhn",
+      "title": "역매핑 — Uber 2016 (GitHub 키 노출) 의 NHN raw 등가 시퀀스",
+      "actor": "dev-leaked (NHN IAM, remapped)",
+      "external_ip": "104.28.10.55",
+      "time_window": "2026-04-23 23:47 ~ 04-24 00:14 UTC (약 28분)",
+      "event_count": 7,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §2.2",
+      "_origin_case": "Uber 2016 Data Breach (공개 2017-11)",
+      "timeline": [
+        {
+          "time": "23:47:02",
+          "actor": "dev-leaked",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Initial Access — 비국내 IP + 비표준 시각"
+        },
+        {
+          "time": "23:47:18",
+          "actor": "dev-leaked",
+          "action": "event_id.iam.org.selected",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "23:47:42",
+          "actor": "dev-leaked",
+          "action": "event_id.iam.project.selected",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "23:50:11",
+          "actor": "dev-leaked",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "23:52:33",
+          "actor": "dev-leaked",
+          "action": "event_id.object_storage.container.list",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "23:55:08",
+          "actor": "dev-leaked",
+          "action": "event_id.object_storage.object.upload",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Exfiltration (T1567)"
+        },
+        {
+          "time": "00:14:50",
+          "actor": "dev-leaked",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "104.28.10.55",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "비국내 IP 104.28.10.55 + 비표준 시각(23:47) 동시 매칭 → Q2A:non_korean_ip + Q2A:off_hours",
+        "Login 후 3분 만에 s3credential.create + 8분 만에 object.upload → 정상 사용자 베이스라인 초과",
+        "28분 후 s3credential.delete 자기 자신 → 흔적 제거 의도"
+      ],
+      "lessons_learned": "GitHub 코드 저장소 키 노출 vector는 raw 로그만으로는 직접 검출 불가 — 외부 위협 인텔리전스(시크릿 스캐너) 보조 필수. AWS iam:CreateAccessKey ↔ NHN event_id.iaas.s3credential.create 의미 동등.",
+      "source": "Uber Data Breach 2016 — https://en.wikipedia.org/wiki/Uber_data_breach"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-PRIVESC-001",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "naver",
+      "title": "역매핑 — CloudGoat iam_privesc_by_attachment 의 NCP raw 등가 시퀀스",
+      "actor": "dev-user (NCP Sub Account, remapped)",
+      "external_ip": "180.182.45.12",
+      "time_window": "2026-04-15 14:02 ~ 14:14 UTC (약 12분)",
+      "event_count": 9,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §3.1",
+      "_origin_case": "Rhino Security Labs CloudGoat scenarios",
+      "timeline": [
+        {
+          "time": "14:02:11",
+          "actor": "dev-user",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "Initial Access — 정상 사내 IP"
+        },
+        {
+          "time": "14:03:48",
+          "actor": "dev-user",
+          "action": "Get Sub Account Policy List",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "Discovery — 자기 권한 정찰"
+        },
+        {
+          "time": "14:05:33",
+          "actor": "dev-user",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "14:06:09",
+          "actor": "dev-user",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "PrivEsc (T1098) — NCP_AccessKey_Manage self"
+        },
+        {
+          "time": "14:08:21",
+          "actor": "dev-user",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "PrivEsc — NCP_ServerAdmin self"
+        },
+        {
+          "time": "14:10:02",
+          "actor": "dev-user",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "PrivEsc — AdministratorAccess self"
+        },
+        {
+          "time": "14:12:30",
+          "actor": "dev-user",
+          "action": "Create sub account",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "Persistence (T1136.003) — 백도어 admin-tmp"
+        },
+        {
+          "time": "14:13:48",
+          "actor": "dev-user",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "PrivEsc — AdministratorAccess to admin-tmp"
+        },
+        {
+          "time": "14:14:55",
+          "actor": "dev-user",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "180.182.45.12",
+          "tactic": "Lateral Movement (T1021)"
+        }
+      ],
+      "evidence": [
+        "Attach policy to sub account 4분 내 3건 burst — CloudGoat·Pacu 류 PrivEsc 자동화 도구 시그니처",
+        "단계적 정책 부착 (AccessKey_Manage → ServerAdmin → AdministratorAccess) = 의도성 명확",
+        "권한 상승 직후 12분 내 백도어 admin-tmp 생성 + Server Console 접근"
+      ],
+      "lessons_learned": "AWS iam:AttachUserPolicy ↔ NCP 'Attach policy to sub account' 동등. R-NCP-010 매칭 3건이 2분 내 burst 발생하는 경우는 정상 운영에서 극히 드물어 슬라이딩 윈도우 룰 1건으로 검출 가능.",
+      "source": "Rhino Security Labs CloudGoat iam_privesc_by_attachment — https://github.com/RhinoSecurityLabs/cloudgoat"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-PRIVESC-001",
+      "incident_type": "PRIVILEGE_ESCALATION",
+      "csp": "nhn",
+      "title": "역매핑 — LastPass 2022 (자동화 키 권한 확장) 의 NHN raw 등가 시퀀스",
+      "actor": "ops-bot (NHN IAM Member, remapped)",
+      "external_ip": "211.234.108.55",
+      "time_window": "2026-04-15 22:30 ~ 22:38 UTC (약 8분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §3.2",
+      "_origin_case": "LastPass Incident Notification 2022-12 / 2023-03",
+      "timeline": [
+        {
+          "time": "22:30:08",
+          "actor": "ops-bot",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "Initial Access — 자동화 키 등가"
+        },
+        {
+          "time": "22:31:12",
+          "actor": "ops-bot",
+          "action": "event_id.iam.project.selected",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "22:32:45",
+          "actor": "ops-bot",
+          "action": "event_id.iam.member.list",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "Discovery — 멤버 정찰"
+        },
+        {
+          "time": "22:34:02",
+          "actor": "ops-bot",
+          "action": "event_id.project.member.update",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "PrivEsc (T1098, R-NHN-003) — self → Admin"
+        },
+        {
+          "time": "22:35:11",
+          "actor": "ops-bot",
+          "action": "event_id.project.product.enable",
+          "result": "FAIL",
+          "ip": "211.234.108.55",
+          "tactic": "PrivEsc 시도 실패 (R-NHN-002)"
+        },
+        {
+          "time": "22:36:30",
+          "actor": "ops-bot",
+          "action": "event_id.org.iam.member.add",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "Persistence — 백도어 backup-user (R-NHN-004)"
+        },
+        {
+          "time": "22:37:48",
+          "actor": "ops-bot",
+          "action": "event_id.project.member.update",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "PrivEsc — backup-user → Admin (R-NHN-003)"
+        },
+        {
+          "time": "22:38:55",
+          "actor": "ops-bot",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "211.234.108.55",
+          "tactic": "Persistence (T1098.001) — 확장 권한 S3 키"
+        }
+      ],
+      "evidence": [
+        "project.member.update self → Admin = actor 와 target 동일, 정상 운영에서 매우 드뭄",
+        "project.product.enable FAIL → org.iam.member.add SUCCESS → project.member.update SUCCESS → s3credential.create SUCCESS 5분 내 4건 연쇄"
+      ],
+      "lessons_learned": "NHN IAM 권한 변경 시 admin 승인 워크플로 부재 — 자기 자신 role.update 1건만으로도 강한 양성. AWS UpdateAssumeRolePolicy 직접 등가 없음 → project.member.update + org.iam.member.add 조합으로 표현.",
+      "source": "LastPass Security Incident 2022 — https://blog.lastpass.com/2022/12/notice-of-recent-security-incident/"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-EXFIL-001",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "naver",
+      "title": "역매핑 — Imperva 2019 (RDS 스냅샷 외부 export) 의 NCP raw 등가 시퀀스",
+      "actor": "data-eng (NCP Sub Account, remapped)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-20 03:15 ~ 03:42 UTC (약 27분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §4.1",
+      "_origin_case": "Imperva 2019 CloudWAF 침해 공개 (2019-08)",
+      "timeline": [
+        {
+          "time": "03:15:02",
+          "actor": "data-eng",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — 외부 IP"
+        },
+        {
+          "time": "03:16:18",
+          "actor": "data-eng",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — 재로그인"
+        },
+        {
+          "time": "03:18:55",
+          "actor": "data-eng",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "03:20:11",
+          "actor": "data-eng",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration (T1537) — DB 스냅샷 export"
+        },
+        {
+          "time": "03:35:42",
+          "actor": "data-eng",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration"
+        },
+        {
+          "time": "03:36:11",
+          "actor": "data-eng",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration — 추가 스냅샷"
+        },
+        {
+          "time": "03:39:50",
+          "actor": "data-eng",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Exfiltration"
+        },
+        {
+          "time": "03:42:33",
+          "actor": "data-eng",
+          "action": "Disable AccessKey",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "R-NCP-007 매칭 4건 (Request/Complete × 2회) 27분 내 — T1537 강한 양성",
+        "Request 와 Complete 의 시간차 (15분 / 4분) 가 데이터 크기 추정 단서"
+      ],
+      "lessons_learned": "NCP 에는 Cloud DB 백업 외부 공유 별도 룰 없음 — R-NCP-013 신설 후보. AWS rds:ModifyDBSnapshotAttribute 직접 등가 없음 → Object Storage Export 로 치환.",
+      "source": "Imperva Security Incident 2019 — https://www.imperva.com/blog/ceoblog/"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-EXFIL-001",
+      "incident_type": "DATA_EXFILTRATION",
+      "csp": "nhn",
+      "title": "역매핑 — Capital One 2019 (S3 1억 명 대량 다운로드) 의 NHN raw 등가 시퀀스",
+      "actor": "analytics (NHN IAM, remapped)",
+      "external_ip": "210.179.55.88",
+      "time_window": "2026-04-20 11:08 ~ 11:35 UTC (약 27분)",
+      "event_count": 10,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §4.2",
+      "_origin_case": "Capital One Public Incident Report 2019 (데이터 유출 단계)",
+      "timeline": [
+        {
+          "time": "11:08:02",
+          "actor": "analytics",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Initial Access — 외부 IP"
+        },
+        {
+          "time": "11:09:11",
+          "actor": "analytics",
+          "action": "event_id.object_storage.container.list",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "11:11:48",
+          "actor": "analytics",
+          "action": "event_id.object_storage.container.metadata.update",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Defense Evasion — X-Container-Read='.r:*' (public)"
+        },
+        {
+          "time": "11:15:30",
+          "actor": "analytics",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Exfiltration (T1530) — 1.2GB"
+        },
+        {
+          "time": "11:18:55",
+          "actor": "analytics",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Exfiltration — 2.1GB"
+        },
+        {
+          "time": "11:22:18",
+          "actor": "analytics",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Exfiltration — 1.8GB"
+        },
+        {
+          "time": "11:25:42",
+          "actor": "analytics",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Exfiltration — 0.9GB"
+        },
+        {
+          "time": "11:32:11",
+          "actor": "analytics",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Persistence (T1098.001) — Pre-signed 등가"
+        },
+        {
+          "time": "11:34:55",
+          "actor": "analytics",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Exfiltration — 2.9GB (총 8.9GB)"
+        },
+        {
+          "time": "11:35:30",
+          "actor": "analytics",
+          "action": "event_id.object_storage.container.metadata.update",
+          "result": "SUCCESS",
+          "ip": "210.179.55.88",
+          "tactic": "Defense Evasion — reset (위장)"
+        }
+      ],
+      "evidence": [
+        "container.metadata.update X-Container-Read='.r:*' 변경 → 27분 후 동일 컨테이너 reset 으로 흔적 위장",
+        "object.download 5건 / 8.9GB / 27분 — 단일 IP 베이스라인 초과"
+      ],
+      "lessons_learned": "NHN R-NHN-011 은 upload 만 룰화 — download burst 별도 룰 필요 (R-NHN-012 후보). container.metadata.update 변경 *값 diff* 가 핵심 단서.",
+      "source": "Capital One 2019 (S3 download focus) — https://en.wikipedia.org/wiki/2019_Capital_One_data_breach"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-AUDIT-001",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "naver",
+      "title": "역매핑 — Code Spaces 2014 (CloudTrail + 백업 일괄 삭제) 의 NCP raw 등가 시퀀스",
+      "actor": "attack-sim (NCP Sub Account, remapped)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-10 03:30 ~ 03:38 UTC (약 8분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §5.1",
+      "_origin_case": "Code Spaces 2014-06 회사 폐업 사건",
+      "timeline": [
+        {
+          "time": "03:30:02",
+          "actor": "attack-sim",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — 외부 IP"
+        },
+        {
+          "time": "03:32:11",
+          "actor": "attack-sim",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "03:33:48",
+          "actor": "attack-sim",
+          "action": "Disable Auto Export",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Defense Evasion (T1562.008) — Tracer export 채널 차단"
+        },
+        {
+          "time": "03:34:30",
+          "actor": "attack-sim",
+          "action": "Delete Tracer",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Defense Evasion (T1562.001) — 감사 로그 삭제"
+        },
+        {
+          "time": "03:35:50",
+          "actor": "attack-sim",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "(audit OFF — 외부 export 사본만)",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "03:36:33",
+          "actor": "attack-sim",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "(audit OFF)",
+          "tactic": "Impact (T1489)"
+        },
+        {
+          "time": "03:37:11",
+          "actor": "attack-sim",
+          "action": "Delete Bucket",
+          "result": "SUCCESS",
+          "ip": "(audit OFF)",
+          "tactic": "Impact (T1485) — 백업 데이터 파괴"
+        },
+        {
+          "time": "03:38:55",
+          "actor": "attack-sim",
+          "action": "Disable AccessKey",
+          "result": "SUCCESS",
+          "ip": "(audit OFF)",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "Disable Auto Export → Delete Tracer 1분 내 연쇄 — 가장 강한 침해 단서",
+        "Delete Tracer 이후 로그는 외부 export 사본이 유일",
+        "AWS CloudTrail:DeleteTrail ↔ NCP Delete Tracer 의미 동등 — 단 NCP 는 별도 룰화 안 됨 (R-NCP-012 신설 후보)"
+      ],
+      "lessons_learned": "외부 Object Storage 자동 export + WORM 잠금 + Cross-region 백업이 사실상 유일 방어. NCP Tracer 삭제 별도 룰화는 백로그 추가 권고.",
+      "source": "Code Spaces Incident 2014 — https://www.computerworld.com/article/2476082/aws-and-the-code-spaces-saga.html"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-AUDIT-001",
+      "incident_type": "AUDIT_LOG_TAMPERING",
+      "csp": "nhn",
+      "title": "역매핑 — Tesla Cryptojacking 2018 (감사 alert 비활성 시도) 의 NHN raw 등가 시퀀스",
+      "actor": "attack (NHN IAM, remapped)",
+      "external_ip": "115.91.214.5",
+      "time_window": "2026-04-25 05:00 ~ 05:24 UTC (약 24분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §5.2",
+      "_origin_case": "Tesla Kubernetes/AWS Cryptojacking 2018-02 (RedLock 발견)",
+      "timeline": [
+        {
+          "time": "05:00:02",
+          "actor": "attack",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access — 외부 IP"
+        },
+        {
+          "time": "05:02:11",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Persistence — 임시 키 tmp-key-A"
+        },
+        {
+          "time": "05:05:30",
+          "actor": "attack",
+          "action": "event_id.iaas.instance.create",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Initial Access + T1496 — 채굴용 인스턴스"
+        },
+        {
+          "time": "05:10:18",
+          "actor": "attack",
+          "action": "event_id.object_storage.container.metadata.update",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Defense Evasion — CloudTrail-bucket 정책 변경 시도"
+        },
+        {
+          "time": "05:15:42",
+          "actor": "attack",
+          "action": "event_id.project.product.enable",
+          "result": "FAIL",
+          "ip": "115.91.214.5",
+          "tactic": "PrivEsc 시도 실패 — 외부 export 차단 시도"
+        },
+        {
+          "time": "05:20:11",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact (T1531) — 키 1"
+        },
+        {
+          "time": "05:22:33",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact — 키 2"
+        },
+        {
+          "time": "05:24:06",
+          "actor": "attack",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "115.91.214.5",
+          "tactic": "Impact — 키 3 (자기 자신)"
+        }
+      ],
+      "evidence": [
+        "project.product.enable FAIL = 외부 export 채널 차단 시도 실패 → FAIL 자체가 침해 의도 명시",
+        "s3credential.delete burst 3건 / 4분 — NHN 의 AUDIT_LOG_TAMPERING 표준 시그니처"
+      ],
+      "lessons_learned": "AWS GuardDuty UpdateDetector 직접 등가 NHN 없음 — NHN CloudTrail 자체 비활성은 불가하나 인증 봉쇄는 가능. R-NHN-013 신설 후보.",
+      "source": "Tesla Cryptojacking 2018 (RedLock) — https://redlock.io/blog/cryptojacking-tesla"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-RANSOM-001",
+      "incident_type": "RANSOMWARE",
+      "csp": "naver",
+      "title": "역매핑 — Colonial Pipeline 2021 (DarkSide 이중협박) 의 NCP raw 등가 시퀀스",
+      "actor": "ops-leaked (NCP Sub Account, remapped)",
+      "external_ip": "185.193.88.42",
+      "time_window": "2026-05-07 02:10 ~ 03:55 UTC (약 105분)",
+      "event_count": 11,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §6.1",
+      "_origin_case": "Colonial Pipeline 2021-05-07 DarkSide 랜섬웨어 (송유관 5일 마비)",
+      "timeline": [
+        {
+          "time": "02:10:08",
+          "actor": "ops-leaked",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Initial Access (T1078.004) — VPN 자격증명 등가"
+        },
+        {
+          "time": "02:11:45",
+          "actor": "ops-leaked",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "02:14:22",
+          "actor": "ops-leaked",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.0.20.55",
+          "tactic": "Lateral Movement (T1021)"
+        },
+        {
+          "time": "02:30:11",
+          "actor": "ops-leaked",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Exfiltration (T1567) — Double Extortion 1단계"
+        },
+        {
+          "time": "03:45:50",
+          "actor": "ops-leaked",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Exfiltration — 75분 export 완료"
+        },
+        {
+          "time": "03:48:33",
+          "actor": "ops-leaked",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact (T1489) — 운영 서버 1"
+        },
+        {
+          "time": "03:49:11",
+          "actor": "ops-leaked",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact — 운영 서버 2"
+        },
+        {
+          "time": "03:49:55",
+          "actor": "ops-leaked",
+          "action": "Shutdown Server Instance",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact — 운영 서버 3"
+        },
+        {
+          "time": "03:52:18",
+          "actor": "ops-leaked",
+          "action": "Delete Bucket",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact (T1490 Inhibit Recovery) — 백업 버킷 1 (raw 기록, NCP 룰 없음)"
+        },
+        {
+          "time": "03:53:02",
+          "actor": "ops-leaked",
+          "action": "Delete Bucket",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact (T1490) — 백업 버킷 2"
+        },
+        {
+          "time": "03:55:30",
+          "actor": "ops-leaked",
+          "action": "Disable AccessKey",
+          "result": "SUCCESS",
+          "ip": "185.193.88.42",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "Exfil → Shutdown burst → Delete Bucket burst 시퀀스는 RANSOMWARE 표준 패턴 (DarkSide/LockBit/BlackCat 공통)",
+        "75분 export 완료 = 이중협박(Double Extortion) 1단계 (데이터 외부 사본 확보)",
+        "Shutdown × 3건 2분 내 + Delete Bucket × 2건 1분 내 = T1489 + T1490 결합",
+        "T1486 암호화 자체 단서는 raw에 없음 → V-4 EVIDENCE 갭 → Object SHA-256 무결성 검증 추가 수집 필요"
+      ],
+      "lessons_learned": "Colonial Pipeline 의 이중협박 패턴은 DATA_EXFILTRATION + RANSOMWARE 사고유형이 동일 사건의 두 측면임을 입증. NCP Delete Bucket 별도 룰화(R-NCP-014) + T1486 암호화 검출 룰 신설 권고. PLAYBOOK-RANSOM-001 Object Lock(WORM) 활성화 + 즉시 외부 사본 격리.",
+      "source": "Colonial Pipeline Ransomware 2021 (DarkSide) — https://en.wikipedia.org/wiki/Colonial_Pipeline_ransomware_attack"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-RANSOM-001",
+      "incident_type": "RANSOMWARE",
+      "csp": "nhn",
+      "title": "역매핑 — MGM Resorts 2023 (ALPHV/Scattered Spider 비싱 + 인프라 암호화) 의 NHN raw 등가 시퀀스",
+      "actor": "helpdesk-reset (NHN IAM, remapped — 비싱 후 자격증명)",
+      "external_ip": "175.45.176.3",
+      "time_window": "2026-05-08 14:22 ~ 15:08 UTC (약 46분)",
+      "event_count": 12,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §6.2",
+      "_origin_case": "MGM Resorts 2023-09 ALPHV/Scattered Spider 사건 (100M USD 손실 추정)",
+      "timeline": [
+        {
+          "time": "14:22:11",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.identity.password_change",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Persistence (T1098.001, R-NHN-007) — MFA reset 등가"
+        },
+        {
+          "time": "14:24:50",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Initial Access — 비싱 후 진입"
+        },
+        {
+          "time": "14:26:18",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iam.org.selected",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "14:28:42",
+          "actor": "helpdesk-reset",
+          "action": "event_id.org.iam.member.add",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Persistence — 백도어 mgm-backup (R-NHN-004)"
+        },
+        {
+          "time": "14:30:11",
+          "actor": "helpdesk-reset",
+          "action": "event_id.project.member.update",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "PrivEsc — mgm-backup → Admin (R-NHN-003)"
+        },
+        {
+          "time": "14:35:30",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "14:48:55",
+          "actor": "helpdesk-reset",
+          "action": "event_id.object_storage.object.upload",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Exfiltration (T1567) — 데이터 외부 사본"
+        },
+        {
+          "time": "15:02:18",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.instance_action.stop",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Impact (T1489) — 인스턴스 1"
+        },
+        {
+          "time": "15:02:48",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.instance_action.stop",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Impact — 인스턴스 2"
+        },
+        {
+          "time": "15:03:22",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.instance_action.shelve",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Impact — 인스턴스 3"
+        },
+        {
+          "time": "15:05:50",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.vpc.delete_end",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Impact (T1485, R-NHN-009) — VPC 삭제 (T1490 등가)"
+        },
+        {
+          "time": "15:08:11",
+          "actor": "helpdesk-reset",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "175.45.176.3",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "identity.password_change → login 2분 차 = Help Desk 비싱의 MFA reset 결과",
+        "백도어 멤버 추가 + Admin 부착 5분 내 = MGM 광범위 권한 확장 패턴",
+        "Exfil → instance.stop burst (3건/1분) → vpc.delete 시퀀스 = RANSOMWARE 표준",
+        "사회공학 vector(Help Desk 비싱)는 클라우드 raw 외부 단서 — MFA reset 자동 알림 + Help Desk SOP 필수"
+      ],
+      "lessons_learned": "MGM 사례는 PHISH_INITIAL_ACCESS + RANSOMWARE 연계 시그니처 — V-8 Sherpa에서 두 사고유형 점수 동시 상승. NHN instance_action.stop burst 별도 룰(R-NHN-014) 권고.",
+      "source": "MGM Resorts Cyberattack 2023 (ALPHV/Scattered Spider) — https://en.wikipedia.org/wiki/2023_MGM_Resorts_cyberattack"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-MISCFG-001",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "naver",
+      "title": "역매핑 — Capital One 2019 (WAF SSRF + IAM 과도 권한 설정 오류 측면) 의 NCP raw 등가 시퀀스",
+      "actor": "misconfig-victim (NCP Sub Account, remapped)",
+      "external_ip": "185.220.101.4",
+      "time_window": "2026-05-09 06:33 ~ 07:15 UTC (약 42분)",
+      "event_count": 7,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §7.1 — Capital One 2019의 MISCONFIG 측면",
+      "_origin_case": "Capital One 2019 — WAF SSRF + EC2 인스턴스 프로필 과도 권한 + S3 액세스 로깅 비활성 3중 설정 오류",
+      "timeline": [
+        {
+          "time": "06:33:11",
+          "actor": "misconfig-victim",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Initial Access — Tor exit 등 비국내 IP"
+        },
+        {
+          "time": "06:35:08",
+          "actor": "misconfig-victim",
+          "action": "Get Sub Account Policy List",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Discovery (T1580) — 자기 권한 정찰 (NCP 룰 없음)"
+        },
+        {
+          "time": "06:36:42",
+          "actor": "misconfig-victim",
+          "action": "List Buckets",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Discovery (T1580) — Object Storage 정찰"
+        },
+        {
+          "time": "06:39:55",
+          "actor": "misconfig-victim",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "06:42:11",
+          "actor": "misconfig-victim",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.10.5.30",
+          "tactic": "Lateral Movement (T1021) — 과도 권한 활용"
+        },
+        {
+          "time": "06:48:33",
+          "actor": "misconfig-victim",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Exfiltration (T1567)"
+        },
+        {
+          "time": "07:15:50",
+          "actor": "misconfig-victim",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "185.220.101.4",
+          "tactic": "Exfiltration"
+        }
+      ],
+      "evidence": [
+        "MISCONFIG_EXPOSURE 가설은 raw 로그 단독으로는 약함 — 외부 정황(WAF 설정 변경 이력, IAM 정책 감사 결과)이 결정적",
+        "Discovery 단서(Get Policy List, List Buckets)는 NCP 별도 룰화 안 됨 (T1580)",
+        "AccessKey 발급 자체는 정상이나 *발급 직후 사용 권한이 본래 직무 범위 초과*면 단서",
+        "외부 IP → VPC 내부 IP 전환은 과도 권한 활용 결과"
+      ],
+      "lessons_learned": "MISCONFIG는 예방 영역 — V-1 v2 1.5.1·1.5.2 priority 10 정기 감사 자동화가 핵심. R-NCP-015 과도 권한 사용 룰(정책 범위 vs 실제 사용 diff) 신설 후보.",
+      "source": "Capital One 2019 (Misconfig perspective) — https://en.wikipedia.org/wiki/2019_Capital_One_data_breach"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-MISCFG-001",
+      "incident_type": "MISCONFIG_EXPOSURE",
+      "csp": "nhn",
+      "title": "역매핑 — Verkada 2021 (Slack 노출 super admin + 15만 대 카메라) 의 NHN raw 등가 시퀀스",
+      "actor": "super-admin (NHN IAM, remapped — Slack 평문 공유 계정)",
+      "external_ip": "91.198.174.55",
+      "time_window": "2026-05-10 11:08 ~ 11:52 UTC (약 44분)",
+      "event_count": 9,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §7.2",
+      "_origin_case": "Verkada 2021-03 (보안 카메라 SaaS — Slack 평문 공유 super admin)",
+      "timeline": [
+        {
+          "time": "11:08:11",
+          "actor": "super-admin",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Initial Access (T1078.001) — 공유 계정"
+        },
+        {
+          "time": "11:08:45",
+          "actor": "super-admin",
+          "action": "event_id.iam.org.selected",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "11:09:30",
+          "actor": "super-admin",
+          "action": "event_id.iam.member.list",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Discovery (T1580) — 전체 멤버 정찰"
+        },
+        {
+          "time": "11:11:18",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.container.list",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "11:13:42",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.container.metadata.update",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Defense Evasion — X-Container-Read='.r:*' (광범위 공개)"
+        },
+        {
+          "time": "11:16:11",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Exfiltration (T1530) — 영상 1.5GB"
+        },
+        {
+          "time": "11:22:55",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Exfiltration — 영상 2.8GB"
+        },
+        {
+          "time": "11:35:30",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Exfiltration — 영상 4.1GB"
+        },
+        {
+          "time": "11:52:18",
+          "actor": "super-admin",
+          "action": "event_id.object_storage.container.metadata.update",
+          "result": "SUCCESS",
+          "ip": "91.198.174.55",
+          "tactic": "Defense Evasion — reset (위장)"
+        }
+      ],
+      "evidence": [
+        "actor 'super-admin' 같은 공유 계정명 자체가 MISCONFIG 단서 (KISA §3.3 권한 분리 미흡)",
+        "공개 변경 → 다운로드 burst → 비공개 reset 시퀀스는 §4.2 와 동일 — 차별점은 공유 계정으로 발생",
+        "비국내 IP + 공유 계정명 + 광범위 정찰(전 멤버·전 컨테이너) = MISCONFIG 가설 양성",
+        "Slack 평문 공유 vector는 클라우드 raw 외부"
+      ],
+      "lessons_learned": "공유 계정명 + 비국내 IP + 광범위 정찰 3종 결합 시 MISCONFIG 양성. NHN 공유 계정 식별 룰(R-NHN-015) — actor.actor_user_name 패턴 분석 + 사용 빈도 베이스라인 신설 권고.",
+      "source": "Verkada Camera Hack 2021 — https://en.wikipedia.org/wiki/2021_Verkada_camera_hack"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-PHISH-001",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "naver",
+      "title": "역매핑 — Twilio 0ktapus 2022 (SMS 피싱 + MFA OTP relay) 의 NCP raw 등가 시퀀스",
+      "actor": "phished-emp (NCP Sub Account, remapped)",
+      "external_ip": "165.232.92.7",
+      "time_window": "2026-05-11 08:15 ~ 08:28 UTC (약 13분)",
+      "event_count": 7,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §8.1",
+      "_origin_case": "Twilio 0ktapus 2022-08 (1900+ 다운스트림 고객 영향)",
+      "timeline": [
+        {
+          "time": "08:15:02",
+          "actor": "phished-emp",
+          "action": "Login",
+          "result": "FAIL",
+          "ip": "165.232.92.7",
+          "tactic": "Initial Access — 자격증명만 (MFA 미통과)"
+        },
+        {
+          "time": "08:15:18",
+          "actor": "phished-emp",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "165.232.92.7",
+          "tactic": "Initial Access — relay 된 MFA OTP로 성공 (16초 차)"
+        },
+        {
+          "time": "08:16:42",
+          "actor": "phished-emp",
+          "action": "Change password",
+          "result": "SUCCESS",
+          "ip": "165.232.92.7",
+          "tactic": "Persistence (T1098.001, R-NCP-005) — MFA bypass 후 영속"
+        },
+        {
+          "time": "08:18:11",
+          "actor": "phished-emp",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "165.232.92.7",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "08:20:30",
+          "actor": "phished-emp",
+          "action": "Get Sub Account Policy List",
+          "result": "SUCCESS",
+          "ip": "165.232.92.7",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "08:23:55",
+          "actor": "phished-emp",
+          "action": "Attach policy to sub account",
+          "result": "SUCCESS",
+          "ip": "165.232.92.7",
+          "tactic": "PrivEsc (T1098) — 권한 확장"
+        },
+        {
+          "time": "08:28:18",
+          "actor": "phished-emp",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.5.40.22",
+          "tactic": "Lateral Movement (T1021)"
+        }
+      ],
+      "evidence": [
+        "FAIL → SUCCESS 16초 차 = MFA OTP relay 피싱 시그니처 (정상 본인 입력은 5~10초)",
+        "단서 3 (1분 후 password 변경) = MFA bypass 후 영속화 우선 의도",
+        "직원 본래 직무 범위 초과 권한 동작",
+        "PHISH 자체는 클라우드 raw 직접 검출 불가 — FAIL→SUCCESS 시간차 + 비국내 IP + password_change 3종 결합으로 간접 추론"
+      ],
+      "lessons_learned": "Twilio 0ktapus 의 MFA relay 피싱은 raw로 검출 어려우나 *FAIL→SUCCESS 시간차 룰* (10~30초 윈도우) + 비국내 IP + 직후 password_change 결합으로 간접 검출 가능. R-NCP-016 신설 후보. PLAYBOOK-PHISH-001 즉시 자격 회수 + 전사 강제 변경 + 피싱 캠페인 조사.",
+      "source": "Twilio 0ktapus Incident 2022 — https://www.twilio.com/blog/august-2022-social-engineering-attack"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-PHISH-001",
+      "incident_type": "PHISH_INITIAL_ACCESS",
+      "csp": "nhn",
+      "title": "역매핑 — Twitter 2020 (직원 비싱 + 130개 유명 계정 변조) 의 NHN raw 등가 시퀀스",
+      "actor": "vished-emp (NHN IAM, remapped)",
+      "external_ip": "121.78.196.4",
+      "time_window": "2026-05-12 13:32 ~ 13:48 UTC (약 16분)",
+      "event_count": 8,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §8.2",
+      "_origin_case": "Twitter 2020-07-15 (Graham Ivan Clark 외 17세 청소년 + 공범)",
+      "timeline": [
+        {
+          "time": "13:32:08",
+          "actor": "vished-emp",
+          "action": "event_id.iam.login",
+          "result": "FAIL",
+          "ip": "121.78.196.4",
+          "tactic": "Initial Access — 자격증명 첫 시도"
+        },
+        {
+          "time": "13:32:25",
+          "actor": "vished-emp",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Initial Access — 17초 차 성공 (relay 가능성)"
+        },
+        {
+          "time": "13:33:42",
+          "actor": "vished-emp",
+          "action": "event_id.iaas.identity.password_change",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Persistence (T1098.001, R-NHN-007)"
+        },
+        {
+          "time": "13:35:11",
+          "actor": "vished-emp",
+          "action": "event_id.iam.project.selected",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "13:36:30",
+          "actor": "vished-emp",
+          "action": "event_id.iam.member.list",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Discovery — 전 멤버 정찰"
+        },
+        {
+          "time": "13:39:55",
+          "actor": "vished-emp",
+          "action": "event_id.project.member.update",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "PrivEsc (T1098, R-NHN-003) — self → Admin"
+        },
+        {
+          "time": "13:42:18",
+          "actor": "vished-emp",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Persistence (T1098.001)"
+        },
+        {
+          "time": "13:48:42",
+          "actor": "vished-emp",
+          "action": "event_id.iaas.identity.password_change",
+          "result": "SUCCESS",
+          "ip": "121.78.196.4",
+          "tactic": "Persistence — 다른 멤버 비밀번호 변경 (계정 탈취 등가, target ≠ actor)"
+        }
+      ],
+      "evidence": [
+        "FAIL → SUCCESS 17초 차 = Twilio 와 동일 MFA OTP relay 시그니처",
+        "단서 8 의 다른 멤버 password_change = Twitter 사례의 Account Takeover 등가 (target ≠ actor)",
+        "비싱 vector 자체는 raw 외부 — FAIL/SUCCESS 시간 + self·다른 멤버 password_change 조합으로 검출"
+      ],
+      "lessons_learned": "Twitter 2020 의 광범위 내부 도구 접근 + 타인 계정 변조는 PHISH + PRIVESC + INSIDER 3종 복합. NHN identity.password_change 의 target ≠ actor 케이스 별도 룰(R-NHN-017) 신설 권고.",
+      "source": "Twitter Bitcoin Scam 2020 — https://en.wikipedia.org/wiki/2020_Twitter_account_hijacking"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NCP-INSIDER-001",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "naver",
+      "title": "역매핑 — Tesla 2018 (Martin Tripp 불만 직원 데이터 유출 + 코드 변조) 의 NCP raw 등가 시퀀스",
+      "actor": "mfg-eng-tripp (NCP Sub Account, remapped — 정당 사내 자격증명)",
+      "external_ip": "10.5.20.110 (사내 IP)",
+      "time_window": "2026-05-13(토) 02:18 ~ 03:25 UTC (약 67분, 주말 야간)",
+      "event_count": 9,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §9.1",
+      "_origin_case": "Tesla 2018-06 Martin Tripp 사건 (불만 직원 데이터 유출 + 코드 변조)",
+      "timeline": [
+        {
+          "time": "02:18:11",
+          "actor": "mfg-eng-tripp",
+          "action": "Login",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Initial Access (T1078) — 사내 IP + 비표준 시각"
+        },
+        {
+          "time": "02:19:55",
+          "actor": "mfg-eng-tripp",
+          "action": "Get Sub Account Policy List",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Discovery — 자기 권한 확인"
+        },
+        {
+          "time": "02:22:30",
+          "actor": "mfg-eng-tripp",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Lateral Movement (T1021) — 본인 직무 서버"
+        },
+        {
+          "time": "02:28:18",
+          "actor": "mfg-eng-tripp",
+          "action": "Access Server Connect Console",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Lateral Movement — 본인 직무 범위 초과 서버 (제조 라인 분석)"
+        },
+        {
+          "time": "02:35:42",
+          "actor": "mfg-eng-tripp",
+          "action": "Create AccessKey",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Persistence (T1098.001) — 야간 신규 발급 (드뭄)"
+        },
+        {
+          "time": "02:48:11",
+          "actor": "mfg-eng-tripp",
+          "action": "Request For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Exfiltration (T1567) — 8.7GB 데이터"
+        },
+        {
+          "time": "03:18:30",
+          "actor": "mfg-eng-tripp",
+          "action": "Complete For Exporting To Object Storage",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Exfiltration"
+        },
+        {
+          "time": "03:22:55",
+          "actor": "mfg-eng-tripp",
+          "action": "Disable Auto Export",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Defense Evasion (T1562.008) — 감사 export 차단 (라이브 룰 없음)"
+        },
+        {
+          "time": "03:25:18",
+          "actor": "mfg-eng-tripp",
+          "action": "Disable AccessKey",
+          "result": "SUCCESS",
+          "ip": "10.5.20.110",
+          "tactic": "Impact (T1531) — 야간 발급 키 자기 비활성"
+        }
+      ],
+      "evidence": [
+        "사내 IP + 02:18 토요일 = INSIDER 시그니처 (외부 IP가 아님)",
+        "본인 서버 → 본인 직무 외 서버 (제조 라인 분석) = 직무 범위 vs 사용 범위 diff",
+        "야간 AccessKey 발급 → 야간 비활성 = 흔적 위장",
+        "Disable Auto Export = AUDIT_LOG_TAMPERING 조합 시그니처"
+      ],
+      "lessons_learned": "Tesla Tripp 사례는 INSIDER가 외부 침입자 시그니처와 정반대 패턴(외부 IP·자동화 burst → 사내 IP·시간대 이상·직무 외 접근)임을 입증. R-NCP-018 비표준 시각 사내 IP 동작 + R-NCP-019 직무 범위 diff 룰 신설 후보. V-8 Sherpa의 HR 시스템 연동(퇴사 예정자) 보조 단서 권고. PLAYBOOK-INSIDER-001 즉시 권한 동결 + 법무팀 동시 통보.",
+      "source": "Tesla Sabotage Allegation 2018 (Martin Tripp) — https://www.cnbc.com/2018/06/20/elon-musk-tells-employees-tesla-was-sabotaged-internally.html"
+    },
+    {
+      "chunk_id": "CASE-REMAP-NHN-INSIDER-001",
+      "incident_type": "INSIDER_THREAT",
+      "csp": "nhn",
+      "title": "역매핑 — Coinbase 2023 (외부 협력사 직원 지원자 데이터 접근) 의 NHN raw 등가 시퀀스",
+      "actor": "contractor-hr (NHN IAM, remapped — 외부 채용 컨설팅사 직원, 정당 자격증명)",
+      "external_ip": "222.108.46.18",
+      "time_window": "2026-05-14(일) 22:48 ~ 23:48 UTC (약 60분, 일요일 야간)",
+      "event_count": 10,
+      "_status": "remap_v1",
+      "_source": "docs/dev3/AWS_역매핑_시나리오.md §9.2",
+      "_origin_case": "Coinbase 2023-02 (외부 채용 컨설팅사 직원의 지원자 데이터 외부 유출)",
+      "timeline": [
+        {
+          "time": "22:48:11",
+          "actor": "contractor-hr",
+          "action": "event_id.iam.login",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Initial Access (T1078) — 외부 IP + 일요일 야간"
+        },
+        {
+          "time": "22:49:33",
+          "actor": "contractor-hr",
+          "action": "event_id.iam.project.selected",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "22:50:18",
+          "actor": "contractor-hr",
+          "action": "event_id.iam.member.list",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Discovery — 멤버 정찰"
+        },
+        {
+          "time": "22:52:42",
+          "actor": "contractor-hr",
+          "action": "event_id.project.member.update",
+          "result": "FAIL",
+          "ip": "222.108.46.18",
+          "tactic": "PrivEsc 시도 실패 (R-NHN-003) — 권한 자기상승 차단"
+        },
+        {
+          "time": "22:54:11",
+          "actor": "contractor-hr",
+          "action": "event_id.iaas.s3credential.create",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Persistence (T1098.001) — 직무 범위 외 자원용 키"
+        },
+        {
+          "time": "22:58:30",
+          "actor": "contractor-hr",
+          "action": "event_id.object_storage.container.list",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Discovery"
+        },
+        {
+          "time": "23:02:55",
+          "actor": "contractor-hr",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Exfiltration (T1530) — 지원자 1"
+        },
+        {
+          "time": "23:08:18",
+          "actor": "contractor-hr",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Exfiltration — 지원자 2"
+        },
+        {
+          "time": "23:14:42",
+          "actor": "contractor-hr",
+          "action": "event_id.object_storage.object.download",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Exfiltration — 지원자 3 (이후 N건)"
+        },
+        {
+          "time": "23:48:30",
+          "actor": "contractor-hr",
+          "action": "event_id.iaas.s3credential.delete",
+          "result": "SUCCESS",
+          "ip": "222.108.46.18",
+          "tactic": "Impact (T1531) — 흔적 제거"
+        }
+      ],
+      "evidence": [
+        "외부 IP + 일요일 22:48 = 협력사 정상 업무 시간 외 (KISA §2.4 ⑥ + Q2A:off_hours)",
+        "project.member.update FAIL = 권한 자기상승 시도가 차단 → 차단 자체가 직무 범위 초과 의도 명시",
+        "지원자 다운로드 burst (3건/12분) = 정상 운영자라면 1명씩 처리 — 비정상",
+        "25분 만에 자기 발급 s3credential 삭제 = 흔적 위장"
+      ],
+      "lessons_learned": "Coinbase 사례는 외부 협력사 케이스 — 외부 IP이지만 정당 자격증명 보유. INSIDER 는 외부/내부 IP가 아닌 *직무 범위 vs 사용 범위*가 핵심 판단 기준. R-NHN-019 download burst (3건/5분) + 권한 상승 시도 FAIL 1건 룰 신설 후보. PLAYBOOK-INSIDER-002 협력사 권한 분리·정기 감사·NDA 재검토.",
+      "source": "Coinbase Social Engineering 2023 — https://www.coinbase.com/blog/social-engineering-a-coordinated-attack-against-coinbase"
     }
   ]
 }

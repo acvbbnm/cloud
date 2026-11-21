@@ -7,9 +7,45 @@ import PageHeader from '@/components/PageHeader';
 import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
+import Pagination from '@/components/Pagination';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
+import { useEvidenceLogStore } from '@/stores/useEvidenceLogStore';
 import { getOcsf, runNormalize } from '@/api/analysis';
+
+import type { Observable, OCSFEventItem } from '@/types';
+
+/** 빈값 ("-"/"" / "null") 가드 — backend OCSF 정규화에서 actor·ip 가
+ *  플레이스홀더로 채워지면 칩이 의미없으므로 push 차단. P.38 (LogAnalysisFab) 과 동일. */
+const isMeaningfulValue = (v: string | null | undefined): v is string =>
+  !!v && v !== '-' && v.trim() !== '' && v.toLowerCase() !== 'null';
+
+/** P.36 — OCSFEventItem → 적재함 LoadedLog. actor_user_name → ACCOUNT,
+ *   src_endpoint_ip → IP_ADDRESS observable 추출. P.38 — 빈값 가드. */
+const buildOcsfLoadedLog = (e: OCSFEventItem) => {
+  const obs: Observable[] = [];
+  if (isMeaningfulValue(e.actor_user_name)) {
+    obs.push({ type: 'ACCOUNT', value: e.actor_user_name!, note: e.activity_name });
+  }
+  if (isMeaningfulValue(e.src_endpoint_ip)) {
+    obs.push({ type: 'IP_ADDRESS', value: e.src_endpoint_ip!, note: e.activity_name });
+  }
+  return {
+    loaded_id: `ocsf-${e.ocsf_id}`,
+    source: 'ocsf' as const,
+    source_id: e.ocsf_id,
+    time: e.time,
+    label: e.activity_name || e.ocsf_id.slice(0, 12),
+    observables: obs,
+    fields: {
+      activity_name: e.activity_name,
+      actor_user: e.actor_user_name,
+      src_ip: e.src_endpoint_ip,
+      status_code: e.status_code,
+      time: e.time,
+    },
+  };
+};
 
 import RawJsonPanel from './RawJsonPanel';
 import FieldMappingTable from './FieldMappingTable';
@@ -42,6 +78,10 @@ const V3OCSF = () => {
     enabled: !!caseId,
   });
 
+  // P.36 — V-1 적재함 push
+  const loadEvidence = useEvidenceLogStore((s) => s.load);
+  const evidenceHas = useEvidenceLogStore((s) => s.has);
+
   const normalizeMutation = useMutation({
     mutationFn: () => runNormalize(caseId!),
     onSuccess: (stats) => {
@@ -59,9 +99,9 @@ const V3OCSF = () => {
   if (!caseId) {
     return (
       <div>
-        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF 정규화" description="진행 중인 사고 케이스가 없습니다." />
+        <PageHeader eyebrow="Layer 2 · M2-1" title="OCSF 정규화" description="활성화된 사고 케이스가 없습니다." />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료하고 V-2 에서 로그를 업로드하세요.
             </p>
@@ -97,12 +137,8 @@ const V3OCSF = () => {
     <div>
       <PageHeader
         eyebrow="Layer 2 · M2-1"
-        title={
-          <>
-            OCSF <span className="grad-text">정규화</span>
-          </>
-        }
-        description="원본 로그와 OCSF 정규화 결과를 비교하세요."
+        title="OCSF 정규화"
+        description="원본 CSP 로그를 OCSF 컬럼으로 변환합니다. 좌·우 패널에서 변환 전·후를 비교하세요."
         actions={
           <>
             <button
@@ -110,53 +146,42 @@ const V3OCSF = () => {
               disabled={normalizeMutation.isPending}
               className="btn-ghost disabled:opacity-50"
             >
-              {normalizeMutation.isPending ? '정규화 중…' : '🔁 정규화 실행'}
+              {normalizeMutation.isPending ? '정규화 중…' : ' 정규화 실행'}
             </button>
+            {/* P.36 — 선택된 이벤트를 V-1 적재함에 push */}
+            {selected && (() => {
+              const log = buildOcsfLoadedLog(selected);
+              const already = evidenceHas(log.loaded_id);
+              return (
+                <button
+                  onClick={() => {
+                    if (loadEvidence(log)) {
+                      showToast('➜ V-1 적재함에 추가됨 (단서 채택은 V-1 Step3 에서)');
+                    } else {
+                      showToast('이미 적재됨');
+                    }
+                  }}
+                  disabled={already}
+                  className="btn-ghost disabled:opacity-40"
+                  title={
+                    already
+                      ? '이미 V-1 적재함에 있음'
+                      : '현재 선택된 이벤트를 V-1 Step3 적재함에 추가'
+                  }
+                >
+                  {already ? '✓ 적재됨' : '➜ V-1 적재함'}
+                </button>
+              );
+            })()}
             <button onClick={() => navigate('/gap')} className="btn-primary">
-              빠진 증거 →
+              갭 감지 →
             </button>
           </>
         }
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="eyebrow">백엔드 응답</span>
-              {ocsfQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
-              {ocsfQuery.isError && <span className="tag-red">에러</span>}
-              {ocsfQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
-              {normalizeMutation.isPending && <span className="tag-amber">정규화 중…</span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {ocsfQuery.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(ocsfQuery.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {ocsfQuery.isSuccess && (
-            <div className="text-ink-300 leading-6">
-              ocsf_events 총 <b className="text-ink-100">{total}건</b>
-              {stats && (
-                <>
-                  <span className="mx-2 text-ink-500">·</span>
-                  마지막 정규화 — total <b className="text-ink-100">{stats.total}</b> / normalized{' '}
-                  <b className="text-brand-teal">{stats.normalized}</b> / failed{' '}
-                  <b className="text-brand-red">{stats.failed}</b> (
-                  <b>{stats.normalizationRate}%</b>)
-                </>
-              )}
-              {total === 0 && (
-                <span className="ml-2 text-brand-amber">
-                  · 우상단 「정규화 실행」 버튼을 눌러 raw_events 를 정규화하세요.
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         <div className="grid grid-cols-3 gap-3">
           <KpiCard
@@ -171,7 +196,7 @@ const V3OCSF = () => {
             color="red"
             hint="failedEvents 확인"
           />
-          <KpiCard label="스키마 버전" value="OCSF 1.3 (평탄화)" color="purple" hint="설계서 5.2절" />
+          <KpiCard label="스키마 버전" value="OCSF 1.3" color="purple" />
         </div>
 
         {/* 샘플 selector */}
@@ -193,25 +218,16 @@ const V3OCSF = () => {
               </button>
             ))}
             {totalPages > 1 && (
-              <div className="flex gap-1 ml-auto">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="btn-ghost btn-sm disabled:opacity-40"
-                >
-                  ←
-                </button>
-                <span className="self-center text-[11px] text-ink-400">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages}
-                  className="btn-ghost btn-sm disabled:opacity-40"
-                >
-                  →
-                </button>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={(p) => {
+                  // 버그 #10 fix — 페이지 변경 시 selectedIdx 리셋 (범위 밖 접근 방어)
+                  setPage(p);
+                  setSelectedIdx(0);
+                }}
+                className="ml-auto"
+              />
             )}
           </div>
         )}
@@ -219,9 +235,9 @@ const V3OCSF = () => {
         {/* 양면 비교 */}
         {selected ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RawJsonPanel title="별도로 보관한 원본 필드" titleColor="#FF4D6D" badge="RAW" data={rawDisplay} />
+            <RawJsonPanel title="원본 CSP 로그 (unmapped_raw)" titleColor="#FF4D6D" badge="RAW" data={rawDisplay} />
             <RawJsonPanel
-              title="OCSF 필드"
+              title="OCSF 정규화 평탄화 컬럼"
               titleColor="#14D9B0"
               badge="OCSF 1.3"
               data={ocsfDisplay}

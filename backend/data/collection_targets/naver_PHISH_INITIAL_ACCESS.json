@@ -1,0 +1,85 @@
+[
+  {
+    "target_id": "CT-NCP-PHISH-001",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Sub Account 인증 이벤트",
+    "description": "Login — 피싱으로 탈취된 자격증명의 비정상 로그인 (비국내 IP, 비업무 시간). MITRE T1078.004 Valid Accounts: Cloud.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PHISH-002",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 자격증명 변경",
+    "description": "Create AccessKey, Change Password — 피싱 침투 후 자격증명 변경·추가 확보. MITRE T1556 Modify Authentication Process.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → IAM → AccessKey / Login Key 관리 + Activity Tracer Create/Disable AccessKey 이벤트",
+    "cmd": "ncloud iam getAccessKeyList --output json > access_keys.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098.001",
+      "T1552",
+      "T1556"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PHISH-003",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 백도어 계정 생성",
+    "description": "Create sub account — 피싱 침투 후 영속 접근용 백도어 계정. MITRE T1136.003 Create Account: Cloud.",
+    "evidence_role": "CORROBORATING",
+    "priority": 7,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PHISH-004",
+    "incident_type": "PHISH_INITIAL_ACCESS",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 감사 로그 변조",
+    "description": "Delete Tracer, Disable Auto Export — 침투 흔적 제거. MITRE T1562.008 Disable Cloud Logs.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Object Storage → 버킷 → 접근 로그 + Activity Tracer Export 이벤트 필터",
+    "cmd": "ncloud storage getBucketList --output json > buckets.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
+  }
+]

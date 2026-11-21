@@ -1,0 +1,292 @@
+[
+  {
+    "_comment": "정상 베이스라인: alice 정상 로그인 (T-2h, 국내 IP)",
+    "historyId": "h-baseline-001",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/alice",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942603",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 12:00:00 UTC",
+    "content": {
+      "actionUserName": "alice",
+      "sourceIp": "172.30.10.6",
+      "productData": {}
+    }
+  },
+  {
+    "_comment": "정상 베이스라인: bob 일상 활동",
+    "historyId": "h-baseline-002",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/bob",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942604",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 13:15:00 UTC",
+    "content": {
+      "actionUserName": "bob",
+      "sourceIp": "172.30.10.7",
+      "productData": {}
+    }
+  },
+
+  {
+    "_comment": "[T+0:00] STEP 1 — dev-ops-admin 자격증명 탈취 후 외부 IP로 첫 로그인 (Sysdig 사례 인용). 정상 사용자명이지만 비국내 IP (Tor exit node)",
+    "historyId": "h-attack-001",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:00:00 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "userAgent": "curl/7.88.1",
+      "productData": {}
+    }
+  },
+  {
+    "_comment": "[T+0:01] STEP 2 — 정찰: Sub Account 목록 조회 (AWS ListUsers 등가)",
+    "historyId": "h-attack-002",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Get Sub Account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:01:30 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "userAgent": "aws-cli/2.13.0 (manual python script)",
+      "productData": {"targetSubAccount": "ALL"}
+    }
+  },
+  {
+    "_comment": "[T+0:02] STEP 3 — 정찰: 정책 (역할) 목록",
+    "historyId": "h-attack-003",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "List Sub Account Policy",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:02:15 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "productData": {}
+    }
+  },
+  {
+    "_comment": "[T+0:06] STEP 4 — 권한 상승: admin 정책 부여 시도 (AttachUserPolicy 등가). Sysdig 사례 timeline T+0:06 대응",
+    "historyId": "h-attack-004",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:06:00 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "productData": {
+        "subAccount": "dev-ops-admin",
+        "policy": "NCP-Administrator"
+      }
+    }
+  },
+  {
+    "_comment": "[T+0:07] STEP 5 — 백도어 자격증명: AccessKey 발급 (T1098.001). Sysdig timeline T+1:00 대응",
+    "historyId": "h-attack-005",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:07:00 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "productData": {"accessKeyId": "NCPKEYBACK001"}
+    }
+  },
+  {
+    "_comment": "[T+0:08] STEP 6 — 백도어 계정 (Sysdig CreateUser 대응)",
+    "historyId": "h-attack-006",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Create sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:08:00 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "productData": {
+        "newSubAccount": "backup-svc",
+        "policy": "NCP-Administrator"
+      }
+    }
+  },
+  {
+    "_comment": "[T+0:09] STEP 7 — 신규 백도어 계정으로 Object Storage 열람",
+    "historyId": "h-attack-007",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/backup-svc",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Bucket",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942610",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "List Buckets",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:09:00 UTC",
+    "content": {
+      "actionUserName": "backup-svc",
+      "sourceIp": "185.220.101.42",
+      "productData": {"bucketCount": 47}
+    }
+  },
+  {
+    "_comment": "[T+0:09] STEP 8 — DATA EXFILTRATION 시작: Export Request (Capital One 사례 인용)",
+    "historyId": "h-attack-008",
+    "nrn": "nrn:ncp:iam:KR:5000000:bucket/customer-pii",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Bucket",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942610",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:09:30 UTC",
+    "content": {
+      "actionUserName": "backup-svc",
+      "sourceIp": "185.220.101.42",
+      "productData": {
+        "sourceBucket": "customer-pii",
+        "destinationBucket": "attacker-staging-tor",
+        "size": "12.4 GB"
+      }
+    }
+  },
+  {
+    "_comment": "[T+0:11] STEP 9 — Export 진행 다수 발생",
+    "historyId": "h-attack-009",
+    "nrn": "nrn:ncp:iam:KR:5000000:bucket/customer-pii",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Bucket",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942610",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:11:00 UTC",
+    "content": {
+      "actionUserName": "backup-svc",
+      "sourceIp": "185.220.101.42",
+      "productData": {
+        "sourceBucket": "internal-reports",
+        "destinationBucket": "attacker-staging-tor",
+        "size": "3.2 GB"
+      }
+    }
+  },
+  {
+    "_comment": "[T+0:13] STEP 10 — Export 완료 알림",
+    "historyId": "h-attack-010",
+    "nrn": "nrn:ncp:iam:KR:5000000:bucket/customer-pii",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Bucket",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942610",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:13:00 UTC",
+    "content": {
+      "actionUserName": "backup-svc",
+      "sourceIp": "185.220.101.42",
+      "productData": {"bytesTransferred": "15.6 GB"}
+    }
+  },
+  {
+    "_comment": "[T+0:15] STEP 11 — 흔적 지움: AccessKey 비활성화 (anti-forensics)",
+    "historyId": "h-attack-011",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/dev-ops-admin",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942605",
+    "sourceType": "API",
+    "domainCode": "kr",
+    "action": "Disable AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-19 14:15:00 UTC",
+    "content": {
+      "actionUserName": "dev-ops-admin",
+      "sourceIp": "185.220.101.42",
+      "productData": {"accessKeyId": "NCPKEYBACK001"}
+    }
+  }
+]

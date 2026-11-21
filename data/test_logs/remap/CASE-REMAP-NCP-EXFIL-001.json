@@ -1,0 +1,162 @@
+[
+  {
+    "historyId": "h-1c768c944bcb",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:15:02 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-b5fec8200cab",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:16:18 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-2795054d29d2",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:18:55 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e92d498129d1",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:20:11 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-4a2983fda2f3",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:35:42 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-62751edb1925",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:36:11 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-4422f6214920",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:39:50 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-dcea2f3bf470",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/data-eng",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000007",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Disable AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-04-20 03:42:33 UTC",
+    "content": {
+      "actionUserName": "data-eng",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  }
+]

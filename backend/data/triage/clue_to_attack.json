@@ -1,0 +1,1216 @@
+{
+  "_meta": {
+    "version": "v1-clue-to-attack",
+    "generated": "2026-05-26T00:46:54.525609Z",
+    "generator": "backend/scripts/build_clue_attack_mapping.py",
+    "source_catalog": "data\\triage\\clue_catalog.json",
+    "purpose": "Bayesian Network DAG 노드·조건부 의존성 입력 — PDF §17.B BAN paper 정합. 단서 → ATT&CK 기법 다중 매핑 (Noisy-OR 처리).",
+    "user_decisions": {
+      "mapping_method": "Option C — 자동 + 수동 검토 (80/20)",
+      "meta_clue_handling": "Option A — null 매핑, DAG 외부 처리",
+      "multi_target": "Option B — 모든 매핑 보존, Noisy-OR 자연 처리"
+    },
+    "extraction_tiers": [
+      "Tier 1: direct_technique (category=TECHNIQUE)",
+      "Tier 2: meta_excluded (Q1_inception:*)",
+      "Tier 3: auto:weight_source (T-NNNN 정규식)",
+      "Tier 4: auto:outcome_flags (Google Chronicle 정형)",
+      "Tier 5: auto:category_signature (카테고리·값 도메인 룰)",
+      "Tier 6: manual_supplement (1:N 확장)",
+      "Tier 7: manual_pending (수동 검토 대기)"
+    ],
+    "stats": {
+      "total": 143,
+      "direct_technique": 27,
+      "meta_excluded": 5,
+      "auto_weight_source": 59,
+      "auto_outcome_flags": 63,
+      "auto_category_signature": 7,
+      "manual_supplement": 59,
+      "manual_supplement_no_ttp": 13,
+      "manual_pending": 0,
+      "with_techniques": 125,
+      "multi_target": 46,
+      "unique_techniques_referenced": 45
+    }
+  },
+  "mappings": {
+    "Q1_inception:csp_alert": {
+      "techniques": null,
+      "source": "meta_excluded",
+      "confidence": "n/a",
+      "notes": "사고 인지 경로 — DAG 외부 처리, IG 만 사용"
+    },
+    "Q1_inception:external_report": {
+      "techniques": null,
+      "source": "meta_excluded",
+      "confidence": "n/a",
+      "notes": "사고 인지 경로 — DAG 외부 처리, IG 만 사용"
+    },
+    "Q1_inception:audit": {
+      "techniques": null,
+      "source": "meta_excluded",
+      "confidence": "n/a",
+      "notes": "사고 인지 경로 — DAG 외부 처리, IG 만 사용"
+    },
+    "Q1_inception:service_anomaly": {
+      "techniques": null,
+      "source": "meta_excluded",
+      "confidence": "n/a",
+      "notes": "사고 인지 경로 — DAG 외부 처리, IG 만 사용"
+    },
+    "Q1_inception:unknown": {
+      "techniques": null,
+      "source": "meta_excluded",
+      "confidence": "n/a",
+      "notes": "사고 인지 경로 — DAG 외부 처리, IG 만 사용"
+    },
+    "Q2A:abnormal_login": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:non_korean_ip": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:privilege_change": {
+      "techniques": [
+        "T1098"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:object_storage_burst": {
+      "techniques": [
+        "T1530",
+        "T1537",
+        "T1090.003",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:audit_log_disabled": {
+      "techniques": [
+        "T1562.008"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:api_burst": {
+      "techniques": [
+        "T1078.004",
+        "T1580"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:off_hours": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:ransomware_pattern": {
+      "techniques": [
+        "T1486",
+        "T1136",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:misconfig_alert": {
+      "techniques": [
+        "T1190",
+        "T1078.004"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2A:phishing_kit_detect": {
+      "techniques": [
+        "T1566"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:data_exposed": {
+      "techniques": [
+        "T1530"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:abnormal_billing": {
+      "techniques": [
+        "T1496"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:identity_theft": {
+      "techniques": [
+        "T1556"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:multi_csp_suspicious": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:ransom_note_visible": {
+      "techniques": [
+        "T1486"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:phishing_report": {
+      "techniques": [
+        "T1566.001",
+        "T1566"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2B:insider_complaint": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:iam_burst": {
+      "techniques": [
+        "T1136",
+        "T1098"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:permission_changes": {
+      "techniques": [
+        "T1098"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:log_gap": {
+      "techniques": [
+        "T1070",
+        "T1562.008"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:data_access": {
+      "techniques": [
+        "T1530"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:insider_anomaly": {
+      "techniques": [
+        "T1078",
+        "T1530",
+        "T1567"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2C:default_account_used": {
+      "techniques": [
+        "T1078.001"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2D:data_destruction": {
+      "techniques": [
+        "T1485"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2D:ddos": {
+      "techniques": [
+        "T1499"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2D:resource_abuse": {
+      "techniques": [
+        "T1496"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q2D:response_delay": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "응답 지연 — 약한 시그널"
+    },
+    "Q2D:mass_encryption": {
+      "techniques": [
+        "T1486",
+        "T1490",
+        "T1136",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3:fail_then_success": {
+      "techniques": [
+        "T1110"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3:multi_region_concurrent": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_CRED:non_korean_geographic": {
+      "techniques": [
+        "T1078.004",
+        "T1090.003"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3:serverless_new": {
+      "techniques": [
+        "T1648",
+        "T1136"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3:unknown_extra": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "기타 정보 — 단정 불가"
+    },
+    "Q3_DATA:storage_policy_public": {
+      "techniques": [
+        "T1552.005",
+        "T1090.003",
+        "T1190",
+        "T1078.004",
+        "T1530"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_DATA:s3_credential_change": {
+      "techniques": [
+        "T1098",
+        "T1090.003",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_DATA:multi_csp_pivot": {
+      "techniques": [
+        "T1021",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_DATA:billing_spike": {
+      "techniques": [
+        "T1486",
+        "T1496"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_INSIDER:off_hours_priv": {
+      "techniques": [
+        "T1098",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_INSIDER:multiple_iam_changes": {
+      "techniques": [
+        "T1136.003",
+        "T1078",
+        "T1098"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_INSIDER:gradual_priv_creep": {
+      "techniques": [
+        "T1098.003",
+        "T1098",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_INSIDER:self_audit_disable": {
+      "techniques": [
+        "T1562.008",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_IMPACT:mass_encrypt": {
+      "techniques": [
+        "T1486",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_IMPACT:backup_deletion": {
+      "techniques": [
+        "T1490"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_IMPACT:ransom_extension": {
+      "techniques": [
+        "T1486",
+        "T1136"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3_IMPACT:storage_destruction": {
+      "techniques": [
+        "T1485",
+        "T1531",
+        "T1090.003"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-CRED:mfa_token_reuse": {
+      "techniques": [
+        "T1556",
+        "T1556.006",
+        "T1111"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-CRED:mfa_registration_change": {
+      "techniques": [
+        "T1098.005",
+        "T1556.006",
+        "T1111"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-CRED:mfa_not_applied": {
+      "techniques": [
+        "T1556.006"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-CRED:audit_log_tampered": {
+      "techniques": [
+        "T1562.008"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-RANSOM:backup_destroyed": {
+      "techniques": [
+        "T1490"
+      ],
+      "source": "auto:weight_source+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-RANSOM:backup_intact": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "백업 무결 — RANSOM 가능성 감소 (TTP 없음)"
+    },
+    "Q4-RANSOM:backup_missing": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "백업 운영 부재 — 약한 시그널 (TTP 단정 불가)"
+    },
+    "Q4-MISCFG:short_term_public": {
+      "techniques": [
+        "T1190",
+        "T1078.004"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-MISCFG:long_term_public": {
+      "techniques": [
+        "T1190",
+        "T1078.004"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-MISCFG:timing_unknown": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "시점 불명 — 약한 시그널 (TTP 단정 불가)"
+    },
+    "Q4-INSIDER:scope_excess": {
+      "techniques": [
+        "T1078",
+        "T1098"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q4-INSIDER:scope_within": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q4-INSIDER:partner_account": {
+      "techniques": [
+        "T1078",
+        "T1199"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-CRED:non_korean_ip": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-CRED:internal_ip": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-CRED:tor_vpn": {
+      "techniques": [
+        "T1090",
+        "T1090.003"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-CRED:actor_unknown": {
+      "techniques": [
+        "T1090.003"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q5-CRED:baseline_deviation": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-RANSOM:single_instance": {
+      "techniques": [
+        "T1486"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-RANSOM:storage_wide": {
+      "techniques": [
+        "T1090.003",
+        "T1486"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-RANSOM:multi_region": {
+      "techniques": [
+        "T1486"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-MISCFG:operator": {
+      "techniques": [
+        "T1090.003"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q5-MISCFG:abnormal_ip": {
+      "techniques": [
+        "T1098"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-MISCFG:automation_script": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-INSIDER:internal_endpoint": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-INSIDER:internal_vpn": {
+      "techniques": [
+        "T1090.003",
+        "T1078"
+      ],
+      "source": "auto:outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-INSIDER:trace_deletion": {
+      "techniques": [
+        "T1070",
+        "T1562.008",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q5-INSIDER:baseline_deviation": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q6-CRED:priv_change": {
+      "techniques": [
+        "T1136.003",
+        "T1098",
+        "T1136"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-CRED:storage_download": {
+      "techniques": [
+        "T1530",
+        "T1090.003",
+        "T1567",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-CRED:function_persist": {
+      "techniques": [
+        "T1648",
+        "T1136",
+        "T1547"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-CRED:no_follow": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "후속 행동 없음 (TTP 없음)"
+    },
+    "Q6-RANSOM:note_found": {
+      "techniques": [
+        "T1486"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-RANSOM:double_extortion": {
+      "techniques": [
+        "T1486",
+        "T1567",
+        "T1090.003",
+        "T1530"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-RANSOM:no_note": {
+      "techniques": [
+        "T1485"
+      ],
+      "source": "auto:weight_source",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-MISCFG:pii": {
+      "techniques": [
+        "T1530"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-MISCFG:trade_secret": {
+      "techniques": [
+        "T1530"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-MISCFG:general": {
+      "techniques": [
+        "T1190",
+        "T1078.004"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q6-INSIDER:normal_exit": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "Q6-INSIDER:data_external": {
+      "techniques": [
+        "T1567",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q6-INSIDER:iam_self_delete": {
+      "techniques": [
+        "T1531",
+        "T1070",
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags+manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "Q3:storage_policy_change": {
+      "techniques": [
+        "T1552.005",
+        "T1090.003"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "IP_ADDRESS:non_korean": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "IP_ADDRESS:tor_vpn": {
+      "techniques": [
+        "T1090.003"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "IP_ADDRESS:multi_account": {
+      "techniques": [
+        "T1078",
+        "T1078.004"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "IP_ADDRESS:multi_csp_observed": {
+      "techniques": [
+        "T1078.004",
+        "T1199"
+      ],
+      "source": "auto:manual_supplement",
+      "confidence": "high",
+      "notes": ""
+    },
+    "ACCOUNT:privilege_changed": {
+      "techniques": [
+        "T1098"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "ACCOUNT:newly_created": {
+      "techniques": [
+        "T1136"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "ACCOUNT:inactive_to_active": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:weight_source+outcome_flags",
+      "confidence": "high",
+      "notes": ""
+    },
+    "ACCOUNT:root_or_admin": {
+      "techniques": [
+        "T1078",
+        "T1548"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "ACCOUNT:mfa_disabled": {
+      "techniques": [
+        "T1556.006",
+        "T1078"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "HASH:known_malicious": {
+      "techniques": [
+        "T1204"
+      ],
+      "source": "auto:category_signature",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "HASH:unknown": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "미확정 해시 — 약한 시그널 (TTP 단정 불가)"
+    },
+    "DOMAIN:c2": {
+      "techniques": [
+        "T1071"
+      ],
+      "source": "auto:weight_source+category_signature",
+      "confidence": "high",
+      "notes": ""
+    },
+    "DOMAIN:dga": {
+      "techniques": [
+        "T1568.002"
+      ],
+      "source": "auto:weight_source+category_signature",
+      "confidence": "high",
+      "notes": ""
+    },
+    "TIME_WINDOW:off_hours": {
+      "techniques": [
+        "T1078"
+      ],
+      "source": "auto:outcome_flags",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "SERVICE:object_storage": {
+      "techniques": [
+        "T1090.003",
+        "T1530"
+      ],
+      "source": "auto:outcome_flags+category_signature",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "SERVICE:iam": {
+      "techniques": [
+        "T1078",
+        "T1098"
+      ],
+      "source": "auto:category_signature",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "SERVICE:cloud_trail": {
+      "techniques": [
+        "T1562.008"
+      ],
+      "source": "auto:weight_source+category_signature",
+      "confidence": "high",
+      "notes": ""
+    },
+    "SERVICE:multi_csp": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:category_signature",
+      "confidence": "medium",
+      "notes": ""
+    },
+    "IP_ADDRESS:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "IP 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "ACCOUNT:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "계정 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "HASH:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "해시 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "DOMAIN:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "도메인 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "TIME_WINDOW:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "시각 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "SERVICE:generic": {
+      "techniques": [],
+      "source": "manual_supplement:no_ttp",
+      "confidence": "n/a",
+      "notes": "서비스 일반 단서 — variant 미상 (TTP 없음)"
+    },
+    "TECHNIQUE:T1078.004": {
+      "techniques": [
+        "T1078.004"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1110": {
+      "techniques": [
+        "T1110"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1556": {
+      "techniques": [
+        "T1556"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1539": {
+      "techniques": [
+        "T1539"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1552.005": {
+      "techniques": [
+        "T1552.005"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1098": {
+      "techniques": [
+        "T1098"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1136": {
+      "techniques": [
+        "T1136"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1484": {
+      "techniques": [
+        "T1484"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1548.005": {
+      "techniques": [
+        "T1548.005"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1530": {
+      "techniques": [
+        "T1530"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1537": {
+      "techniques": [
+        "T1537"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1567": {
+      "techniques": [
+        "T1567"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1213": {
+      "techniques": [
+        "T1213"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1119": {
+      "techniques": [
+        "T1119"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1562.008": {
+      "techniques": [
+        "T1562.008"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1070": {
+      "techniques": [
+        "T1070"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1578": {
+      "techniques": [
+        "T1578"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1021": {
+      "techniques": [
+        "T1021"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1550": {
+      "techniques": [
+        "T1550"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1136.003": {
+      "techniques": [
+        "T1136.003"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1485": {
+      "techniques": [
+        "T1485"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1486": {
+      "techniques": [
+        "T1486"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1499": {
+      "techniques": [
+        "T1499"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1490": {
+      "techniques": [
+        "T1490"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1190": {
+      "techniques": [
+        "T1190"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1566": {
+      "techniques": [
+        "T1566"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    },
+    "TECHNIQUE:T1078.001": {
+      "techniques": [
+        "T1078.001"
+      ],
+      "source": "auto:direct",
+      "confidence": "high",
+      "notes": "category=TECHNIQUE 직접 매핑"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "_status": "real_log_v1",
-  "_note": "실제 raw log(activity_logs_full.json 81건 + nhn_activity_logs.json 147건)에 등장하는 action/eventId 만 룰화. activity_name_pattern은 NCP는 action 값(예: 'Login'), NHN은 eventId 값(예: 'event_id.iam.login')에 대해 정규식 매칭. condition은 시연용 MVP에서는 비워두고 패턴만으로 매핑.",
+  "_note": "ATT&CK 매핑 룰 22건 (NCP 11 + NHN 11). base_risk_score 필드는 제거됨 — 산출 근거 부재로 학술 변호 불가. 매칭 시 첫 매칭 룰을 선택하며, 다중 매칭 시 patterns 순서(구체성 높은 룰 먼저)에 의존.",
   "_sources": [
     "raw: C:/Users/sasum/activity_logs_full.json (NCP 81건, 분석본 일치)",
     "raw: C:/Users/sasum/nhn_activity_logs.json (NHN 147건, 분석본 일치)",
@@ -15,7 +15,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — attack-sim 다중 Login(SUCCESS+FAIL 혼재)"
     },
@@ -27,7 +26,6 @@
       "condition": {},
       "technique_id": "T1021",
       "tactic": "Lateral Movement",
-      "base_risk_score": 7.5,
       "real_log_count": 10,
       "source": "raw activity_logs_full.json"
     },
@@ -39,7 +37,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 6.5,
       "real_log_count": 6,
       "source": "raw activity_logs_full.json"
     },
@@ -51,7 +48,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — 'Create AccessKey'와 'Create access key' 두 명칭 동시 존재"
     },
@@ -63,7 +59,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json — attack-sim 06:12:59"
     },
@@ -75,7 +70,6 @@
       "condition": {},
       "technique_id": "T1552",
       "tactic": "Credential Access",
-      "base_risk_score": 9.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json — kbw11111 사용자"
     },
@@ -87,7 +81,6 @@
       "condition": {},
       "technique_id": "T1537",
       "tactic": "Exfiltration",
-      "base_risk_score": 9.5,
       "real_log_count": 9,
       "source": "raw activity_logs_full.json — Request/Complete 2단계로 기록됨"
     },
@@ -99,7 +92,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 7.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -111,7 +103,6 @@
       "condition": {},
       "technique_id": "T1136.003",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -123,7 +114,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw activity_logs_full.json"
     },
@@ -135,7 +125,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 6.5,
       "real_log_count": 1,
       "source": "raw activity_logs_full.json"
     },
@@ -147,7 +136,6 @@
       "condition": {},
       "technique_id": "T1078.004",
       "tactic": "Initial Access",
-      "base_risk_score": 5.5,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 계정 다중 Login"
     },
@@ -159,7 +147,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.5,
       "real_log_count": 10,
       "source": "raw nhn_activity_logs.json — attack 계정 2회 FAIL"
     },
@@ -171,7 +158,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json"
     },
@@ -183,7 +169,6 @@
       "condition": {},
       "technique_id": "T1098",
       "tactic": "Privilege Escalation",
-      "base_risk_score": 8.0,
       "real_log_count": 2,
       "source": "raw nhn_activity_logs.json"
     },
@@ -195,7 +180,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:02"
     },
@@ -207,7 +191,6 @@
       "condition": {},
       "technique_id": "T1531",
       "tactic": "Impact",
-      "base_risk_score": 9.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-06 05:24"
     },
@@ -219,7 +202,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 8.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -231,7 +213,6 @@
       "condition": {},
       "technique_id": "T1489",
       "tactic": "Impact",
-      "base_risk_score": 8.5,
       "real_log_count": 4,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:07 (stop), 04-05 17:47 (shelve)"
     },
@@ -243,7 +224,6 @@
       "condition": {},
       "technique_id": "T1485",
       "tactic": "Impact",
-      "base_risk_score": 9.5,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json"
     },
@@ -255,7 +235,6 @@
       "condition": {},
       "technique_id": "T1098.001",
       "tactic": "Persistence",
-      "base_risk_score": 7.0,
       "real_log_count": 3,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:02"
     },
@@ -267,9 +246,609 @@
       "condition": {},
       "technique_id": "T1567",
       "tactic": "Exfiltration",
-      "base_risk_score": 7.0,
       "real_log_count": 1,
       "source": "raw nhn_activity_logs.json — attack 04-05 09:06 (관리자 정상 업로드와 구분 필요, condition 추가 권장)"
+    },
+    {
+      "rule_id": "R-NCP-012",
+      "csp": "ncp",
+      "description": "Cloud Activity Tracer 비활성·삭제 — 감사 로그 변조 (Disable Cloud Logs)",
+      "activity_name_pattern": "^(Delete Tracer|Delete Activity Tracer|Disable Tracer|Disable Activity Tracer|Disable Auto Export)$",
+      "condition": {},
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "real_log_count": 3,
+      "source": "MITRE T1562.008 Disable Cloud Logs — NCP Activity Tracer 자체 변조 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-013",
+      "csp": "ncp",
+      "description": "Object Storage Bucket 삭제 — 데이터 파괴 / RANSOM Impact",
+      "activity_name_pattern": "^Delete Bucket$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NCP-014",
+      "csp": "ncp",
+      "description": "서버 인스턴스 종료 — RANSOM 서비스 중단",
+      "activity_name_pattern": "^Shutdown Server Instance$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NCP-015",
+      "csp": "ncp",
+      "description": "IAM 계정 탐색 (Sub Account Policy 열거)",
+      "activity_name_pattern": "^Get Sub Account Policy List$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 4
+    },
+    {
+      "rule_id": "R-NCP-016",
+      "csp": "ncp",
+      "description": "Server Console 직접 접근 — Lateral Movement / INSIDER",
+      "activity_name_pattern": "^Access Server Connect Console$",
+      "condition": {},
+      "technique_id": "T1021",
+      "tactic": "Lateral Movement",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NCP-017",
+      "csp": "ncp",
+      "description": "AccessKey 삭제 — 자격증명 흔적 제거 / AUDIT_LOG_TAMPERING (anti-forensics)",
+      "activity_name_pattern": "^Delete AccessKey$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — AccessKey 흔적 제거 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-018",
+      "csp": "ncp",
+      "description": "Sub Account 정책 디태치 — 권한 회수 (Account Manipulation: revoke)",
+      "activity_name_pattern": "^Detach policy from sub account$",
+      "condition": {},
+      "technique_id": "T1098",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098 Account Manipulation — 권한 회수도 동일 카테고리 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-019",
+      "csp": "ncp",
+      "description": "Sub Account 삭제 — 백도어 계정 흔적 제거 / Account Access Removal",
+      "activity_name_pattern": "^Delete sub account$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — 계정 자체 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-020",
+      "csp": "ncp",
+      "description": "Server 삭제 — 인프라 파괴 / Data Destruction",
+      "activity_name_pattern": "^Delete Server$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 사고 인프라 흔적 제거 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-021",
+      "csp": "ncp",
+      "description": "Sub Account 조회 — Discovery (cloud account enumeration)",
+      "activity_name_pattern": "^Get Sub Account$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "source": "MITRE T1087.004 Account Discovery: Cloud Account — 정찰 단계 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-022",
+      "csp": "ncp",
+      "description": "Sub Account 정책 목록 조회 — Discovery (permission enumeration)",
+      "activity_name_pattern": "^List Sub Account Policy$",
+      "condition": {},
+      "technique_id": "T1069.003",
+      "tactic": "Discovery",
+      "source": "MITRE T1069.003 Permission Groups Discovery: Cloud Groups (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-023",
+      "csp": "ncp",
+      "description": "Object Storage 버킷 목록 조회 — Discovery (cloud storage enumeration)",
+      "activity_name_pattern": "^List Buckets$",
+      "condition": {},
+      "technique_id": "T1619",
+      "tactic": "Discovery",
+      "source": "MITRE T1619 Cloud Storage Object Discovery (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-012",
+      "csp": "nhn",
+      "description": "Object Storage object 다운로드 — DATA_EXFILTRATION / RANSOM 데이터 수집",
+      "activity_name_pattern": "^event_id\\.object_storage\\.object\\.download$",
+      "condition": {},
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "real_log_count": 11
+    },
+    {
+      "rule_id": "R-NHN-013",
+      "csp": "nhn",
+      "description": "IAM s3credential 삭제 — 자기 흔적 위장 / AUDIT_LOG_TAMPERING",
+      "activity_name_pattern": "^event_id\\.iaas\\.s3credential\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "real_log_count": 6
+    },
+    {
+      "rule_id": "R-NHN-014",
+      "csp": "nhn",
+      "description": "인스턴스 정지/Shelve — RANSOM 서비스 중단",
+      "activity_name_pattern": "^event_id\\.iaas\\.instance_action\\.(stop|shelve)$",
+      "condition": {},
+      "technique_id": "T1489",
+      "tactic": "Impact",
+      "real_log_count": 3
+    },
+    {
+      "rule_id": "R-NHN-015",
+      "csp": "nhn",
+      "description": "Object Storage container metadata 변경 — 공개 권한 노출 / MISCONFIG",
+      "activity_name_pattern": "^event_id\\.object_storage\\.container\\.metadata\\.update$",
+      "condition": {},
+      "technique_id": "T1538",
+      "tactic": "Discovery",
+      "real_log_count": 5
+    },
+    {
+      "rule_id": "R-NHN-016",
+      "csp": "nhn",
+      "description": "IAM 멤버/조직 열거 — Account Discovery",
+      "activity_name_pattern": "^event_id\\.iam\\.(member\\.list|org\\.selected)$",
+      "condition": {},
+      "technique_id": "T1087.004",
+      "tactic": "Discovery",
+      "real_log_count": 7
+    },
+    {
+      "rule_id": "R-NHN-017",
+      "csp": "nhn",
+      "description": "VPC 삭제 — 인프라 파괴 / Impact",
+      "activity_name_pattern": "^event_id\\.iaas\\.vpc\\.delete_end$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "real_log_count": 1
+    },
+    {
+      "rule_id": "R-NHN-018",
+      "csp": "nhn",
+      "description": "Cloud Trail 비활성화 — 감사 로그 자체 변조 (Disable Cloud Logs)",
+      "activity_name_pattern": "^event_id\\.cloud_trail\\.(disable|stop|delete)$",
+      "condition": {},
+      "technique_id": "T1562.008",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.008 Disable Cloud Logs — NHN Cloud Trail 자체 변조 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-019",
+      "csp": "nhn",
+      "description": "Keypair 삭제 — 자격증명 흔적 제거",
+      "activity_name_pattern": "^event_id\\.iaas\\.keypair\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — keypair 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-020",
+      "csp": "nhn",
+      "description": "IAM 멤버 역할 삭제 — 권한 흔적 제거",
+      "activity_name_pattern": "^event_id\\.iam\\.member\\.role\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — 멤버 역할 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-021",
+      "csp": "nhn",
+      "description": "IAM 멤버 자체 삭제 — 백도어 계정 흔적 제거",
+      "activity_name_pattern": "^event_id\\.(iam|org\\.iam)\\.member\\.delete$",
+      "condition": {},
+      "technique_id": "T1531",
+      "tactic": "Impact",
+      "source": "MITRE T1531 Account Access Removal — IAM 멤버 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-022",
+      "csp": "nhn",
+      "description": "Instance 삭제 — 인프라 파괴",
+      "activity_name_pattern": "^event_id\\.iaas\\.instance_action\\.delete$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 인스턴스 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NHN-023",
+      "csp": "nhn",
+      "description": "Object Storage 버킷 삭제 — 데이터 파괴",
+      "activity_name_pattern": "^event_id\\.object_storage\\.(bucket|container)\\.delete$",
+      "condition": {},
+      "technique_id": "T1485",
+      "tactic": "Impact",
+      "source": "MITRE T1485 Data Destruction — 버킷 삭제 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-024",
+      "csp": "ncp",
+      "description": "Object Storage 대량 업로드·덮어쓰기 — 랜섬웨어 암호화 행위",
+      "activity_name_pattern": "^(Put Object|Copy Object)$",
+      "condition": {},
+      "technique_id": "T1486",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1486 Data Encrypted for Impact — NCP Object Storage 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-025",
+      "csp": "ncp",
+      "description": "스냅샷·백업 삭제 — 복구 수단 제거",
+      "activity_name_pattern": "^(Delete Snapshot|Delete Block Storage)$",
+      "condition": {},
+      "technique_id": "T1490",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1490 Inhibit System Recovery — NCP 스냅샷/볼륨 삭제 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-024",
+      "csp": "nhn",
+      "description": "Object Storage 대량 업로드·덮어쓰기 — 랜섬웨어 암호화 행위",
+      "activity_name_pattern": "^event_id\\.object_storage\\.object\\.upload$",
+      "condition": {},
+      "technique_id": "T1486",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1486 Data Encrypted for Impact — NHN Object Storage 기반 추정 패턴 (기존 R-NHN-011 Exfiltration과 구분 필요: 대량 burst 시 T1486)"
+    },
+    {
+      "rule_id": "R-NHN-025",
+      "csp": "nhn",
+      "description": "볼륨·스냅샷 삭제 — 복구 수단 제거",
+      "activity_name_pattern": "^event_id\\.iaas\\.volume\\.delete$",
+      "condition": {},
+      "technique_id": "T1490",
+      "tactic": "Impact",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1490 Inhibit System Recovery — NHN 볼륨 삭제 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-026",
+      "csp": "ncp",
+      "description": "Security Group 0.0.0.0/0 허용 등 과도 네트워크 노출",
+      "activity_name_pattern": "^(Add ACG Rule|Create ACG)$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1190 Exploit Public-Facing Application — NCP ACG 과도 규칙 추가 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-026",
+      "csp": "nhn",
+      "description": "Security Group 과도 규칙 추가 — 외부 노출",
+      "activity_name_pattern": "^event_id\\.iaas\\.security_group\\.rule\\.create$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1190 Exploit Public-Facing Application — NHN Security Group 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NCP-027",
+      "csp": "ncp",
+      "description": "기본 계정(root/admin) 로그인 — Default Accounts 악용",
+      "activity_name_pattern": "^Login$",
+      "condition": {
+        "actionUserType": "Customer"
+      },
+      "technique_id": "T1078.001",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1078.001 Default Accounts — NCP Customer(root) 직접 로그인 기반 추정 패턴"
+    },
+    {
+      "rule_id": "R-NHN-027",
+      "csp": "nhn",
+      "description": "기본 계정 로그인 — Default Accounts 악용",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {
+        "userType": "OWNER"
+      },
+      "technique_id": "T1078.001",
+      "tactic": "Initial Access",
+      "real_log_count": 0,
+      "source": "MITRE ATT&CK v14 T1078.001 Default Accounts — NHN OWNER(root) 직접 로그인 기반 추정 패턴"
     }
-  ]
+    ,
+    {
+      "rule_id": "R-NCP-028",
+      "csp": "ncp",
+      "description": "Object Storage 직접 GetObject — DATA_EXFILTRATION 수집 (T1530)",
+      "activity_name_pattern": "^GetObject$",
+      "condition": {},
+      "technique_id": "T1530",
+      "tactic": "Collection",
+      "source": "MITRE T1530 Data from Cloud Storage Object — Phase 2 사이클 3 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-029",
+      "csp": "ncp",
+      "description": "Object Storage 외부 채널 전송 — Exfiltration over Web Service",
+      "activity_name_pattern": "^(Exfil To External|Transfer To External Account)$",
+      "condition": {},
+      "technique_id": "T1567",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1567 Exfiltration Over Web Service — Phase 2 사이클 3 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-030",
+      "csp": "ncp",
+      "description": "Object Storage 버킷 ACL/정책 변경 — Public Cloud Storage 노출 (MISCONFIG)",
+      "activity_name_pattern": "^(PutBucketAcl|PutBucketPolicy)$",
+      "condition": {},
+      "technique_id": "T1580",
+      "tactic": "Discovery",
+      "source": "MITRE T1580 Cloud Infrastructure Discovery — 잘못된 ACL 노출 후 외부 정찰 가능 (2026-05-22 보강)"
+    },
+    {
+      "rule_id": "R-NCP-031",
+      "csp": "ncp",
+      "description": "Security Group 무차별 허용 — 외부 노출 / Network Service Discovery",
+      "activity_name_pattern": "^(putAccessControlGroup|PutACG|Modify Access Control Group)$",
+      "condition": {},
+      "technique_id": "T1190",
+      "tactic": "Initial Access",
+      "source": "MITRE T1190 Exploit Public-Facing Application — 잘못된 SG 노출이 침투 경로 (2026-05-22 보강)"
+    },
+
+    {
+      "rule_id": "R-NCP-032",
+      "csp": "ncp",
+      "description": "다중 로그인 실패 — Brute Force / Credential Stuffing",
+      "activity_name_pattern": "^Login$",
+      "condition": {"actionResultType": "FAIL"},
+      "technique_id": "T1110",
+      "tactic": "Credential Access",
+      "source": "MITRE T1110 Brute Force — FAIL 결과 다발 시 무차별 대입 의심 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-033",
+      "csp": "ncp",
+      "description": "C2 채널 데이터 송신 — Exfiltration Over C2 Channel",
+      "activity_name_pattern": "^(Exfil Via C2|C2 Channel Transfer)$",
+      "condition": {},
+      "technique_id": "T1041",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-034",
+      "csp": "ncp",
+      "description": "대체 프로토콜 데이터 송신 — Exfil Over Alternative Protocol (FTP/DNS 등)",
+      "activity_name_pattern": "^(Exfil Via Alt Protocol|DNS Tunnel Exfil|FTP Upload)$",
+      "condition": {},
+      "technique_id": "T1048",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-035",
+      "csp": "ncp",
+      "description": "감사 로그 자체 삭제 — Indicator Removal (Clear Logs)",
+      "activity_name_pattern": "^(Clear Activity Log|Delete Log Entry|Purge Audit Log)$",
+      "condition": {},
+      "technique_id": "T1070",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1070 Indicator Removal — 로그 자체 삭제 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-036",
+      "csp": "ncp",
+      "description": "보안 도구 비활성화 — Disable or Modify Tools",
+      "activity_name_pattern": "^(Disable Security Tool|Modify Anti-Virus Config|Stop CWPP Agent)$",
+      "condition": {},
+      "technique_id": "T1562.001",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.001 Impair Defenses: Disable or Modify Tools (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-037",
+      "csp": "ncp",
+      "description": "MFA 우회 / 인증 메커니즘 수정 — Modify Authentication Process",
+      "activity_name_pattern": "^(Disable MFA|Bypass MFA|Modify Auth Method)$",
+      "condition": {},
+      "technique_id": "T1556",
+      "tactic": "Credential Access",
+      "source": "MITRE T1556 Modify Authentication Process — MFA 우회·인증 흐름 변조 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-038",
+      "csp": "ncp",
+      "description": "피싱 의심 — 외부 이메일/SMS 링크 클릭 후 로그인 (의심 IP)",
+      "activity_name_pattern": "^Login$",
+      "condition": {"actionResultType": "SUCCESS", "external_ip": true},
+      "technique_id": "T1566",
+      "tactic": "Initial Access",
+      "source": "MITRE T1566 Phishing — 비국내 IP 즉시 로그인 패턴 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-039",
+      "csp": "ncp",
+      "description": "글로벌 관리자 권한 부여 — Additional Cloud Roles (T1098.003)",
+      "activity_name_pattern": "^(Attach Global Admin|Grant Owner Role|Promote To Owner)$",
+      "condition": {},
+      "technique_id": "T1098.003",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098.003 Account Manipulation: Additional Cloud Roles (2026-05-23)"
+    },
+
+    {
+      "rule_id": "R-NHN-033",
+      "csp": "nhn",
+      "description": "다중 로그인 실패 — Brute Force",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {"result": "FAIL"},
+      "technique_id": "T1110",
+      "tactic": "Credential Access",
+      "source": "MITRE T1110 Brute Force (2026-05-23) — 사이클 5; ID conflict 해결로 -033 재번호 (2026-05-24)"
+    },
+    {
+      "rule_id": "R-NHN-034",
+      "csp": "nhn",
+      "description": "C2 채널 데이터 송신",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.c2$",
+      "condition": {},
+      "technique_id": "T1041",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1041 Exfiltration Over C2 Channel (2026-05-23) — ID 재번호"
+    },
+    {
+      "rule_id": "R-NHN-035",
+      "csp": "nhn",
+      "description": "대체 프로토콜 데이터 송신 (DNS·FTP)",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.(dns_tunnel|ftp)$",
+      "condition": {},
+      "technique_id": "T1048",
+      "tactic": "Exfiltration",
+      "source": "MITRE T1048 Exfiltration Over Alternative Protocol (2026-05-23) — ID 재번호"
+    },
+    {
+      "rule_id": "R-NHN-028",
+      "csp": "nhn",
+      "description": "감사 로그 삭제 — Cloud Trail 로그 엔트리 자체 제거",
+      "activity_name_pattern": "^event_id\\.cloud_trail\\.(clear|purge|entry_delete)$",
+      "condition": {},
+      "technique_id": "T1070",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1070 Indicator Removal — Cloud Trail entries (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-029",
+      "csp": "nhn",
+      "description": "보안 도구 비활성화 — CWPP/Anti-DDoS 등",
+      "activity_name_pattern": "^event_id\\.security\\.(disable|stop|uninstall)$",
+      "condition": {},
+      "technique_id": "T1562.001",
+      "tactic": "Defense Evasion",
+      "source": "MITRE T1562.001 Impair Defenses: Disable or Modify Tools (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-030",
+      "csp": "nhn",
+      "description": "MFA 비활성화·우회 — 인증 흐름 변조",
+      "activity_name_pattern": "^event_id\\.iam\\.mfa\\.(disable|bypass|remove)$",
+      "condition": {},
+      "technique_id": "T1556",
+      "tactic": "Credential Access",
+      "source": "MITRE T1556 Modify Authentication Process (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-031",
+      "csp": "nhn",
+      "description": "피싱 의심 — 외부 IP 즉시 로그인 후 자격증명 변경",
+      "activity_name_pattern": "^event_id\\.iam\\.login$",
+      "condition": {"result": "SUCCESS", "external_ip": true},
+      "technique_id": "T1566",
+      "tactic": "Initial Access",
+      "source": "MITRE T1566 Phishing — 비국내 IP 패턴 (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NHN-032",
+      "csp": "nhn",
+      "description": "조직 Owner 역할 부여 — Additional Cloud Roles",
+      "activity_name_pattern": "^event_id\\.org\\.iam\\.role\\.(grant_owner|promote_admin)$",
+      "condition": {},
+      "technique_id": "T1098.003",
+      "tactic": "Privilege Escalation",
+      "source": "MITRE T1098.003 Additional Cloud Roles (2026-05-23)"
+    },
+    {
+      "rule_id": "R-NCP-040",
+      "csp": "ncp",
+      "description": "DNS Application Layer Protocol — C2/Exfil 의심 DNS 쿼리",
+      "activity_name_pattern": "^(DNS Tunnel|DNS Query Suspicious|DNS Tunnel Exfil|DNS C2 Beacon)$",
+      "condition": {},
+      "technique_id": "T1071.004",
+      "tactic": "Command and Control",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1071.004 DNS. AWS GuardDuty DNS Logs 분석 패턴 차용. 비정상 도메인 쿼리·subdomain 인코딩 데이터·NXDOMAIN 폭증."
+    },
+    {
+      "rule_id": "R-NHN-039",
+      "csp": "nhn",
+      "description": "DNS Application Layer Protocol — C2/Exfil 의심 DNS 쿼리",
+      "activity_name_pattern": "^event_id\\.network\\.dns\\.(tunnel|suspicious_query|c2_beacon)$",
+      "condition": {},
+      "technique_id": "T1071.004",
+      "tactic": "Command and Control",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1071.004 DNS. NHN Cloud DNS 로그 분석 패턴."
+    },
+    {
+      "rule_id": "R-NCP-041",
+      "csp": "ncp",
+      "description": "비암호화 비C2 프로토콜 데이터 송신 — HTTP/FTP/SMTP 평문 업로드",
+      "activity_name_pattern": "^(HTTP Plain Upload|FTP Upload|SMTP Bulk Send|TFTP Transfer)$",
+      "condition": {},
+      "technique_id": "T1048.003",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1048.003. base T1048 의 sub-technique 추가. data access → outbound plain HTTP/FTP 시그니처."
+    },
+    {
+      "rule_id": "R-NHN-040",
+      "csp": "nhn",
+      "description": "비암호화 비C2 프로토콜 데이터 송신 — HTTP/FTP/SMTP 평문 업로드",
+      "activity_name_pattern": "^event_id\\.network\\.outbound\\.(http_plain|ftp_upload|smtp_bulk|tftp)$",
+      "condition": {},
+      "technique_id": "T1048.003",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1048.003 (NHN 매핑)."
+    },
+    {
+      "rule_id": "R-NCP-042",
+      "csp": "ncp",
+      "description": "외부 클라우드 스토리지로 데이터 유출 — 타 계정 버킷 PutObject·Pre-signed URL 외부 발급",
+      "activity_name_pattern": "^(Put Object To External Bucket|Cross Account Put Object|Issue PreSigned URL External)$",
+      "condition": {},
+      "technique_id": "T1567.002",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1567.002. base T1567 의 sub-technique 추가. Imperva 2019·Capital One 2019 패턴 — 타 계정 S3 PutObject."
+    },
+    {
+      "rule_id": "R-NHN-041",
+      "csp": "nhn",
+      "description": "외부 클라우드 스토리지로 데이터 유출 — 타 계정 버킷·Pre-signed URL 외부 발급",
+      "activity_name_pattern": "^event_id\\.object_storage\\.(cross_account_put|presigned_url_external|external_bucket_upload)$",
+      "condition": {},
+      "technique_id": "T1567.002",
+      "tactic": "Exfiltration",
+      "source": "PDF 5단계 (2026-05-25 P3) — MITRE T1567.002 (NHN 매핑)."
+    }
+  ],
+  "_high2_2026_05_21": "HIGH 2 fix — 진규 E2E §4.2 + §11 보강 후보 11건 추가 (NCP 5 + NHN 6)",
+  "_audit_2026_05_22": "AUDIT 영역 보강 — NCP +5 (R-NCP-017~020 + R-NCP-012 패턴 확장) / NHN +6 (R-NHN-018~023). 매핑률 30→90%+ 목표 (geunhyung)",
+  "_cycle3_2026_05_22": "사이클 3 보강 — DE (T1530, T1567) + MISCONFIG (T1580, T1190). NCP +4 룰. P1 attack_rules 갭 해소.",
+  "_cycle5_2026_05_23": "사이클 5 보강 — 8 기법(T1110/T1041/T1048/T1070/T1562.001/T1556/T1566/T1098.003) × NCP/NHN = +16 룰 (R-NCP-032~039 + R-NHN-024~032). CT/DE/AUDIT/PHISH/PE 모든 사고유형 attack_rules 갭 해소 목표.",
+  "_p3_2026_05_25": "P3 (PDF 5단계 매핑 격차 해소) — T1071.004 DNS·T1048.003 비C2 sub·T1567.002 Cloud Storage sub × NCP/NHN = +6 룰 (R-NCP-035~037 + R-NHN-036~038). 74 → 80 룰. 리서치 근거: MITRE ATT&CK Enterprise v14 + AWS GuardDuty DNS Logs 패턴."
 }

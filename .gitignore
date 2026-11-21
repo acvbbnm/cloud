@@ -20,6 +20,7 @@ yarn-error.log*
 frontend/dist/
 frontend/build/
 *.js.map
+*.tsbuildinfo
 
 # ── 환경 설정 (비밀 정보) ──
 .env
@@ -35,6 +36,7 @@ backend/.env
 *~
 .DS_Store
 Thumbs.db
+.claude/launch.json
 
 # ── DB ──
 *.db
@@ -44,6 +46,14 @@ Thumbs.db
 # ── 로그 ──
 *.log
 logs/
+
+# ── 검증·감사 실행 캐시 (A3 2026-05-25) ──
+# scripts/*.py 가 stdout 을 직접 저장하는 산출물. 매 실행마다 갱신되어 노이즈.
+backend/.audit*.out
+backend/.verify*.out
+backend/.uvicorn*.log
+backend/e2e_out.txt
+backend/.audit.out
 
 # ── 업로드 임시 파일 ──
 backend/uploads/
@@ -56,9 +66,11 @@ chromadb/
 # ── Ollama 모델 (용량 큼) ──
 models/
 
-# ── 보고서 출력 ──
+# ── 보고서 출력·영속화 (런타임 생성) ──
 output/
 exports/
+backend/exports/
+backend/data/reports/*.json
 
 # ── 테스트 커버리지 ──
 htmlcov/
@@ -73,3 +85,14 @@ htmlcov/
 
 # ── 팀장 전용 가이드 (팀원에게 공유하지 않음) ──
 GIT_SETUP_가이드.md
+
+# ── Phase H 외부 학습 데이터 (2026-05-25, byungwoo) ──
+# MITRE Atomic Red Team + ATT&CK Flow + ATT&CK STIX. 용량 큼·라이선스·재현성 이유로
+# git 외부. 팀원에게는 zip 으로 별도 전달. 학습 산출물 (clue_dag.json,
+# clue_cpt_noisyor.json) 은 data/triage/ 에 별도 commit.
+backend/data/triage/external_sources/
+
+# ── Neo4j PoC (2026-05-26, easy — Discord 김병우 제안 검증용) ──
+# Neo4j Community Edition 바이너리 + zip + DB·로그. PoC 종료 후 정리 예정.
+neo4j-tools/
+*.neo4j.zip

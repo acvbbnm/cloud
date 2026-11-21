@@ -1,0 +1,282 @@
+[
+  {
+    "historyId": "h-1a2e7d795726",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/alice",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "24942603",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:30:00 UTC",
+    "content": {
+      "actionUserName": "alice",
+      "sourceIp": "172.30.10.6",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-f2a1dbe6f72b",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/bob",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "46913810",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:30:10 UTC",
+    "content": {
+      "actionUserName": "bob",
+      "sourceIp": "172.30.10.6",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-8d88c177bb48",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "39958838",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "FAIL",
+    "eventTime": "2026-05-13 02:35:00 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-e6bf877612e7",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "23756669",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "FAIL",
+    "eventTime": "2026-05-13 02:35:03 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-929b3e5150c2",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "21668732",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:35:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-68957ecff733",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "89254563",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:36:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-d569fbe19d47",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "14265799",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Change password",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:38:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-89e98ecf1518",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "22575562",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:39:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-a6b89eafb318",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "41227216",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:40:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-46127a7bb39c",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "90801586",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Request For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": 1778640189000,
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-dbf663572a34",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Object Storage",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "13561597",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Complete For Exporting To Object Storage",
+    "actionResultType": "SUCCESS",
+    "eventTime": 1778640249000,
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-7504ecb2a4f6",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "85329037",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Start Server Instance",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:45:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-00b8d985e674",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "97226012",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Shutdown Server Instance",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:46:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-47d5557930e5",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/attack-sim",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "39587039",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Disable AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-13 02:48:09 UTC",
+    "content": {
+      "actionUserName": "attack-sim",
+      "sourceIp": "115.91.214.5",
+      "productData": {}
+    }
+  }
+]

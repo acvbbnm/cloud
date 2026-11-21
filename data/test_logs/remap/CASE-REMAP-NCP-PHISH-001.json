@@ -1,0 +1,142 @@
+[
+  {
+    "historyId": "h-8d416e82e5ac",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000000",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "FAIL",
+    "eventTime": "2026-05-11 08:15:02 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-0fd5fca662ec",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000001",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Login",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:15:18 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-d0faaf102256",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000002",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Change password",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:16:42 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-ded9170ad63b",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000003",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Create AccessKey",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:18:11 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-595ef1482e41",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000004",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Get Sub Account Policy List",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:20:30 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-2135f42f17ea",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "SubAccount",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000005",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Attach policy to sub account",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:23:55 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "165.232.92.7",
+      "productData": {}
+    }
+  },
+  {
+    "historyId": "h-f7a6ac48079b",
+    "nrn": "nrn:ncp:iam:KR:5000000:account/phished-emp",
+    "regionCode": "KR",
+    "regionName": "Korea, Republic of",
+    "resourceType": "Account",
+    "productName": "Server",
+    "actionUserType": "SUB_ACCOUNT",
+    "actionSubAccountNo": "20000006",
+    "sourceType": "CONSOLE",
+    "domainCode": "kr",
+    "action": "Access Server Connect Console",
+    "actionResultType": "SUCCESS",
+    "eventTime": "2026-05-11 08:28:18 UTC",
+    "content": {
+      "actionUserName": "phished-emp",
+      "sourceIp": "10.5.40.22",
+      "productData": {}
+    }
+  }
+]

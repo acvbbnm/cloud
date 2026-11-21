@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "version": "v2-uniform-prior",
+    "created": "2026-05-25",
+    "status": "Phase 5.0 — Uniform prior 전환 (Evidence Tree 패러다임 준비)",
+    "purpose": "사고유형별 사전확률 P(H) — Maximum Entropy Principle (Jaynes 1968).",
+    "principle": "베이즈 갱신 P(H|E) ∝ P(E|H) × P(H) 에서 prior 역할. 답변·단서마다 likelihood 곱해 posterior 갱신.",
+    "design_decision_v2": "Uniform prior (P(H) = 1/8) 채택. 사전 정보 없음 가정. 답변·단서 누적이 사후확률을 결정하므로 시작점 편향 차단.",
+    "design_decision_v1_deprecated": "v1 (deprecated): Verizon DBIR 2024 통계 prior — 임의 분배 비판 (8 사고유형 매핑 디자이너 추정). 한국 NCP/NHN 도메인과 무관한 글로벌 통계라 사용자 거부감 발생. 2026-05-25 docs/evidence_tree_paradigm.md §3 결정.",
+    "academic_reference": "Jaynes, E. T. (1968). Prior Probabilities. IEEE Transactions on Systems Science and Cybernetics, SSC-4(3), 227-241.",
+    "academic_quote": "When there is no prior information available, the maximum entropy distribution represents the state of complete ignorance and is the most objective starting point.",
+    "evidence_tree_paradigm": "docs/evidence_tree_paradigm.md (2026-05-25, byungwoo) — 단서 기반 동적 결정 트리. 어두운 맵 밝히기 모델."
+  },
+  "priors": {
+    "CREDENTIAL_THEFT": 0.125,
+    "PRIVILEGE_ESCALATION": 0.125,
+    "DATA_EXFILTRATION": 0.125,
+    "AUDIT_LOG_TAMPERING": 0.125,
+    "RANSOMWARE": 0.125,
+    "MISCONFIG_EXPOSURE": 0.125,
+    "PHISH_INITIAL_ACCESS": 0.125,
+    "INSIDER_THREAT": 0.125
+  },
+  "_validation": {
+    "sum_must_equal_1": true,
+    "actual_sum": 1.00,
+    "tolerance": 0.001,
+    "all_equal_check": true,
+    "max_entropy_value_bits": 3.0
+  }
+}

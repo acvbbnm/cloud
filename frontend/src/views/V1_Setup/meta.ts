@@ -91,7 +91,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   CREDENTIAL_THEFT: {
     id: 'CREDENTIAL_THEFT',
     label: '자격증명 탈취',
-    icon: '🔑',
+    icon: '',
     severity: 'CRITICAL',
     sevColor: '#FF4444',
     desc: '콘솔 비밀번호·Access Key·API 키 탈취 → 비인가 로그인·SubAccount 생성',
@@ -108,7 +108,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   PRIVILEGE_ESCALATION: {
     id: 'PRIVILEGE_ESCALATION',
     label: '권한 상승',
-    icon: '⬆️',
+    icon: '',
     severity: 'CRITICAL',
     sevColor: '#FF4444',
     desc: '일반 계정 → 관리자 권한 / 정책 부여 / 멤버 역할 변경 — 권한 확대',
@@ -125,7 +125,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   DATA_EXFILTRATION: {
     id: 'DATA_EXFILTRATION',
     label: '데이터 유출',
-    icon: '📤',
+    icon: '',
     severity: 'HIGH',
     sevColor: '#FFB020',
     desc: 'Object Storage 대용량 다운로드 · 외부 전송 — 기밀 데이터 반출',
@@ -142,7 +142,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   AUDIT_LOG_TAMPERING: {
     id: 'AUDIT_LOG_TAMPERING',
     label: '감사 로그 변조',
-    icon: '🧹',
+    icon: '',
     severity: 'CRITICAL',
     sevColor: '#FF4444',
     desc: '활동 추적·감사 로그 비활성화 / 삭제 — 침해 흔적 제거',
@@ -159,7 +159,7 @@ export const TYPE_META: Record<string, IncidentTypeMeta> = {
   MULTI_CSP_LATERAL: {
     id: 'MULTI_CSP_LATERAL',
     label: '멀티 CSP 횡적 이동',
-    icon: '🔄',
+    icon: '',
     severity: 'CRITICAL',
     sevColor: '#FF4444',
     desc: '한 CSP의 자격증명·IP가 다른 CSP에서도 활동 — 크로스 CSP 침투',

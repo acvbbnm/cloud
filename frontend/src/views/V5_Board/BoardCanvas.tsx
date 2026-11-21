@@ -75,7 +75,7 @@ const BoardCanvas = ({ pendingLog, clearPendingLog }: BoardCanvasProps) => {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 relative bg-ink-950 border-2 border-dashed rounded-2xl overflow-hidden transition-all min-h-[300px] bg-dot-grid bg-dot-22 ${
+      className={`relative bg-ink-950 border-2 border-dashed rounded-2xl overflow-hidden transition-all min-h-[420px] bg-dot-grid bg-dot-22 ${
         hover ? 'border-brand-blue shadow-glow' : 'border-ink-700'
       }`}
     >
@@ -83,7 +83,7 @@ const BoardCanvas = ({ pendingLog, clearPendingLog }: BoardCanvasProps) => {
         <div className="absolute inset-0 flex items-center justify-center text-center pointer-events-none">
           <div>
             <div className="w-16 h-16 mx-auto rounded-2xl bg-ink-900 border border-ink-700 flex items-center justify-center text-[28px] mb-3">
-              📋
+              
             </div>
             <div className="text-[12px] text-ink-400">
               오른쪽 수집 로그를
@@ -116,7 +116,7 @@ const BoardCanvas = ({ pendingLog, clearPendingLog }: BoardCanvasProps) => {
               onClick={() => removeCard(c.id)}
               className="text-ink-400 hover:text-brand-red text-[12px] leading-none"
             >
-              ✕
+              
             </button>
           </div>
           <div className="font-semibold truncate">{c.log.ev}</div>

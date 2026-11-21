@@ -1,0 +1,104 @@
+[
+  {
+    "target_id": "CT-NHN-INSIDER-001",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - Object Storage 대량 다운로드",
+    "description": "event_id.object_storage.object.download 대량 발생 — 내부자 데이터 반출 핵심 단서. MITRE T1530 Data from Cloud Storage Object.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Storage → Object Storage → 컨테이너 액세스 로그 + CloudTrail object 이벤트",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
+  },
+  {
+    "target_id": "CT-NHN-INSIDER-002",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 권한 변경 (자기 상승)",
+    "description": "event_id.iam.member.role.update, event_id.role_group.* — 정당 권한 보유자의 비인가 권한 확장. MITRE T1098 Account Manipulation.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → iam.member.role.update 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
+  },
+  {
+    "target_id": "CT-NHN-INSIDER-003",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 자격증명 삭제 (흔적 제거)",
+    "description": "event_id.iaas.s3credential.delete — 내부자 행위 은폐용 자격증명 삭제. MITRE T1531 Account Access Removal.",
+    "evidence_role": "REQUIRED",
+    "priority": 8,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  },
+  {
+    "target_id": "CT-NHN-INSIDER-004",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - IAM 인증 (접근 패턴)",
+    "description": "event_id.iam.login — 정당 계정의 비업무 시간·대량 접근 패턴 식별. MITRE T1078 Valid Accounts.",
+    "evidence_role": "CORROBORATING",
+    "priority": 6,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NHN Console → Governance & Audit → CloudTrail → event_id.iam.login 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  },
+  {
+    "target_id": "CT-NHN-INSIDER-005",
+    "incident_type": "INSIDER_THREAT",
+    "csp": "nhn",
+    "log_type": "Cloud Trail - 인프라 파괴",
+    "description": "event_id.iaas.instance_action.stop, event_id.iaas.vpc.delete_end — 내부자 보복성 인프라 파괴. MITRE T1485 Data Destruction.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Trail → Object Storage 외부 내보내기 (변조 감지 알림 지원)",
+    "retention_days": 90,
+    "layer": "network",
+    "hint": "NHN Console → Compute → Instance / VPC → CloudTrail iaas.instance/vpc 필터",
+    "cmd": null,
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1485",
+      "T1489"
+    ]
+  }
+]

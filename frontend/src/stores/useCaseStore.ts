@@ -1,29 +1,123 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+import type { IncidentType, TLP, Observable } from '@/types';
 
 interface CaseState {
   caseId: string | null;
   csp: string | null;
-  incidentType: string | null;
+  incidentType: IncidentType | null;
   severity: string | null;
   currentStep: number;
+  //  dev3 신규 (Step 1 케이스 메타)
+  title: string | null;
+  tlp: TLP | null;
+  observables: Observable[];
+  secondaryIncidentTypes: IncidentType[]; // V-8 사후 검증 결과로 추가된 부 사고유형
+  // ── V1.fix.1 (2026-05-31 byungwoo) — Step 1 → Step 2 prefill 용 ──
+  // 백엔드 incident_cases.occurred_at 와 동일 ISO8601 datetime-local 문자열.
+  // Step 2 basic 탭에서 readonly 표시 + "← 이전" 으로 수정 안내.
+  occurredAt: string | null;
+
   setCaseId: (id: string) => void;
   setCsp: (csp: string) => void;
-  setIncidentType: (type: string) => void;
+  setIncidentType: (type: IncidentType | null) => void;
   setSeverity: (severity: string) => void;
   setStep: (step: number) => void;
+  //  dev3 신규 액션
+  setTitle: (title: string) => void;
+  setTlp: (tlp: TLP) => void;
+  setObservables: (observables: Observable[]) => void;
+  addObservable: (observable: Observable) => void;
+  removeObservable: (index: number) => void;
+  setSecondaryIncidentTypes: (types: IncidentType[]) => void;
+  setOccurredAt: (occurredAt: string | null) => void;
   reset: () => void;
 }
 
-export const useCaseStore = create<CaseState>((set) => ({
-  caseId: null,
-  csp: null,
-  incidentType: null,
-  severity: null,
-  currentStep: 0,
-  setCaseId: (id) => set({ caseId: id }),
-  setCsp: (csp) => set({ csp }),
-  setIncidentType: (type) => set({ incidentType: type }),
-  setSeverity: (severity) => set({ severity }),
-  setStep: (step) => set({ currentStep: step }),
-  reset: () => set({ caseId: null, csp: null, incidentType: null, severity: null, currentStep: 0 }),
-}));
+/**
+ * 사고 케이스 진행 상태 — 새로고침/탭 이동 시에도 caseId 등이 유지되도록
+ * localStorage 에 영속화. (시연 체크리스트 5 "V-1→V-2 caseId 전달" 이슈 대응)
+ *
+ * dev3 (2026-05-18): title, tlp, observables, secondaryIncidentTypes 추가.
+ *   incidentType 기본값은 UNCLASSIFIED 가 아닌 null — Step 2 Discovery Loop 통과 후 설정.
+ *   persist version 1 → 2 마이그레이션 추가.
+ */
+export const useCaseStore = create<CaseState>()(
+  persist(
+    (set) => ({
+      caseId: null,
+      csp: null,
+      incidentType: null,
+      severity: null,
+      currentStep: 0,
+      title: null,
+      tlp: null,
+      observables: [],
+      secondaryIncidentTypes: [],
+      occurredAt: null,
+
+      setCaseId: (id) => set({ caseId: id }),
+      setCsp: (csp) => set({ csp }),
+      setIncidentType: (type) => set({ incidentType: type }),
+      setSeverity: (severity) => set({ severity }),
+      setStep: (step) => set({ currentStep: step }),
+      setTitle: (title) => set({ title }),
+      setTlp: (tlp) => set({ tlp }),
+      setObservables: (observables) => set({ observables }),
+      addObservable: (observable) =>
+        set((s) => ({ observables: [...s.observables, observable] })),
+      removeObservable: (index) =>
+        set((s) => ({ observables: s.observables.filter((_, i) => i !== index) })),
+      setSecondaryIncidentTypes: (types) => set({ secondaryIncidentTypes: types }),
+      setOccurredAt: (occurredAt) => set({ occurredAt }),
+
+      reset: () =>
+        set({
+          caseId: null,
+          csp: null,
+          incidentType: null,
+          severity: null,
+          currentStep: 0,
+          title: null,
+          tlp: null,
+          observables: [],
+          secondaryIncidentTypes: [],
+          occurredAt: null,
+        }),
+    }),
+    {
+      name: 'ai-sherpa-case',
+      version: 3,
+      storage: createJSONStorage(() => localStorage),
+      // v1 → v2 (dev3 케이스 메타), v2 → v3 (V1.fix.1 occurredAt 추가) 마이그레이션
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<CaseState>;
+        const migrated = { ...state };
+        if (version < 2) {
+          migrated.title = state.title ?? null;
+          migrated.tlp = state.tlp ?? null;
+          migrated.observables = state.observables ?? [];
+          migrated.secondaryIncidentTypes = state.secondaryIncidentTypes ?? [];
+        }
+        if (version < 3) {
+          migrated.occurredAt = state.occurredAt ?? null;
+        }
+        return migrated;
+      },
+      // 액션 제외, 데이터만 영속화
+      partialize: (s) => ({
+        caseId: s.caseId,
+        csp: s.csp,
+        incidentType: s.incidentType,
+        severity: s.severity,
+        currentStep: s.currentStep,
+        title: s.title,
+        tlp: s.tlp,
+        observables: s.observables,
+        secondaryIncidentTypes: s.secondaryIncidentTypes,
+        occurredAt: s.occurredAt,
+      }),
+    },
+  ),
+);

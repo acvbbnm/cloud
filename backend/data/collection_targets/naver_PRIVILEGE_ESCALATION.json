@@ -1,0 +1,84 @@
+[
+  {
+    "target_id": "CT-NCP-PRIV-001",
+    "incident_type": "PRIVILEGE_ESCALATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Sub Account 생성",
+    "description": "Create sub account — 공격자가 새 계정을 만들어 권한을 우회·유지하려는 패턴. MITRE T1136.003 Create Account: Cloud Account.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PRIV-002",
+    "incident_type": "PRIVILEGE_ESCALATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 정책 부여·변경",
+    "description": "Attach/Replace policy to sub account — 기존 계정에 권한을 추가·교체하는 직접적 권한 상승. MITRE T1098 Account Manipulation.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PRIV-003",
+    "incident_type": "PRIVILEGE_ESCALATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - AccessKey·Login Key 발급",
+    "description": "Create AccessKey / Create Login Key — 자격증명 백도어 생성으로 권한 영속화. MITRE T1098.001 Additional Cloud Credentials.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-PRIV-004",
+    "incident_type": "PRIVILEGE_ESCALATION",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Sub Account 로그인",
+    "description": "Login (productName=SubAccount) — 권한 상승 전후 로그인 컨텍스트 보강. 초기 접근 IP·시각 확인용.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  }
+]

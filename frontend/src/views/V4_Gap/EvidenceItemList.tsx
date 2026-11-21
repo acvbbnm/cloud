@@ -14,7 +14,7 @@ interface EvidenceItemListProps {
 
 const EvidenceItemList = ({ items }: EvidenceItemListProps) => {
   return (
-    <Card title={<>증거 항목별 상태</>} subtitle="필수·보강 증거의 수집 여부를 확인합니다.">
+    <Card title={<>증거 항목별 상태</>} subtitle="증거 역할(REQUIRED/CORROBORATING) 기준 수집 여부 점검">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
@@ -37,7 +37,7 @@ const EvidenceItemList = ({ items }: EvidenceItemListProps) => {
                     item.collected ? 'text-brand-teal' : 'text-brand-red'
                   }`}
                 >
-                  {item.collected ? '✓ 확보' : '✗ 미수집'}
+                  {item.collected ? ' 확보' : ' 미수집'}
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex flex-wrap gap-1">

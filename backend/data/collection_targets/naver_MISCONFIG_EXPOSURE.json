@@ -1,0 +1,84 @@
+[
+  {
+    "target_id": "CT-NCP-MISCONF-001",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Object Storage ACL·버킷 정책 변경",
+    "description": "Object Storage 버킷 공개 설정, ACL 변경 — public 노출 핵심 단서. MITRE T1190 Exploit Public-Facing Application.",
+    "evidence_role": "REQUIRED",
+    "priority": 10,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Object Storage → 버킷 → 접근 로그 + Activity Tracer Export 이벤트 필터",
+    "cmd": "ncloud storage getBucketList --output json > buckets.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1530",
+      "T1537",
+      "T1567"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-MISCONF-002",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - VPC·Security Group 변경",
+    "description": "VPC ACG 규칙 수정 — 0.0.0.0/0 ingress 허용 등 과도 네트워크 노출. MITRE T1580 Cloud Infrastructure Discovery.",
+    "evidence_role": "REQUIRED",
+    "priority": 9,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "network",
+    "hint": "NCP Console → Server / VPC → Activity Tracer → instance/vpc.delete 이벤트",
+    "cmd": "ncloud server getServerInstanceList --output json > servers.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1485",
+      "T1489"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-MISCONF-003",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - Sub Account 기본 계정·정책",
+    "description": "기본 계정 미변경·과도 권한 부여(AttachSubAccountPolicy) — 기본 계정 악용 단서. MITRE T1078.001 Default Accounts.",
+    "evidence_role": "REQUIRED",
+    "priority": 8,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → AttachPolicy / Create sub account 이벤트",
+    "cmd": "ncloud iam listSubAccountPolicy --output json > policies.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1098",
+      "T1098.001",
+      "T1136.003"
+    ]
+  },
+  {
+    "target_id": "CT-NCP-MISCONF-004",
+    "incident_type": "MISCONFIG_EXPOSURE",
+    "csp": "naver",
+    "log_type": "Cloud Activity Tracer - 로그인 (노출 접근 확인)",
+    "description": "Login — 설정 오류로 노출된 자원에 대한 비인가 접근 여부 확인 (IP·시각). MITRE T1078 Valid Accounts.",
+    "evidence_role": "CORROBORATING",
+    "priority": 5,
+    "storage_path": "Cloud Activity Tracer → Object Storage 내보내기 (JSON/CSV)",
+    "retention_days": 90,
+    "layer": "cloud",
+    "hint": "NCP Console → Monitoring → Activity Tracer → action: Login/MFA Login 필터",
+    "cmd": "ncloud iam getSubAccountList --output json > iam_users.json",
+    "cmd_path": null,
+    "auto_collectible": true,
+    "mitre_techniques": [
+      "T1078.004",
+      "T1110"
+    ]
+  }
+]

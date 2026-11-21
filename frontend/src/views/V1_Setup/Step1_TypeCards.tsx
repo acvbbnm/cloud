@@ -1,19 +1,22 @@
+import type { IncidentType } from '@/types';
+
 import { TYPE_META, CSP_META } from './meta';
 
 interface Step1Props {
-  selected: string | null;
+  selected: IncidentType | null;
   csp: string | null;
-  onSelect: (type: string) => void;
+  onSelect: (type: IncidentType) => void;
   onPrev: () => void;
   onNext: () => void;
 }
 
-const orderedTypes = [
+// dev3 (2026-05-18): 이 화면은 폐기되고 Step1_CaseMetadata 로 교체됨. 파일 보존만.
+// MULTI_CSP_LATERAL 도 2026-05-19 제거.
+const orderedTypes: IncidentType[] = [
   'CREDENTIAL_THEFT',
   'PRIVILEGE_ESCALATION',
   'DATA_EXFILTRATION',
   'AUDIT_LOG_TAMPERING',
-  'MULTI_CSP_LATERAL',
 ];
 
 const sevTone = (sev: string) =>
@@ -33,7 +36,7 @@ const Step1_TypeCards = ({ selected, csp, onSelect, onPrev, onNext }: Step1Props
       <div>
         <h2 className="h-section">사고 유형 선택</h2>
         <p className="text-[13px] text-ink-400 mt-1.5 max-w-2xl">
-          사고 유형을 선택하면 확인할 서비스와 ATT&CK 전술이 표시됩니다.
+          침해사고 시나리오를 선택하세요. 선택 즉시 핵심 확인 서비스와 MITRE 전술이 표시됩니다.
         </p>
       </div>
 

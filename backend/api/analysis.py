@@ -60,7 +60,6 @@ def _serialize_attack(ev: AttackEventModel, ocsf: Optional[OCSFEventModel] = Non
         "technique_name": get_rule_technique_name(ev.rule_id),
         "tactic": ev.tactic,
         "rule_id": ev.rule_id,
-        "risk_score": float(ev.risk_score) if ev.risk_score is not None else None,
         "mapped_at": ev.mapped_at.isoformat() if ev.mapped_at else None,
         "event_time": ocsf.time.isoformat() if ocsf and ocsf.time else None,
         "activity_name": ocsf.activity_name if ocsf else None,
@@ -147,6 +146,7 @@ async def post_map(req: CaseIdRequest, db: Session = Depends(get_db)) -> dict:
     if case is None:
         raise _case_not_found()
     stats = AttackMapper.map_case(db, req.caseId)
+    db.expire_all()  # map_case commit 후 세션 캐시 갱신 — 신규 attack_events 반영
 
     # 매핑 결과 일부 events 응답에 포함 (계약서)
     rows = list(
@@ -155,7 +155,7 @@ async def post_map(req: CaseIdRequest, db: Session = Depends(get_db)) -> dict:
             .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
             .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
             .where(RawEventModel.case_id == req.caseId)
-            .order_by(AttackEventModel.risk_score.desc())
+            .order_by(AttackEventModel.mapped_at.desc())
             .limit(20)
         ).all()
     )
@@ -189,7 +189,7 @@ async def get_attack(
             .join(OCSFEventModel, AttackEventModel.ocsf_id == OCSFEventModel.ocsf_id)
             .join(RawEventModel, OCSFEventModel.event_id == RawEventModel.event_id)
             .where(RawEventModel.case_id == caseId)
-            .order_by(AttackEventModel.risk_score.desc(), AttackEventModel.mapped_at)
+            .order_by(AttackEventModel.mapped_at.desc(), AttackEventModel.technique_id)
             .offset((page - 1) * pageSize)
             .limit(pageSize)
         ).all()

@@ -1,12 +1,13 @@
-# AI Sherpa 작업 규칙
+# AI Sherpa — 프로젝트 AI 코딩 지침
 
-> AI Sherpa 개발 중 팀이 사용한 구조, 이름, 협업 규칙입니다.
+> 이 파일은 모든 AI 코딩 도구(Claude Code, Cursor 등)가 참조하는 **공유 규칙**입니다.
+> 팀원 전원이 동일한 파일을 사용하여 코드 스타일, 구조, 네이밍을 통일합니다.
 
 ---
 
-## 기능을 수정할 때
+## 🤖 AI에게 — 이 폴더에서 작업을 시작하기 전 부팅 시퀀스
 
-설계와 인터페이스를 확인한 뒤 구현을 시작한다.
+> 사용자(개발자)가 새 기능 구현을 요청하면, AI는 다음 순서로 컨텍스트를 잡은 뒤에 첫 코드를 작성한다.
 
 1. **설계서 구조 파악** — [`docs/설계서_읽는법.md`](docs/설계서_읽는법.md) 의 2·3·5절 훑기 (시스템이 무엇이고 어디에 무엇이 적혀 있는지)
 2. **다음 할 일 식별** — [`.claude/구현/구현_체크리스트.md`](.claude/구현/구현_체크리스트.md) 에서 비어 있는 `[ ]` 항목 중 사용자의 요청에 맞는 항목 선택
@@ -15,7 +16,7 @@
 5. **본 CLAUDE.md 규칙 준수** — 디렉토리 구조·네이밍·금지 사항(아래) 그대로 따른다
 6. **작업 후 체크리스트 갱신** — 구현이 끝나면 같은 커밋에 체크리스트의 해당 항목을 `[ ] → [x]` 로 갱신한다
 
-### 작업 충돌 방지
+### 동시 작업 시 충돌 회피 (담당자 사전 고정 없음 — 선착순 모델)
 
 - 작업 시작 전 `git fetch` 후 다른 사람의 feature 브랜치 목록을 확인해 **같은 체크리스트 항목**을 동시에 잡지 않는다
 - 공유 진입 파일은 **추가만 한다 (수정·삭제 금지, 부득이할 때 PR 리뷰 1명 이상 필수)**:
@@ -28,7 +29,7 @@
 
 ---
 
-## 초기 설계
+## 프로젝트 개요
 
 - **프로젝트명**: AI Sherpa — 국내 멀티 클라우드 침해사고 분석 시스템
 - **아키텍처**: 5계층 파이프라인 (Layer 0 사고접수 → Layer 1 로그수집 → Layer 2 분석 → Layer 3 AI셰르파 → Layer 4 시각화/보고)
@@ -39,13 +40,11 @@
 - **API 통신**: axios + React Query
 - **시각화**: D3.js + react-flow
 - **보고서**: Jinja2 + python-docx
-- **설계 목표**: 폐쇄망 사용을 고려한다. 도우미는 검색, 요약, 후보 제시에 사용한다.
+- **핵심 원칙**: 오프라인(폐쇄망) 동작, AI는 판단하지 않고 검색·요약·제안만 수행
 
 ---
 
-## 디렉토리 구조
-
-아래 구조를 사용한다.
+## 디렉토리 구조 (절대 준수)
 
 ```
 backend/
@@ -353,11 +352,22 @@ export const getGuide = async (caseId: string) => {
 ## 타입 정의 (types/index.ts — 프론트엔드·백엔드 공유 기준)
 
 ```typescript
-// ── 사고 유형 (5종, 설계서 5.2절 incident_cases 테이블 기준) ──
-type IncidentType = 'CREDENTIAL_THEFT' | 'PRIVILEGE_ESCALATION' | 'DATA_EXFILTRATION' | 'AUDIT_LOG_TAMPERING' | 'MULTI_CSP_LATERAL';
+// ── 사고 유형 (dev3 C-1 사고유형 9종 확장, 2026-05-19) ──
+// MULTI_CSP_LATERAL 제거 (5.2.x), RANSOMWARE·MISCONFIG_EXPOSURE·PHISH_INITIAL_ACCESS·INSIDER_THREAT 추가,
+// UNCLASSIFIED 는 V-1 사고유형 미확정 케이스용 sentinel.
+type IncidentType =
+  | 'CREDENTIAL_THEFT'
+  | 'PRIVILEGE_ESCALATION'
+  | 'DATA_EXFILTRATION'
+  | 'AUDIT_LOG_TAMPERING'
+  | 'RANSOMWARE'
+  | 'MISCONFIG_EXPOSURE'
+  | 'PHISH_INITIAL_ACCESS'
+  | 'INSIDER_THREAT'
+  | 'UNCLASSIFIED';
 
-// ── CSP ──
-type CSP = 'naver' | 'nhn' | 'all';
+// ── CSP (dev3: 'all' 제거 — MULTI_CSP_LATERAL 제거와 동기) ──
+type CSP = 'naver' | 'nhn';
 
 // ── 심각도 ──
 type Severity = 'critical' | 'high' | 'medium' | 'low';
@@ -373,6 +383,23 @@ type NodeStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 // ── 액션 로그 동작 ──
 type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXPORT_REPORT';
+
+// ── TLP 정보 공유 등급 (dev3 B-3 incident_cases.tlp) ──
+type TLP = 'RED' | 'AMBER' | 'GREEN' | 'WHITE';
+
+// ── Discovery Loop Observable (dev3 B-3 incident_cases.observables JSON 배열 요소) ──
+// 검색 빈도 낮으면 별도 테이블 분리 불필요. type 값은 KB 매처 룰과 호환.
+type ObservableType = 'ip' | 'domain' | 'url' | 'hash' | 'email' | 'username' | 'cve' | 'other';
+interface Observable {
+  type: ObservableType;
+  value: string;
+  confidence?: 'low' | 'medium' | 'high';
+  source?: string;
+  first_seen?: string;  // ISO8601
+}
+
+// ── 단서 (dev3 E4 결정 트리 — Triage 입력. types/index.ts 단일 소스) ──
+type ClueType = 'ip' | 'user' | 'resource' | 'time' | 'action' | 'cve' | 'other';
 ```
 
 이 타입명과 값은 백엔드 DB enum과 정확히 일치해야 한다. 임의로 변경하지 않는다.
@@ -443,6 +470,7 @@ type ActionType = 'ACCEPT' | 'REJECT' | 'EDIT_REPORT' | 'FINALIZE_REPORT' | 'EXP
 3. **main.py에 비즈니스 로직을 넣지 않는다** (라우터 등록만)
 4. **외부 CDN을 사용하지 않는다** (오프라인 동작 필수, SNF-01)
 5. **AI가 판단/결정하는 코드를 작성하지 않는다** (AI는 검색·요약·제안만, 수사관이 수락/거부)
+   - **5-1.** AI 셰르파(`LLMEngine`) 응답에 인용된 KB 청크 밖의 ATT&CK 기법 ID(T-NNNN[.NNN])를 새로 도입하지 않는다. `_strip_unsourced_techniques` 후처리로 자동 라벨링됨 (2026-05-24 KB audit P0). 새 LLM 사용처 추가 시 동일 후처리 필수.
 6. **console.log / print 디버깅을 커밋하지 않는다**
 7. **하드코딩된 절대 경로를 사용하지 않는다** (config.py에서 관리)
 8. **`.env` 파일을 커밋하지 않는다** (`.env.example`만 커밋)

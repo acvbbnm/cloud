@@ -8,6 +8,7 @@ import PageBody from '@/components/PageBody';
 import Card from '@/components/Card';
 import KpiCard from '@/components/KpiCard';
 import Badge from '@/components/Badge';
+import Pagination from '@/components/Pagination';
 import { useToastStore } from '@/stores/useToastStore';
 import { useCaseStore } from '@/stores/useCaseStore';
 import { useBoardStore } from '@/stores/useBoardStore';
@@ -25,10 +26,12 @@ const cspLabel = (csp: string) =>
 
 const toPreview = (item: RawEventItem): PreviewEvent => ({
   id: item.eventId,
-  ts: item.ingestedAt,
-  ev: item.matchedTargetId ?? '(unmatched)',
-  ip: '—', // list 응답엔 IP 없음. 단건 조회 시 raw.content.sourceIp 에서 가져올 수 있음
-  user: '—',
+  // 백엔드 _serialize_event 가 raw_json 에서 CSP 포맷별로 추출한 값 우선,
+  // 없으면 적재 시각·매칭 타겟으로 fallback.
+  ts: item.eventTime || item.ingestedAt,
+  ev: item.eventName || item.matchedTargetId || '(unmatched)',
+  ip: item.sourceIp || '—',
+  user: item.user || '—',
   csp: cspLabel(item.csp),
   matched: item.matchedTargetId,
   highlighted: !!item.matchedTargetId,
@@ -96,7 +99,7 @@ const V2Logs = () => {
     }
     const picked = events.filter((e) => selected.has(e.id));
     addLogs(picked.map((p) => ({ ts: p.ts, ev: p.ev, ip: p.ip, user: p.user, csp: p.csp })));
-    showToast(`${picked.length}개 로그 조사 보드에 추가됨`);
+    showToast(`${picked.length}개 로그 수사 보드에 추가됨`);
     setSelected(new Set());
     navigate('/board');
   };
@@ -108,10 +111,10 @@ const V2Logs = () => {
         <PageHeader
           eyebrow="Layer 1 · M1-1"
           title="로그 수집"
-          description="진행 중인 사고 케이스가 없습니다."
+          description="활성화된 사고 케이스가 없습니다."
         />
         <PageBody>
-          <Card title={<>⚠️ 케이스 없음</>}>
+          <Card title={<>사고 케이스 없음</>}>
             <p className="text-[13px] text-ink-300 mb-3">
               V-1 사고 접수 위저드를 먼저 완료해야 로그를 업로드할 수 있습니다.
             </p>
@@ -131,11 +134,11 @@ const V2Logs = () => {
       <PageHeader
         eyebrow="Layer 1 · M1-1"
         title="로그 수집"
-        description="로그 파일의 SHA-256을 기록하고 수집 목록과 대조합니다."
+        description="CSP 로그 파일을 업로드하면 무결성(SHA-256) 검증 후 시드 카탈로그와 자동 매칭됩니다."
         actions={
           <>
             <button onClick={handleAddToBoard} className="btn-ghost">
-              📌 조사 보드에 추가
+               수사 보드에 추가
             </button>
             <button onClick={() => navigate('/ocsf')} className="btn-primary">
               OCSF 정규화 →
@@ -145,40 +148,7 @@ const V2Logs = () => {
       />
 
       <PageBody className="flex flex-col gap-6 animate-fade-up">
-        {/* 백엔드 통신 상태 패널 */}
-        <div className="panel p-4 border-l-[3px] border-l-brand-teal text-[12px]">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="eyebrow">백엔드 응답</span>
-              {logsQuery.isLoading && <span className="tag-blue">로딩 중…</span>}
-              {logsQuery.isError && <span className="tag-red">에러</span>}
-              {logsQuery.isSuccess && <span className="tag-teal">연결됨 ✓</span>}
-              {uploadMutation.isPending && <span className="tag-amber">업로드 중…</span>}
-            </div>
-            <code className="text-ink-400 font-mono text-[10.5px]">caseId: {caseId}</code>
-          </div>
-          {logsQuery.isError && (
-            <div className="text-brand-red text-[11.5px]">
-              {(logsQuery.error as Error)?.message ?? '백엔드 호출 실패'}
-            </div>
-          )}
-          {logsQuery.isSuccess && (
-            <div className="text-ink-300 leading-6">
-              raw_events 총 <b className="text-ink-100">{totalEvents}건</b>
-              {lastStats && (
-                <>
-                  <span className="mx-2 text-ink-500">·</span>
-                  마지막 업로드 <code className="text-ink-200">{lastStats.sourceFile}</code>: total{' '}
-                  <b className="text-ink-100">{lastStats.totalEvents}</b> / matched{' '}
-                  <b className="text-brand-teal">{lastStats.matched}</b> / unmatched{' '}
-                  <b className="text-brand-amber">{lastStats.unmatched}</b>
-                  <span className="mx-2 text-ink-500">·</span>
-                  sha256 <code className="text-ink-400">{lastStats.sha256.slice(0, 16)}…</code>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {/* P.29 — 시연용 백엔드 응답 디버그 패널 제거 */}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <KpiCard
@@ -211,7 +181,7 @@ const V2Logs = () => {
           <div className="lg:col-span-3">
             <DropZone onUpload={handleUpload} />
           </div>
-          <Card title={<>최근 업로드 대조 결과</>} className="lg:col-span-2">
+          <Card title={<> 매칭 분포 (마지막 업로드)</>} className="lg:col-span-2">
             {lastStats ? (
               Object.keys(lastStats.byTarget).length === 0 ? (
                 <div className="text-[12px] text-ink-400 py-4">매칭된 항목 없음</div>
@@ -239,10 +209,10 @@ const V2Logs = () => {
         <Card
           title={
             <>
-              📋 적재된 raw_events (page {page} / {totalPages})
+               적재된 raw_events (page {page} / {totalPages})
             </>
           }
-          subtitle="이벤트를 선택하고 ‘조사 보드에 추가’를 누르세요."
+          subtitle="체크 후 '수사 보드에 추가' 버튼으로 보드로 보낼 수 있습니다"
           action={
             <span className="chip text-[11px]">
               <span className="text-brand-teal">{selected.size}</span>
@@ -257,25 +227,12 @@ const V2Logs = () => {
             onToggleAll={toggleAll}
           />
           {totalEvents > PAGE_SIZE && (
-            <div className="flex justify-end gap-2 mt-3">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                ← 이전
-              </button>
-              <span className="self-center text-[11.5px] text-ink-400">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages}
-                className="btn-ghost btn-sm disabled:opacity-40"
-              >
-                다음 →
-              </button>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              className="mt-3"
+            />
           )}
         </Card>
       </PageBody>

@@ -1,0 +1,117 @@
+{
+  "category_id": "1.5.1",
+  "category_name": "클라우드 인증 - 인증 기록",
+  "kb_source": {
+    "primary": {
+      "standard": "Google Cloud Threat Intel",
+      "section": "1.5.1",
+      "title": "타임스탬프, 사용자 이름 및 소스 IP 주소를 사용하여 사용자 인증을 기록",
+      "url": "https://cloud.google.com/blog/ko/topics/threat-intelligence/cloud-bad-log-configurations"
+    },
+    "secondary": [
+      {
+        "standard": "KrCERT/CC 정보통신분야 침해사고 대응 안내서 (2025-08 개정본)",
+        "section": "2.4 초기 대응 점검표 ⑥",
+        "note": "사고 탐지 및 사고 발생 관련자의 네트워크 연결 지점 확인"
+      },
+      {
+        "standard": "MITRE ATT&CK Cloud Matrix v14",
+        "technique": "T1078.004 (Valid Accounts: Cloud Accounts)",
+        "tactic": "Initial Access",
+        "url": "https://attack.mitre.org/techniques/T1078/004/"
+      },
+      {
+        "standard": "NIST SP 800-86",
+        "section": "3.1 휘발성 계층 - Network connections",
+        "note": "인증 세션은 즉시 휘발 — 최우선 수집"
+      }
+    ]
+  },
+  "applicable_incident_types": [
+    "CREDENTIAL_THEFT",
+    "PRIVILEGE_ESCALATION"
+  ],
+  "kill_chain_phases": [
+    "Initial Access"
+  ],
+  "evidence_role": "REQUIRED",
+  "volatility_priority": 10,
+  "volatility_basis": "NIST SP 800-86 3.1 (Network connections, ARP cache 와 동급 휘발성). KISA 안내서 2.6 \"시스템 날짜·시간 + 네트워크 연결 정보\" 1순위 수집 항목.",
+  "rationale": "공격자의 최초 접근 시점·IP·계정을 확정짓는 핵심 증거. 사고 발생 시각의 기준점(t0)을 결정하며, 이후 모든 분석의 타임라인 기준이 됨. KISA 안내서 2.4 초기 대응 점검표 ⑥ '네트워크 연결 지점'과 정합. MITRE T1078.004는 가장 빈번한 클라우드 침투 패턴.",
+  "use_cases": [
+    "비국내 IP의 비업무시간 콘솔 로그인 탐지",
+    "MFA 우회·미적용 환경에서의 무차별 대입 시도 식별",
+    "동일 계정·다중 위치 동시 접근 (자격증명 공유 신호)",
+    "사용자 에이전트 변화 (자동화 도구 사용 추정)"
+  ],
+  "csp_mapping": {
+    "naver": {
+      "log_source": "Cloud Activity Tracer",
+      "action_patterns": [
+        "Login",
+        "Logout",
+        "Console Login",
+        "MFA Login"
+      ],
+      "field_locations": {
+        "actor": "content.actionUserName",
+        "ip": "content.sourceIp",
+        "timestamp": "eventTime",
+        "result": "actionResultType"
+      },
+      "example_raw": {
+        "action": "Login",
+        "eventTime": "2026-04-05 06:12:25 UTC",
+        "actionResultType": "SUCCESS",
+        "content": {
+          "actionUserName": "attack-sim",
+          "sourceIp": "115.91.214.5"
+        }
+      },
+      "collection_steps": [
+        "콘솔 > 관리·통계 > Cloud Activity Tracer 진입",
+        "필터: productName='SubAccount' · action='Login'/'Logout'/'Console Login'",
+        "기간: 사고 발생 시각 ±24시간 (최초 접근 시점·IP 식별)",
+        "내보내기: CSV 다운로드 또는 Object Storage Export → V-2 업로드"
+      ],
+      "cli_hint": "Activity Tracer 콘솔 검색 권장. CLI 미제공 — 자동화는 Object Storage Auto Export 사용."
+    },
+    "nhn": {
+      "log_source": "Cloud Trail",
+      "event_id_patterns": [
+        "event_id.iam.login",
+        "event_id.iam.org.selected",
+        "event_id.iam.project.selected"
+      ],
+      "field_locations": {
+        "actor": "userName",
+        "ip": "userIp",
+        "timestamp": "eventTime",
+        "result": "result"
+      },
+      "example_raw": {
+        "eventId": "event_id.iam.login",
+        "eventTime": "2026-04-05T08:57:03.306+0000",
+        "result": "SUCCESS",
+        "userName": "attack",
+        "userIp": "115.91.214.28"
+      },
+      "collection_steps": [
+        "콘솔 > 관리 > Cloud Trail 진입",
+        "필터: eventId='event_id.iam.login' · userIp=의심 IP",
+        "기간: 사고 발생 시각 ±24시간",
+        "다운로드: JSON 형식 → V-2 업로드"
+      ],
+      "cli_hint": "nhncloud cloudtrail events --event-id event_id.iam.login --start <ISO> --end <ISO>"
+    }
+  },
+  "retention_days_default": 90,
+  "applicable_environments": {
+    "auditEnabled_required": true,
+    "mfa_status_dependent": true,
+    "modifier_hints": [
+      "MFA 미적용 시 priority +2 (1.5.1 P10 → P12)",
+      "publicIp '있음' 시 priority +1"
+    ]
+  }
+}

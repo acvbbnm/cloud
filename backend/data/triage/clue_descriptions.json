@@ -1,0 +1,2163 @@
+{
+  "_meta": {
+    "generated": "2026-05-26T07:17:02.664649Z",
+    "generator": "scripts/build_clue_descriptions.py",
+    "purpose": "Phase L.1 (2026-05-26 byungwoo) — 단서별 정의·CSP 경로·예시·변별 풀이·학술 근거",
+    "source_catalog": "data\\triage\\clue_catalog.json",
+    "total": 143,
+    "specific_overrides": 143,
+    "with_outcome_hints": 94,
+    "no_examples": 0,
+    "design_doc": "docs/evidence_tree_paradigm.md §20"
+  },
+  "descriptions": {
+    "Q1_inception:csp_alert": {
+      "description": "사고 인지 경로가 CSP 자체 알람 (Cloud Insight·Security Monitoring·자동 차단 시스템) 인 경우. 내부 탐지 성공.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 이력 → 사고 시각 ±15min 알람 메시지·룰 ID 확인",
+        "nhn": "Security Monitoring → 알람 → 자동 차단 이벤트 메타데이터",
+        "verify": "NIST 800-61r2 §3.2 표 3-2 (Sources of Precursors and Indicators) — IDS/IPS·SIEM·AV·Logs"
+      },
+      "examples": [
+        "Cloud Insight 'Anomalous Login' 알람 02:14:33",
+        "Security Monitoring 'Object Storage Burst' 자동 차단"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +15, 권한 상승 +10, 피싱 초기 침투 +10. 약함 — 데이터 유출 +5, 감사 로그 변조 +5, 랜섬웨어 +5, 설정 오류 노출 +5, 내부자 위협 +5.",
+      "academic_source": "NIST SP 800-61r2 §3.2 표 3-2 (Sources of Precursors and Indicators — IDS/IPS·SIEM·AV·Logs) + Verizon DBIR 2024 (System Intrusion — top pattern in 2024)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q1_inception:external_report": {
+      "description": "외부 신고·제보로 사고 인지. 내부 탐지 실패 → 외부 발견 (CSA·고객·정부 등). 사고 지연 인지 가능성.",
+      "how_to_find": {
+        "ncp": "사고 대응 티켓 → 신고자·제보 채널·내용 기록 확인",
+        "nhn": "외부 신고 접수 이력 → CSP 보안팀 또는 사용자 신고",
+        "verify": "KrCERT/CC 2025-08 제3장 — 정보 누설 항목 + CSA Top Threats #7"
+      },
+      "examples": [
+        "고객사 SOC 가 다크웹 데이터 유출 발견 제보",
+        "외부 화이트해커 책임 공개",
+        "정부 사이버안전국 통보"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +30점, 설정 오류 노출 +30점, 랜섬웨어 +25점. 중간 — 감사 로그 변조 +20, 피싱 초기 침투 +10. 약함 — 자격증명 탈취 +5, 권한 상승 +5, 내부자 위협 +5.",
+      "academic_source": "KrCERT/CC 2025-08 제3장 — 정보 누설 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승) + CSA Top Threats #7",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q1_inception:audit": {
+      "description": "정기 감사·점검 중 사후 발견. 사고 발생 후 시간 경과한 후 인지 — 데이터 유출·감사 로그 변조에 흔함.",
+      "how_to_find": {
+        "ncp": "감사 보고서·정기 점검 회의록 → 발견 시점·발견 항목 확인",
+        "nhn": "Cloud Audit → 정기 분석 결과 → 이상 패턴 발견 시점",
+        "verify": "ISO 27001 A.12.4.3 (Administrator and operator logs) — 정기 검토 결과"
+      },
+      "examples": [
+        "월간 감사에서 6개월 전 권한 변경 발견",
+        "분기 점검 시 Object Storage public 노출 식별"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +25점, 설정 오류 노출 +25점. 중간 — 내부자 위협 +20, 권한 상승 +15, 데이터 유출 +10. 약함 — 자격증명 탈취 +5, 랜섬웨어 +5, 피싱 초기 침투 +5.",
+      "academic_source": "CSA #1 IAM + #7",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q1_inception:service_anomaly": {
+      "description": "서비스 이상 (장애·성능 저하·응답 지연) 으로 사고 인지. DDoS·랜섬·자원 남용 (Cryptocurrency mining) 가능성.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 모니터링 → CPU·메모리·네트워크 spike + 가용성 알람",
+        "nhn": "Performance Monitor → 응답 시간 증가 / 서비스 다운 이벤트",
+        "verify": "근본 원인 분석 — DDoS (T1499) · 랜섬 (T1486) · 마이닝 (T1496) 분기"
+      },
+      "examples": [
+        "EC2 CPU 100% 지속 (cryptomining)",
+        "Object Storage I/O latency 10배 증가 (랜섬 암호화)",
+        "API 응답 지연 → DDoS"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점. 중간 — 데이터 유출 +15, 권한 상승 +10, 감사 로그 변조 +10, 설정 오류 노출 +10. 약함 — 자격증명 탈취 +5, 내부자 위협 +5. 무영향 — 피싱 초기 침투.",
+      "academic_source": "MITRE T1485 + TA0040 Impact",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q1_inception:unknown": {
+      "description": "사고 인지 경로 불명 — 어떻게 알게 됐는지 명확하지 않음. UNCLASSIFIED 진행 권장.",
+      "how_to_find": {
+        "ncp": "사고 신고 티켓 재확인 → 신고자·발견 시각·발견 채널 추적",
+        "nhn": "동일 — 발견 경로 명확화 후 다른 Q1 옵션으로 재채택",
+        "verify": "ISO 27035-1:2023 Assess & Decide — 인지 경로 불명은 미분류 진행"
+      },
+      "examples": [
+        "발견 경로 추적 후 다른 Q1 옵션으로 재채택 권장"
+      ],
+      "discrimination_explanation": "무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "—",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:abnormal_login": {
+      "description": "CSP 알람 종류 — '비정상 로그인'. 평소와 다른 IP·시간·디바이스에서 로그인 시도 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Anomalous Login' 룰 → 알람 상세 (IP·계정·시각·디바이스)",
+        "nhn": "Security Monitoring → 인증 알람 → 'Unusual sign-in pattern'",
+        "verify": "Google Threat Horizons Report H1 2024 — Cloud Threat Scenarios"
+      },
+      "examples": [
+        "admin 계정 평소 KR → 갑자기 RU IP 로그인",
+        "MFA 5회 실패 후 성공"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 피싱 초기 침투 +20. 약함 — 권한 상승 +5, 랜섬웨어 +5, 내부자 위협 +5. 무영향 — 데이터 유출, 감사 로그 변조, 설정 오류 노출.",
+      "academic_source": "MITRE T1078.004",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:non_korean_ip": {
+      "description": "CSP 알람 — '비국내 IP 접근'. 외부 위협 행위자·VPN 우회 가능성. IP_ADDRESS:non_korean 과 동일 의미.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Foreign IP access' 룰 → IP·지리정보 확인",
+        "nhn": "Security Monitoring → 'Non-domestic source' 알람",
+        "verify": "IPinfo 의 country 필드 'NOT KR' + ASN 확인"
+      },
+      "examples": [
+        "AS9009 (M247, 영국 호스팅) IP 로그인",
+        "중국 ISP IP 다수 시도"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20, 피싱 초기 침투 +15, 랜섬웨어 +10. 약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "Google Threat Horizons Report (H1 2024) + CSA #11",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:privilege_change": {
+      "description": "CSP 알람 — '권한 변경 알람'. IAM 정책·역할 매핑·AccessKey 변경 자동 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'IAM Policy Change' → 변경자·대상·변경 내용 확인",
+        "nhn": "Security Monitoring → IAM 변경 알람 → Cloud Audit AttachPolicy·UpdateRole",
+        "verify": "T1098 (Account Manipulation) 매칭 — 변경 시각 + 출처 IP 매칭"
+      },
+      "examples": [
+        "dev-user 에 AdministratorAccess 정책 추가 알람",
+        "AccessKey 신규 발급 후 광범위 권한"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점. 중간 — 내부자 위협 +20, 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 데이터 유출 +5, 감사 로그 변조 +5, 설정 오류 노출 +5, 피싱 초기 침투 +5.",
+      "academic_source": "MITRE T1098 Account Manipulation",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:object_storage_burst": {
+      "description": "CSP 알람 — 'Object Storage 대량 활동'. 짧은 시간 내 다수 PUT·GET·DELETE 호출 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Object Storage Burst' → 분당 호출 수·대상 버킷·계정 확인",
+        "nhn": "Security Monitoring → 'Storage API Spike' → 그래프 확인",
+        "verify": "T1486 (랜섬 암호화) 또는 T1530 (대량 다운로드) 분기 — PUT·GET 비율"
+      },
+      "examples": [
+        "1분 1000+ PutObject (.locked 확장자)",
+        "5분 500+ GetObject (대량 유출)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +30점, 랜섬웨어 +30점. 중간 — 설정 오류 노출 +20, 내부자 위협 +20. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1530 + T1537",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:audit_log_disabled": {
+      "description": "CSP 알람 — '감사 로그 비활성'. CloudTrail·Cloud Audit 자동 추적 정지 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Audit Log Disabled' → 비활성 트레일·시각·요청자",
+        "nhn": "Cloud Audit → 'Tracking stopped' 이벤트",
+        "verify": "T1562.008 (Disable Cloud Logs) — StopLogging·DeleteTrail API 호출자 식별"
+      },
+      "examples": [
+        "Trail 'main-audit' StopLogging API",
+        "Cloud Audit 보존 7일 → 1일 단축"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +30점. 중간 — 내부자 위협 +15, 랜섬웨어 +10. 약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 자격증명 탈취, 설정 오류 노출, 피싱 초기 침투.",
+      "academic_source": "MITRE T1562.008 Disable Cloud Logs",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:api_burst": {
+      "description": "CSP 알람 — 'API 호출 burst'. 분당 호출 수 baseline 대비 N배 초과 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'API Rate Anomaly' → 호출자·API·횟수",
+        "nhn": "Performance Monitor → API Gateway burst 알람",
+        "verify": "자동화 스크립트·악성코드 패턴 — User-Agent·소스 IP 분석"
+      },
+      "examples": [
+        "DescribeInstances 1분 500+ 호출",
+        "ListBuckets 다수 반복 — 정찰 시그널"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +10, 권한 상승 +10, 데이터 유출 +10, 랜섬웨어 +10, 피싱 초기 침투 +10, 내부자 위협 +10. 약함 — 감사 로그 변조 +5, 설정 오류 노출 +5.",
+      "academic_source": "Google Threat Horizons Report (H1 2024) API 액세스",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:off_hours": {
+      "description": "CSP 알람 — '비표준 시각 작업'. 평소 활동 외 시간대 (야간·주말·공휴일) 작업 탐지.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Off-hour Activity' → 사용자·시각·작업 종류",
+        "nhn": "Security Monitoring → 시간대 anomaly 알람",
+        "verify": "KrCERT/CC 2025-08 제2장 ⑤ — off-hour 활동 시그널"
+      },
+      "examples": [
+        "새벽 3시 IAM 권한 변경",
+        "공휴일 자동화 패턴"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +15, 자격증명 탈취 +10, 권한 상승 +10, 피싱 초기 침투 +10. 약함 — 데이터 유출 +5, 감사 로그 변조 +5, 내부자 위협 +5. 무영향 — 설정 오류 노출.",
+      "academic_source": "KrCERT/CC 2025-08 제2장 — 시각 패턴 점검 (구 KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) ⑤ 계승)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:ransomware_pattern": {
+      "description": "CSP 알람 — '대량 PutObject + 비표준 확장자(.locked/.encrypted) 신규 생성'. 랜섬웨어 직접 증거.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Ransomware Pattern' → PutObject 비율 + 확장자 통계",
+        "nhn": "Security Monitoring → 'Mass Encryption Pattern' → 영향 버킷·시각",
+        "verify": "T1486 (Data Encrypted for Impact) — 원본 객체와 .locked 사이즈 비교"
+      },
+      "examples": [
+        "1시간 5000+ .locked PutObject",
+        "bucket-finance 전체 .encrypted 변환"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점. 중간 — 데이터 유출 +10, 내부자 위협 +10. 약함 — 자격증명 탈취 +5. 무영향 — 권한 상승, 감사 로그 변조, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1486 Data Encrypted for Impact + Verizon DBIR 2024 (Ransomware/Extortion ~32% of breaches, extended definition ~43%)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:misconfig_alert": {
+      "description": "CSP 알람 — 'public 노출 또는 0.0.0.0/0 자동 탐지 알람'. 설정 오류로 외부 공개.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Resource Public Access' → 노출 리소스·정책 확인",
+        "nhn": "Security Monitoring → 'Public Exposure' → bucket·security group",
+        "verify": "CSA Top Threats #3 (Misconfiguration) + T1190 (Exploit Public-Facing Application)"
+      },
+      "examples": [
+        "bucket-pii public read 허용",
+        "Security Group 22:0.0.0.0/0 신규 룰"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +35점. 중간 — 데이터 유출 +15. 약함 — 랜섬웨어 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "CSA Top Threats 2024 #3 Misconfiguration + Prowler·Cloud Custodian 룰",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2A:phishing_kit_detect": {
+      "description": "CSP 알람 — '외부 위협 인텔에서 알려진 phishing kit 도메인·해시 탐지'.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 'Threat Intel Match' → 매칭된 도메인·해시·IoC",
+        "nhn": "Security Monitoring → 'External TI Match' 이벤트",
+        "verify": "PhishTank·OpenPhish·MISP 'phishing-kit' 태그 매칭"
+      },
+      "examples": [
+        "secure-login-mfa.tk (PhishTank 등록)",
+        "Adversary-in-the-middle kit SHA-256 매치"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +30점. 중간 — 자격증명 탈취 +15. 약함 — 랜섬웨어 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1566 Phishing + APWG Phishing Trend Report",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:data_exposed": {
+      "description": "외부 신고 내용 — '데이터 외부 노출 확인'. 다크웹·해킹포럼·고객 신고로 데이터 누설 확인.",
+      "how_to_find": {
+        "ncp": "외부 위협 인텔 도구 (BreachAlert 등) + 다크웹 모니터링 결과",
+        "nhn": "신고 채널 (이메일·SNS·다크웹) 메시지 원본 확보",
+        "verify": "유출 데이터 샘플 vs 자사 DB 매칭 — 직원·고객 정보 일치 확인"
+      },
+      "examples": [
+        "다크웹 마켓에 고객 DB 게시",
+        "GitHub 저장소에 AccessKey 노출",
+        "해킹 포럼 dump 등록"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +40점, 데이터 유출 +35점. 중간 — 랜섬웨어 +15. 약함 — 감사 로그 변조 +5, 내부자 위협 +5. 무영향 — 자격증명 탈취, 권한 상승, 피싱 초기 침투.",
+      "academic_source": "CSA #7 Accidental Disclosure",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:abnormal_billing": {
+      "description": "외부 신고 — '비정상 결제·자원 사용'. CSP 청구액 폭증 (수십~수백배) 으로 사고 인지.",
+      "how_to_find": {
+        "ncp": "Billing → 일별 청구 추이 → spike 시점 + 자원 종류 확인",
+        "nhn": "Cost Explorer → 비정상 사용량 → 리소스 ID 추적",
+        "verify": "Cryptomining (T1496) · 무단 인스턴스 생성 (T1578) 분기"
+      },
+      "examples": [
+        "월 100만원 → 5000만원 (GPU 인스턴스 다수)",
+        "Object Storage egress 폭증"
+      ],
+      "discrimination_explanation": "중간 — 권한 상승 +15, 내부자 위협 +15, 데이터 유출 +10, 랜섬웨어 +10, 설정 오류 노출 +10. 약함 — 자격증명 탈취 +5, 피싱 초기 침투 +5. 무영향 — 감사 로그 변조.",
+      "academic_source": "KrCERT/CC 2025-08 제3장 — 불법적 자원 사용 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:identity_theft": {
+      "description": "외부 신고 — '신원도용 의심'. 직원·고객 명의로 외부에서 활동 보고.",
+      "how_to_find": {
+        "ncp": "Sub Account → 해당 사용자 활동 로그 + 외부 신고 시점 매칭",
+        "nhn": "IAM → 사용자 활동 + 신고된 외부 활동 시간 비교",
+        "verify": "MITRE T1078 (Valid Accounts) — 자격증명 탈취·재사용 시나리오"
+      },
+      "examples": [
+        "퇴사자 이메일로 외부 거래 시도",
+        "임원 명의 외부 발언"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +40점, 자격증명 탈취 +30점. 약함 — 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "MITRE T1556 Modify Authentication",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:multi_csp_suspicious": {
+      "description": "외부 신고 — '멀티 CSP 의심 활동'. 여러 클라우드에서 동일 패턴 보고.",
+      "how_to_find": {
+        "ncp": "다른 CSP 환경에서의 활동 보고 + NCP 동일 시점 로그 매칭",
+        "nhn": "동일 — 멀티 CSP 모니터링 SIEM 결과",
+        "verify": "동일 IP·계정·시각이 두 CSP 모두 — 멀티 클라우드 탈취 확정"
+      },
+      "examples": [
+        "AWS + NCP 동일 Tor IP 로그인",
+        "GCP·NHN 동시 IAM 변경"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5, 피싱 초기 침투 +5, 내부자 위협 +5. 무영향 — 감사 로그 변조, 설정 오류 노출.",
+      "academic_source": "CSA #11 APT",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:ransom_note_visible": {
+      "description": "외부 신고 — '랜섬 노트 또는 다크웹 데이터 게시 발견'. 랜섬 직접 증거.",
+      "how_to_find": {
+        "ncp": "Object Storage → 'README'·'DECRYPT' 신규 파일 검색",
+        "nhn": "버킷 객체 메타데이터 → 사고 시점 신규 .txt·.html 파일",
+        "verify": "파일 내용 분석 — 비트코인 주소·이메일·Tor 링크·요구액"
+      },
+      "examples": [
+        "README-DECRYPT.txt 신규 생성",
+        "다크웹에 회사 데이터 미리보기 게시"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점, 데이터 유출 +25점. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5, 피싱 초기 침투 +5. 무영향 — 권한 상승, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "MITRE ATT&CK v14 — T1486 + Double Extortion 트렌드 (Mandiant 2024)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:phishing_report": {
+      "description": "외부 신고 — '직원·사용자가 받은 피싱 메일·URL 제보'. 피싱 초기 침투 표면 식별.",
+      "how_to_find": {
+        "ncp": "보안팀 신고 채널 → 피싱 메일 원본 (헤더·첨부·URL) 확보",
+        "nhn": "동일 — 직원 신고 → 메일 헤더 분석",
+        "verify": "URL → VirusTotal·PhishTank, 첨부 해시 → 악성 평판 조회"
+      },
+      "examples": [
+        "가짜 'NCP 비밀번호 변경' 메일",
+        "'합의서.exe' 첨부 메일",
+        "MFA bypass 가짜 페이지 URL"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +35점. 중간 — 자격증명 탈취 +15. 약함 — 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 권한 상승, 감사 로그 변조, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1566.001 + KISA 피싱 신고 통계 2024",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2B:insider_complaint": {
+      "description": "외부 신고 — '내부자 의심 익명 제보'. 동료의 비정상 활동·자료 반출 등 제보.",
+      "how_to_find": {
+        "ncp": "익명 신고 채널 → 신고 내용 + 신고 대상자 Sub Account 활동 로그",
+        "nhn": "Compliance · 윤리경영 신고 → IAM 활동 매칭",
+        "verify": "MITRE T1078 (Valid Accounts) — 정상 시간 + 사내 IP + 권한자의 비정상 액세스"
+      },
+      "examples": [
+        "퇴사 예정자의 영업기밀 다운로드 제보",
+        "야간 IAM 변경 동료 신고"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +30점. 중간 — 데이터 유출 +15, 권한 상승 +10. 약함 — 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "Carnegie CERT Insider Threat Center + KrCERT/CC 2025-08 제3장 변형 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:iam_burst": {
+      "description": "정기 감사 패턴 — '신규 IAM 계정 비정상 생성'. 단기간 다수 사용자 생성 발견.",
+      "how_to_find": {
+        "ncp": "감사 보고서 → IAM 생성 통계 → spike 시점 → Sub Account 검토",
+        "nhn": "Cloud Audit → CreateUser API 호출 빈도 분석",
+        "verify": "T1136 (Create Account) — 정상 신규 채용 외 비정상 생성"
+      },
+      "examples": [
+        "1일 10+ 신규 계정 생성",
+        "tmp-* 패턴 계정 다수"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +35점, 내부자 위협 +25점. 중간 — 설정 오류 노출 +10. 약함 — 자격증명 탈취 +5, 랜섬웨어 +5. 무영향 — 데이터 유출, 감사 로그 변조, 피싱 초기 침투.",
+      "academic_source": "MITRE T1136 Create Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:permission_changes": {
+      "description": "감사 패턴 — '권한 변경 이력 다수'. 단기간 정책·역할 매핑 변경 빈발.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → IAM 활동 → AttachPolicy·DetachPolicy 빈도 정렬",
+        "nhn": "Cloud Audit → 정책 변경 이벤트 분당 빈도",
+        "verify": "T1098 (Account Manipulation) — 변경자·시각·대상 계정 분석"
+      },
+      "examples": [
+        "1주 정책 변경 50+",
+        "동일 사용자에 권한 누적"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점, 내부자 위협 +25점. 중간 — 설정 오류 노출 +15. 약함 — 자격증명 탈취 +5, 데이터 유출 +5, 감사 로그 변조 +5, 랜섬웨어 +5. 무영향 — 피싱 초기 침투.",
+      "academic_source": "MITRE T1098 + KrCERT/CC 2025-08 제3장 — 권한 도용 항목 (구 KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) 계승)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:log_gap": {
+      "description": "감사 패턴 — '감사 로그 누락·삭제'. 특정 시각의 감사 로그가 비어있거나 삭제.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → 시간대별 이벤트 수 → gap 식별 + DeleteTrail·StopLogging 호출 확인",
+        "nhn": "Cloud Audit → 보존 이벤트 무결성 검증",
+        "verify": "T1562.008 (Disable Cloud Logs) + T1070 (Indicator Removal)"
+      },
+      "examples": [
+        "2026-05-15 02:00-04:00 감사 로그 없음",
+        "Trail 'audit-main' 5분 정지 후 재개"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +35점. 중간 — 내부자 위협 +20, 랜섬웨어 +10. 약함 — 권한 상승 +5, 데이터 유출 +5, 설정 오류 노출 +5. 무영향 — 자격증명 탈취, 피싱 초기 침투.",
+      "academic_source": "MITRE T1070 Indicator Removal",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:data_access": {
+      "description": "감사 패턴 — '비정상 데이터 액세스'. 평소 안 쓰던 데이터에 권한자 접근.",
+      "how_to_find": {
+        "ncp": "Object Storage 액세스 로그 → 사용자×버킷 매트릭스 → off-pattern 식별",
+        "nhn": "동일 — 사용자별 평소 데이터 접근 baseline 비교",
+        "verify": "T1530 (Data from Cloud Storage) — 권한 vs 실제 사용 차이"
+      },
+      "examples": [
+        "HR 담당자가 영업비밀 버킷 다운로드",
+        "개발자가 운영 DB 백업 GET"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +30점, 내부자 위협 +25점. 중간 — 설정 오류 노출 +15, 랜섬웨어 +10. 약함 — 권한 상승 +5. 무영향 — 자격증명 탈취, 감사 로그 변조, 피싱 초기 침투.",
+      "academic_source": "MITRE T1530",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:insider_anomaly": {
+      "description": "감사 패턴 — '정상 시간 + 내부 IP + 권한 있는 사용자의 다량 데이터 다운로드' (정상으로 보이지만 baseline 일탈).",
+      "how_to_find": {
+        "ncp": "사용자별 다운로드 baseline → 사고 시점 N배 초과 + 권한자 + 사내 IP 매칭",
+        "nhn": "동일 — Behavioral Analysis 결과",
+        "verify": "내부자 위협 시그널 (KISA §3.3 불법적 자원 사용 변형)"
+      },
+      "examples": [
+        "부장 평소 1GB/일 → 50GB/일 (퇴사 직전)",
+        "정상 권한·정상 시간·비정상 양"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +35점. 중간 — 데이터 유출 +20. 약함 — 권한 상승 +5, 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1078 Valid Accounts + UEBA 표준 행위 분석",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2C:default_account_used": {
+      "description": "감사 패턴 — '기본 계정(admin/admin 등) 또는 미변경 초기 자격증명 사용'.",
+      "how_to_find": {
+        "ncp": "IAM → 기본 계정 (admin, root, system) 활성 여부 + 사용 이력",
+        "nhn": "동일 — 초기 자격증명 미변경 사용자 식별",
+        "verify": "CSA #2 IAM — 미변경 기본 자격증명 + 약한 패스워드"
+      },
+      "examples": [
+        "admin/admin 로그인 성공",
+        "default-admin 계정 6개월 미변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +30점. 중간 — 자격증명 탈취 +10. 약함 — 권한 상승 +5, 랜섬웨어 +5. 무영향 — 데이터 유출, 감사 로그 변조, 피싱 초기 침투 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1078.001 Default Accounts + CSA #3",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2D:data_destruction": {
+      "description": "서비스 이상 형태 — '데이터 변조·파괴'. 객체 삭제·암호화·내용 변경 식별.",
+      "how_to_find": {
+        "ncp": "Object Storage → 객체 버전 관리 → 최근 DELETE·PUT (overwrite) 이벤트",
+        "nhn": "Cloud Audit → DeleteObject·PutObject overwrite 빈도",
+        "verify": "T1485 (Data Destruction) — 백업 존재 여부 + 복구 가능성"
+      },
+      "examples": [
+        "bucket-prod 객체 80% 삭제",
+        "DB 백업 파일 overwrite 됨"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점, 데이터 유출 +25점. 중간 — 내부자 위협 +10. 약함 — 권한 상승 +5, 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 설정 오류 노출, 피싱 초기 침투.",
+      "academic_source": "MITRE T1485 Data Destruction",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2D:ddos": {
+      "description": "서비스 이상 형태 — 'DDoS' 공격으로 서비스 응답 불가.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → DDoS 알람 + 네트워크 트래픽 spike → 출처 IP 분포",
+        "nhn": "Security Monitoring → 'DDoS Pattern' 알람",
+        "verify": "T1499 (Endpoint Denial of Service) — 분산 출처·트래픽 양 분석"
+      },
+      "examples": [
+        "HTTP flood 10Gbps",
+        "DNS amplification — 1000+ 봇넷 IP"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5, 설정 오류 노출 +5. 무영향 — 감사 로그 변조, 피싱 초기 침투, 내부자 위협.",
+      "academic_source": "MITRE T1499 — 약한 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2D:resource_abuse": {
+      "description": "서비스 이상 형태 — '자원 비정상 소비 (Cryptocurrency mining 등)'. 무단 인스턴스로 CPU·GPU 채굴.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → CPU·GPU 사용률 spike + 신규 인스턴스 (GPU 타입) 확인",
+        "nhn": "Cost Explorer → 비정상 사용량 + 외부 마이닝 풀 통신",
+        "verify": "T1496 (Resource Hijacking) + 외부 풀 도메인 (xmrpool.eu 등) 통신"
+      },
+      "examples": [
+        "GPU p3.16xlarge 신규 5+ 인스턴스",
+        "Stratum mining protocol 통신"
+      ],
+      "discrimination_explanation": "중간 — 설정 오류 노출 +20, 권한 상승 +15, 내부자 위협 +15, 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 데이터 유출 +5. 무영향 — 감사 로그 변조, 피싱 초기 침투.",
+      "academic_source": "KrCERT/CC 2025-08 제3장 사고유형별 대응 (구 KISA §3.3 계승) + Cryptocurrency mining",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2D:response_delay": {
+      "description": "서비스 이상 형태 — '응답 지연'. 정상 트래픽인데 응답 시간 비정상.",
+      "how_to_find": {
+        "ncp": "Performance Monitor → 응답 시간 baseline 대비 spike → 백엔드 자원 점유율",
+        "nhn": "동일 — 서비스 latency 분포",
+        "verify": "근본 원인 — 자원 부족·DDoS·랜섬 암호화 (I/O 점유) 분기"
+      },
+      "examples": [
+        "API 응답 평소 50ms → 5000ms",
+        "Object Storage I/O 10배 지연"
+      ],
+      "discrimination_explanation": "약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 자격증명 탈취, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "약한 시그널 — 추가 단서 필요",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q2D:mass_encryption": {
+      "description": "서비스 이상 형태 — '대량 객체 암호화 또는 .locked 확장자 신규 생성'. 랜섬웨어 직접 증거.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 .locked·.encrypted 객체 검색 + PutObject 빈도",
+        "nhn": "동일 — 객체 메타데이터 확장자 통계",
+        "verify": "T1486 (Data Encrypted for Impact) — 원본 vs 암호화 비교"
+      },
+      "examples": [
+        "10000+ .locked 객체 1시간 내 생성",
+        "bucket-finance 전체 .crypted 변환"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +40점. 중간 — 데이터 유출 +10. 약함 — 자격증명 탈취 +5, 내부자 위협 +5. 무영향 — 권한 상승, 감사 로그 변조, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1486 + T1490 결합 시그널 최대치",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3:fail_then_success": {
+      "description": "Q3_CRED 자격증명 패턴 — '실패→성공 인증 패턴'. brute-force·credential stuffing 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 로그인 시도 → 동일 계정의 실패 N건 후 성공 패턴",
+        "nhn": "Cloud Audit → Sign-In → 실패+성공 연속 시퀀스",
+        "verify": "T1110 (Brute Force) — 시도 횟수·시간 간격·MFA 적용 여부"
+      },
+      "examples": [
+        "admin 5회 실패 후 6번째 성공",
+        "10초 간격 패스워드 시도 후 성공"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +35점, 피싱 초기 침투 +25점. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1110 Brute Force  + Verizon DBIR 2024 Phishing→Brute Force 연쇄 패턴",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3:multi_region_concurrent": {
+      "description": "Q3_CRED — '동일 계정 동시 다지역 로그인'. 자격증명 공유·도용 시그널.",
+      "how_to_find": {
+        "ncp": "로그인 이력 → 사용자 GROUP BY + region · 1분 내 다중 지역 매칭",
+        "nhn": "동일 — Sign-In 의 source IP 의 country/region 다중",
+        "verify": "T1078 — 정상 사용자는 동시 다지역 로그인 불가능 (물리적)"
+      },
+      "examples": [
+        "admin KR 14:00 + RU 14:05 동시 로그인",
+        "직원 계정 한국+미국 5분 내"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1078.004 + 멀티 CSP",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_CRED:non_korean_geographic": {
+      "description": "Q3_CRED — '비국내 지리적 위치 (Tor/VPN exit 의심)'. 비국내 IP 의 자격증명 시도.",
+      "how_to_find": {
+        "ncp": "로그인 IP → IPinfo geolocation 'NOT KR' + tor/vpn 분류",
+        "nhn": "Sign-In IP 의 country + ASN — VPN provider 매칭",
+        "verify": "MITRE T1090.003 + Google Threat Horizons H1 2024"
+      },
+      "examples": [
+        "미국 IP 의 한국 계정 로그인 시도",
+        "Tor exit IP 자격증명 사용"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 피싱 초기 침투 +15. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1078.004 Cloud Accounts + AWS Detective scope time + 0ktapus 사례",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3:serverless_new": {
+      "description": "Q3_CRED — 'Cloud Function·Lambda 신규 생성'. 지속성 (Persistence) 시그널 — 함수로 백도어 설치.",
+      "how_to_find": {
+        "ncp": "Cloud Functions → 신규 함수 생성 이벤트 + 함수 코드 검토",
+        "nhn": "NHN Cloud Functions → CreateFunction API 호출",
+        "verify": "T1136.003 (Create Account: Cloud Account) 변종 — 함수가 IAM 역할 보유"
+      },
+      "examples": [
+        "bd-trigger Lambda (관리자 역할 부여)",
+        "tmp-runner 함수 신규 생성"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +25점. 약함 — 자격증명 탈취 +5, 데이터 유출 +5, 감사 로그 변조 +5. 무영향 — 랜섬웨어, 설정 오류 노출, 피싱 초기 침투 등.",
+      "academic_source": "MITRE T1648 Serverless Execution",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3:unknown_extra": {
+      "description": "Q3 — '알 수 없음 / 추가 단서 없음'. 자격증명 단계 패턴 미확정 → 다른 가설 점수 미보강.",
+      "how_to_find": {
+        "ncp": "추가 분석 시도 — Q4 단계 진행 또는 단축 종료",
+        "nhn": "동일 — 추가 단서 확보 노력",
+        "verify": "단축 종료 시 UNCLASSIFIED 가능성"
+      },
+      "examples": [
+        "추가 단서 부족 → 트리 단축 종료"
+      ],
+      "discrimination_explanation": "무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "—",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_DATA:storage_policy_public": {
+      "description": "Q3_DATA — 'Object Storage 정책 public 변경'. 버킷 권한이 public-read 또는 0.0.0.0/0 으로 변경.",
+      "how_to_find": {
+        "ncp": "Object Storage → 버킷 → 권한 → 'public' ACL 확인 + 변경 이력",
+        "nhn": "Cloud Audit → PutBucketPolicy·PutBucketAcl 이벤트",
+        "verify": "T1530 + CSA Top Threats #3 (Misconfiguration)"
+      },
+      "examples": [
+        "bucket-pii public-read 변경",
+        "bucket-policy {\"Principal\":\"*\"}"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +25점. 중간 — 데이터 유출 +20. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "CSA Top Threats 2024 #3 Misconfiguration + MITRE T1552.005 Cloud Instance Metadata API",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_DATA:s3_credential_change": {
+      "description": "Q3_DATA — 'S3·NCP Object Storage credential 정책 변경'. 액세스 정책·암호화 키 변경.",
+      "how_to_find": {
+        "ncp": "Object Storage → 버킷 정책 변경 이력 + 암호화 키 (KMS) 변경",
+        "nhn": "Cloud Audit → PutBucketEncryption·UpdateAccessKey 이벤트",
+        "verify": "T1552.005 (Unsecured Credentials) + T1098"
+      },
+      "examples": [
+        "KMS 키 'finance-prod' 정책 변경",
+        "bucket presigned URL 만료 N년 연장"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20, 데이터 유출 +10, 설정 오류 노출 +10. 약함 — 권한 상승 +5. 무영향 — 감사 로그 변조, 랜섬웨어, 피싱 초기 침투 등.",
+      "academic_source": "MITRE T1098 Account Manipulation + AWS S3 ACL/Policy 변경 패턴",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_DATA:multi_csp_pivot": {
+      "description": "Q3_DATA — '타 CSP 자원으로 횡적 이동 흔적'. NCP 데이터 → AWS 또는 NHN 로 전송 패턴.",
+      "how_to_find": {
+        "ncp": "VPC → outbound 트래픽 분석 → AWS/GCP/Azure IP 대역 통신",
+        "nhn": "동일 — 외부 클라우드 IP 대역 통신",
+        "verify": "T1537 (Transfer Data to Cloud Account) — 데이터 양·대상"
+      },
+      "examples": [
+        "NCP bucket → AWS S3 대량 복사",
+        "NHN → GCP Storage 데이터 동기화 신규"
+      ],
+      "discrimination_explanation": "중간 — 내부자 위협 +20, 자격증명 탈취 +10. 약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 감사 로그 변조, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE T1021 Remote Services + 멀티 CSP 횡적 이동 (Verkada 2021 사례)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_DATA:billing_spike": {
+      "description": "Q3_DATA — '급격한 결제·자원 사용 spike (랜섬·크립토마이닝 의심)'.",
+      "how_to_find": {
+        "ncp": "Billing → 일별 청구 + 자원 종류 (GPU·egress) → spike 시점",
+        "nhn": "Cost Explorer → 비정상 사용량 → 자원 ID",
+        "verify": "Cryptomining (T1496) · 랜섬 (T1486) · 무단 인스턴스 (T1578) 분기"
+      },
+      "examples": [
+        "GPU p3.16xlarge 5대 신규 (시간당 비용 100배)",
+        "egress 1TB/일 → 50TB/일"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +15, 데이터 유출 +10. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Verizon DBIR 2024 — Cryptocurrency mining 및 랜섬 자원 abuse 패턴",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_INSIDER:off_hours_priv": {
+      "description": "Q3_INSIDER — '비표준 시각 권한 변경 작업'. 야간·주말 IAM 변경.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → IAM 변경 이벤트 시각 필터 'KST 00-06 또는 weekend'",
+        "nhn": "Cloud Audit → 정책 변경 + 시간대 필터",
+        "verify": "T1098 + KISA off-hour 시그널"
+      },
+      "examples": [
+        "새벽 3시 AttachPolicy",
+        "토요일 02:00 신규 IAM 사용자"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 중간 — 권한 상승 +10. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "CERT Insider Threat Guide §4.3 + MITRE T1098 (off-hours admin activity)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_INSIDER:multiple_iam_changes": {
+      "description": "Q3_INSIDER — '단기간 다수 IAM 변경 (cascading edits)'. 권한 누적·백도어 다중 설치.",
+      "how_to_find": {
+        "ncp": "Cloud Audit → IAM:* API 호출 분당 빈도 + 동일 사용자",
+        "nhn": "동일 — 정책 변경 chain 추적",
+        "verify": "정상 작업 (배포 등) vs 비정상 (악의적) 구별 — 변경 패턴 분석"
+      },
+      "examples": [
+        "1시간 50+ IAM API 호출",
+        "동일 사용자가 10+ 정책 변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 중간 — 권한 상승 +10. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1136.003 Create Account: Cloud Account + cascading IAM edits (Coinbase 2022 사례)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_INSIDER:gradual_priv_creep": {
+      "description": "Q3_INSIDER — '장기간 점진적 권한 상승 (privilege creep)'. 수주~수개월 걸쳐 권한 누적.",
+      "how_to_find": {
+        "ncp": "IAM → 사용자 권한 변경 이력 → 시간순 정렬 + N개월 누적량",
+        "nhn": "Cloud Audit → 사용자별 누적 정책 변경 통계",
+        "verify": "ISO 27001 A.9.2.6 — 권한 정기 검토 미실시 시그널"
+      },
+      "examples": [
+        "8개월간 readonly → admin 권한 누적",
+        "분기마다 정책 1-2개씩 추가"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 중간 — 권한 상승 +15. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "CERT Insider Threat Guide §4.4 privilege creep + MITRE T1098.003 Additional Cloud Roles",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_INSIDER:self_audit_disable": {
+      "description": "Q3_INSIDER — '본인 권한으로 본인 활동 감사 비활성'. 흔적 인멸 의도 강함.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → StopLogging·DeleteTrail API 호출자 = 본인 활동 ID",
+        "nhn": "동일 — 본인이 본인의 audit 정지",
+        "verify": "T1562.008 + T1070 — 자기 흔적 삭제 시그널"
+      },
+      "examples": [
+        "user01 이 user01-trail Disabled",
+        "본인 활동 5분 전 audit StopLogging"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +25점, 내부자 위협 +25점. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1562.008 Disable Cloud Logs + NIST SP 800-53 AU-9 audit protection",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_IMPACT:mass_encrypt": {
+      "description": "Q3_IMPACT — '대량 객체 암호화 행위 (.locked/.encrypted)'. 랜섬웨어 직접 증거.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 객체 확장자 통계 + 원본 대비 크기 변화",
+        "nhn": "동일 — PutObject 의 .locked·.encrypted suffix 빈도",
+        "verify": "T1486 (Data Encrypted for Impact)"
+      },
+      "examples": [
+        "1만+ 객체 .locked suffix",
+        "원본 vs 암호화 객체 크기 ≈ 동일 (덮어쓰기)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 중간 — 데이터 유출 +10. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1486 Data Encrypted for Impact + Verizon DBIR 2024 Ransomware top action",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_IMPACT:backup_deletion": {
+      "description": "Q3_IMPACT — '스냅샷·백업 삭제 흔적 (T1490)'. 복구 방지를 위한 백업 파괴.",
+      "how_to_find": {
+        "ncp": "Volume Backup → 삭제 이력 + Object Storage version 삭제",
+        "nhn": "Backup → DeleteBackup·DeleteSnapshot API 호출",
+        "verify": "T1490 (Inhibit System Recovery) — 백업 보존 정책 변경 동반"
+      },
+      "examples": [
+        "전체 EBS 스냅샷 삭제",
+        "Object Storage version control disabled"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +25점. 약함 — 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1490 Inhibit System Recovery + NIST SP 800-184 Recovery Planning",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_IMPACT:ransom_extension": {
+      "description": "Q3_IMPACT — '비표준 확장자 신규 생성 (.lock/.crypted)'. 랜섬 시그널 — 암호화 후 확장자 변경.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 객체 → suffix 통계 (.lock·.crypted·.evil 등)",
+        "nhn": "동일 — 비표준 확장자 분당 빈도",
+        "verify": "T1486 변종 — 확장자 + 파일 내용 entropy ≥ 7.5"
+      },
+      "examples": [
+        "report.pdf.locked",
+        "data.xlsx.crypted",
+        "*.evil 확장자 다수"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1486 + 알려진 랜섬 패밀리 확장자 (.lock/.crypted/.encrypted) 인텔",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3_IMPACT:storage_destruction": {
+      "description": "Q3_IMPACT — 'Object Storage 정책 destructive 변경 (deletion·overwrite policy)'.",
+      "how_to_find": {
+        "ncp": "Object Storage → Bucket Lifecycle → expiration·noncurrent version 정책 변경",
+        "nhn": "동일 — bucket policy delete on creation 등",
+        "verify": "T1485 (Data Destruction) — 정책 변경 후 자동 삭제 진행"
+      },
+      "examples": [
+        "Lifecycle 1일 만료 정책 신규",
+        "Object lock 비활성 + delete 허용"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +20, 데이터 유출 +10. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1485 Data Destruction + T1531 Account Access Removal",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-CRED:mfa_token_reuse": {
+      "description": "Q4_CRED — 'MFA 토큰 재사용 흔적 (0ktapus/Twilio 2022 사례)'. 동일 토큰으로 짧은 시간 내 다중 로그인.",
+      "how_to_find": {
+        "ncp": "Sub Account → MFA 인증 이력 → 동일 토큰 재사용 패턴",
+        "nhn": "IAM → 사용자 → MFA log → token replay 탐지",
+        "verify": "T1111 (MFA Interception) 변종 — Adversary-in-the-middle 시그널"
+      },
+      "examples": [
+        "동일 TOTP 토큰 2회 사용",
+        "MFA push 승인 5초 후 다른 IP 로그인"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +25점. 중간 — 자격증명 탈취 +10. 약함 — 권한 상승 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "MITRE T1556 Modify Authentication Process + AWS Detective MFA bypass pattern + 0ktapus 사례 (Twilio 2022)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-CRED:mfa_registration_change": {
+      "description": "Q4_CRED — 'MFA 등록 변경 (사용자 직접 우회)'. 공격자가 자기 디바이스로 MFA 재등록.",
+      "how_to_find": {
+        "ncp": "Sub Account → MFA 등록 이력 → RegisterMFA·UpdateMFA API 호출자·시각",
+        "nhn": "IAM → MFA 디바이스 등록·해제 이력",
+        "verify": "T1556 (Modify Authentication Process) — 변경 직후 비정상 로그인"
+      },
+      "examples": [
+        "user01 MFA 디바이스 변경 후 비국내 IP 로그인",
+        "MFA 해제 + 즉시 권한 변경"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20. 약함 — 피싱 초기 침투 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1098.005 Device Registration + NIST SP 800-63B AAL2 fraud pattern",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-CRED:mfa_not_applied": {
+      "description": "Q4_CRED — 'MFA 미적용 계정'. 처음부터 MFA 등록되지 않은 약한 계정.",
+      "how_to_find": {
+        "ncp": "Sub Account → 'MFA 사용 여부 OFF' 필터 → 사용자 리스트",
+        "nhn": "IAM → MFA 미등록 사용자 그룹 식별",
+        "verify": "CSA #2 IAM — MFA 미적용 = brute-force·credential stuffing 표적"
+      },
+      "examples": [
+        "service-acc-01 MFA 미설정 + brute-force 시도 매칭",
+        "관리자 계정 MFA 미적용 (위험)"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +15. 약함 — 설정 오류 노출 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "CSA Top Threats 2024 #1 IAM 미흡 + NIST SP 800-63B MFA 권고",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-CRED:audit_log_tampered": {
+      "description": "Q4_CRED — '인증 관련 감사 로그 변조 흔적'. 로그인 시도·MFA 이벤트 누락.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → SignIn 이벤트 시간 gap + 로그 무결성 검증",
+        "nhn": "Cloud Audit → 보존 로그 hash 무결성 + 누락 시간대 식별",
+        "verify": "T1562.008 + T1070 — 인증 로그 선택적 삭제"
+      },
+      "examples": [
+        "02:00-03:00 SignIn 이벤트 없음 (정상 시 100+/h)",
+        "특정 사용자 로그인 이력만 삭제"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +30점. 중간 — 자격증명 탈취 +10. 약함 — 내부자 위협 +5. 무영향 — 권한 상승, 데이터 유출, 랜섬웨어 등.",
+      "academic_source": "MITRE T1562.008 Disable Cloud Logs + NIST SP 800-86 §3 Volatility Hierarchy",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-RANSOM:backup_destroyed": {
+      "description": "Q4_RANSOM — '백업·스냅샷 삭제·암호화 (T1490)'. 복구 방지 — 랜섬 영향 최대화.",
+      "how_to_find": {
+        "ncp": "Backup → 삭제 이력 + Object Storage version control 비활성",
+        "nhn": "동일 — DeleteBackup·DeleteSnapshot API",
+        "verify": "T1490 (Inhibit System Recovery)"
+      },
+      "examples": [
+        "EBS 스냅샷 전체 삭제",
+        "version control off + delete 진행"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 약함 — 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1490 Inhibit System Recovery + NIST SP 800-184 §3.2",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-RANSOM:backup_intact": {
+      "description": "Q4_RANSOM — '백업 정상 확인 (복구 가능)'. 백업 정책 잘 설계되어 영향 최소화.",
+      "how_to_find": {
+        "ncp": "Backup → 최근 백업 상태·무결성 검증 + 복원 테스트",
+        "nhn": "동일",
+        "verify": "백업이 정상이면 즉시 복원 시나리오"
+      },
+      "examples": [
+        "일별 백업 30일 보존 + immutable",
+        "off-site 백업 정상"
+      ],
+      "discrimination_explanation": "중간 — 데이터 유출 +15. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "백업 무결성 확인 → 랜섬보다 데이터 유출 의심 (Mandiant 2024 Double Extortion 트렌드)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-RANSOM:backup_missing": {
+      "description": "Q4_RANSOM — '백업 자체가 없음 (운영 미설계)'. 사전 위험 노출.",
+      "how_to_find": {
+        "ncp": "Backup 정책 확인 → 미설정",
+        "nhn": "동일",
+        "verify": "BCP·DR 정책 부재 — 사전 위험 회피 권고"
+      },
+      "examples": [
+        "Backup 정책 없음",
+        "Object Storage version control 미사용"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +15, 설정 오류 노출 +10. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "운영 미설계 — CSA Top Threats 2024 #3 Misconfiguration + NIST SP 800-184 Recovery 결손",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-MISCFG:short_term_public": {
+      "description": "Q4_MISCFG — '외부 신고 직전 단기간 공개 (의도적)'. 의도적 데이터 노출 가능성.",
+      "how_to_find": {
+        "ncp": "Object Storage → 정책 변경 이력 → public 시점 + 시간 길이 측정",
+        "nhn": "동일 — public 기간 < 1주",
+        "verify": "내부자 의도적 유출 가능성 — 신고 시점과 노출 시간 매칭"
+      },
+      "examples": [
+        "신고 2시간 전 bucket public",
+        "1일 공개 후 비공개 복원"
+      ],
+      "discrimination_explanation": "중간 — 설정 오류 노출 +20, 데이터 유출 +10. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "AWS Detective scope time short-window pattern + CSA Top Threats 2024 #3",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-MISCFG:long_term_public": {
+      "description": "Q4_MISCFG — '사고 발견 이전 장기 노출 (실수·방치)'. N개월~수년 노출된 단순 misconfig.",
+      "how_to_find": {
+        "ncp": "Object Storage → 버킷 생성일 + 정책 변경 없음 + 첫 public 시점부터 N개월",
+        "nhn": "동일 — 정책 변경 이력 없이 장기 public",
+        "verify": "CSA #3 + 실수성 misconfig — 의도 없음"
+      },
+      "examples": [
+        "6개월 전 생성 후 그대로 public",
+        "1년+ 정책 미변경 + public 노출"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +35점. 중간 — 데이터 유출 +15. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Verizon DBIR 2024 Misconfiguration 장기 노출 trend + CSA Top Threats 2024 #3",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-MISCFG:timing_unknown": {
+      "description": "Q4_MISCFG — '변경 시점 불명'. 정책 변경 이력 미보존 → 단축 종료 권장.",
+      "how_to_find": {
+        "ncp": "Cloud Trail 보존 기간 확인 — 변경 이력 추적 불가",
+        "nhn": "동일",
+        "verify": "감사 로그 보존 정책 강화 권장"
+      },
+      "examples": [
+        "로그 보존 30일 초과 → 변경 시점 추적 불가"
+      ],
+      "discrimination_explanation": "중간 — 설정 오류 노출 +10. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "ISO 27035-1:2023 Assess & Decide — 시간축 불명 시 약한 시그널 처리",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-INSIDER:scope_excess": {
+      "description": "Q4_INSIDER — '직무 범위 초과 활동'. 자신의 부서·역할 외 자원 접근.",
+      "how_to_find": {
+        "ncp": "HR 직무 매핑 vs 실제 활동 자원 비교 — out-of-scope 식별",
+        "nhn": "동일 — 역할 vs 접근 자원 매트릭스",
+        "verify": "Need-to-know·Least Privilege 위반"
+      },
+      "examples": [
+        "개발자가 HR 데이터 접근",
+        "마케팅이 운영 DB 다운로드"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +30점. 중간 — 권한 상승 +10. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "CERT Insider Threat Guide §4.1 직무 범위 일탈 + NIST SP 800-53 AC-2(3)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-INSIDER:scope_within": {
+      "description": "Q4_INSIDER — '직무 범위 내 (정상 가능성)'. 정상 업무 내 활동 — 약한 시그널 (반증).",
+      "how_to_find": {
+        "ncp": "HR 직무 매핑 + baseline 활동량 비교 → 정상 범위 확인",
+        "nhn": "동일",
+        "verify": "정상 활동이라도 baseline 일탈 (양·시간) 시 다른 단서와 결합"
+      },
+      "examples": [
+        "DBA 가 DB 백업 (정상 업무)",
+        "개발자가 코드 저장소 접근"
+      ],
+      "discrimination_explanation": "무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "직무 범위 내 활동 — 중립 시그널 (정상 활동도 INSIDER 케이스 나타남). 2026-05-26 fix: -5 → 0 (음수 가중치가 Laplace smoothing 후 likelihood=0 만들어 baeysian/evidence_tree INSIDER posterior 침몰 원인이었음)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q4-INSIDER:partner_account": {
+      "description": "Q4_INSIDER — '협력사·외주 계정' 활동. 외주 인력의 정상·비정상 활동 구분 필요.",
+      "how_to_find": {
+        "ncp": "Sub Account → 협력사 그룹 → 계약 범위 내 vs 외 활동",
+        "nhn": "동일 — 외주 IAM 그룹 활동",
+        "verify": "Supply chain 공격 가능성 — T1199 (Trusted Relationship)"
+      },
+      "examples": [
+        "외주 개발사 계정 대량 다운로드",
+        "협력사 계정 IAM 변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 약함 — 자격증명 탈취 +5, 권한 상승 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "Verizon DBIR 2024 — 3rd-party/Partner account 침해 25%+ 비중",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-CRED:non_korean_ip": {
+      "description": "Q5_CRED — '비국내 IP (외부 위협)'. 자격증명 사용 출처가 비국내 IP.",
+      "how_to_find": {
+        "ncp": "Sign-In → IP geolocation 'NOT KR' + ASN 확인",
+        "nhn": "동일 — Sign-In Source country",
+        "verify": "T1078.004 + Google Threat Horizons"
+      },
+      "examples": [
+        "미국·중국·러시아 IP 로그인",
+        "베트남 IP 대량 시도"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 피싱 초기 침투 +10. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1078.004 + AWS Detective scope time external actor",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-CRED:internal_ip": {
+      "description": "Q5_CRED — '사내 IP (INSIDER 가능)'. 자격증명 사용 출처가 회사 IP 대역.",
+      "how_to_find": {
+        "ncp": "Sign-In IP → 회사 IP 대역 (10.0.0.0/8·VPN range) 매칭",
+        "nhn": "동일 — internal range filter",
+        "verify": "내부자 위협 가능성 — 동료 계정 도용 또는 본인 비정상 활동"
+      },
+      "examples": [
+        "사내 office IP 22:00 로그인",
+        "VPN range 비표준 시각"
+      ],
+      "discrimination_explanation": "중간 — 내부자 위협 +20. 약함 — 자격증명 탈취 +5, 권한 상승 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "CERT Insider Threat Guide §4.2 internal-origin signal",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-CRED:tor_vpn": {
+      "description": "Q5_CRED — 'Tor·VPN exit node'. 자격증명 사용 출처가 익명화 네트워크 (IP_ADDRESS:tor_vpn 과 동의어).",
+      "how_to_find": {
+        "ncp": "Sign-In IP → torproject exit list 또는 VPN provider ASN 매칭",
+        "nhn": "동일",
+        "verify": "T1090.003 (Multi-hop Proxy)"
+      },
+      "examples": [
+        "Tor exit IP 로그인",
+        "NordVPN IP 자격증명 시도"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +30점. 중간 — 피싱 초기 침투 +15. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1090 Proxy + Tor Project exit node list (오프라인 정적 룰)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-CRED:actor_unknown": {
+      "description": "Q5_CRED — '행위자 출처 불명'. 자격증명 사용 IP 추적 실패 (proxy chain 또는 로그 누락).",
+      "how_to_find": {
+        "ncp": "Sign-In source 추적 불가 — proxy chain 또는 audit gap 확인",
+        "nhn": "동일",
+        "verify": "단축 종료 또는 UNCLASSIFIED 진행"
+      },
+      "examples": [
+        "출처 IP 5단계 proxy chain 추적 실패",
+        "로그 누락"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "행위자 미상 — 약한 시그널 처리",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-CRED:baseline_deviation": {
+      "description": "Q5_CRED — 'Baseline 일탈 — 평소 IP/시간대 외 + 평소 안 쓰던 API 사용'. 행위 분석 결과.",
+      "how_to_find": {
+        "ncp": "User Behavior Analytics → 사용자별 IP·시간·API baseline 분포 → 일탈 점수",
+        "nhn": "동일 — 행위 분석 도구",
+        "verify": "ML 기반 anomaly detection — Z-score ≥ 3"
+      },
+      "examples": [
+        "평소 09-18 KST → 03:00 활동",
+        "평소 DescribeInstances → 갑자기 IAM:*"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20, 내부자 위협 +10. 약함 — 권한 상승 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "P5 (2026-05-25) PDF 3단계 LotL/MtL. Exabeam UEBA + Darktrace anomaly + CISA Identifying LotL. 평소 패턴 일탈 → CRED 강한 시그널, INSIDER 약한 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-RANSOM:single_instance": {
+      "description": "Q5_RANSOM — '단일 인스턴스·버킷' 영향. 영향 범위가 1개 자원으로 제한 — 영향 작음.",
+      "how_to_find": {
+        "ncp": "암호화 대상 객체 분포 → 단일 버킷 ID 확인",
+        "nhn": "동일",
+        "verify": "단일 자원이면 격리 후 복원 가능"
+      },
+      "examples": [
+        "bucket-dev-01 만 .locked",
+        "EC2 1대만 암호화"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +10. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "ISO 27035-1:2023 Assess & Decide — 영향 범위 최소",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-RANSOM:storage_wide": {
+      "description": "Q5_RANSOM — 'Object Storage 전체' 영향. 모든 버킷 영향 — 중대 사고.",
+      "how_to_find": {
+        "ncp": "영향 받은 버킷 수 → 전체 버킷 수 대비 비율 (≥80%)",
+        "nhn": "동일",
+        "verify": "T1486 광범위 적용 — 전사 영향"
+      },
+      "examples": [
+        "전체 50+ 버킷 .locked",
+        "Object Storage 모든 region 영향"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +25점. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "ISO 27035-1:2023 Assess & Decide — Object Storage 전체 영향 + Verizon DBIR 2024",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-RANSOM:multi_region": {
+      "description": "Q5_RANSOM — '멀티 리전·계정 영향'. 여러 리전 + 다중 IAM 계정 자원에 영향.",
+      "how_to_find": {
+        "ncp": "Region 별 영향 자원 분포 → 2+ region 매칭",
+        "nhn": "동일",
+        "verify": "공격자가 IAM 변경 + 다지역 권한 — 매우 심각"
+      },
+      "examples": [
+        "KR + JP region 동시 암호화",
+        "5+ IAM 계정 권한으로 분산 암호화"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "ISO 27035-1:2023 Assess & Decide — 멀티 리전·계정 최대 영향",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-MISCFG:operator": {
+      "description": "Q5_MISCFG — '운영자 권한 (실수)'. 운영자가 정책 변경 시 실수로 public 설정.",
+      "how_to_find": {
+        "ncp": "정책 변경자 = 정상 운영자 + 변경 직후 회복·노출 양상 확인",
+        "nhn": "동일",
+        "verify": "실수성 misconfig — 의도 없음, 이력 검토 필요"
+      },
+      "examples": [
+        "운영자가 bucket public 실수 변경",
+        "Security Group 룰 잘못 추가"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +25점. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "CSA Top Threats 2024 #3 — 운영자 실수 misconfiguration",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-MISCFG:abnormal_ip": {
+      "description": "Q5_MISCFG — '비정상 IP 의해 변경 (침해)'. 외부 또는 비표준 IP 가 정책 변경 — 침해 후 misconfig.",
+      "how_to_find": {
+        "ncp": "정책 변경자 IP → 비국내·tor·운영자 외 IP 매칭",
+        "nhn": "동일",
+        "verify": "T1098 + T1530 — 자격증명 탈취 후 misconfig 의도적 생성"
+      },
+      "examples": [
+        "Tor IP 가 bucket public 변경",
+        "비국내 IP 가 Security Group 0.0.0.0/0 룰 추가"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20. 약함 — 데이터 유출 +5, 설정 오류 노출 +5. 무영향 — 권한 상승, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "비정상 IP 의해 변경 → 침해 가능성 (MITRE T1098 + CSA #1 IAM)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-MISCFG:automation_script": {
+      "description": "Q5_MISCFG — '자동화 스크립트·CI/CD'. CI 파이프라인 misconfig — IaC 오류.",
+      "how_to_find": {
+        "ncp": "정책 변경 User-Agent → Terraform·CloudFormation·CI 도구 매칭",
+        "nhn": "동일 — IaC 도구 분류",
+        "verify": "IaC 코드 리뷰 — 실수 vs 의도적 commit 분석"
+      },
+      "examples": [
+        "Terraform module 이 bucket public 적용",
+        "CI/CD 가 Security Group 변경"
+      ],
+      "discrimination_explanation": "중간 — 설정 오류 노출 +15. 약함 — 권한 상승 +5. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "CI/CD·IaC 자동화 권한 과다 부여 패턴 (CSA Top Threats 2024 #3)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-INSIDER:internal_endpoint": {
+      "description": "Q5_INSIDER — '사내 단말' 출처. 회사 노트북·데스크톱에서 자격증명 사용.",
+      "how_to_find": {
+        "ncp": "Sign-In + Endpoint 통합 — 사내 단말 ID·MAC·hostname 매칭",
+        "nhn": "동일 — UEBA·MDM 도구 연계",
+        "verify": "내부자 시그널 — 정상 디바이스 + baseline 일탈 시"
+      },
+      "examples": [
+        "회사 노트북 hostname + 비정상 활동",
+        "사내 VDI 에서 비정상 IAM"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "CERT Insider Threat Guide §4.2 internal endpoint origin",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-INSIDER:internal_vpn": {
+      "description": "Q5_INSIDER — '사내 IP + 외부 VPN 혼용'. 정상 + 비정상 IP 동시 사용 — 자격증명 공유 의심.",
+      "how_to_find": {
+        "ncp": "Sign-In → 동일 계정의 IP 분포 (사내 + 외부 VPN 혼합)",
+        "nhn": "동일",
+        "verify": "계정 도용 또는 공격자가 사내 VPN 진입 시그널"
+      },
+      "examples": [
+        "오전 사내 office + 오후 외부 VPN",
+        "동일 시각 사내·외부 IP 양쪽"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +30점. 약함 — 자격증명 탈취 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "내부 IP + 외부 VPN 혼용 — INSIDER 행위 위장 (CERT Insider Threat Guide §4.4)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-INSIDER:trace_deletion": {
+      "description": "Q5_INSIDER — '자기 흔적 삭제 (s3:DeleteObject·log clear)'. 활동 후 본인이 직접 흔적 인멸.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → DeleteObject·DeleteLogStream API 호출자 = 본인",
+        "nhn": "동일 — log clear·역방향 audit 변조",
+        "verify": "T1070 (Indicator Removal) + T1485 (Data Destruction)"
+      },
+      "examples": [
+        "대량 다운로드 후 access log delete",
+        "본인 활동 audit selective delete"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +35점. 중간 — 감사 로그 변조 +15. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1070 Indicator Removal + T1562.008 + CERT Insider Threat Guide §4.5 anti-forensics",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q5-INSIDER:baseline_deviation": {
+      "description": "Q5_INSIDER — 'Baseline 일탈 — 평소 안 쓰던 IAM API · 권한 변경 시도'. 내부자 비정상 행위.",
+      "how_to_find": {
+        "ncp": "사용자별 API baseline → 평소 외 API 호출 + 권한 변경 누적",
+        "nhn": "동일 — UEBA anomaly score",
+        "verify": "행위 분석 — 정상 업무 외 패턴"
+      },
+      "examples": [
+        "DBA 가 갑자기 IAM:AttachPolicy",
+        "개발자가 운영 DB 권한 요청"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +25점. 중간 — 권한 상승 +15. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "P5 (2026-05-25) PDF 3단계 MtL Modify-the-Land. Unit 42 Cloud IR + CERT Insider Threat §4.3 anomalous-permission. 평소 안 쓰던 IAM API → INSIDER 강한 시그널, PRIVESC 보조 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-CRED:priv_change": {
+      "description": "Q6_CRED — '즉시 권한 변경·IAM 신규 생성 (PRIV 복합)'. 자격증명 탈취 후 권한 상승 단계.",
+      "how_to_find": {
+        "ncp": "Cloud Audit → 자격증명 사용 직후 IAM:* API 호출 시퀀스",
+        "nhn": "동일 — 침해 시각 + 권한 변경 매칭",
+        "verify": "T1078 → T1098 chain — 자격증명+권한상승 복합"
+      },
+      "examples": [
+        "로그인 5분 후 신규 admin 사용자 생성",
+        "탈취 직후 AdministratorAccess 추가"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +25점. 약함 — 자격증명 탈취 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "MITRE TA0004 Privilege Escalation + T1136.003 Create Cloud Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-CRED:storage_download": {
+      "description": "Q6_CRED — 'Object Storage 대량 다운로드 (DATA 복합)'. 자격증명 탈취 후 데이터 유출.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → 침해 자격증명의 GetObject·ListObjects 빈도",
+        "nhn": "동일",
+        "verify": "T1078 → T1530 chain"
+      },
+      "examples": [
+        "로그인 후 1시간 GetObject 5000+",
+        "탈취 계정으로 100GB 다운로드"
+      ],
+      "discrimination_explanation": "중간 — 데이터 유출 +20. 약함 — 자격증명 탈취 +5. 무영향 — 권한 상승, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "MITRE TA0010 Exfiltration + T1530 Data from Cloud Storage Object",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-CRED:function_persist": {
+      "description": "Q6_CRED — 'Cloud Function·Lambda 신규 생성 (PERSISTENCE 복합)'. 자격증명 + 함수 백도어 설치.",
+      "how_to_find": {
+        "ncp": "Cloud Functions → 침해 후 신규 함수 + 함수 trigger·IAM 역할",
+        "nhn": "동일 — CreateFunction API 호출 직후 추적",
+        "verify": "T1078 → T1136.003 chain"
+      },
+      "examples": [
+        "로그인 후 'bd-trigger' Lambda 신규",
+        "탈취 후 admin 역할 부여된 함수"
+      ],
+      "discrimination_explanation": "중간 — 권한 상승 +15. 무영향 — 자격증명 탈취, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1648 Serverless Execution + TA0003 Persistence",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-CRED:no_follow": {
+      "description": "Q6_CRED — '후속 시그널 없음 (CRED 단독)'. 자격증명 탈취만 확인, 후속 활동 미발견 — 미시도·미완성.",
+      "how_to_find": {
+        "ncp": "침해 자격증명의 사용 이력 → 추가 활동 없음 확인",
+        "nhn": "동일",
+        "verify": "초기 탈취 단계 — 차단 시 영향 작음"
+      },
+      "examples": [
+        "1회 로그인 후 활동 없음",
+        "MFA 차단으로 후속 시도 실패"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +10. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "CRED 단독 — 추가 시그널 없음",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-RANSOM:note_found": {
+      "description": "랜섬 노트 (요구문) 파일 발견 — 랜섬웨어 사고 직접 증거.",
+      "how_to_find": {
+        "ncp": "Object Storage → 버킷 객체 검색 'README'·'DECRYPT'·'.txt' 신규 생성",
+        "nhn": "Object Storage → 객체 메타데이터 → 사고 시각 직전·직후 생성 파일",
+        "verify": "파일 내용 분석 — 비트코인 지갑 주소·이메일·Tor 링크·요구액"
+      },
+      "examples": [
+        "README-DECRYPT.txt",
+        "HOW_TO_PAY.html",
+        "_recover_files_.bin"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +35점. 약함 — 데이터 유출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1486 Data Encrypted for Impact + Verizon DBIR 2024 Ransomware/Extortion ~32% (확장 ~43%)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-RANSOM:double_extortion": {
+      "description": "Q6_RANSOM — '데이터 유출 동반 협박 (Double Extortion)'. 암호화 + 데이터 다크웹 공개 위협.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → 암호화 전 GetObject·outbound 대량 + 다크웹 게시 확인",
+        "nhn": "동일 — 외부 위협 인텔 with company name",
+        "verify": "Verizon DBIR 2024 — Ransomware/Extortion ~32%"
+      },
+      "examples": [
+        "다크웹 게시 + 랜섬 노트 동시",
+        "암호화 1주 전 대량 데이터 외부 전송"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 중간 — 데이터 유출 +20. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Mandiant 2024 — Double Extortion 트렌드 + MITRE T1486 + T1567 Exfiltration",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-RANSOM:no_note": {
+      "description": "Q6_RANSOM — '노트 없음 (단순 파괴 T1485)'. 랜섬 노트 없이 단순 데이터 파괴 — wiper 가능성.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 파일 (랜섬 노트 패턴) 없음 + 대량 삭제·암호화",
+        "nhn": "동일",
+        "verify": "T1485 (Data Destruction) — 금전 요구 없이 파괴 목적"
+      },
+      "examples": [
+        "NotPetya 변종 (요구 없음)",
+        "Wiper 형 공격"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +15. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1485 Data Destruction — 단순 파괴",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-MISCFG:pii": {
+      "description": "Q6_MISCFG — '개인정보 (GDPR·개보법 적용)'. 노출 데이터에 개인정보 포함 — 법적 영향 큼.",
+      "how_to_find": {
+        "ncp": "노출 객체 내용 분석 → 주민번호·이메일·전화번호·이름 패턴 매칭",
+        "nhn": "동일 — DLP 도구 PII detection",
+        "verify": "개보법 §29 신고 의무 + GDPR §33 (72h) 알림"
+      },
+      "examples": [
+        "고객 DB (이메일+전화+생년월일)",
+        "직원 인사 정보 노출"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +25점. 약함 — 설정 오류 노출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "개인정보보호법 §29·GDPR Art.33 Personal Data Breach + ENISA Cloud Risk 2023",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-MISCFG:trade_secret": {
+      "description": "Q6_MISCFG — '영업비밀·기밀 자료'. 회사 영업비밀·재무·계약 자료 노출.",
+      "how_to_find": {
+        "ncp": "노출 데이터 → 영업비밀 표시·기밀 분류 매칭 (DLP 키워드)",
+        "nhn": "동일",
+        "verify": "ISO 27001 A.18.1.3 + 부정경쟁방지법 §2.2 영업비밀"
+      },
+      "examples": [
+        "재무 보고서 (분기 매출)",
+        "고객 계약서 (가격·조건)",
+        "코드 저장소 (proprietary)"
+      ],
+      "discrimination_explanation": "중간 — 데이터 유출 +20. 약함 — 설정 오류 노출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "부정경쟁방지법 §2 영업비밀 + ENISA Cloud Risk 2023",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-MISCFG:general": {
+      "description": "Q6_MISCFG — '일반 공개 가능 데이터'. 노출됐지만 공개 가능 데이터 — 영향 작음.",
+      "how_to_find": {
+        "ncp": "노출 객체 분류 → 공개 가능 (홈페이지·마케팅) 여부 확인",
+        "nhn": "동일",
+        "verify": "이미 공개된 정보 — 영향 미미 (단, 정책 위반은 별도)"
+      },
+      "examples": [
+        "공개 홈페이지 이미지",
+        "공개 product brochure"
+      ],
+      "discrimination_explanation": "약함 — 설정 오류 노출 +5. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "일반 공개 데이터 — 약한 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-INSIDER:normal_exit": {
+      "description": "Q6_INSIDER — '정상 종료·로그아웃'. 활동 후 정상 종료 — 약한 시그널.",
+      "how_to_find": {
+        "ncp": "Sign-Out 이벤트 + 활동 패턴 정상 종료",
+        "nhn": "동일",
+        "verify": "비정상 활동 후 흔적 인멸 안 한 경우 — 실수 가능성"
+      },
+      "examples": [
+        "대량 다운로드 후 정상 로그아웃"
+      ],
+      "discrimination_explanation": "중간 — 내부자 위협 +10. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "정상 로그아웃 — INSIDER 가설 약한 보강",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-INSIDER:data_external": {
+      "description": "Q6_INSIDER — '데이터 외부 전송 흔적'. 내부자가 데이터를 외부 (이메일·USB·외부 스토리지) 로 전송.",
+      "how_to_find": {
+        "ncp": "VPC → outbound 트래픽 → 개인 이메일·외부 클라우드 IP 통신",
+        "nhn": "동일 — DLP 도구 매칭",
+        "verify": "T1567 (Exfiltration Over Web Service) — 외부 스토리지 업로드"
+      },
+      "examples": [
+        "회사 데이터 → 개인 Gmail attachment",
+        "Object Storage → Personal Dropbox"
+      ],
+      "discrimination_explanation": "중간 — 데이터 유출 +20, 내부자 위협 +15. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE T1567 Exfiltration Over Web Service + CERT Insider Threat Guide §4.6",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q6-INSIDER:iam_self_delete": {
+      "description": "Q6_INSIDER — '자기 IAM 계정 삭제 (반증거 인멸)'. 활동 후 본인 계정 삭제 — 강한 흔적 인멸.",
+      "how_to_find": {
+        "ncp": "Cloud Audit → DeleteUser API 호출자 = 본인 ID",
+        "nhn": "동일 — IAM:DeleteUser 추적",
+        "verify": "T1070 + T1485 — 자기 흔적 + 계정 삭제"
+      },
+      "examples": [
+        "퇴사자가 본인 계정 직접 삭제",
+        "활동 직후 IAM:DeleteUser API"
+      ],
+      "discrimination_explanation": "중간 — 감사 로그 변조 +20, 내부자 위협 +15. 무영향 — 자격증명 탈취, 권한 상승, 데이터 유출 등.",
+      "academic_source": "MITRE T1531 Account Access Removal + T1070 Indicator Removal — 반증거 인멸",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "Q3:storage_policy_change": {
+      "description": "Q3_additional_context — 'Object Storage 정책 변경'. 정책 변경 자체 — public 여부 별도 확인 필요.",
+      "how_to_find": {
+        "ncp": "Object Storage → Bucket Policy → 변경 이력 + diff 확인",
+        "nhn": "Cloud Audit → PutBucketPolicy 이벤트 + 정책 본문 diff",
+        "verify": "정책 본문이 public·specific principal·destructive 인지 확인 후 specific 단서로 재채택"
+      },
+      "examples": [
+        "변경 후 public 이면 storage_policy_public 으로 재채택"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +25점, 설정 오류 노출 +25점. 중간 — 권한 상승 +10, 랜섬웨어 +10. 무영향 — 자격증명 탈취, 감사 로그 변조, 피싱 초기 침투 등.",
+      "academic_source": "MITRE T1552.005",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "IP_ADDRESS:non_korean": {
+      "description": "접속 IP 의 지리적 위치가 한국이 아닌 경우. 외부 위협 행위자·VPN 우회 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 보안 알람 → 비정상 로그인 → 'Geolocation' 컬럼 또는 IPinfo 조회",
+        "nhn": "Security Monitoring → 위치 필터 'NOT KR' 또는 IP whois 확인",
+        "verify": "MaxMind GeoLite2 / IPinfo.io / WHOIS 의 country 필드"
+      },
+      "examples": [
+        "45.X.X.X (러시아 AS)",
+        "104.X.X.X (미국)",
+        "117.X.X.X (중국)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 피싱 초기 침투 +15. 약함 — 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "Google Threat Horizons Report (H1 2024) + MITRE T1078.004",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "IP_ADDRESS:tor_vpn": {
+      "description": "접속 IP 가 공개 Tor 출구 노드 또는 익명 VPN 게이트웨이로 식별된 경우. 공격자가 신원을 은닉하려는 강한 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 보안 알람 → 비정상 로그인 → 클릭 → '출처 IP' → IPinfo 외부 조회",
+        "nhn": "Security Monitoring → 인증 시도 → IP 컬럼 우클릭 → '평판 조회'",
+        "verify": "torproject.org/exits, IPinfo.io 의 'tor' privacy detection, VPN provider ASN (NordVPN=AS46844 등)"
+      },
+      "examples": [
+        "115.91.214.5 (Tor exit, KR)",
+        "104.244.74.0/24 (NordVPN)",
+        "185.220.101.X (Tor exit, DE)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +30점. 중간 — 랜섬웨어 +15, 데이터 유출 +10, 피싱 초기 침투 +10. 약함 — 권한 상승 +5, 감사 로그 변조 +5, 설정 오류 노출 +5. 무영향 — 내부자 위협.",
+      "academic_source": "MITRE T1090.003",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "IP_ADDRESS:multi_account": {
+      "description": "동일 IP 가 짧은 시간 내 여러 계정에 로그인 시도. 자격증명 공유·credential stuffing·botnet 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 로그인 이력 → IP 기준 정렬 → 동일 IP 의 'User' 컬럼 다중 값 확인",
+        "nhn": "Cloud Audit → Sign-In → 'Source IP' GROUP BY → 사용자 수 > 1 필터",
+        "verify": "SIEM 룰: COUNT(DISTINCT user) > 3 BY source_ip OVER 1h 윈도우"
+      },
+      "examples": [
+        "1개 IP에서 admin·dev·svc-01 등 3+ 계정 로그인",
+        "5분 내 같은 IP 10+ 계정 시도"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점, 피싱 초기 침투 +25점. 중간 — 권한 상승 +10. 약함 — 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "MITRE T1078",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "IP_ADDRESS:multi_csp_observed": {
+      "description": "동일 IP 가 NCP·NHN 등 여러 CSP 환경에서 동시 관측. 멀티 클라우드 횡적 이동 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 로그인 이력 → IP 'AS' 컬럼 + NHN 콘솔 동일 IP 검색 교차 확인",
+        "nhn": "Cloud Audit → Sign-In → Source IP + NCP IP 리스트 비교",
+        "verify": "두 CSP 의 raw event 를 IP 기준 inner join — 시간차 < 1h"
+      },
+      "examples": [
+        "115.91.214.5 NCP + NHN 동시 로그인",
+        "AS9318 (KT) IP NCP·NHN 양쪽 활동"
+      ],
+      "discrimination_explanation": "중간 — 피싱 초기 침투 +10. 약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "실 raw 분석 115.91.214.5 사례",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:privilege_changed": {
+      "description": "사용자 계정의 권한·역할 정책이 변경된 흔적. 권한 상승·백도어 설치·내부자 시그널.",
+      "how_to_find": {
+        "ncp": "Sub Account → 사용자 관리 → 사용자 클릭 → '권한 변경 이력' 탭 + 변경자 식별",
+        "nhn": "IAM → 사용자 → 역할 매핑 변경 이력 / Cloud Trail UpdateRole API",
+        "verify": "T1098 (Account Manipulation) 매칭 — AttachUserPolicy·CreateAccessKey API 호출 시각 비교"
+      },
+      "examples": [
+        "user01 readonly → admin 권한 추가",
+        "신규 AccessKey 발급 후 광범위 권한"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +35점, 내부자 위협 +25점. 중간 — 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 설정 오류 노출 +5, 피싱 초기 침투 +5. 무영향 — 데이터 유출, 감사 로그 변조.",
+      "academic_source": "MITRE T1098",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:newly_created": {
+      "description": "사고 발생 직전·중 새로 생성된 IAM 계정. 백도어 계정 설치 의심.",
+      "how_to_find": {
+        "ncp": "Sub Account → 사용자 관리 → 생성일 정렬 → 최근 N시간 내 계정",
+        "nhn": "IAM → 사용자 → 생성일 컬럼 정렬 + Cloud Trail CreateUser API 추적",
+        "verify": "API 호출자 (sourceUser) 식별 — 정상 관리자인지·탈취된 계정인지"
+      },
+      "examples": [
+        "bd-service01 (사고 1시간 전 생성)",
+        "tmp-admin (관리자 IAM 권한)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점. 중간 — 내부자 위협 +15, 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5, 피싱 초기 침투 +5. 무영향 — 데이터 유출, 설정 오류 노출.",
+      "academic_source": "MITRE T1136 Create Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:inactive_to_active": {
+      "description": "오랫동안 사용되지 않던 휴면 계정이 갑자기 활성화·로그인. 자격증명 도용·암호 재사용 시그널.",
+      "how_to_find": {
+        "ncp": "Sub Account → '비활성 90일+' 필터 → 최근 로그인 시각 확인 + Cloud Insight 의 user 활동 비교",
+        "nhn": "IAM → 마지막 로그인 컬럼 정렬 → 90+일 미사용 후 갑자기 로그인 사용자 식별",
+        "verify": "MFA off + 비국내 IP 동반이면 강한 시그널 — T1078 Valid Accounts"
+      },
+      "examples": [
+        "퇴사자-suspended 계정 로그인",
+        "test-2023 계정 8개월 휴면 후 활성"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 피싱 초기 침투 +20, 내부자 위협 +15, 권한 상승 +10, 랜섬웨어 +10. 무영향 — 데이터 유출, 감사 로그 변조, 설정 오류 노출.",
+      "academic_source": "MITRE T1078",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:root_or_admin": {
+      "description": "Root·Administrator·전체 권한 계정의 직접 활동. 영향도 최대 — 모든 사고유형 보강.",
+      "how_to_find": {
+        "ncp": "Sub Account → 권한 'Admin' 또는 Root 계정 사용 이력 → 최근 활동 확인",
+        "nhn": "IAM → '시스템 관리자' 그룹 사용자 → Cloud Audit 활동 로그 정렬",
+        "verify": "Root 계정 사용은 베스트프랙티스 위반 — 평시 IAM 위임 + emergency access 분리"
+      },
+      "examples": [
+        "root@example.com 콘솔 직접 로그인",
+        "Administrator 계정 API 호출"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점, 내부자 위협 +25점. 중간 — 자격증명 탈취 +15, 데이터 유출 +10, 감사 로그 변조 +10, 랜섬웨어 +10, 설정 오류 노출 +10. 약함 — 피싱 초기 침투 +5.",
+      "academic_source": "CSA #1 IAM",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:mfa_disabled": {
+      "description": "사용자 계정의 MFA (Multi-Factor Authentication) 가 비활성 상태로 인증된 경우.",
+      "how_to_find": {
+        "ncp": "Sub Account → 사용자 관리 → 사용자 클릭 → 'MFA 사용 여부' Off + 로그인 시각 비교",
+        "nhn": "IAM → 사용자 → MFA 상태 → '비활성' 사용자 + Cloud Trail 로그인 매칭",
+        "verify": "콘솔 활동 로그 (IAM:UpdateUser, UpdateLoginProfile API 호출 이력)"
+      },
+      "examples": [
+        "admin (MFA off)",
+        "service-acc-01 (MFA 미설정)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +30점, 피싱 초기 침투 +25점. 중간 — 설정 오류 노출 +15, 권한 상승 +10, 내부자 위협 +10. 약함 — 랜섬웨어 +5. 무영향 — 데이터 유출, 감사 로그 변조.",
+      "academic_source": "CSA #2 IAM",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "HASH:known_malicious": {
+      "description": "VirusTotal·MISP·ThreatFox 등 위협 인텔에 등록된 알려진 악성 파일 해시 매치. 직접 증거.",
+      "how_to_find": {
+        "ncp": "Object Storage → 객체 메타데이터 → 'SHA-256' 추출 → VirusTotal API 조회",
+        "nhn": "Object Storage → 파일 다이제스트 → VT/MISP 외부 평판 조회",
+        "verify": "VirusTotal Score ≥ 10/70 또는 MISP 'malware' 태그 매칭"
+      },
+      "examples": [
+        "44d88612fea... (EICAR test)",
+        "악성 ransom payload SHA-256 매치",
+        "Cobalt Strike beacon hash"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 중간 — 피싱 초기 침투 +20, 권한 상승 +15, 데이터 유출 +15, 자격증명 탈취 +10. 약함 — 감사 로그 변조 +5. 무영향 — 설정 오류 노출, 내부자 위협.",
+      "academic_source": "VirusTotal 매칭 — 다양한 사고유형",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "HASH:unknown": {
+      "description": "처음 보는 파일 해시 (악성 미확정). VirusTotal 미등록 — 0-day·맞춤형 페이로드 가능성.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 업로드 객체 → SHA-256 추출 → VT 'not found' 확인",
+        "nhn": "Object Storage → 객체 메타 → 외부 평판 조회 결과 'unknown'",
+        "verify": "샌드박스 분석 (Cuckoo·Joe Sandbox) 으로 행위 분석 권장"
+      },
+      "examples": [
+        "VirusTotal 0-detection 신규 .exe",
+        "맞춤형 dropper (target-specific)"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +10, 피싱 초기 침투 +10. 약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5, 내부자 위협 +5. 무영향 — 감사 로그 변조, 설정 오류 노출.",
+      "academic_source": "약한 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "DOMAIN:c2": {
+      "description": "C2 (Command & Control) 도메인과의 outbound 통신 확인. 악성 코드 실행 후 명령 수신·데이터 송출 시그널.",
+      "how_to_find": {
+        "ncp": "VPC → DNS 로그 / Cloud Insight → Outbound 통신 → 외부 도메인 추출 → ThreatFox 조회",
+        "nhn": "DNS Plus → 쿼리 로그 → outbound 도메인 / 통합 보안 솔루션의 C2 룰셋",
+        "verify": "MITRE T1071 Application Layer Protocol — DNS·HTTP·HTTPS 패턴 분석"
+      },
+      "examples": [
+        "evil-tracker.xyz (Cobalt Strike C2)",
+        "asdf9xc.duckdns.org",
+        "metasploit-default.no-ip.com"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +25점. 중간 — 데이터 유출 +20, 피싱 초기 침투 +15, 자격증명 탈취 +10, 권한 상승 +10. 약함 — 감사 로그 변조 +5. 무영향 — 설정 오류 노출, 내부자 위협.",
+      "academic_source": "MITRE T1071",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "DOMAIN:dga": {
+      "description": "DGA (Domain Generation Algorithm) 패턴 도메인 — 무작위·고엔트로피 문자열. 봇넷·랜섬웨어가 C2 회피용으로 생성.",
+      "how_to_find": {
+        "ncp": "VPC → DNS 로그 → 도메인 길이/엔트로피 필터 (예: NXDOMAIN 다수 + 무작위 SLD)",
+        "nhn": "DNS Plus → 쿼리 패턴 분석 → typo-squat·DGA 분류기",
+        "verify": "MITRE T1568.002 — 엔트로피 ≥ 3.5 bits/char, 무의미 음절"
+      },
+      "examples": [
+        "asdf9xc7y.com (Conficker)",
+        "qwj2k4r8.net (Necurs)",
+        "kx9m2pq.xyz"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +25점. 중간 — 랜섬웨어 +20, 데이터 유출 +15, 자격증명 탈취 +10, 권한 상승 +10. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "MITRE T1568.002",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TIME_WINDOW:off_hours": {
+      "description": "한국 표준 업무 시각 (KST 09-18) 외 시간대 활동. 자동화 스크립트·내부자 비밀 활동·외부 침투 가능성.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 → 시간대 필터 'OUTSIDE 09:00-18:00 KST'",
+        "nhn": "Security Monitoring → 활동 시각 분포 차트 → off-hours 클러스터",
+        "verify": "주말·공휴일·심야 (00-06 KST) 활동 → KISA §2.4 ⑤ 'off-hour' 시그널"
+      },
+      "examples": [
+        "새벽 3시 IAM 권한 변경",
+        "토요일 02:00 대량 S3 다운로드",
+        "공휴일 자동화 스크립트 패턴"
+      ],
+      "discrimination_explanation": "중간 — 랜섬웨어 +20, 자격증명 탈취 +15, 권한 상승 +10, 데이터 유출 +10, 피싱 초기 침투 +10, 내부자 위협 +10. 약함 — 감사 로그 변조 +5. 무영향 — 설정 오류 노출.",
+      "academic_source": "KrCERT/CC 2025-08 제2장 (구 KISA §2.4 계승) ⑤",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "SERVICE:object_storage": {
+      "description": "NCP Object Storage·NHN Object Storage·AWS S3 같은 객체 스토리지 서비스 관여. 데이터 유출·랜섬웨어·설정 오류 표면.",
+      "how_to_find": {
+        "ncp": "Object Storage → 버킷 목록 → '권한·암호화·버전 관리' 설정 확인 + 활동 로그",
+        "nhn": "Object Storage → 버킷 → 정책 변경 이력 / Cloud Audit StoragePolicyUpdate 이벤트",
+        "verify": "T1530 (Data from Cloud Storage) + T1486 (Data Encrypted) 매칭"
+      },
+      "examples": [
+        "bucket-pii 권한 public 변경",
+        "신규 .locked 파일 100+",
+        "버킷 정책 0.0.0.0/0 허용"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +25점, 랜섬웨어 +25점, 설정 오류 노출 +25점. 중간 — 내부자 위협 +15. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "environment_modifiers m-002",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "SERVICE:iam": {
+      "description": "Identity and Access Management 서비스 관여. 자격증명·권한 상승·신규 계정 관련 사고.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → IAM 활동 → CreateUser·AttachPolicy·UpdateLoginProfile 이벤트",
+        "nhn": "IAM → 사용자·역할·정책 변경 이력 / Cloud Audit IAM:* API 호출",
+        "verify": "T1078·T1098·T1136 매칭 — 사용자/정책 변경자 식별"
+      },
+      "examples": [
+        "IAM 신규 사용자 5+ 단기 생성",
+        "AttachUserPolicy AdministratorAccess",
+        "AccessKey 신규 발급"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +25점, 내부자 위협 +25점. 중간 — 자격증명 탈취 +15, 설정 오류 노출 +10, 피싱 초기 침투 +10. 약함 — 랜섬웨어 +5. 무영향 — 데이터 유출, 감사 로그 변조.",
+      "academic_source": "CSA #1",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "SERVICE:cloud_trail": {
+      "description": "감사 로그 (Cloud Trail · NHN Cloud Trail) 비활성·삭제·필터링 변경.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 알람 'audit_log_disabled' + Cloud Trail 콘솔 → '추적' 상태",
+        "nhn": "Cloud Audit → 추적 상태 'Disabled' / 보존 정책 변경 이력",
+        "verify": "T1562.008 매칭 — StopLogging·DeleteTrail·UpdateEventSelectors API 호출"
+      },
+      "examples": [
+        "Trail 'main-audit' Disabled",
+        "보존 7일 → 1일 변경",
+        "S3 bucket 권한 변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +30점. 중간 — 내부자 위협 +20, 랜섬웨어 +10. 약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 자격증명 탈취, 설정 오류 노출, 피싱 초기 침투.",
+      "academic_source": "MITRE T1562.008",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "SERVICE:multi_csp": {
+      "description": "여러 CSP (NCP + NHN 등) 에 동시 영향이 있는 사고. 멀티 클라우드 횡적 이동·관리 콘솔 탈취 가능성.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 동일 시각 NHN 콘솔 활동 교차 확인 (IP·계정 매칭)",
+        "nhn": "동일 — 두 CSP 의 raw event 를 시간·IP·계정 기준 join",
+        "verify": "동일 출처 IP·동일 사용자명·동일 시각 ±5min — 멀티 CSP 침해 확정"
+      },
+      "examples": [
+        "NCP IAM 변경 + NHN Object Storage 정책 변경 동시",
+        "동일 Tor IP NCP·NHN 동시 로그인"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5, 피싱 초기 침투 +5. 무영향 — 감사 로그 변조, 설정 오류 노출, 내부자 위협.",
+      "academic_source": "멀티 CSP 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "IP_ADDRESS:generic": {
+      "description": "IP 단서 (variant 미상) — variant 가 확정되지 않은 일반 IP 관측. 일단 약한 시그널.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 보안 알람 → 출처 IP 컬럼 확인 후 IPinfo 추가 조회 (variant 확정)",
+        "nhn": "Security Monitoring → IP 추적 → ASN/지리 확인 후 specific variant 로 재분류",
+        "verify": "IPinfo·whois → tor/vpn/multi_account/multi_csp 중 어느 variant 인지 식별"
+      },
+      "examples": [
+        "IP 확인 후 specific 단서 (tor_vpn 등) 로 재채택 권장"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 피싱 초기 침투 +5, 내부자 위협 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "Q1 fallback — IP 단서 일반 시그널 (variant 미상). 학술: NIST 800-61r2 §3.2 표 3-2 indicator",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "ACCOUNT:generic": {
+      "description": "계정 단서 (variant 미상) — 어떤 종류의 계정 이상인지 추가 확인 필요.",
+      "how_to_find": {
+        "ncp": "Sub Account → 해당 계정 클릭 → 'MFA·생성일·권한 변경·휴면 여부' 모두 확인",
+        "nhn": "IAM → 사용자 상세 → variant (mfa_disabled, newly_created 등) 식별",
+        "verify": "확인 후 specific 단서 (mfa_disabled 등) 로 재채택"
+      },
+      "examples": [
+        "계정 상태 확인 후 specific 단서로 재분류"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 권한 상승 +5, 피싱 초기 침투 +5, 내부자 위협 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "Q1 fallback — 계정 단서 일반 시그널",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "HASH:generic": {
+      "description": "파일 해시 단서 (악성 미확정) — variant 미상. VT 조회 후 known/unknown 분류 필요.",
+      "how_to_find": {
+        "ncp": "Object Storage → 객체 SHA-256 → VirusTotal/HybridAnalysis 외부 조회",
+        "nhn": "동일 — VT API key 등록 후 자동 조회 구성 권장",
+        "verify": "조회 결과에 따라 known_malicious 또는 unknown 으로 재채택"
+      },
+      "examples": [
+        "조회 결과 따라 specific 단서로 재분류"
+      ],
+      "discrimination_explanation": "약함 — 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Q1 fallback — 파일 해시 단서 (악성 미확정)",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "DOMAIN:generic": {
+      "description": "도메인 단서 (variant 미상) — C2·DGA·정상 외부 통신 중 어느 카테고리인지 추가 확인 필요.",
+      "how_to_find": {
+        "ncp": "VPC DNS 로그 → 도메인 추출 → ThreatFox/AlienVault OTX 조회",
+        "nhn": "DNS Plus 쿼리 로그 → 외부 평판 조회",
+        "verify": "조회 후 c2 또는 dga 로 재채택"
+      },
+      "examples": [
+        "조회 결과에 따라 specific 단서로 재분류"
+      ],
+      "discrimination_explanation": "약함 — 데이터 유출 +5, 피싱 초기 침투 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Q1 fallback — 도메인 단서",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TIME_WINDOW:generic": {
+      "description": "시각 윈도우 단서 (variant 미상) — off_hours 인지 normal 인지 추가 확인 필요.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 사용자별 활동 시각 → 평소 패턴 vs 사고 시점 비교",
+        "nhn": "Security Monitoring → 시간대 baseline 비교",
+        "verify": "off_hours 확정 시 specific 단서로 재채택"
+      },
+      "examples": [
+        "시각 분석 후 off_hours 등으로 재분류"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 랜섬웨어 +5, 내부자 위협 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "Q1 fallback — 시각 윈도우 단서",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "SERVICE:generic": {
+      "description": "서비스명 단서 (variant 미상) — 어떤 클라우드 서비스인지 추가 분류 필요.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 영향받은 리소스 → 서비스 카테고리 식별",
+        "nhn": "NHN Console → 사고 시점 활동 서비스 확인",
+        "verify": "확인 후 object_storage·iam·cloud_trail·multi_csp 중 specific 으로 재채택"
+      },
+      "examples": [
+        "서비스 확인 후 specific 단서로 재분류"
+      ],
+      "discrimination_explanation": "약함 — 데이터 유출 +5, 랜섬웨어 +5, 설정 오류 노출 +5. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "Q1 fallback — 서비스명 단서",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1078.004": {
+      "description": "ATT&CK T1078.004 — Valid Accounts: Cloud Accounts. 정상 클라우드 계정 도용으로 초기 침투.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 보안 알람 → 'Valid Accounts' 카테고리 + Sub Account 활동 로그 → 평소 패턴 외 로그인",
+        "nhn": "Cloud Audit → SignIn 이벤트 → '성공' 필터 + IAM 활동 baseline 비교",
+        "verify": "MITRE T1078.004 공식 (attack.mitre.org/techniques/T1078/004/) — Detection DS0002 (UserAccount Authentication)"
+      },
+      "examples": [
+        "탈취된 admin 계정 로그인",
+        "MFA 우회된 정상 자격증명 사용"
+      ],
+      "discrimination_explanation": "강한 시그널 — 내부자 위협 +30점, 자격증명 탈취 +25점, 피싱 초기 침투 +25점. 중간 — 랜섬웨어 +10. 약함 — 권한 상승 +5, 설정 오류 노출 +5. 무영향 — 데이터 유출, 감사 로그 변조.",
+      "academic_source": "MITRE Valid Accounts: Cloud Accounts",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1110": {
+      "description": "ATT&CK T1110 — Brute Force. 패스워드 추측·credential stuffing 으로 자격증명 획득 시도.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 보안 알람 → 'Brute Force' 또는 SignIn 실패 분당 N건 이상 + 출처 IP 집중도",
+        "nhn": "Cloud Audit → SignInFailures 빈도 → 동일 계정/IP 시퀀스 → 성공 시점 매칭",
+        "verify": "MITRE T1110 — attack.mitre.org/techniques/T1110/ + 5분 100+ 실패 패턴"
+      },
+      "examples": [
+        "100+ password 시도",
+        "credential stuffing 패턴"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +35점. 중간 — 피싱 초기 침투 +10. 약함 — 랜섬웨어 +5, 설정 오류 노출 +5. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE Brute Force",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1556": {
+      "description": "ATT&CK T1556 — Modify Authentication Process. MFA 우회·인증 정책 변경.",
+      "how_to_find": {
+        "ncp": "Sub Account → MFA 디바이스 변경 이력 + IAM:UpdateLoginProfile·DeleteVirtualMFADevice API 호출",
+        "nhn": "IAM → 사용자 MFA 로그 + Cloud Audit MFA 관련 이벤트",
+        "verify": "MITRE T1556 — attack.mitre.org/techniques/T1556/ + 변경 직후 비국내 IP 로그인 매칭"
+      },
+      "examples": [
+        "MFA device 변경 후 비국내 IP 로그인"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 중간 — 권한 상승 +10. 약함 — 감사 로그 변조 +5. 무영향 — 데이터 유출, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Modify Authentication",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1539": {
+      "description": "ATT&CK T1539 — Steal Web Session Cookie. 웹 세션 쿠키 탈취로 자격증명 우회.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → 동일 세션 ID 다중 IP 사용 + Cookie/Token replay 시그널 (web proxy 로그)",
+        "nhn": "통합 보안 → AitM (Adversary-in-the-Middle) 알람 + 세션 IP 추적",
+        "verify": "MITRE T1539 — 0ktapus/Twilio 2022 사례 + evilginx2 proxy 패턴"
+      },
+      "examples": [
+        "0ktapus 2022 사례",
+        "evilginx2 proxy 탐지"
+      ],
+      "discrimination_explanation": "강한 시그널 — 자격증명 탈취 +25점. 약함 — 데이터 유출 +5. 무영향 — 권한 상승, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "MITRE Steal Web Session Cookie",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1552.005": {
+      "description": "ATT&CK T1552.005 — Unsecured Credentials: Cloud Instance Metadata API. 인스턴스 메타데이터 API 에서 자격증명 추출.",
+      "how_to_find": {
+        "ncp": "VPC Flow Log → 169.254.169.254 호출 비정상 빈도 + 의심 인스턴스 ID 추적",
+        "nhn": "VPC → 인스턴스 메타데이터 API (IMDS) 접근 로그 + SSRF 패턴",
+        "verify": "MITRE T1552.005 — IMDSv1 vs v2 사용 여부 + Capital One 2019 사례"
+      },
+      "examples": [
+        "IMDSv1 노출",
+        "SSRF 통한 인스턴스 자격증명 추출"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +20, 권한 상승 +10. 약함 — 데이터 유출 +5. 무영향 — 감사 로그 변조, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Cloud Instance Metadata API",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1098": {
+      "description": "ATT&CK T1098 — Account Manipulation. 자격증명 보존·권한 추가를 위해 계정 수정.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → IAM 활동 → AttachUserPolicy·CreateAccessKey 시각 + 행위자",
+        "nhn": "Cloud Audit → IAM:Update*·Put*Policy API 호출 빈도 + 신규 권한 매핑",
+        "verify": "MITRE T1098 — attack.mitre.org/techniques/T1098/ + 권한 변경 baseline 일탈"
+      },
+      "examples": [
+        "탈취 계정에 AdministratorAccess 추가",
+        "AccessKey 신규 발급"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점, 내부자 위협 +25점. 중간 — 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5, 설정 오류 노출 +5, 피싱 초기 침투 +5. 무영향 — 데이터 유출.",
+      "academic_source": "MITRE Account Manipulation",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1136": {
+      "description": "ATT&CK T1136 — Create Account. 신규 계정 생성으로 지속성 확보.",
+      "how_to_find": {
+        "ncp": "Sub Account → 사용자 관리 → 생성일 최근 N일 + Cloud Insight CreateUser API 호출 추적",
+        "nhn": "IAM → 신규 사용자 생성 + Cloud Audit CreateUser API 행위자",
+        "verify": "MITRE T1136 — 백도어 계정 패턴 (tmp-* · bd-* · service-* 이름 + 즉시 권한 부여)"
+      },
+      "examples": [
+        "bd-service01 신규 계정",
+        "tmp-admin 즉시 권한 부여"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5. 무영향 — 데이터 유출, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Create Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1484": {
+      "description": "ATT&CK T1484 — Domain Policy Modification. IAM 정책·역할 매핑 변경으로 권한 상승.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → IAM 정책 변경 이력 → UpdateRole·PutRolePolicy 호출 + 신뢰 정책 변경",
+        "nhn": "IAM → 역할 매핑 변경 + cross-account 신뢰 정책 → Cloud Audit 추적",
+        "verify": "MITRE T1484 — 신뢰 정책에 외부 계정 ID 추가 패턴"
+      },
+      "examples": [
+        "역할 정책에 admin 권한 추가",
+        "신뢰 정책 변경 (cross-account 허용)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +25점. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5. 무영향 — 데이터 유출, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Domain Policy Modification",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1548.005": {
+      "description": "ATT&CK T1548.005 — Temporary Elevated Cloud Access. 임시 권한 상승 (sts:AssumeRole 등) 악용.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → sts:AssumeRole 비정상 호출 빈도 + 권한 상승 매핑",
+        "nhn": "Cloud Audit → AssumeRole 이벤트 + 호출자→대상 역할 매트릭스",
+        "verify": "MITRE T1548.005 — 임시 자격증명 사용 후 광범위 활동 패턴"
+      },
+      "examples": [
+        "AssumeRole admin → 임시 자격 사용 → 활동"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +30점. 약함 — 자격증명 탈취 +5. 무영향 — 데이터 유출, 감사 로그 변조, 랜섬웨어 등.",
+      "academic_source": "MITRE Abuse Elevation Control",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1530": {
+      "description": "ATT&CK T1530 — Data from Cloud Storage Object. 클라우드 스토리지 데이터 수집.",
+      "how_to_find": {
+        "ncp": "Object Storage 액세스 로그 → GetObject 빈도 spike + 비표준 사용자 + 대량 다운로드",
+        "nhn": "Object Storage → Access Log → 사용자×버킷 매트릭스에서 비정상 패턴",
+        "verify": "MITRE T1530 — attack.mitre.org/techniques/T1530/ + Capital One 2019 사례 (S3)"
+      },
+      "examples": [
+        "bucket-pii 대량 GetObject",
+        "ListBuckets + 다수 GetObject"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +30점, 설정 오류 노출 +30점, 내부자 위협 +25점. 중간 — 랜섬웨어 +20. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE Cloud Storage Object Access",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1537": {
+      "description": "ATT&CK T1537 — Transfer Data to Cloud Account. 자체 통제 클라우드 계정으로 데이터 전송.",
+      "how_to_find": {
+        "ncp": "VPC Flow Log → outbound 트래픽 → 외부 클라우드 IP 대역 (AWS·GCP·Azure) + 대량 전송",
+        "nhn": "VPC → outbound 패턴 분석 + 외부 CSP IP 대역 매칭",
+        "verify": "MITRE T1537 — cross-cloud copy 패턴 + S3 sync to external bucket"
+      },
+      "examples": [
+        "NCP → AWS S3 cross-account copy",
+        "Object Storage → 외부 GCP 전송"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +35점, 내부자 위협 +25점. 중간 — 랜섬웨어 +15, 설정 오류 노출 +10. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE Transfer Data to Cloud Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1567": {
+      "description": "ATT&CK T1567 — Exfiltration Over Web Service. 웹 서비스 (Dropbox·Mega·pastebin 등) 통한 데이터 유출.",
+      "how_to_find": {
+        "ncp": "VPC DNS 로그 → dropbox.com·mega.nz·pastebin.com 등 외부 스토리지 도메인 통신",
+        "nhn": "DNS Plus → outbound 도메인 → 외부 파일 공유 서비스 매칭",
+        "verify": "MITRE T1567 — Exfiltration Over Web Service 도메인 리스트"
+      },
+      "examples": [
+        "회사 데이터 → Personal Dropbox 업로드",
+        "pastebin 에 자격증명 공개"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +30점. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE Exfiltration Over Web Service",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1213": {
+      "description": "ATT&CK T1213 — Data from Information Repositories. 정보 저장소 (Wiki·SharePoint·코드 저장소) 데이터 수집.",
+      "how_to_find": {
+        "ncp": "Application Log → Confluence·Wiki·GitLab API 대량 호출 + 비정상 사용자",
+        "nhn": "동일 — 사내 정보 저장소 API 호출 빈도 + 다운로드 양",
+        "verify": "MITRE T1213 — attack.mitre.org/techniques/T1213/"
+      },
+      "examples": [
+        "사내 Wiki 대량 다운로드",
+        "코드 저장소 clone 다수"
+      ],
+      "discrimination_explanation": "강한 시그널 — 데이터 유출 +25점. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE Data from Information Repositories",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1119": {
+      "description": "ATT&CK T1119 — Automated Collection. 스크립트·도구로 자동화된 데이터 수집.",
+      "how_to_find": {
+        "ncp": "Cloud Trail User-Agent → boto3·SDK·자동화 도구 + API 호출 분당 빈도 baseline 일탈",
+        "nhn": "Cloud Audit → User-Agent 분석 + 5분 1000+ API 호출 패턴",
+        "verify": "MITRE T1119 — 자동화된 데이터 수집 vs 정상 운영 도구 구분"
+      },
+      "examples": [
+        "boto3 스크립트 ListBuckets+GetObject 자동화",
+        "5분 1000+ API 호출"
+      ],
+      "discrimination_explanation": "중간 — 데이터 유출 +20. 무영향 — 자격증명 탈취, 권한 상승, 감사 로그 변조 등.",
+      "academic_source": "MITRE Automated Collection",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1562.008": {
+      "description": "ATT&CK T1562.008 — Disable Cloud Logs. CloudTrail·Cloud Audit 비활성·삭제로 흔적 은폐.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → StopLogging·DeleteTrail·UpdateEventSelectors API 호출자·시각",
+        "nhn": "Cloud Audit → 추적 정책 변경 이력 + 보존 정책 단축 매칭",
+        "verify": "MITRE T1562.008 — attack.mitre.org/techniques/T1562/008/ + 활동 직전 audit 비활성"
+      },
+      "examples": [
+        "Trail 'main-audit' StopLogging",
+        "S3 bucket 로그 권한 변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +35점, 내부자 위협 +25점. 약함 — 권한 상승 +5, 데이터 유출 +5, 랜섬웨어 +5. 무영향 — 자격증명 탈취, 설정 오류 노출, 피싱 초기 침투.",
+      "academic_source": "MITRE Disable Cloud Logs",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1070": {
+      "description": "ATT&CK T1070 — Indicator Removal. 활동 흔적 삭제 (로그·파일·history).",
+      "how_to_find": {
+        "ncp": "Cloud Trail → DeleteObject·DeleteLogStream·history clear API + 활동 후 즉시 인멸",
+        "nhn": "Cloud Audit → Delete* 이벤트 + 본인 활동 시각 비교",
+        "verify": "MITRE T1070 — 활동 후 5-30분 내 흔적 인멸 패턴"
+      },
+      "examples": [
+        "audit log selective delete",
+        "활동 직후 history clear"
+      ],
+      "discrimination_explanation": "강한 시그널 — 감사 로그 변조 +30점. 약함 — 권한 상승 +5, 데이터 유출 +5. 무영향 — 자격증명 탈취, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Indicator Removal",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1578": {
+      "description": "ATT&CK T1578 — Modify Cloud Compute Infrastructure. 클라우드 인프라 (VM·snapshot·image) 수정·생성.",
+      "how_to_find": {
+        "ncp": "VPC → 신규 인스턴스 생성 이벤트 (CreateInstance·RunInstances) + 비표준 타입 (GPU)",
+        "nhn": "Cloud Audit → 컴퓨트 자원 생성·이미지·스냅샷 변경",
+        "verify": "MITRE T1578 — attack.mitre.org/techniques/T1578/ + Billing spike 매칭"
+      },
+      "examples": [
+        "GPU 인스턴스 5+ 신규 (cryptomining)",
+        "스냅샷 외부 계정 공유"
+      ],
+      "discrimination_explanation": "중간 — 권한 상승 +15, 감사 로그 변조 +10. 약함 — 자격증명 탈취 +5, 데이터 유출 +5. 무영향 — 랜섬웨어, 설정 오류 노출, 피싱 초기 침투 등.",
+      "academic_source": "MITRE Modify Cloud Compute Infrastructure",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1021": {
+      "description": "ATT&CK T1021 — Remote Services. 원격 서비스 (SSH·RDP·SMB) 통한 횡적 이동.",
+      "how_to_find": {
+        "ncp": "VPC Flow Log → SSH 22 / RDP 3389 outbound + 내부 lateral movement 패턴",
+        "nhn": "VPC → 내부망 lateral 연결 + 분산 호스트 간 인증 시도",
+        "verify": "MITRE T1021 — attack.mitre.org/techniques/T1021/ + 내부 lateral chain 추적"
+      },
+      "examples": [
+        "SSH 다중 인스턴스 접속 chain",
+        "RDP brute-force 후 내부 이동"
+      ],
+      "discrimination_explanation": "중간 — 설정 오류 노출 +15, 권한 상승 +10, 랜섬웨어 +10. 약함 — 자격증명 탈취 +5, 데이터 유출 +5, 내부자 위협 +5. 무영향 — 감사 로그 변조, 피싱 초기 침투.",
+      "academic_source": "MITRE Remote Services",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1550": {
+      "description": "ATT&CK T1550 — Use Alternate Authentication Material. 대체 자격증명 (해시·티켓·토큰) 사용.",
+      "how_to_find": {
+        "ncp": "Cloud Trail → 비표준 토큰·세션 ID 사용 + 행위자 식별 불일치",
+        "nhn": "Cloud Audit → 동일 세션의 다중 IP·다중 User-Agent",
+        "verify": "MITRE T1550 — pass-the-hash / stolen session token 패턴"
+      },
+      "examples": [
+        "pass-the-hash",
+        "stolen session token 사용"
+      ],
+      "discrimination_explanation": "중간 — 자격증명 탈취 +10, 권한 상승 +10. 약함 — 데이터 유출 +5. 무영향 — 감사 로그 변조, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Use Alternate Authentication Material",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1136.003": {
+      "description": "ATT&CK T1136.003 — Create Account: Cloud Account. 클라우드 계정 신규 생성으로 지속성.",
+      "how_to_find": {
+        "ncp": "Sub Account → 신규 클라우드 계정 생성 + 즉시 권한 부여 + 비국내 IP 출처",
+        "nhn": "IAM → CreateUser → AttachUserPolicy 시퀀스 (5분 내)",
+        "verify": "MITRE T1136.003 — attack.mitre.org/techniques/T1136/003/"
+      },
+      "examples": [
+        "bd-cloud-user 신규 + admin 권한"
+      ],
+      "discrimination_explanation": "강한 시그널 — 권한 상승 +25점. 중간 — 내부자 위협 +20. 약함 — 자격증명 탈취 +5, 감사 로그 변조 +5, 랜섬웨어 +5, 피싱 초기 침투 +5. 무영향 — 데이터 유출, 설정 오류 노출.",
+      "academic_source": "MITRE Create Cloud Account",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1485": {
+      "description": "ATT&CK T1485 — Data Destruction. 데이터 파괴 (wiper 등) — 복구 불가능 손실.",
+      "how_to_find": {
+        "ncp": "Object Storage → DeleteObject 대량 호출 + version control 비활성 + lifecycle 단축",
+        "nhn": "Cloud Audit → 대량 데이터 삭제 패턴 + 백업 정책 변경",
+        "verify": "MITRE T1485 — attack.mitre.org/techniques/T1485/ + wiper 형 공격 (NotPetya)"
+      },
+      "examples": [
+        "bucket 전체 DELETE",
+        "wiper 형 공격 (NotPetya 변종)"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점, 데이터 유출 +25점. 중간 — 내부자 위협 +15. 약함 — 감사 로그 변조 +5. 무영향 — 자격증명 탈취, 권한 상승, 설정 오류 노출 등.",
+      "academic_source": "MITRE Data Destruction",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1486": {
+      "description": "ATT&CK T1486 — Data Encrypted for Impact. 랜섬웨어 — 데이터 암호화로 가용성 차단.",
+      "how_to_find": {
+        "ncp": "Object Storage → 신규 .locked·.encrypted suffix 객체 + PutObject 분당 빈도 (≥100)",
+        "nhn": "Object Storage → 객체 메타 → 사고 시각 ±1h 신규 비표준 확장자 통계",
+        "verify": "MITRE T1486 — 원본 vs 암호화 객체 크기 ≈ 동일 (덮어쓰기) + entropy ≥ 7.5"
+      },
+      "examples": [
+        "10000+ .locked 객체",
+        "Conti·LockBit 랜섬 패턴"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +40점. 중간 — 데이터 유출 +20. 약함 — 감사 로그 변조 +5, 내부자 위협 +5. 무영향 — 자격증명 탈취, 권한 상승, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1486 Data Encrypted for Impact",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1499": {
+      "description": "ATT&CK T1499 — Endpoint Denial of Service. DDoS 로 가용성 차단.",
+      "how_to_find": {
+        "ncp": "Cloud Insight → DDoS 알람 + 네트워크 트래픽 spike + 분산 출처 IP 분포",
+        "nhn": "Security Monitoring → 'DDoS Pattern' 알람 + 트래픽 그래프",
+        "verify": "MITRE T1499 — attack.mitre.org/techniques/T1499/ + 시간당 패킷 수 baseline"
+      },
+      "examples": [
+        "HTTP flood 10Gbps",
+        "DNS amplification"
+      ],
+      "discrimination_explanation": "약함 — 자격증명 탈취 +5, 권한 상승 +5, 데이터 유출 +5. 무영향 — 감사 로그 변조, 랜섬웨어, 설정 오류 노출 등.",
+      "academic_source": "MITRE Endpoint DoS — 약함",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1490": {
+      "description": "ATT&CK T1490 — Inhibit System Recovery. 복구 방지 — 백업·스냅샷 삭제.",
+      "how_to_find": {
+        "ncp": "Backup → DeleteBackup·DeleteSnapshot API + Object Storage version control disable",
+        "nhn": "Backup → 스냅샷 삭제 이력 + 백업 정책 변경",
+        "verify": "MITRE T1490 — attack.mitre.org/techniques/T1490/ + 랜섬 직전 백업 파괴 패턴"
+      },
+      "examples": [
+        "EBS 스냅샷 전체 삭제",
+        "Object Storage version control 비활성"
+      ],
+      "discrimination_explanation": "강한 시그널 — 랜섬웨어 +30점. 중간 — 감사 로그 변조 +10. 약함 — 권한 상승 +5, 내부자 위협 +5. 무영향 — 자격증명 탈취, 데이터 유출, 설정 오류 노출 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1490 Inhibit System Recovery",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1190": {
+      "description": "ATT&CK T1190 — Exploit Public-Facing Application. 외부 노출 애플리케이션 취약점 악용.",
+      "how_to_find": {
+        "ncp": "Public Endpoint → WAF 알람 + 비정상 요청 (SQLi·SSRF·RCE) + 외부 노출 자원",
+        "nhn": "WAF·IPS → 공개 애플리케이션 exploit 시그널",
+        "verify": "MITRE T1190 — attack.mitre.org/techniques/T1190/ + Log4Shell·SSRF 사례"
+      },
+      "examples": [
+        "Log4Shell exploit",
+        "API SQLi",
+        "SSRF → IMDS 자격증명 추출"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +35점. 중간 — 데이터 유출 +15, 랜섬웨어 +15, 권한 상승 +10. 약함 — 자격증명 탈취 +5, 피싱 초기 침투 +5. 무영향 — 감사 로그 변조, 내부자 위협.",
+      "academic_source": "MITRE ATT&CK v14 — T1190 Exploit Public-Facing Application",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1566": {
+      "description": "ATT&CK T1566 — Phishing. 피싱 메일·URL·첨부로 초기 침투.",
+      "how_to_find": {
+        "ncp": "메일 보안 게이트웨이 → 피싱 메일 차단 이력 + 직원 신고 채널 + URL/첨부 평판",
+        "nhn": "동일 — Mail Plus·통합 보안 솔루션의 피싱 차단 로그",
+        "verify": "MITRE T1566 — PhishTank·OpenPhish 매칭 + AitM kit 도메인 식별"
+      },
+      "examples": [
+        "가짜 CSP 비밀번호 변경 메일",
+        "악성 첨부 .exe"
+      ],
+      "discrimination_explanation": "강한 시그널 — 피싱 초기 침투 +40점, 자격증명 탈취 +25점. 중간 — 랜섬웨어 +10. 무영향 — 권한 상승, 데이터 유출, 감사 로그 변조 등.",
+      "academic_source": "MITRE ATT&CK v14 — T1566 Phishing",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    },
+    "TECHNIQUE:T1078.001": {
+      "description": "ATT&CK T1078.001 — Valid Accounts: Default Accounts. 기본 계정 (admin/admin 등) 미변경 사용.",
+      "how_to_find": {
+        "ncp": "Sub Account → admin·root·system 등 기본 계정 활성 여부 + 로그인 이력",
+        "nhn": "IAM → 초기 자격증명 미변경 사용자 식별 + 로그인 매칭",
+        "verify": "MITRE T1078.001 — attack.mitre.org/techniques/T1078/001/ + 기본 패스워드 사전 매칭"
+      },
+      "examples": [
+        "admin/admin 로그인 성공",
+        "default credential 미변경"
+      ],
+      "discrimination_explanation": "강한 시그널 — 설정 오류 노출 +30점. 중간 — 자격증명 탈취 +10. 약함 — 권한 상승 +5, 랜섬웨어 +5, 피싱 초기 침투 +5. 무영향 — 데이터 유출, 감사 로그 변조, 내부자 위협.",
+      "academic_source": "MITRE ATT&CK v14 — T1078.001 Default Accounts",
+      "iso_framework": "ISO 27035-1:2023 Assess & Decide"
+    }
+  }
+}

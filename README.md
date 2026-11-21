@@ -112,5 +112,3 @@ NCP의 `action`과 NHN Cloud의 `eventId`를 `activity_name`에 넣습니다.\
 ![Cloud Activity Tracer 질문에 대한 셰르파 응답과 지식 문서 출처](docs/images/sherpa-search.jpg)
 
 </details>
-
-화면은 합성 로그로 실행한 결과입니다.
